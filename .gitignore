@@ -32,3 +32,6 @@ bun.lockb
 
 # Translation output files
 output/
+
+# Worktrees
+.worktrees/
