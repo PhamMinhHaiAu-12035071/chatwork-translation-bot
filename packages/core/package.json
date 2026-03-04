@@ -8,6 +8,9 @@
   },
   "main": "./src/index.ts",
   "scripts": {
+    "lint": "eslint \"**/*.ts\"",
+    "lint:fix": "eslint \"**/*.ts\" --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
