@@ -2,7 +2,7 @@ export interface TranslationResult {
   originalText: string
   translatedText: string
   sourceLang: string
-  targetLang: 'vi'
+  targetLang: 'Vietnamese'
   timestamp: string
 }
 

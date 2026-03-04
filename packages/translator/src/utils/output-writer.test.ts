@@ -1,52 +1,65 @@
-import { afterEach, describe, expect, it } from 'bun:test'
-import { rm } from 'node:fs/promises'
+import { describe, expect, it } from 'bun:test'
 import { join } from 'node:path'
+import { rm } from 'node:fs/promises'
 import { writeTranslationOutput } from './output-writer'
 import type { OutputRecord } from './output-writer'
 
-const TEST_OUTPUT_DIR = join(process.cwd(), 'output-test')
+const testDir = join(import.meta.dir, '__test_output__')
 
 const sampleRecord: OutputRecord = {
-  originalText: 'Hello World',
-  translatedText: 'Xin chào Thế giới',
-  sourceLang: 'en',
-  targetLang: 'vi',
-  timestamp: '2026-03-04T10:30:00.000Z',
-  roomId: 123456789,
-  accountId: 987654321,
-  messageId: 'msg001',
+  webhook_setting_id: 'wh_test_123',
+  webhook_event_type: 'message_created',
+  webhook_event_time: 1709545476,
+  webhook_event: {
+    message_id: 'msg_001',
+    room_id: 424846369,
+    account_id: 8315321,
+    body: '[To:123] できれば年内に！\n\n実装してみてください。',
+    send_time: 1709545476,
+    update_time: 0,
+  },
+  translation: {
+    originalText: 'できれば年内に！\n\n実装してみてください。',
+    translatedText: 'Nếu có thể, hãy hoàn thành trong năm nay!\n\nHãy thử triển khai.',
+    sourceLang: 'Japanese',
+    targetLang: 'Vietnamese',
+    timestamp: '2026-03-04T11:44:36.577Z',
+  },
 }
 
-afterEach(async () => {
-  await rm(TEST_OUTPUT_DIR, { recursive: true, force: true })
-})
-
 describe('writeTranslationOutput', () => {
-  it('creates the output file at the correct path', async () => {
-    await writeTranslationOutput(sampleRecord, TEST_OUTPUT_DIR)
+  it('writes JSON file with full ChatworkWebhookEvent + translation structure', async () => {
+    await writeTranslationOutput(sampleRecord, testDir)
 
-    const file = Bun.file(join(TEST_OUTPUT_DIR, '2026-03-04', '123456789-msg001.json'))
-    expect(await file.exists()).toBe(true)
-  })
-
-  it('writes correct JSON content', async () => {
-    await writeTranslationOutput(sampleRecord, TEST_OUTPUT_DIR)
-
-    const file = Bun.file(join(TEST_OUTPUT_DIR, '2026-03-04', '123456789-msg001.json'))
+    const filepath = join(testDir, '2026-03-04', 'msg_001.json')
+    const file = Bun.file(filepath)
     const content = (await file.json()) as OutputRecord
-    expect(content.originalText).toBe('Hello World')
-    expect(content.translatedText).toBe('Xin chào Thế giới')
-    expect(content.sourceLang).toBe('en')
-    expect(content.targetLang).toBe('vi')
-    expect(content.roomId).toBe(123456789)
-    expect(content.messageId).toBe('msg001')
+
+    // ChatworkWebhookEvent fields preserved
+    expect(content.webhook_setting_id).toBe('wh_test_123')
+    expect(content.webhook_event_type).toBe('message_created')
+    expect(content.webhook_event.room_id).toBe(424846369)
+    expect(content.webhook_event.account_id).toBe(8315321)
+    expect(content.webhook_event.body).toBe('[To:123] できれば年内に！\n\n実装してみてください。')
+
+    // Translation block
+    expect(content.translation.originalText).toBe('できれば年内に！\n\n実装してみてください。')
+    expect(content.translation.translatedText).toBe(
+      'Nếu có thể, hãy hoàn thành trong năm nay!\n\nHãy thử triển khai.',
+    )
+    expect(content.translation.sourceLang).toBe('Japanese')
+    expect(content.translation.targetLang).toBe('Vietnamese')
+    expect(content.translation.timestamp).toBe('2026-03-04T11:44:36.577Z')
+
+    await rm(testDir, { recursive: true, force: true })
   })
 
-  it('creates parent directories automatically', async () => {
-    const record = { ...sampleRecord, timestamp: '2026-12-31T23:59:59.000Z', messageId: 'msg999' }
-    await writeTranslationOutput(record, TEST_OUTPUT_DIR)
+  it('uses filename from webhook_event.message_id', async () => {
+    await writeTranslationOutput(sampleRecord, testDir)
 
-    const file = Bun.file(join(TEST_OUTPUT_DIR, '2026-12-31', '123456789-msg999.json'))
-    expect(await file.exists()).toBe(true)
+    const filepath = join(testDir, '2026-03-04', 'msg_001.json')
+    expect(await Bun.file(filepath).exists()).toBe(true)
+
+    await rm(testDir, { recursive: true, force: true })
   })
 })

@@ -20,7 +20,7 @@ export class GeminiTranslationService implements ITranslationService {
         originalText: text,
         translatedText: output.translated,
         sourceLang: output.sourceLang,
-        targetLang: 'vi',
+        targetLang: 'Vietnamese',
         timestamp: new Date().toISOString(),
       }
     } catch (cause) {

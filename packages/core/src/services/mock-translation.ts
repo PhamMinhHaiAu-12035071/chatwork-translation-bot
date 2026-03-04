@@ -5,9 +5,9 @@ export class MockTranslationService implements ITranslationService {
     await Promise.resolve()
     return {
       originalText: text,
-      translatedText: `[Mock→vi] ${text}`,
-      sourceLang: 'auto',
-      targetLang: 'vi',
+      translatedText: `[Mock→Vietnamese] ${text}`,
+      sourceLang: 'Auto-detected',
+      targetLang: 'Vietnamese',
       timestamp: new Date().toISOString(),
     }
   }

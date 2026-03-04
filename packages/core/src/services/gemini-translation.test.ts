@@ -5,7 +5,7 @@ import type { GeminiTranslationService as GeminiTranslationServiceType } from '.
 void mock.module('ai', () => ({
   generateText: mock(() =>
     Promise.resolve({
-      output: { sourceLang: 'en', translated: 'Xin chào thế giới' },
+      output: { sourceLang: 'English', translated: 'Xin chào thế giới' },
     }),
   ),
   Output: {
@@ -31,8 +31,8 @@ describe('GeminiTranslationService', () => {
 
     expect(result.originalText).toBe('Hello World')
     expect(result.translatedText).toBe('Xin chào thế giới')
-    expect(result.sourceLang).toBe('en')
-    expect(result.targetLang).toBe('vi')
+    expect(result.sourceLang).toBe('English')
+    expect(result.targetLang).toBe('Vietnamese')
     expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 

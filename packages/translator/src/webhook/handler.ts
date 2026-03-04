@@ -16,9 +16,9 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
 
   const {
     room_id: roomId,
-    account_id: accountId,
-    body,
+    account_id: _accountId,
     message_id: messageId,
+    body,
   } = event.webhook_event
 
   const cleanText = stripChatworkMarkup(body)
@@ -32,18 +32,12 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
     const result = await service.translate(cleanText)
 
     await writeTranslationOutput({
-      originalText: result.originalText,
-      translatedText: result.translatedText,
-      sourceLang: result.sourceLang,
-      targetLang: result.targetLang,
-      timestamp: result.timestamp,
-      roomId,
-      accountId,
-      messageId,
+      ...event,
+      translation: result,
     })
 
     console.log(
-      `[handler] Translated: ${result.sourceLang} → vi | room:${roomId.toString()} | msg:${messageId}`,
+      `[handler] Translated: ${result.sourceLang} → ${result.targetLang} | room:${roomId.toString()} | msg:${messageId}`,
     )
   } catch (error) {
     if (error instanceof TranslationError) {
