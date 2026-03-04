@@ -1,0 +1,43 @@
+{
+  "name": "chatwork-translation-bot",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "NODE_ENV=development bun run packages/translator/src/index.ts",
+    "build": "bun build packages/translator/src/index.ts --outfile dist/server.js --target bun --minify",
+    "logger": "bun run --hot packages/webhook-logger/src/index.ts",
+    "tunnel:logger": "bunx localtunnel --port 3001 --subdomain chatwork-logger",
+    "typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/translator/tsconfig.json && tsc --noEmit -p packages/webhook-logger/tsconfig.json",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "lint:fix": "eslint packages/*/src/**/*.ts --fix",
+    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "test": "bun test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@commitlint/types": "^19.0.0",
+    "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

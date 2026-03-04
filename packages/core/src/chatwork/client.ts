@@ -1,0 +1,55 @@
+import type { ChatworkSendMessageResponse } from '../types/chatwork'
+
+const DEFAULT_BASE_URL = 'https://api.chatwork.com/v2'
+
+export interface ChatworkClientConfig {
+  apiToken: string
+  baseUrl?: string
+}
+
+export interface SendMessageParams {
+  roomId: number
+  message: string
+  unread?: boolean
+}
+
+export class ChatworkClient {
+  private readonly apiToken: string
+  private readonly baseUrl: string
+
+  constructor(config: ChatworkClientConfig) {
+    this.apiToken = config.apiToken
+    this.baseUrl = config.baseUrl ?? DEFAULT_BASE_URL
+  }
+
+  async sendMessage({
+    roomId,
+    message,
+    unread = false,
+  }: SendMessageParams): Promise<ChatworkSendMessageResponse> {
+    const url = `${this.baseUrl}/rooms/${roomId.toString()}/messages`
+
+    const body = new URLSearchParams({
+      body: message,
+      self_unread: unread ? '1' : '0',
+    })
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-ChatWorkToken': this.apiToken,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `Chatwork API error: ${response.status.toString()} ${response.statusText} - ${errorText}`,
+      )
+    }
+
+    return (await response.json()) as ChatworkSendMessageResponse
+  }
+}
