@@ -13,15 +13,21 @@ export const TranslationSchema = z.object({
 
 export type TranslationOutput = z.infer<typeof TranslationSchema>
 
+export function encodeNewlines(text: string): string {
+  return text.replaceAll('\n', '[[NL]]')
+}
+
+export function decodeNewlines(text: string): string {
+  return text.replaceAll('[[NL]]', '\n')
+}
+
 export function buildTranslationPrompt(text: string): string {
   return `You are a professional translator.
 Detect the source language and translate the following text into natural, human-readable Vietnamese.
 Use natural, idiomatic phrasing within each paragraph.
 Preserve the original meaning, tone, and nuance.
-Preserve ALL whitespace structure exactly:
-- Single newline (\\n) = soft line break within the same paragraph — keep as-is in the translation
-- Double newline (\\n\\n) = paragraph separator — keep as-is in the translation
-Do NOT merge, re-flow, or remove any line breaks.
+The text contains [[NL]] tokens marking line breaks — preserve them exactly in the translation.
+Do NOT remove, merge, or translate [[NL]] tokens.
 Return the detected source language as its full English name (e.g., 'Japanese', 'Vietnamese', 'Traditional Chinese').
 
 Text: ${text}`
