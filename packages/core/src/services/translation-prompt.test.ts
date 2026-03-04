@@ -17,6 +17,16 @@ describe('buildTranslationPrompt', () => {
     expect(prompt).not.toContain('JSON')
     expect(prompt).not.toContain('sourceLang')
   })
+
+  it('instructs AI to preserve line breaks', () => {
+    const prompt = buildTranslationPrompt('text')
+    expect(prompt).toContain('line breaks')
+  })
+
+  it('instructs AI to return full language name', () => {
+    const prompt = buildTranslationPrompt('text')
+    expect(prompt).toContain('full English name')
+  })
 })
 
 describe('TranslationSchema', () => {
@@ -38,5 +48,18 @@ describe('TranslationSchema', () => {
   it('rejects missing sourceLang', () => {
     const result = TranslationSchema.safeParse({ translated: 'Xin chào' })
     expect(result.success).toBe(false)
+  })
+
+  it('accepts full language names like Japanese', () => {
+    const result = TranslationSchema.safeParse({ sourceLang: 'Japanese', translated: 'Xin chào' })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts long full names like Traditional Chinese', () => {
+    const result = TranslationSchema.safeParse({
+      sourceLang: 'Traditional Chinese',
+      translated: 'Xin chào',
+    })
+    expect(result.success).toBe(true)
   })
 })
