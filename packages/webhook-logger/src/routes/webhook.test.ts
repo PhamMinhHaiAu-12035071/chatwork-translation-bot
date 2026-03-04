@@ -1,119 +1,78 @@
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
-import type { handleWebhookRoute as HandleWebhookRouteType } from './webhook'
+import Elysia from 'elysia'
+import type { webhookRoutes as WebhookRoutesType } from './webhook'
 
-const testSecret = 'dGVzdC1zZWNyZXQta2V5LTEyMzQ='
+// Mock env before importing route
+void mock.module('../env', () => ({
+  env: {
+    LOGGER_PORT: 3001,
+    TRANSLATOR_URL: 'http://localhost:3000',
+    NODE_ENV: 'test',
+  },
+}))
 
-describe('handleWebhookRoute', () => {
-  let handleWebhookRoute: typeof HandleWebhookRouteType
+// Mock fetch to avoid real HTTP calls to translator
+const mockFetch = mock(() => Promise.resolve(new Response('OK', { status: 200 })))
+global.fetch = mockFetch as unknown as typeof fetch
+
+describe('webhookRoutes', () => {
+  let webhookRoutes: typeof WebhookRoutesType
+  let app: ReturnType<typeof Elysia.prototype.use>
 
   beforeAll(async () => {
-    void mock.module('../env', () => ({
-      env: {
-        CHATWORK_WEBHOOK_SECRET: testSecret,
-        LOGGER_PORT: 3001,
-        TRANSLATOR_URL: 'http://localhost:3000',
-      },
-    }))
-
     const mod = await import('./webhook')
-    handleWebhookRoute = mod.handleWebhookRoute
+    webhookRoutes = mod.webhookRoutes
+    app = new Elysia().use(webhookRoutes)
   })
 
-  async function generateSignature(body: string, secret: string): Promise<string> {
-    const secretBytes = Uint8Array.from(atob(secret), (c) => c.charCodeAt(0))
-    const key = await crypto.subtle.importKey(
-      'raw',
-      secretBytes,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign'],
-    )
-    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
-    return btoa(String.fromCharCode(...new Uint8Array(sig)))
+  const validEvent = {
+    webhook_setting_id: '12345',
+    webhook_event_type: 'message_created',
+    webhook_event_time: 1498028130,
+    webhook_event: {
+      message_id: '789012345',
+      room_id: 567890123,
+      account_id: 123456,
+      body: 'Hello World',
+      send_time: 1498028125,
+      update_time: 0,
+    },
   }
 
-  const sampleEvent = JSON.stringify({
-    webhook_setting_id: '123',
-    webhook_event_type: 'message_created',
-    webhook_event_time: 1709542200,
-    webhook_event: {
-      message_id: '456',
-      room_id: 424846369,
-      account_id: 789,
-      body: 'test message',
-      send_time: 1709542200,
-      update_time: 1709542200,
-    },
-  })
-
-  it('returns 401 when signature header is missing', async () => {
-    const request = new Request('http://localhost/webhook', {
-      method: 'POST',
-      body: sampleEvent,
-    })
-
-    const response = await handleWebhookRoute(request)
-    expect(response.status).toBe(401)
-  })
-
-  it('returns 401 when signature is invalid', async () => {
-    const request = new Request('http://localhost/webhook', {
-      method: 'POST',
-      body: sampleEvent,
-      headers: {
-        'x-chatworkwebhooksignature': 'invalid',
-      },
-    })
-
-    const response = await handleWebhookRoute(request)
-    expect(response.status).toBe(401)
-  })
-
-  it('returns 200 and logs event when signature is valid', async () => {
-    const signature = await generateSignature(sampleEvent, testSecret)
-    const request = new Request('http://localhost/webhook', {
-      method: 'POST',
-      body: sampleEvent,
-      headers: {
-        'x-chatworkwebhooksignature': signature,
-        'content-type': 'application/json',
-      },
-    })
-
-    const response = await handleWebhookRoute(request)
-    expect(response.status).toBe(200)
-  })
-
-  it('returns 200 when signature is provided via query parameter', async () => {
-    const signature = await generateSignature(sampleEvent, testSecret)
-    const request = new Request(
-      `http://localhost/webhook?chatwork_webhook_signature=${encodeURIComponent(signature)}`,
-      {
+  it('POST /webhook with valid body returns 200', async () => {
+    mockFetch.mockClear()
+    const res = await app.handle(
+      new Request('http://localhost/webhook', {
         method: 'POST',
-        body: sampleEvent,
-        headers: {
-          'content-type': 'application/json',
-        },
-      },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validEvent),
+      }),
     )
-
-    const response = await handleWebhookRoute(request)
-    expect(response.status).toBe(200)
+    expect(res.status).toBe(200)
   })
 
-  it('returns 400 for invalid JSON with valid signature', async () => {
-    const invalidBody = 'not json'
-    const signature = await generateSignature(invalidBody, testSecret)
-    const request = new Request('http://localhost/webhook', {
-      method: 'POST',
-      body: invalidBody,
-      headers: {
-        'x-chatworkwebhooksignature': signature,
-        'content-type': 'application/json',
-      },
-    })
+  it('POST /webhook with invalid body returns 422', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invalid: 'payload' }),
+      }),
+    )
+    expect(res.status).toBe(422)
+  })
 
-    const response = await handleWebhookRoute(request)
-    expect(response.status).toBe(400)
+  it('POST /webhook forwards event to translator (fire-and-forget)', async () => {
+    mockFetch.mockClear()
+    await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validEvent),
+      }),
+    )
+    // Give fire-and-forget time to complete
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(mockFetch.mock.calls.length).toBeGreaterThan(0)
   })
 })

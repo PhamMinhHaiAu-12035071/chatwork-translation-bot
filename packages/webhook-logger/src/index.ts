@@ -3,11 +3,16 @@ import { createServer } from './server'
 
 const server = createServer()
 
+server.listen(env.LOGGER_PORT)
+
 console.log(`[webhook-logger] Listening on http://0.0.0.0:${env.LOGGER_PORT.toString()}`)
 console.log(`[webhook-logger] Health check: http://localhost:${env.LOGGER_PORT.toString()}/health`)
 console.log(
   `[webhook-logger] Webhook endpoint: http://localhost:${env.LOGGER_PORT.toString()}/webhook`,
 )
+if (env.NODE_ENV === 'development') {
+  console.log(`[webhook-logger] Swagger UI: http://localhost:${env.LOGGER_PORT.toString()}/docs`)
+}
 console.log('[webhook-logger] Waiting for Chatwork webhook events...\n')
 
 function shutdown() {
