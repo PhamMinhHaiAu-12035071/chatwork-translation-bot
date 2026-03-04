@@ -1,17 +1,17 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 export PATH="$HOME/.bun/bin:$PATH"
 
-echo "Running pre-commit checks..."
+echo "[↻] lint-staged..."
+bunx lint-staged || exit 1
+echo "[✓] lint-staged"
 
-# Run lint-staged (eslint + prettier)
-bunx lint-staged
+echo "[↻] verify:standards..."
+bun run verify:standards || exit 1
+echo "[✓] verify:standards"
 
-# Type check all packages
-echo "Running type check..."
-bun run typecheck
+echo "[↻] typecheck..."
+bun run typecheck || exit 1
+echo "[✓] typecheck"
 
-# Run tests
-echo "Running tests..."
-bun test
+echo "[↻] tests..."
+bun test || exit 1
+echo "[✓] tests"
