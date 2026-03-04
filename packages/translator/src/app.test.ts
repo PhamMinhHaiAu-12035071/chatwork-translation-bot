@@ -10,10 +10,6 @@ void mock.module('./env', () => ({
   },
 }))
 
-void mock.module('./webhook/handler', () => ({
-  handleTranslateRequest: mock(() => Promise.resolve()),
-}))
-
 // Import after mocks are set up
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
 const { createApp } = require('./app')
