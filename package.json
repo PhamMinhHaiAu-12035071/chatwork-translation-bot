@@ -10,19 +10,28 @@
     "build": "bun build packages/translator/src/index.ts --outfile dist/server.js --target bun --minify",
     "logger": "bun run --hot packages/webhook-logger/src/index.ts",
     "tunnel:logger": "bunx localtunnel --port 3001 --subdomain chatwork-logger",
-    "typecheck": "tsc --noEmit -p tsconfig.base.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/translator/tsconfig.json && tsc --noEmit -p packages/webhook-logger/tsconfig.json",
-    "lint": "eslint packages/*/src/**/*.ts",
-    "lint:fix": "eslint packages/*/src/**/*.ts --fix",
-    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "lint": "bun run --workspaces --if-present --sequential lint",
+    "lint:fix": "bun run --workspaces --if-present --sequential lint:fix",
+    "format": "bun run --workspaces --if-present --sequential format && prettier --write \"*.{json,md,yml,yaml}\" \"docs/**/*.md\"",
+    "typecheck": "tsc --noEmit -p tsconfig.root.json && bun run --workspaces --if-present --sequential typecheck",
     "test": "bun test",
+    "quality": "bun run lint && bun run typecheck && bun run test",
+    "quality:ci": "bun run quality && bunx prettier --check \"*.{json,md,yml,yaml}\" \"docs/**/*.md\"",
+    "verify:standards": "bun run scripts/verify-standards.ts",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
+    "packages/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
+    "*.{ts,tsx}": [
+      "prettier --write"
+    ],
     "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "docs/**/*.md": [
       "prettier --write"
     ]
   },

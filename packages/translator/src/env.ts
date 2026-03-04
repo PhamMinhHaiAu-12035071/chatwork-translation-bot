@@ -13,14 +13,14 @@ const envSchema = z
   .superRefine((data, ctx) => {
     if (data.AI_PROVIDER === 'gemini' && !data.GOOGLE_GENERATIVE_AI_API_KEY) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'GOOGLE_GENERATIVE_AI_API_KEY is required when AI_PROVIDER=gemini',
         path: ['GOOGLE_GENERATIVE_AI_API_KEY'],
       })
     }
     if (data.AI_PROVIDER === 'openai' && !data.OPENAI_API_KEY) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         message: 'OPENAI_API_KEY is required when AI_PROVIDER=openai',
         path: ['OPENAI_API_KEY'],
       })

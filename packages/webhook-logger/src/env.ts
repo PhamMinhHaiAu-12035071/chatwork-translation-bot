@@ -2,10 +2,7 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   LOGGER_PORT: z.coerce.number().int().positive().default(3001),
-  TRANSLATOR_URL: z
-    .string()
-    .url('TRANSLATOR_URL must be a valid URL')
-    .default('http://localhost:3000'),
+  TRANSLATOR_URL: z.string().pipe(z.url()).default('http://localhost:3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 })
 
