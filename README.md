@@ -66,32 +66,49 @@ The bot will reply with the translated text in the same room.
 
 ## Project Structure
 
-This is a Bun workspaces monorepo with two packages:
+Bun workspaces monorepo with three packages:
 
 ```
 packages/
-├── core/          # @chatwork-bot/core — shared types, interfaces, utils
+├── core/            # @chatwork-bot/core — shared types, interfaces, utils, services
 │   └── src/
-│       ├── types/          # Chatwork webhook & command types
-│       ├── interfaces/     # ITranslationService interface
-│       ├── services/       # MockTranslationService
-│       └── utils/          # Command parser
-└── bot/           # @chatwork-bot/bot — runnable HTTP server
+│       ├── types/       # Chatwork webhook & command types
+│       ├── interfaces/  # ITranslationService interface
+│       ├── services/    # Translation prompt builder
+│       └── utils/       # Command parser, output writer
+├── translator/      # @chatwork-bot/translator — HTTP server (Elysia), webhook handler
+│   └── src/
+│       ├── webhook/     # Handler, routes
+│       └── utils/       # Output writer
+└── webhook-logger/  # @chatwork-bot/webhook-logger — debug logger server
     └── src/
-        ├── chatwork/       # Chatwork REST API client
-        └── webhook/        # Router, signature verification, handler
 ```
 
 ## Scripts
 
 ```bash
-bun run dev          # Start dev server with hot-reload
-bun run build        # Bundle to dist/server.js
-bun run typecheck    # Type check all packages
-bun run lint         # Run ESLint
-bun run lint:fix     # Run ESLint with auto-fix
-bun run format       # Format with Prettier
-bun test             # Run all tests
+# Development
+bun run dev              # Run translator bot with hot-reload
+bun run logger           # Run webhook-logger with hot-reload
+
+# Build
+bun run build            # Bundle to dist/server.js (minified, target bun)
+
+# Type checking
+bun run typecheck        # Typecheck root config files + all packages
+
+# Linting & formatting
+bun run lint             # ESLint across all packages (workspace-native)
+bun run lint:fix         # ESLint with auto-fix
+bun run format           # Prettier across all packages + root docs/configs
+
+# Testing
+bun test                 # Run all tests
+
+# Quality (combined)
+bun run quality          # lint + typecheck + test
+bun run quality:ci       # quality + prettier --check on docs/configs
+bun run verify:standards # Verify all packages meet script/config standards
 ```
 
 ## Docker
