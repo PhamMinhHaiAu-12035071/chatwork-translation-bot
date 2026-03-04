@@ -23,6 +23,12 @@ describe('buildTranslationPrompt', () => {
     expect(prompt).toContain('line breaks')
   })
 
+  it('explicitly defines single newline as soft line break', () => {
+    const prompt = buildTranslationPrompt('text')
+    expect(prompt).toContain('Single newline')
+    expect(prompt).toContain('Double newline')
+  })
+
   it('instructs AI to return full language name', () => {
     const prompt = buildTranslationPrompt('text')
     expect(prompt).toContain('full English name')

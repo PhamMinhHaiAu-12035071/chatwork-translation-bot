@@ -18,8 +18,10 @@ export function buildTranslationPrompt(text: string): string {
 Detect the source language and translate the following text into natural, human-readable Vietnamese.
 Use natural, idiomatic phrasing within each paragraph.
 Preserve the original meaning, tone, and nuance.
-Preserve ALL line breaks and paragraph breaks exactly as they appear in the original.
-Each paragraph in the original must remain a separate paragraph in the translation.
+Preserve ALL whitespace structure exactly:
+- Single newline (\\n) = soft line break within the same paragraph — keep as-is in the translation
+- Double newline (\\n\\n) = paragraph separator — keep as-is in the translation
+Do NOT merge, re-flow, or remove any line breaks.
 Return the detected source language as its full English name (e.g., 'Japanese', 'Vietnamese', 'Traditional Chinese').
 
 Text: ${text}`
