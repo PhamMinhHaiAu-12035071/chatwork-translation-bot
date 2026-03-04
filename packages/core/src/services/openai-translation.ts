@@ -17,7 +17,7 @@ export class OpenAITranslationService implements ITranslationService {
         maxOutputTokens: 1200,
       })
       return {
-        originalText: text,
+        cleanText: text,
         translatedText: output.translated,
         sourceLang: output.sourceLang,
         targetLang: 'Vietnamese',

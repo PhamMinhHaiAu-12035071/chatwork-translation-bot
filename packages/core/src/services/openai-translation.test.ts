@@ -28,7 +28,7 @@ describe('OpenAITranslationService', () => {
     const service = new OpenAITranslationService()
     const result = await service.translate('おはようございます、世界！')
 
-    expect(result.originalText).toBe('おはようございます、世界！')
+    expect(result.cleanText).toBe('おはようございます、世界！')
     expect(result.sourceLang).toBe('Japanese')
     expect(result.targetLang).toBe('Vietnamese')
     expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)

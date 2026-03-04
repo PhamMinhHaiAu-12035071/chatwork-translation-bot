@@ -29,7 +29,7 @@ describe('GeminiTranslationService', () => {
     const service = new GeminiTranslationService()
     const result = await service.translate('Hello World')
 
-    expect(result.originalText).toBe('Hello World')
+    expect(result.cleanText).toBe('Hello World')
     expect(result.translatedText).toBe('Xin chào thế giới')
     expect(result.sourceLang).toBe('English')
     expect(result.targetLang).toBe('Vietnamese')

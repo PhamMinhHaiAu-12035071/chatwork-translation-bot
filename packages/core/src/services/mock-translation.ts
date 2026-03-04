@@ -4,7 +4,7 @@ export class MockTranslationService implements ITranslationService {
   async translate(text: string): Promise<TranslationResult> {
     await Promise.resolve()
     return {
-      originalText: text,
+      cleanText: text,
       translatedText: `[Mock→Vietnamese] ${text}`,
       sourceLang: 'Auto-detected',
       targetLang: 'Vietnamese',

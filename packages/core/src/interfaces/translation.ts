@@ -1,5 +1,5 @@
 export interface TranslationResult {
-  originalText: string
+  cleanText: string
   translatedText: string
   sourceLang: string
   targetLang: 'Vietnamese'

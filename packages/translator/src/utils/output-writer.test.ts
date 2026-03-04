@@ -19,7 +19,7 @@ const sampleRecord: OutputRecord = {
     update_time: 0,
   },
   translation: {
-    originalText: 'できれば年内に！\n\n実装してみてください。',
+    cleanText: 'できれば年内に！\n\n実装してみてください。',
     translatedText: 'Nếu có thể, hãy hoàn thành trong năm nay!\n\nHãy thử triển khai.',
     sourceLang: 'Japanese',
     targetLang: 'Vietnamese',
@@ -43,7 +43,7 @@ describe('writeTranslationOutput', () => {
     expect(content.webhook_event.body).toBe('[To:123] できれば年内に！\n\n実装してみてください。')
 
     // Translation block
-    expect(content.translation.originalText).toBe('できれば年内に！\n\n実装してみてください。')
+    expect(content.translation.cleanText).toBe('できれば年内に！\n\n実装してみてください。')
     expect(content.translation.translatedText).toBe(
       'Nếu có thể, hãy hoàn thành trong năm nay!\n\nHãy thử triển khai.',
     )
