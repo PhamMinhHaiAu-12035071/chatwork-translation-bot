@@ -4,7 +4,7 @@ import type { OpenAITranslationService as OpenAITranslationServiceType } from '.
 void mock.module('ai', () => ({
   generateText: mock(() =>
     Promise.resolve({
-      output: { sourceLang: 'Japanese', translated: 'おはようございます、世界！' },
+      output: { sourceLang: 'Japanese', translated: 'おはようございます[[NL]]世界！' },
     }),
   ),
   Output: {
@@ -29,6 +29,7 @@ describe('OpenAITranslationService', () => {
     const result = await service.translate('おはようございます、世界！')
 
     expect(result.cleanText).toBe('おはようございます、世界！')
+    expect(result.translatedText).toBe('おはようございます\n世界！') // [[NL]] decoded
     expect(result.sourceLang).toBe('Japanese')
     expect(result.targetLang).toBe('Vietnamese')
     expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)
