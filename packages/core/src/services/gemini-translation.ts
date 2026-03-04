@@ -2,12 +2,7 @@ import { generateText, Output } from 'ai'
 import { google } from '@ai-sdk/google'
 import type { ITranslationService, TranslationResult } from '../interfaces/translation'
 import { TranslationError } from '../interfaces/translation'
-import {
-  TranslationSchema,
-  buildTranslationPrompt,
-  encodeNewlines,
-  decodeNewlines,
-} from './translation-prompt'
+import { TranslationSchema, buildTranslationPrompt } from './translation-prompt'
 
 export class GeminiTranslationService implements ITranslationService {
   constructor(private readonly modelId = 'gemini-2.5-pro') {}
@@ -17,13 +12,13 @@ export class GeminiTranslationService implements ITranslationService {
       const { output } = await generateText({
         model: google(this.modelId),
         output: Output.object({ schema: TranslationSchema }),
-        prompt: buildTranslationPrompt(encodeNewlines(text)),
+        prompt: buildTranslationPrompt(text),
         temperature: 0,
         maxOutputTokens: 1200,
       })
       return {
         cleanText: text,
-        translatedText: decodeNewlines(output.translated),
+        translatedText: output.translated,
         sourceLang: output.sourceLang,
         targetLang: 'Vietnamese',
         timestamp: new Date().toISOString(),

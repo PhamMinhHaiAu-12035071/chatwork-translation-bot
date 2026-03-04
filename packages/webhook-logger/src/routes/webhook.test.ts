@@ -3,16 +3,23 @@ import type { handleWebhookRoute as HandleWebhookRouteType } from './webhook'
 
 const testSecret = 'dGVzdC1zZWNyZXQta2V5LTEyMzQ='
 
-void mock.module('../env', () => ({
-  env: {
-    CHATWORK_WEBHOOK_SECRET: testSecret,
-    LOGGER_PORT: 3001,
-    TRANSLATOR_URL: 'http://localhost:3000',
-  },
-}))
+describe('handleWebhookRoute', () => {
+  let handleWebhookRoute: typeof HandleWebhookRouteType
 
-function generateSignature(body: string, secret: string): Promise<string> {
-  return (async () => {
+  beforeAll(async () => {
+    void mock.module('../env', () => ({
+      env: {
+        CHATWORK_WEBHOOK_SECRET: testSecret,
+        LOGGER_PORT: 3001,
+        TRANSLATOR_URL: 'http://localhost:3000',
+      },
+    }))
+
+    const mod = await import('./webhook')
+    handleWebhookRoute = mod.handleWebhookRoute
+  })
+
+  async function generateSignature(body: string, secret: string): Promise<string> {
     const secretBytes = Uint8Array.from(atob(secret), (c) => c.charCodeAt(0))
     const key = await crypto.subtle.importKey(
       'raw',
@@ -23,16 +30,7 @@ function generateSignature(body: string, secret: string): Promise<string> {
     )
     const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))
     return btoa(String.fromCharCode(...new Uint8Array(sig)))
-  })()
-}
-
-describe('handleWebhookRoute', () => {
-  let handleWebhookRoute: typeof HandleWebhookRouteType
-
-  beforeAll(async () => {
-    const mod = await import('./webhook')
-    handleWebhookRoute = mod.handleWebhookRoute
-  })
+  }
 
   const sampleEvent = JSON.stringify({
     webhook_setting_id: '123',
