@@ -34,8 +34,5 @@ export type { AIProvider } from './services/translation-factory'
 export { ChatworkClient } from './chatwork/client'
 export type { ChatworkClientConfig, SendMessageParams } from './chatwork/client'
 
-// Webhook utilities
-export { verifyWebhookSignature } from './webhook/verify'
-
 // Utils
 export { parseCommand, stripChatworkMarkup } from './utils/parse-command'
