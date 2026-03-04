@@ -7,7 +7,14 @@ export type {
   ChatworkRoomDetail,
   ChatworkSendMessageResponse,
 } from './types/chatwork'
-export { isChatworkMessageEvent } from './types/chatwork'
+export {
+  isChatworkMessageEvent,
+  // Schemas (for use in Elysia routes and runtime validation)
+  ChatworkWebhookEventSchema,
+  ChatworkWebhookEventInnerSchema,
+  ChatworkMessageEventSchema,
+  ChatworkMessageEventInnerSchema,
+} from './types/chatwork'
 
 export type { ParsedCommand, SupportedLang } from './types/command'
 export { SUPPORTED_LANGUAGES, isSupportedLang } from './types/command'
