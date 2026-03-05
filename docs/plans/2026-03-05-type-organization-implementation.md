@@ -696,6 +696,130 @@ git commit -m "docs(repo): add type organization and ai_rules references to AGEN
 
 ---
 
+## Task 7: Move `OutputRecord` in `packages/translator`
+
+**Context:** `packages/translator/src/utils/output-writer.ts` exports `OutputRecord` type
+co-located with its implementation. Per convention, exported types must live in `types/`.
+`Env` types in both `env.ts` files are an acceptable exception — they are `z.infer<>` aliases
+tightly coupled to their Zod schema and cannot be meaningfully separated.
+
+**Files:**
+
+- Create: `packages/translator/src/types/output.ts`
+- Modify: `packages/translator/src/utils/output-writer.ts`
+- Modify: `packages/translator/src/utils/output-writer.test.ts`
+
+**Step 1: Run existing tests as baseline**
+
+```bash
+bun test packages/translator/src/utils/output-writer.test.ts
+```
+
+Expected: tests pass. If they fail, investigate before continuing.
+
+**Step 2: Create `packages/translator/src/types/output.ts`**
+
+```typescript
+import type { ChatworkWebhookEvent, TranslationResult } from '@chatwork-bot/core'
+
+export type OutputRecord = ChatworkWebhookEvent & {
+  translation: TranslationResult
+}
+```
+
+**Step 3: Update `output-writer.ts` — remove the type, import it instead**
+
+Replace:
+
+```typescript
+import type { ChatworkWebhookEvent, TranslationResult } from '@chatwork-bot/core'
+
+export type OutputRecord = ChatworkWebhookEvent & {
+  translation: TranslationResult
+}
+```
+
+With:
+
+```typescript
+import type { OutputRecord } from '../types/output'
+```
+
+> The `OutputRecord` type is now imported from `types/output.ts`. Remove the `ChatworkWebhookEvent`
+> and `TranslationResult` imports since they're no longer used directly in this file.
+
+Full updated `output-writer.ts`:
+
+```typescript
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+import type { OutputRecord } from '../types/output'
+
+/**
+ * Writes a translation record to output/{dateStr}/{messageId}.json.
+ * The record is the full ChatworkWebhookEvent extended with a `translation` block.
+ * @param record - The webhook event + translation data to persist.
+ * @param baseDir - Output base directory (defaults to `output/` in cwd). Overridable for tests.
+ */
+export async function writeTranslationOutput(
+  record: OutputRecord,
+  baseDir: string = join(process.cwd(), 'output'),
+): Promise<void> {
+  const dateStr = record.translation.timestamp.slice(0, 10)
+  const dir = join(baseDir, dateStr)
+
+  await mkdir(dir, { recursive: true })
+
+  const messageId = record.webhook_event.message_id ?? 'unknown'
+  const filename = `${messageId}.json`
+  const filepath = join(dir, filename)
+
+  await Bun.write(filepath, JSON.stringify(record, null, 2))
+  console.log(`[output] Saved: ${filepath}`)
+}
+```
+
+**Step 4: Update `output-writer.test.ts` — fix import path**
+
+Find line 5:
+
+```typescript
+import type { OutputRecord } from './output-writer'
+```
+
+Replace with:
+
+```typescript
+import type { OutputRecord } from '../types/output'
+```
+
+**Step 5: Run tests to verify**
+
+```bash
+bun test packages/translator/src/utils/output-writer.test.ts
+```
+
+Expected: all tests pass (same count as before).
+
+**Step 6: Run full typecheck**
+
+```bash
+bun run typecheck
+```
+
+Expected: no errors across all packages.
+
+**Step 7: Commit**
+
+```bash
+git add packages/translator/src/types/output.ts \
+        packages/translator/src/utils/output-writer.ts \
+        packages/translator/src/utils/output-writer.test.ts
+git commit -m "refactor(translator): move OutputRecord to types/output.ts"
+```
+
+---
+
 ## Final Verification
 
 **Step 1: Run full suite**
@@ -711,38 +835,57 @@ Expected:
 - `test`: 64 tests pass, 0 fail
 - `build`: outputs `dist/server.js` successfully
 
-**Step 2: Verify the interfaces folder now has both files**
+**Step 2: Verify interface folders**
 
 ```bash
 ls packages/core/src/interfaces/
+ls packages/translator/src/types/
 ```
 
 Expected:
 
 ```
+# core/interfaces:
 chatwork.ts  translation.ts
+
+# translator/types:
+output.ts
 ```
 
-**Step 3: Verify `client.ts` no longer contains interface definitions**
+**Step 3: Verify no exported interfaces remain in implementation files**
 
 ```bash
-grep -n "^export interface" packages/core/src/chatwork/client.ts
+grep -rn "^export interface\|^export type" \
+  packages/core/src/chatwork/client.ts \
+  packages/translator/src/utils/output-writer.ts
 ```
 
-Expected: no output (no exported interfaces in client.ts).
+Expected: no output from either file.
+
+---
+
+## Acceptable Exceptions (do NOT move)
+
+| File                                 | Exported type | Reason                                                           |
+| ------------------------------------ | ------------- | ---------------------------------------------------------------- |
+| `packages/translator/src/env.ts`     | `Env`         | `z.infer<typeof envSchema>` — must be co-located with its schema |
+| `packages/webhook-logger/src/env.ts` | `Env`         | Same reason                                                      |
 
 ---
 
 ## Summary of Changes
 
-| File                                       | Action                                                                   |
-| ------------------------------------------ | ------------------------------------------------------------------------ |
-| `packages/core/src/interfaces/chatwork.ts` | Created — `IChatworkClient`, `ChatworkClientConfig`, `SendMessageParams` |
-| `packages/core/src/chatwork/client.ts`     | Modified — removed 2 interfaces, added `implements IChatworkClient`      |
-| `packages/core/src/index.ts`               | Modified — re-exports from `interfaces/chatwork`, adds `IChatworkClient` |
-| `ai_rules/type-organization.md`            | Created                                                                  |
-| `ai_rules/naming-conventions.md`           | Created                                                                  |
-| `ai_rules/export-patterns.md`              | Created                                                                  |
-| `ai_rules/test-colocation.md`              | Created                                                                  |
-| `CLAUDE.md`                                | Modified — added Coding Standards section                                |
-| `AGENTS.md`                                | Modified — added Type Organization section + ai_rules reference          |
+| File                                                  | Action                                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| `packages/core/src/interfaces/chatwork.ts`            | Created — `IChatworkClient`, `ChatworkClientConfig`, `SendMessageParams` |
+| `packages/core/src/chatwork/client.ts`                | Modified — removed 2 interfaces, added `implements IChatworkClient`      |
+| `packages/core/src/index.ts`                          | Modified — re-exports from `interfaces/chatwork`, adds `IChatworkClient` |
+| `packages/translator/src/types/output.ts`             | Created — `OutputRecord`                                                 |
+| `packages/translator/src/utils/output-writer.ts`      | Modified — import from `types/output` instead of defining inline         |
+| `packages/translator/src/utils/output-writer.test.ts` | Modified — import from `../types/output`                                 |
+| `ai_rules/type-organization.md`                       | Created                                                                  |
+| `ai_rules/naming-conventions.md`                      | Created                                                                  |
+| `ai_rules/export-patterns.md`                         | Created                                                                  |
+| `ai_rules/test-colocation.md`                         | Created                                                                  |
+| `CLAUDE.md`                                           | Modified — added Coding Standards section                                |
+| `AGENTS.md`                                           | Modified — added Type Organization section + ai_rules reference          |
