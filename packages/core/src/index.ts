@@ -22,6 +22,11 @@ export { SUPPORTED_LANGUAGES, isSupportedLang } from './types/command'
 // Interfaces
 export type { ITranslationService, TranslationResult } from './interfaces/translation'
 export { TranslationError } from './interfaces/translation'
+export type {
+  IChatworkClient,
+  ChatworkClientConfig,
+  SendMessageParams,
+} from './interfaces/chatwork'
 
 // Services
 export { MockTranslationService } from './services/mock-translation'
@@ -32,7 +37,6 @@ export type { AIProvider } from './services/translation-factory'
 
 // Chatwork client
 export { ChatworkClient } from './chatwork/client'
-export type { ChatworkClientConfig, SendMessageParams } from './chatwork/client'
 
 // Utils
 export { parseCommand, stripChatworkMarkup } from './utils/parse-command'

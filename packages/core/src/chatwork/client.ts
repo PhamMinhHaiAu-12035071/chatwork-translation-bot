@@ -1,19 +1,13 @@
 import type { ChatworkSendMessageResponse } from '../types/chatwork'
+import type {
+  IChatworkClient,
+  ChatworkClientConfig,
+  SendMessageParams,
+} from '../interfaces/chatwork'
 
 const DEFAULT_BASE_URL = 'https://api.chatwork.com/v2'
 
-export interface ChatworkClientConfig {
-  apiToken: string
-  baseUrl?: string
-}
-
-export interface SendMessageParams {
-  roomId: number
-  message: string
-  unread?: boolean
-}
-
-export class ChatworkClient {
+export class ChatworkClient implements IChatworkClient {
   private readonly apiToken: string
   private readonly baseUrl: string
 
