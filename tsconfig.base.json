@@ -17,9 +17,11 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "baseUrl": ".",
     "paths": {
-      "@core/*": ["./packages/core/src/*"],
-      "@translator/*": ["./packages/translator/src/*"]
+      "@chatwork-bot/core": ["./packages/core/src/index.ts"],
+      "@chatwork-bot/translator": ["./packages/translator/src/index.ts"],
+      "@chatwork-bot/webhook-logger": ["./packages/webhook-logger/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
