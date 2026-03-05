@@ -31,6 +31,29 @@ Keep business logic in `core` and integration/transport concerns in `bot`.
   - `PascalCase` for types/classes.
   - `camelCase` for variables/functions.
   - `kebab-case.ts` for file names (example: `parse-command.ts`).
+  - `I` prefix for behavioral interfaces only (e.g., `IChatworkClient`, `ITranslationService`).
+
+### Type Organization
+
+`packages/core/src/` follows a strict layer convention:
+
+| Folder        | Purpose                                                       |
+| ------------- | ------------------------------------------------------------- |
+| `interfaces/` | Behavioral contracts with `I` prefix — injectable, mockable.  |
+| `types/`      | External data shapes: webhook events, API responses, schemas. |
+| co-located    | Only for types not exported outside their file.               |
+
+Supporting types for an interface (config, params, result) live in the **same file** as the
+interface. See `ai_rules/type-organization.md` for the full ruleset.
+
+### AI Coding Standards
+
+Full topic-scoped rules are in `ai_rules/` at the repo root:
+
+- `ai_rules/type-organization.md`
+- `ai_rules/naming-conventions.md`
+- `ai_rules/export-patterns.md`
+- `ai_rules/test-colocation.md`
 
 ## Testing Guidelines
 
