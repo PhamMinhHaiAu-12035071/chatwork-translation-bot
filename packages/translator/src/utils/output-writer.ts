@@ -1,10 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { ChatworkWebhookEvent, TranslationResult } from '@chatwork-bot/core'
-
-export type OutputRecord = ChatworkWebhookEvent & {
-  translation: TranslationResult
-}
+import type { OutputRecord } from '../types/output'
 
 /**
  * Writes a translation record to output/{dateStr}/{messageId}.json.
