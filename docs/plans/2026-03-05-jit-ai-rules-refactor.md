@@ -479,20 +479,44 @@ git commit -m "docs(repo): add ai_rules/security.md with env vars, secrets, webh
 
 - Modify: `CLAUDE.md` (full rewrite — read first, then write)
 
-**Step 1: Read current file**
+**Step 1: Pre-flight — verify all 10 ai_rules files exist**
+
+Tasks 1-6 must complete before this task. Verify:
 
 ```bash
-# Verify current content before overwriting
+ls ai_rules/ | sort
+```
+
+Expected (10 files, alphabetical):
+
+```
+architecture-patterns.md
+code-style.md
+commit-conventions.md
+commands.md
+export-patterns.md
+naming-conventions.md
+project-structure.md
+security.md
+test-colocation.md
+type-organization.md
+```
+
+If any file is missing, complete the corresponding Task 1-6 first.
+
+**Step 2: Read current file**
+
+```bash
 cat CLAUDE.md | wc -l
 ```
 
 Expected: 97 lines.
 
-**Step 2: Rewrite with JIT directive format**
+**Step 3: Rewrite with JIT directive + Claude-specific format**
 
 Replace entire content with:
 
-```markdown
+````markdown
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) and Cursor.
@@ -505,63 +529,80 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 **Stack**: Bun v1.1+ · TypeScript 5.4+ strict · Bun.serve() · Zod · Docker (oven/bun:1.1-distroless)
 
 ## Monorepo
+
+```
+@chatwork-bot/core  ←── imported by ──  @chatwork-bot/bot
+(types, interfaces, utils, services)    (HTTP server, webhook handling)
 ```
 
-@chatwork-bot/core ←── imported by ── @chatwork-bot/bot
-(types, interfaces, utils, services) (HTTP server, webhook handling)
-
-````
-
-→ Full details: `ai_rules/project-structure.md`
+→ Details: `ai_rules/project-structure.md`
 
 ## Environment Variables
 
 Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`
 Optional: `PORT` (default 3000), `NODE_ENV` (default development)
 
-→ Full details: `ai_rules/security.md`
+→ Details: `ai_rules/security.md`
 
 ## AI Rules — Read before working on related tasks
 
+When you encounter these **keywords** in code or task description, read the linked file first:
+
 ### Types & Structure
 
-- Modify types, interfaces, or data shapes → read `ai_rules/type-organization.md`
-- Naming identifiers, files, or folders   → read `ai_rules/naming-conventions.md`
-- Writing imports, exports, barrel files  → read `ai_rules/export-patterns.md`
+- `interface`, `type`, `IXxx`, `types/`, `interfaces/` → read `ai_rules/type-organization.md` + `ai_rules/naming-conventions.md`
+- `import`, `export`, `index.ts`, `from '@` → read `ai_rules/export-patterns.md`
 
 ### Testing
 
-- Writing or modifying tests → read `ai_rules/test-colocation.md`
+- `.test.ts`, `describe(`, `it(`, `expect(` → read `ai_rules/test-colocation.md`
 
 ### Code Quality & Workflow
 
 - Formatting, linting, or TS config → read `ai_rules/code-style.md`
-- Writing commits or creating PRs   → read `ai_rules/commit-conventions.md`
-- Dev/build/test commands           → read `ai_rules/commands.md`
+- Writing commit or creating PR → read `ai_rules/commit-conventions.md`
+- Need commands for build/test/run → read `ai_rules/commands.md`
 
 ### Architecture
 
-- Request flow or key patterns          → read `ai_rules/architecture-patterns.md`
-- Monorepo structure or package layout  → read `ai_rules/project-structure.md`
-- Env vars, secrets, or security        → read `ai_rules/security.md`
+- Webhook, routing, request flow, or env → read `ai_rules/architecture-patterns.md` + `ai_rules/security.md`
+- Unsure where to put a new file → read `ai_rules/project-structure.md`
+
+## Claude Code–Specific
+
+### Available MCP Tools
+
+- `context7` — fetch library docs on demand (use when needing API reference)
+- `github` — create issues, PRs, review code
+- `sequentialthinking` — complex multi-step reasoning
+
+### Custom Slash Commands
+
+Check `.claude/commands/` for available workflows.
+
+### Memory System
+
+- Use `#` in conversation to save decisions permanently
+- Session memories: `.claude/projects/*/memory/MEMORY.md`
 
 ## Definition of Done
 
+<!-- Intentionally inline — must be immediately visible at session start, not JIT-loaded -->
+
 ```bash
 bun test && bun run typecheck && bun run lint
+```
 ````
 
-````
-
-**Step 3: Verify line count**
+**Step 4: Verify line count**
 
 ```bash
 cat CLAUDE.md | wc -l
-````
+```
 
-Expected: ~47 lines.
+Expected: ~60 lines.
 
-**Step 4: Run format**
+**Step 5: Run format**
 
 ```bash
 bun run format
@@ -569,11 +610,11 @@ bun run format
 
 Expected: No errors.
 
-**Step 5: Commit**
+**Step 6: Commit**
 
 ```bash
 git add CLAUDE.md
-git commit -m "docs(repo): refactor CLAUDE.md to JIT directive format (~47 lines, was 97)"
+git commit -m "docs(repo): refactor CLAUDE.md to JIT directive format with Claude-specific section (~60 lines, was 97)"
 ```
 
 ---
@@ -592,21 +633,30 @@ cat AGENTS.md | wc -l
 
 Expected: 82 lines.
 
-**Step 2: Rewrite with JIT directive format**
+**Step 2: Rewrite with JIT directive + inline critical rules format**
 
 Replace entire content with:
 
 ````markdown
 # Repository Guidelines
 
-This file provides guidance for Codex and other AI agents working in this repository.
+This file provides guidance for Codex and other AI agents.
 
 ## Project Overview
 
 Chatwork Translation Bot — Bun + TypeScript monorepo. Webhook-based bot, no frontend or database.
 Two packages: `@chatwork-bot/core` (shared logic) and `@chatwork-bot/bot` (HTTP server).
 
-→ Full details: `ai_rules/project-structure.md`
+→ Details: `ai_rules/project-structure.md`
+
+## Critical Rules (inline — safety-critical, not JIT-loaded)
+
+- TypeScript ESM strict mode only — never plain JS
+- Import from package name only: `@chatwork-bot/core` not `../../core/src/`
+- Always use `import type` for type-only imports
+- Prefix unused vars with `_` (enforced by ESLint)
+- **Never** commit `.env`, tokens, or secrets
+- **Never** use `any` type without explicit justification comment
 
 ## Commands
 
@@ -617,36 +667,34 @@ Pre-PR validation (must all pass):
 ```bash
 bun test && bun run typecheck && bun run lint
 ```
-````
 
 ## AI Rules — Read before working on related tasks
 
+When you encounter these **keywords** in code or task description, read the linked file first:
+
 ### Types & Code Structure
 
-- Types, interfaces, or data shapes → read `ai_rules/type-organization.md`
-- Naming conventions → read `ai_rules/naming-conventions.md`
-- Imports, exports, barrel files → read `ai_rules/export-patterns.md`
-- Tests → read `ai_rules/test-colocation.md`
+- `interface`, `type`, `IXxx`, `types/`, `interfaces/` → `ai_rules/type-organization.md` + `ai_rules/naming-conventions.md`
+- `import`, `export`, `index.ts`, `from '@` → `ai_rules/export-patterns.md`
+- `.test.ts`, `describe(`, `it(` → `ai_rules/test-colocation.md`
 
 ### Style & Workflow
 
-- Formatting, linting, TS config → read `ai_rules/code-style.md`
-- Commits, PRs, or branches → read `ai_rules/commit-conventions.md`
+- Formatting, linting, TS config → `ai_rules/code-style.md`
+- Commit, PR, or branch → `ai_rules/commit-conventions.md`
 
 ### Architecture & Security
 
-- Request flow or key patterns → read `ai_rules/architecture-patterns.md`
-- Env vars, secrets → read `ai_rules/security.md`
-
+- Webhook, routing, env, or secrets → `ai_rules/architecture-patterns.md` + `ai_rules/security.md`
 ````
 
 **Step 3: Verify line count**
 
 ```bash
 cat AGENTS.md | wc -l
-````
+```
 
-Expected: ~34 lines.
+Expected: ~45 lines.
 
 **Step 4: Run format**
 
@@ -658,20 +706,20 @@ bun run format
 
 ```bash
 git add AGENTS.md
-git commit -m "docs(repo): refactor AGENTS.md to JIT directive format (~34 lines, was 82)"
+git commit -m "docs(repo): refactor AGENTS.md to JIT directive format with inline critical rules (~45 lines, was 82)"
 ```
 
 ---
 
 ### Task 9: Final Verification
 
-**Step 1: Verify all ai_rules files exist**
+**Step 1: Verify all 10 ai_rules files exist**
 
 ```bash
-ls ai_rules/
+ls ai_rules/ | sort
 ```
 
-Expected output:
+Expected (exactly 10 files):
 
 ```
 architecture-patterns.md
@@ -686,25 +734,49 @@ test-colocation.md
 type-organization.md
 ```
 
-**Step 2: Verify no duplicated content**
+Count check: `ls ai_rules/ | wc -l` → Expected: `10`
 
-Check that CLAUDE.md doesn't contain old inline content:
+**Step 2: Verify CLAUDE.md has Claude-specific section**
 
 ```bash
-grep -n "no semicolons\|strictTypeChecked\|noUncheckedIndexedAccess\|conventional commits\|bun run dev\|fire-and-forget\|CHATWORK_API_TOKEN" CLAUDE.md
+grep -n "Claude Code" CLAUDE.md
+```
+
+Expected: At least 2 matches (`## Claude Code–Specific` heading + MCP tools section).
+
+**Step 3: Verify AGENTS.md has inline critical rules**
+
+```bash
+grep -n "Critical Rules" AGENTS.md
+```
+
+Expected: 1 match — `## Critical Rules (inline — safety-critical, not JIT-loaded)`.
+
+**Step 4: Verify old inline content removed from CLAUDE.md**
+
+```bash
+grep -n "no semicolons\|strictTypeChecked\|noUncheckedIndexedAccess\|conventional commits\|bun run dev\|fire-and-forget" CLAUDE.md
 ```
 
 Expected: No matches (all moved to ai_rules/).
 
-Same check for AGENTS.md:
+**Step 5: Verify old inline content removed from AGENTS.md**
 
 ```bash
-grep -n "no semicolons\|strictTypeChecked\|feat.*fix.*docs.*refactor\|bun run dev" AGENTS.md
+grep -n "strictTypeChecked\|feat.*fix.*docs.*refactor\|bun run dev\|Husky" AGENTS.md
 ```
 
 Expected: No matches.
 
-**Step 3: Run full pre-PR validation**
+**Step 6: Verify all keyword-based triggers present in both files**
+
+```bash
+grep -n "interface.*type.*IXxx" CLAUDE.md AGENTS.md
+```
+
+Expected: 1 match each — the trigger directive with `interface`, `type`, `IXxx` keywords.
+
+**Step 7: Run full pre-PR validation**
 
 ```bash
 bun test && bun run typecheck && bun run lint
@@ -712,13 +784,13 @@ bun test && bun run typecheck && bun run lint
 
 Expected: All pass, no errors.
 
-**Step 4: Summary commit (if any leftover staged changes)**
+**Step 8: Verify clean working tree**
 
 ```bash
 git status
 ```
 
-Expected: Clean working tree. All changes committed.
+Expected: `nothing to commit, working tree clean`
 
 ---
 
@@ -740,8 +812,9 @@ Expected: Clean working tree. All changes committed.
 
 **Expected outcome**:
 
-- CLAUDE.md: 97 → ~47 lines (-52%)
-- AGENTS.md: 82 → ~34 lines (-59%)
+- CLAUDE.md: 97 → ~60 lines (-38%) — includes Claude Code-specific section
+- AGENTS.md: 82 → ~45 lines (-45%) — includes inline critical rules fallback
 - ai_rules/: 4 → 10 files
-- Zero duplicated content across files
-- JIT directives ensure AI reads correct file for each task type
+- Zero accidental duplication (Definition of Done inline is intentional safety gate)
+- Keyword-based JIT directives ensure AI reads correct file for each task type
+- AGENTS.md fallback rules protect Codex from missing critical rules if JIT fails

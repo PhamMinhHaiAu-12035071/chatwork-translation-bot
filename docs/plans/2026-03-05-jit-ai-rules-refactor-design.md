@@ -23,13 +23,19 @@ và với `ai_rules/`. Điều này:
 
 Tách chi tiết ra `ai_rules/` (6 file mới), giữ 2 file chính chỉ với JIT directives.
 
+**Approach B (rejected)**: Subdirectory grouping — `ai_rules/code/`, `ai_rules/workflow/`. Breaking
+change cho 4 files hiện có, phức tạp hơn cần thiết.
+
+**Approach C (rejected)**: Minimal — 3 file mới, merge còn lại. File `architecture-overview.md`
+sẽ phình to, vi phạm single responsibility.
+
 ## Audience
 
-| File            | Audience                | Purpose                                        |
-| --------------- | ----------------------- | ---------------------------------------------- |
-| `CLAUDE.md`     | Claude Code + Cursor    | Claude-specific features, hooks, memory system |
-| `AGENTS.md`     | Codex + other AI agents | Universal agent guidance                       |
-| `ai_rules/*.md` | All agents              | Detailed topic-specific rules                  |
+| File            | Audience                | Purpose                                                   |
+| --------------- | ----------------------- | --------------------------------------------------------- |
+| `CLAUDE.md`     | Claude Code + Cursor    | Claude-specific features, hooks, MCP tools, memory system |
+| `AGENTS.md`     | Codex + other AI agents | Universal agent guidance + inline critical rules fallback |
+| `ai_rules/*.md` | All agents              | Detailed topic-specific rules (JIT-loaded on demand)      |
 
 ## New ai_rules Files (6 files)
 
@@ -121,9 +127,12 @@ Content:
 | `ai_rules/export-patterns.md`    | Keep as-is |
 | `ai_rules/test-colocation.md`    | Keep as-is |
 
-## CLAUDE.md After Refactor (~45 lines)
+## CLAUDE.md After Refactor (~60 lines)
 
-```markdown
+CLAUDE.md phân biệt với AGENTS.md bằng **Claude Code-specific section** (MCP tools, slash
+commands, memory system) và **keyword-based triggers** cho JIT directives.
+
+````markdown
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) and Cursor.
@@ -136,115 +145,186 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 **Stack**: Bun v1.1+ · TypeScript 5.4+ strict · Bun.serve() · Zod · Docker (oven/bun:1.1-distroless)
 
 ## Monorepo
+
+```
+@chatwork-bot/core  ←── imported by ──  @chatwork-bot/bot
+(types, interfaces, utils, services)    (HTTP server, webhook handling)
 ```
 
-@chatwork-bot/core ←── imported by ── @chatwork-bot/bot
-(types, interfaces, utils, services) (HTTP server, webhook handling)
-
-````
-→ Details: ai_rules/project-structure.md
+→ Details: `ai_rules/project-structure.md`
 
 ## Environment Variables
 
 Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`
 Optional: `PORT` (default 3000), `NODE_ENV` (default development)
-→ Details: ai_rules/security.md
 
-## AI Rules — Đọc trước khi làm task liên quan
+→ Details: `ai_rules/security.md`
+
+## AI Rules — Read before working on related tasks
+
+When you encounter these **keywords** in code or task description, read the linked file first:
 
 ### Types & Structure
-- Modify types/interfaces/data shapes → read `ai_rules/type-organization.md`
-- Naming identifiers/files/folders    → read `ai_rules/naming-conventions.md`
-- Imports/exports/barrel files        → read `ai_rules/export-patterns.md`
+
+- `interface`, `type`, `IXxx`, `types/`, `interfaces/` → read `ai_rules/type-organization.md` + `ai_rules/naming-conventions.md`
+- `import`, `export`, `index.ts`, `from '@` → read `ai_rules/export-patterns.md`
 
 ### Testing
-- Viết hoặc sửa tests → read `ai_rules/test-colocation.md`
+
+- `.test.ts`, `describe(`, `it(`, `expect(` → read `ai_rules/test-colocation.md`
 
 ### Code Quality & Workflow
-- Formatting/linting/TS config → read `ai_rules/code-style.md`
-- Commits/PRs/branches         → read `ai_rules/commit-conventions.md`
-- Dev/build/test commands      → read `ai_rules/commands.md`
+
+- Formatting, linting, or TS config → read `ai_rules/code-style.md`
+- Writing commit or creating PR → read `ai_rules/commit-conventions.md`
+- Need commands for build/test/run → read `ai_rules/commands.md`
 
 ### Architecture
-- Request flow/key patterns         → read `ai_rules/architecture-patterns.md`
-- Monorepo structure/package layout → read `ai_rules/project-structure.md`
-- Env vars/secrets/security         → read `ai_rules/security.md`
+
+- Webhook, routing, request flow, or env → read `ai_rules/architecture-patterns.md` + `ai_rules/security.md`
+- Unsure where to put a new file → read `ai_rules/project-structure.md`
+
+## Claude Code–Specific
+
+### Available MCP Tools
+
+- `context7` — fetch library docs on demand (use when needing API reference)
+- `github` — create issues, PRs, review code
+- `sequentialthinking` — complex multi-step reasoning
+
+### Custom Slash Commands
+
+Check `.claude/commands/` for available workflows.
+
+### Memory System
+
+- Use `#` in conversation to save decisions permanently
+- Session memories: `.claude/projects/*/memory/MEMORY.md`
 
 ## Definition of Done
 
+<!-- Intentionally inline — must be immediately visible at session start, not JIT-loaded -->
+
 ```bash
 bun test && bun run typecheck && bun run lint
+```
 ````
 
-````
+## AGENTS.md After Refactor (~45 lines)
 
-## AGENTS.md After Refactor (~32 lines)
+AGENTS.md phân biệt với CLAUDE.md bằng **Critical Rules inline** — làm fallback cho Codex và
+các agent có độ tin cậy thấp hơn với JIT directives.
 
-```markdown
+````markdown
 # Repository Guidelines
 
 This file provides guidance for Codex and other AI agents.
 
 ## Project Overview
 
-Chatwork Translation Bot — Bun + TypeScript monorepo. Webhook-based, no frontend/database.
+Chatwork Translation Bot — Bun + TypeScript monorepo. Webhook-based bot, no frontend or database.
 Two packages: `@chatwork-bot/core` (shared logic) and `@chatwork-bot/bot` (HTTP server).
-→ Details: ai_rules/project-structure.md
 
-## Quick Commands
+→ Details: `ai_rules/project-structure.md`
 
-→ See ai_rules/commands.md for all dev/test/build/lint commands.
+## Critical Rules (inline — safety-critical, không JIT-load)
 
-Pre-PR validation: `bun test && bun run typecheck && bun run lint`
+- TypeScript ESM strict mode only — never plain JS
+- Import from package name only: `@chatwork-bot/core` not `../../core/src/`
+- Always use `import type` for type-only imports
+- Prefix unused vars with `_` (enforced by ESLint)
+- **Never** commit `.env`, tokens, or secrets
+- **Never** use `any` type without explicit justification comment
+
+## Commands
+
+→ See `ai_rules/commands.md` for all dev/test/build/lint/docker commands.
+
+Pre-PR validation (must all pass):
+
+```bash
+bun test && bun run typecheck && bun run lint
+```
 
 ## AI Rules — Read before working on related tasks
 
-### Code & Types
-- Types/interfaces/data shapes → ai_rules/type-organization.md
-- Naming conventions           → ai_rules/naming-conventions.md
-- Imports/exports/barrels      → ai_rules/export-patterns.md
-- Tests                        → ai_rules/test-colocation.md
+When you encounter these **keywords** in code or task description, read the linked file first:
+
+### Types & Code Structure
+
+- `interface`, `type`, `IXxx`, `types/`, `interfaces/` → `ai_rules/type-organization.md` + `ai_rules/naming-conventions.md`
+- `import`, `export`, `index.ts`, `from '@` → `ai_rules/export-patterns.md`
+- `.test.ts`, `describe(`, `it(` → `ai_rules/test-colocation.md`
 
 ### Style & Workflow
-- Formatting/linting/TS config → ai_rules/code-style.md
-- Commits/PRs/branches         → ai_rules/commit-conventions.md
+
+- Formatting, linting, TS config → `ai_rules/code-style.md`
+- Commit, PR, or branch → `ai_rules/commit-conventions.md`
 
 ### Architecture & Security
-- Request flow/key patterns → ai_rules/architecture-patterns.md
-- Env vars/secrets          → ai_rules/security.md
+
+- Webhook, routing, env, or secrets → `ai_rules/architecture-patterns.md` + `ai_rules/security.md`
 ````
 
 ## JIT Mechanism — How It Works
 
-**Directive-based references** (vs passive links) đảm bảo reliability:
+### Directive vs Passive Link
 
-- **Claude Code**: CLAUDE.md content được treat như immutable system rules, priority cao hơn user
-  prompts. Khi instruction nói "read ai_rules/X.md", Claude SẼ đọc file đó.
-- **Cursor**: Rules files được inject theo context. Directives trong CLAUDE.md được follow.
-- **Codex/AGENTS.md**: Medium reliability — phụ thuộc agent implementation. Format directive
-  tăng khả năng agent đọc đúng file.
-
-**Pattern**: Không dùng passive link, dùng explicit instruction:
+**Directive-based** (reliable — instructions AI must follow):
 
 ```markdown
-# GOOD: Directive
+# GOOD: Directive with trigger keyword
 
-- Modify types → read `ai_rules/type-organization.md`
+- Thấy `interface`, `type` → read `ai_rules/type-organization.md`
+```
 
-# BAD: Passive link
+**Passive link** (unreliable — AI may skip):
+
+```markdown
+# BAD: Passive link without trigger
 
 - Type organization: ai_rules/type-organization.md
 ```
 
+### Reliability by Platform
+
+| Platform          | Reliability | Mechanism                                               |
+| ----------------- | ----------- | ------------------------------------------------------- |
+| Claude Code       | High        | CLAUDE.md treated as immutable system rules             |
+| Cursor            | High        | Rules files injected per-context, directives followed   |
+| Codex (AGENTS.md) | Medium      | Varies by implementation — mitigated by inline fallback |
+
+### Why Definition of Done Is Inline (Not JIT)
+
+`bun test && bun run typecheck && bun run lint` appears in both `CLAUDE.md` and `ai_rules/commands.md`.
+This is **intentional** — not accidental duplication:
+
+- `commands.md`: part of workflow reference docs (JIT context)
+- `CLAUDE.md`/`AGENTS.md`: "Definition of Done" is a **safety gate** — must be visible at session
+  start without any JIT-loading. Removing it creates risk of AI skipping validation.
+
+### Update Strategy
+
+| When to update...           | Update this file                                |
+| --------------------------- | ----------------------------------------------- |
+| Adding a new rule category  | Create new `ai_rules/<topic>.md`                |
+| Updating existing rule      | Update the relevant `ai_rules/<topic>.md`       |
+| Adding Claude Code feature  | Update `CLAUDE.md` Claude Code-Specific section |
+| Adding universal rule       | Update `AGENTS.md` Critical Rules section       |
+| Adding new build command    | Update `ai_rules/commands.md`                   |
+| Changing commit scope/types | Update `ai_rules/commit-conventions.md`         |
+
 ## Expected Outcome
 
-| Metric             | Before  | After |
-| ------------------ | ------- | ----- |
-| CLAUDE.md lines    | 97      | ~45   |
-| AGENTS.md lines    | 82      | ~32   |
-| ai_rules/ files    | 4       | 10    |
-| Duplicated content | High    | None  |
-| JIT compliance     | Partial | Full  |
+| Metric             | Before  | After  |
+| ------------------ | ------- | ------ |
+| CLAUDE.md lines    | 97      | ~60    |
+| AGENTS.md lines    | 82      | ~45    |
+| ai_rules/ files    | 4       | 10     |
+| Duplicated content | High    | None\* |
+| JIT compliance     | Partial | Full   |
+
+\*Definition of Done là intentional duplication — safety gate, không phải bug.
 
 ## Files to Create
 
@@ -257,8 +337,8 @@ Pre-PR validation: `bun test && bun run typecheck && bun run lint`
 
 ## Files to Modify
 
-1. `CLAUDE.md` — replace with ~45-line JIT directive version
-2. `AGENTS.md` — replace with ~32-line JIT directive version
+1. `CLAUDE.md` — replace with ~60-line JIT directive + Claude-specific version
+2. `AGENTS.md` — replace with ~45-line JIT directive + inline critical rules version
 
 ## Files to Keep Unchanged
 
