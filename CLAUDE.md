@@ -12,8 +12,8 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 ## Monorepo
 
 ```
-@chatwork-bot/core  ←── imported by ──  @chatwork-bot/bot
-(types, interfaces, utils, services)    (HTTP server, webhook handling)
+@chatwork-bot/core  ←── imported by ──  @chatwork-bot/translator      (HTTP server, translation)
+@chatwork-bot/core  ←── imported by ──  @chatwork-bot/webhook-logger  (webhook receiver)
 ```
 
 → Details: `ai_rules/project-structure.md`
@@ -48,6 +48,7 @@ When you encounter these **keywords** in code or task description, read the link
 
 - Webhook, routing, request flow, or env → read `ai_rules/architecture-patterns.md` + `ai_rules/security.md`
 - Unsure where to put a new file → read `ai_rules/project-structure.md`
+- tsconfig, path aliases, or baseUrl → read `ai_rules/project-structure.md` (tsconfig hierarchy section)
 
 ## Claude Code–Specific
 

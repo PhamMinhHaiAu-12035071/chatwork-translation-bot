@@ -67,3 +67,20 @@ export { ChatworkWebhookEventSchema } from './types/chatwork'
 // ✗ Wrong
 export type { ChatworkWebhookEventSchema } from './types/chatwork'
 ```
+
+## Rule: Cross-package imports use workspace package names, no path aliases
+
+`@chatwork-bot/core` resolves via Bun workspace symlinks (`node_modules`), not tsconfig paths.
+Do not add `@core/*`, `core/*`, or any alias pattern for cross-package imports.
+
+```typescript
+// ✓ Correct — use workspace package name
+import { parseCommand } from '@chatwork-bot/core'
+import type { ITranslationService } from '@chatwork-bot/core'
+
+// ✗ Wrong — deep path aliases (not configured)
+import { parseCommand } from '@core/utils/parse-command'
+import { parseCommand } from 'core/utils/parse-command'
+```
+
+If a symbol is not exported from `@chatwork-bot/core`, add it to `packages/core/src/index.ts`.

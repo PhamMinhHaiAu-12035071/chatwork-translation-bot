@@ -5,14 +5,14 @@ This file provides guidance for Codex and other AI agents.
 ## Project Overview
 
 Chatwork Translation Bot — Bun + TypeScript monorepo. Webhook-based bot, no frontend or database.
-Two packages: `@chatwork-bot/core` (shared logic) and `@chatwork-bot/bot` (HTTP server).
+Three packages: `@chatwork-bot/core` (shared logic), `@chatwork-bot/translator` (HTTP server + translation), `@chatwork-bot/webhook-logger` (webhook receiver).
 
 → Details: `ai_rules/project-structure.md`
 
 ## Critical Rules (inline — safety-critical, not JIT-loaded)
 
 - TypeScript ESM strict mode only — never plain JS
-- Import from package name only: `@chatwork-bot/core` not `../../core/src/`
+- Import from package name only: `@chatwork-bot/core`, never from `../../core/src/` or path aliases like `@core/*`
 - Always use `import type` for type-only imports
 - Prefix unused vars with `_` (enforced by ESLint)
 - **Never** commit `.env`, tokens, or secrets
