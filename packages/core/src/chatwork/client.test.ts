@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import type { ChatworkMember } from '../types/chatwork'
 import { ChatworkClient } from './client'
 
 describe('ChatworkClient', () => {
@@ -91,6 +92,54 @@ describe('ChatworkClient', () => {
     it('accepts custom base URL', () => {
       const c = new ChatworkClient({ apiToken: 'tok', baseUrl: 'https://custom.api' })
       expect(c).toBeDefined()
+    })
+  })
+
+  describe('getMembers', () => {
+    it('sends GET to correct endpoint and returns parsed members', async () => {
+      const fakeMembers = [
+        {
+          account_id: 123,
+          role: 'member',
+          name: 'Nguyen Van A',
+          chatwork_id: 'nguyenvana',
+          organization_id: 1,
+          organization_name: 'Acme',
+          department: 'Engineering',
+          avatar_image_url: 'https://example.com/avatar.png',
+        },
+      ]
+
+      let capturedUrl = ''
+
+      globalThis.fetch = mock((input: string | URL | Request) => {
+        capturedUrl =
+          typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+        return Promise.resolve(new Response(JSON.stringify(fakeMembers), { status: 200 }))
+      }) as unknown as typeof fetch
+
+      const result = await client.getMembers(42)
+
+      expect(capturedUrl).toBe('https://api.chatwork.com/v2/rooms/42/members')
+      expect(result).toHaveLength(1)
+      const member: ChatworkMember | undefined = result[0]
+      expect(member?.account_id).toBe(123)
+      expect(member?.name).toBe('Nguyen Van A')
+    })
+
+    it('throws on non-2xx response', async () => {
+      globalThis.fetch = mock(() => {
+        return Promise.resolve(
+          new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' }),
+        )
+      }) as unknown as typeof fetch
+
+      try {
+        await client.getMembers(42)
+        expect(false).toBe(true)
+      } catch (error) {
+        expect(String(error)).toContain('Chatwork API error')
+      }
     })
   })
 })
