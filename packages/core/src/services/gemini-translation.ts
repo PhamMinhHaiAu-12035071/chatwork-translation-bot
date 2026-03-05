@@ -3,9 +3,11 @@ import { google } from '@ai-sdk/google'
 import type { ITranslationService, TranslationResult } from '../interfaces/translation'
 import { TranslationError } from '../interfaces/translation'
 import { TranslationSchema, buildTranslationPrompt } from './translation-prompt'
+import type { GeminiModel } from '../types/ai'
+import { DEFAULT_GEMINI_MODEL } from '../types/ai'
 
 export class GeminiTranslationService implements ITranslationService {
-  constructor(private readonly modelId = 'gemini-2.5-pro') {}
+  constructor(private readonly modelId: GeminiModel = DEFAULT_GEMINI_MODEL) {}
 
   async translate(text: string): Promise<TranslationResult> {
     try {

@@ -3,9 +3,11 @@ import { openai } from '@ai-sdk/openai'
 import type { ITranslationService, TranslationResult } from '../interfaces/translation'
 import { TranslationError } from '../interfaces/translation'
 import { TranslationSchema, buildTranslationPrompt } from './translation-prompt'
+import type { OpenAIModel } from '../types/ai'
+import { DEFAULT_OPENAI_MODEL } from '../types/ai'
 
 export class OpenAITranslationService implements ITranslationService {
-  constructor(private readonly modelId = 'gpt-4o') {}
+  constructor(private readonly modelId: OpenAIModel = DEFAULT_OPENAI_MODEL) {}
 
   async translate(text: string): Promise<TranslationResult> {
     try {
