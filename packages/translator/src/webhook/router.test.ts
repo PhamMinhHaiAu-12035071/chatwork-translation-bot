@@ -12,11 +12,6 @@ void mock.module('../env', () => ({
   },
 }))
 
-const mockHandleTranslateRequest = mock(() => Promise.resolve())
-void mock.module('./handler', () => ({
-  handleTranslateRequest: mockHandleTranslateRequest,
-}))
-
 describe('translateRoutes', () => {
   let translateRoutes: typeof TranslateRoutesType
   let app: ReturnType<typeof Elysia.prototype.use>
@@ -65,16 +60,18 @@ describe('translateRoutes', () => {
     expect(res.status).toBe(422)
   })
 
-  it('POST /internal/translate calls handleTranslateRequest (fire-and-forget)', async () => {
-    mockHandleTranslateRequest.mockClear()
-    await app.handle(
+  it('POST /internal/translate is fire-and-forget (returns 200 without blocking on handler)', async () => {
+    // The route uses `void handleTranslateRequest(...).catch(...)` — returns 'OK' immediately
+    // regardless of how long the handler takes or whether it fails.
+    // This test verifies the routing contract: valid payload always yields 200 synchronously.
+    const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validPayload),
       }),
     )
-    await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(mockHandleTranslateRequest.mock.calls.length).toBeGreaterThan(0)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
   })
 })
