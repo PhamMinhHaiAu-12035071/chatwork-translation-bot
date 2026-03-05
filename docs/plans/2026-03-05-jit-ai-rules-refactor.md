@@ -4,7 +4,7 @@
 
 **Goal:** Refactor CLAUDE.md và AGENTS.md thành JIT directive-based format, tách chi tiết ra 6 file ai_rules/ mới để giảm token usage và loại bỏ duplication.
 
-**Architecture:** Tạo 6 ai_rules/ files mới chứa nội dung chi tiết. Rewrite CLAUDE.md (~45 dòng) và AGENTS.md (~32 dòng) chỉ giữ JIT directives "read ai_rules/X.md when working on X". Không có code thay đổi — chỉ markdown files.
+**Architecture:** Tạo 6 ai_rules/ files mới chứa nội dung chi tiết. Rewrite CLAUDE.md (~60 dòng) và AGENTS.md (~45 dòng) chỉ giữ JIT directives "read ai_rules/X.md when working on X". Không có code thay đổi — chỉ markdown files.
 
 **Tech Stack:** Markdown, commitlint (scope: `repo`), Prettier (auto-format .md), Husky pre-commit hooks
 
@@ -502,7 +502,15 @@ test-colocation.md
 type-organization.md
 ```
 
-If any file is missing, complete the corresponding Task 1-6 first.
+Then verify exact count:
+
+```bash
+ls ai_rules/ | wc -l
+```
+
+Expected: `10`
+
+**If count < 10: ABORT** — do not proceed with Task 7. Identify the missing file(s) using the list above and complete the corresponding Task (1–6) first. Overwriting CLAUDE.md before all ai_rules files exist will break JIT directive links.
 
 **Step 2: Read current file**
 
@@ -582,8 +590,10 @@ Check `.claude/commands/` for available workflows.
 
 ### Memory System
 
-- Use `#` in conversation to save decisions permanently
+- Use `#` in conversation to save decisions permanently across sessions
 - Session memories: `.claude/projects/*/memory/MEMORY.md`
+- **When to use `#`**: Architectural decisions that affect future sessions (e.g., "we chose Approach A over B because..."), patterns discovered during debugging, user preferences for this project
+- **When NOT to use `#`**: Temporary task state, information already in CLAUDE.md or ai_rules/
 
 ## Definition of Done
 
@@ -771,10 +781,12 @@ Expected: No matches.
 **Step 6: Verify all keyword-based triggers present in both files**
 
 ```bash
-grep -n "interface.*type.*IXxx" CLAUDE.md AGENTS.md
+grep -n "interface" CLAUDE.md AGENTS.md
+grep -n "type" CLAUDE.md AGENTS.md
+grep -n "IXxx" CLAUDE.md AGENTS.md
 ```
 
-Expected: 1 match each — the trigger directive with `interface`, `type`, `IXxx` keywords.
+Expected: Each grep returns at least 1 match per file — the trigger directive line containing all three keywords.
 
 **Step 7: Run full pre-PR validation**
 
