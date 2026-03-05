@@ -85,3 +85,12 @@ See `.env.example` for template.
 - Pre-commit hooks (Husky): lint-staged → typecheck → tests
 - ESLint: `strictTypeChecked` + `stylisticTypeChecked` presets
 - TypeScript: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes` enabled
+
+## Coding Standards (AI Rules)
+
+Topic-specific coding rules are in `ai_rules/`. Read the relevant file when working on that area:
+
+- **Type organization** (interfaces/ vs types/ convention): `ai_rules/type-organization.md`
+- **Naming conventions** (IPrefix, PascalCase, kebab-case files): `ai_rules/naming-conventions.md`
+- **Export patterns** (barrel index.ts, import type): `ai_rules/export-patterns.md`
+- **Test co-location** (\*.test.ts next to source): `ai_rules/test-colocation.md`
