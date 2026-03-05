@@ -1,4 +1,4 @@
-import type { ChatworkSendMessageResponse } from '../types/chatwork'
+import type { ChatworkSendMessageResponse, ChatworkMember } from '../types/chatwork'
 import type {
   IChatworkClient,
   ChatworkClientConfig,
@@ -45,5 +45,25 @@ export class ChatworkClient implements IChatworkClient {
     }
 
     return (await response.json()) as ChatworkSendMessageResponse
+  }
+
+  async getMembers(roomId: number): Promise<ChatworkMember[]> {
+    const url = `${this.baseUrl}/rooms/${roomId.toString()}/members`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-ChatWorkToken': this.apiToken,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `Chatwork API error: ${response.status.toString()} ${response.statusText} - ${errorText}`,
+      )
+    }
+
+    return (await response.json()) as ChatworkMember[]
   }
 }

@@ -6,6 +6,7 @@ export type {
   ChatworkRoom,
   ChatworkRoomDetail,
   ChatworkSendMessageResponse,
+  ChatworkMember,
 } from './types/chatwork'
 export {
   isChatworkMessageEvent,

@@ -83,3 +83,14 @@ export interface ChatworkRoomDetail {
 export interface ChatworkSendMessageResponse {
   message_id: string
 }
+
+export interface ChatworkMember {
+  account_id: number
+  role: string
+  name: string
+  chatwork_id: string
+  organization_id: number
+  organization_name: string
+  department: string
+  avatar_image_url: string
+}
