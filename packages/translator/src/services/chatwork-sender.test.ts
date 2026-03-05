@@ -38,6 +38,7 @@ describe('buildTranslatedMessage', () => {
     expect(msg).toContain('Room#98765')
     expect(msg).toContain('Nguyen Van A')
     expect(msg).toContain('MsgID:msg-123')
+    expect(msg).toContain('2026-03-0') // timestamp from send_time present (date portion, UTC-safe)
   })
 
   it('includes translated text in the body', () => {
