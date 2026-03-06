@@ -20,8 +20,16 @@ export {
 export type { ParsedCommand, SupportedLang } from './types/command'
 export { SUPPORTED_LANGUAGES, isSupportedLang } from './types/command'
 
-export type { AIProvider, GeminiModel, OpenAIModel } from './types/ai'
-export { AI_PROVIDER_VALUES, DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL } from './types/ai'
+export type { AIProvider, GeminiModel, OpenAIModel, CursorModel } from './types/ai'
+export {
+  AI_PROVIDER_VALUES,
+  GEMINI_MODEL_VALUES,
+  OPENAI_MODEL_VALUES,
+  CURSOR_MODEL_VALUES,
+  DEFAULT_GEMINI_MODEL,
+  DEFAULT_OPENAI_MODEL,
+  DEFAULT_CURSOR_MODEL,
+} from './types/ai'
 
 // Interfaces
 export type { ITranslationService, TranslationResult } from './interfaces/translation'
