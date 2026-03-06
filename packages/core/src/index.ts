@@ -37,6 +37,15 @@ export type {
   SendMessageParams,
 } from './interfaces/chatwork'
 
+// Registry
+export {
+  registerProviderPlugin,
+  getProviderPlugin,
+  listProviderPlugins,
+  resetProviderRegistryForTest,
+  ProviderRegistryBootError,
+} from './services/provider-registry'
+
 // Services
 export { MockTranslationService } from './services/mock-translation'
 export { GeminiTranslationService } from './services/gemini-translation'
