@@ -4,8 +4,9 @@ import { AI_PROVIDER_VALUES } from '@chatwork-bot/core'
 const envSchema = z
   .object({
     CHATWORK_API_TOKEN: z.string().min(1, 'CHATWORK_API_TOKEN is required'),
+    CHATWORK_DESTINATION_ROOM_ID: z.coerce.number().int().positive(),
     PORT: z.coerce.number().int().positive().default(3000),
-    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
     AI_PROVIDER: z.enum(AI_PROVIDER_VALUES),
     AI_MODEL: z.string().min(1).optional(),
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),

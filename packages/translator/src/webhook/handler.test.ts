@@ -42,12 +42,18 @@ describe('handleTranslateRequest', () => {
         create: mockCreate,
       },
       TranslationError: MockTranslationError,
+      ChatworkClient: class {
+        getMembers = mock(() => Promise.resolve([]))
+        sendMessage = mock(() => Promise.resolve({ message_id: 'mock-id' }))
+      },
     }))
 
     void mock.module('../env', () => ({
       env: {
         AI_PROVIDER: 'openai',
         AI_MODEL: 'gpt-4o',
+        CHATWORK_API_TOKEN: 'test-token',
+        CHATWORK_DESTINATION_ROOM_ID: 99999,
       },
     }))
 

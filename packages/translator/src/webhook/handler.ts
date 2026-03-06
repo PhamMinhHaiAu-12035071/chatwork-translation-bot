@@ -7,23 +7,17 @@ import {
 import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
 import { env } from '../env'
 import { writeTranslationOutput } from '../utils/output-writer'
+import { sendTranslatedMessage } from '../services/chatwork-sender'
 
 export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
   if (!isChatworkMessageEvent(event)) {
-    console.log('[handler] Skipping non-message event:', event.webhook_event_type)
     return
   }
 
-  const {
-    room_id: roomId,
-    account_id: _accountId,
-    message_id: messageId,
-    body,
-  } = event.webhook_event
+  const { body } = event.webhook_event
 
   const cleanText = stripChatworkMarkup(body)
   if (!cleanText) {
-    console.log('[handler] Skipping empty message after markup strip')
     return
   }
 
@@ -36,14 +30,14 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
       translation: result,
     })
 
-    console.log(
-      `[handler] Translated: ${result.sourceLang} → ${result.targetLang} | room:${roomId.toString()} | msg:${messageId}`,
-    )
+    await sendTranslatedMessage(event, result, {
+      apiToken: env.CHATWORK_API_TOKEN,
+      destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
+    })
   } catch (error) {
     if (error instanceof TranslationError) {
-      console.error(`[handler] TranslationError [${error.code}]: ${error.message}`)
       return
     }
-    console.error('[handler] Unexpected error:', error)
+    throw error
   }
 }

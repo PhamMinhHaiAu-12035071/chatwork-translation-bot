@@ -25,32 +25,8 @@ describe('createApp (translator)', () => {
     expect(res.status).toBe(200)
   })
 
-  it('POST /internal/translate with valid payload returns 200', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    const res = await app.handle(
-      new Request('http://localhost/internal/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event: {
-            webhook_setting_id: '12345',
-            webhook_event_type: 'message_created',
-            webhook_event_time: 1498028130,
-            webhook_event: {
-              message_id: '789012345',
-              room_id: 567890123,
-              account_id: 123456,
-              body: 'Hello World',
-              send_time: 1498028125,
-              update_time: 0,
-            },
-          },
-        }),
-      }),
-    )
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(res.status).toBe(200)
-  })
+  // NOTE: /internal/translate endpoint is comprehensively tested in router.test.ts
+  // Removed duplicate test to avoid file creation side effects during test runs
 
   it('unknown route returns 404', async () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call

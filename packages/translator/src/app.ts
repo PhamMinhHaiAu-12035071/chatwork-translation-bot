@@ -1,11 +1,25 @@
 import { Elysia } from 'elysia'
 import { swagger } from '@elysiajs/swagger'
+import logixlysia from 'logixlysia'
 import { healthRoutes } from './routes/health'
 import { translateRoutes } from './webhook/router'
 import { env } from './env'
 
 export function createApp() {
   const app = new Elysia({ name: 'translator' })
+
+  // Guard: không chạy logixlysia trong test — tránh log noise trong test runner.
+  // app.test.ts mock env.NODE_ENV = 'test', guard này có hiệu lực.
+  if (env.NODE_ENV !== 'test') {
+    app.use(
+      logixlysia({
+        config: {
+          showStartupMessage: false,
+          ip: false,
+        },
+      }),
+    )
+  }
 
   if (env.NODE_ENV === 'development') {
     app.use(
@@ -18,13 +32,5 @@ export function createApp() {
     )
   }
 
-  return app
-    .use(healthRoutes)
-    .use(translateRoutes)
-    .onError(({ code, error }) => {
-      console.error(
-        `[app] Error [${String(code)}]:`,
-        error instanceof Error ? error.message : error,
-      )
-    })
+  return app.use(healthRoutes).use(translateRoutes)
 }
