@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { join } from 'node:path'
 import { rm } from 'node:fs/promises'
 import { writeTranslationOutput } from './output-writer'
-import type { OutputRecord } from '../types/output'
+import type { OutputRecord } from '~/types/output'
 
 const testDir = join(import.meta.dir, '__test_output__')
 

@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { OutputRecord } from '../types/output'
+import type { OutputRecord } from '~/types/output'
 
 /**
  * Writes a translation record to output/{dateStr}/{messageId}.json.

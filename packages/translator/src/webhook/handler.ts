@@ -5,9 +5,9 @@ import {
   TranslationError,
 } from '@chatwork-bot/core'
 import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
-import { env } from '../env'
-import { writeTranslationOutput } from '../utils/output-writer'
-import { sendTranslatedMessage } from '../services/chatwork-sender'
+import { env } from '~/env'
+import { writeTranslationOutput } from '~/utils/output-writer'
+import { sendTranslatedMessage } from '~/services/chatwork-sender'
 
 export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
   if (!isChatworkMessageEvent(event)) {
