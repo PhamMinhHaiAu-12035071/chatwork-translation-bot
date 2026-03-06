@@ -2,43 +2,63 @@
 
 ## Monorepo Layout
 
-Bun workspaces monorepo. Three packages:
+Bun workspaces monorepo. Seven packages:
 
 ```
-@chatwork-bot/core  ←── imported by ──  @chatwork-bot/translator
-(types, interfaces,                     (HTTP server, translation,
- utils, services)                        webhook handling)
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
+(types, interfaces, utils,                           @chatwork-bot/translator
+ registry, execution policy)                         @chatwork-bot/webhook-logger
 
-@chatwork-bot/core  ←── imported by ──  @chatwork-bot/webhook-logger
-                                        (webhook receiver,
-                                         forwards to translator)
+@chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
+(shared prompt + Zod schema)
+
+@chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
 ```
 
 ## Package Responsibilities
 
 ### `packages/core` (`@chatwork-bot/core`)
 
-Shared logic with **zero runtime dependencies**.
+Shared logic. Contains:
 
-Contains:
-
-- `src/types/` — external data shapes (webhook events, API responses)
-- `src/interfaces/` — behavioral contracts (`ITranslationService`, `IChatworkClient`)
-- `src/services/` — service implementations (`MockTranslationService`)
-- `src/utils/` — pure utility functions (`parseCommand`)
+- `src/types/` — external data shapes (webhook events, AI config domain types)
+- `src/interfaces/` — behavioral contracts (`ITranslationService`, `IChatworkClient`, `ProviderPlugin`)
+- `src/services/` — provider registry, execution policy
+- `src/utils/` — pure utility functions (`parseCommand`, `stripChatworkMarkup`)
+- `src/chatwork/` — Chatwork REST API client
 
 Package exports point to raw TypeScript source (`"main": "./src/index.ts"`).
-No build step needed for `core` — Bun resolves TypeScript directly.
+No build step needed — Bun resolves TypeScript directly.
+
+### `packages/translation-prompt` (`@chatwork-bot/translation-prompt`)
+
+Shared translation prompt and `TranslationSchema` (Zod). Used by all provider packages.
+
+### `packages/provider-gemini` (`@chatwork-bot/provider-gemini`)
+
+Gemini provider plugin. Implements `ProviderPlugin` using `@ai-sdk/google`.
+
+### `packages/provider-openai` (`@chatwork-bot/provider-openai`)
+
+OpenAI provider plugin. Implements `ProviderPlugin` using `@ai-sdk/openai`.
+
+### `packages/provider-cursor` (`@chatwork-bot/provider-cursor`)
+
+Cursor provider plugin (LOCAL DEV ONLY). Uses `@ai-sdk/openai-compatible` with a local
+`cursor-api-proxy`. Must not be used in production.
 
 ### `packages/translator` (`@chatwork-bot/translator`)
 
 Runnable HTTP server. Owns:
 
-- Env validation (Zod schema in `src/env.ts`)
-- Chatwork REST API client (`src/chatwork/`)
-- Webhook signature verification (HMAC-SHA256 via Web Crypto)
-- HTTP routing (`src/webhook/router.ts`)
+- Env validation with discriminated union (`src/env.ts`)
+- Provider bootstrap and startup guards (`src/bootstrap/`)
+- HTTP routing + shared-secret auth (`src/webhook/router.ts`)
 - Webhook event handling (`src/webhook/handler.ts`)
+- Structured JSON request logging (`src/utils/request-log.ts`)
+- Provider health endpoint (`src/routes/provider-health.ts`)
 
 ### `packages/webhook-logger` (`@chatwork-bot/webhook-logger`)
 
@@ -55,12 +75,12 @@ Webhook receiver. Receives webhooks from Chatwork and forwards to translator.
 | `docker-compose.yml`   | Local Docker setup on port 3000           |
 | `.env.example`         | Template for required env vars            |
 
-## Rule: Core vs Translator/Webhook-Logger
+## Rule: Core vs Provider vs Translator
 
-Business logic belongs in `core`. Integration and transport concerns belong in `translator` or `webhook-logger`.
-
-- Parsing, translation interfaces, domain types → `core`
-- HTTP handling, Chatwork API calls, env loading → `translator`
+- Types, interfaces, registry, domain logic → `core`
+- Translation prompt + schema → `translation-prompt`
+- AI SDK integration per provider → `provider-*`
+- HTTP handling, env loading, bootstrap → `translator`
 - Webhook receiving, forwarding → `webhook-logger`
 
 ## tsconfig Hierarchy
@@ -70,9 +90,13 @@ Single source of truth in `tsconfig.base.json`. Each package extends it.
 ```
 tsconfig.base.json                          (baseUrl: ".")
   ├── tsconfig.root.json                    (root scripts only, excludes packages/)
-  ├── packages/core/tsconfig.json           (baseUrl: "../..", paths: ~/* → packages/core/src/*)
-  ├── packages/translator/tsconfig.json     (baseUrl: "../..", paths: ~/* → packages/translator/src/*, packages/core/src/*)
-  └── packages/webhook-logger/tsconfig.json (baseUrl: "../..", paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*)
+  ├── packages/core/tsconfig.json           (paths: ~/* → packages/core/src/*)
+  ├── packages/translation-prompt/tsconfig.json
+  ├── packages/provider-gemini/tsconfig.json
+  ├── packages/provider-openai/tsconfig.json
+  ├── packages/provider-cursor/tsconfig.json
+  ├── packages/translator/tsconfig.json     (paths: ~/* → packages/translator/src/*, packages/core/src/*)
+  └── packages/webhook-logger/tsconfig.json (paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*)
 ```
 
 Cross-package imports (`@chatwork-bot/core`) resolve via Bun workspace symlinks in

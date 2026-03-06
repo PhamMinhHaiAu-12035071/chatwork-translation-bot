@@ -12,15 +12,21 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 ## Monorepo
 
 ```
-@chatwork-bot/core  ←── imported by ──  @chatwork-bot/translator      (HTTP server, translation)
-@chatwork-bot/core  ←── imported by ──  @chatwork-bot/webhook-logger  (webhook receiver)
+@chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/translator
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/webhook-logger
+@chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
 ```
 
 → Details: `ai_rules/project-structure.md`
 
 ## Environment Variables
 
-Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`
+Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`, `INTERNAL_TRANSLATE_SECRET` (min 16 chars)
+Provider-specific: `GOOGLE_GENERATIVE_AI_API_KEY` (gemini), `OPENAI_API_KEY` (openai), `CURSOR_API_URL` (cursor, localhost only)
 Optional: `PORT` (default 3000), `NODE_ENV` (default development)
 
 → Details: `ai_rules/security.md`

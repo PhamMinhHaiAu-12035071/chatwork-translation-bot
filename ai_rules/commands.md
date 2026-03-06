@@ -3,7 +3,17 @@
 ## Development
 
 ```bash
-bun run dev          # Run bot with hot-reload (packages/bot/src/index.ts)
+bun run dev          # Run translator with hot-reload
+```
+
+### Cursor Provider (local dev)
+
+```bash
+# 1. Start the cursor proxy (separate terminal):
+node_modules/.bin/cursor-api-proxy
+
+# 2. Start the translator server:
+AI_PROVIDER=cursor CURSOR_API_URL=http://localhost:3040 bun run dev
 ```
 
 ## Build
@@ -15,7 +25,7 @@ bun run build        # Bundle to dist/server.js (minified, target bun)
 ## Type Checking
 
 ```bash
-bun run typecheck    # Checks root + all packages (core, translator, webhook-logger)
+bun run typecheck    # Checks root + all packages
 ```
 
 ## Linting & Formatting
@@ -38,6 +48,12 @@ bun test packages/core/src/utils/parse-command.test.ts     # Run single file
 ```bash
 docker compose up            # Run on port 3000 with healthcheck
 docker compose up --build    # Rebuild image and run
+```
+
+## Standards Verification
+
+```bash
+bun run verify:standards     # Verify all packages have required scripts
 ```
 
 ## Pre-PR Validation
