@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { ChatworkWebhookEventSchema } from '@chatwork-bot/core'
-import { env } from '../env'
+import { env } from '~/env'
 
 export const webhookRoutes = new Elysia({ name: 'webhook-logger:webhook' }).post(
   '/webhook',
