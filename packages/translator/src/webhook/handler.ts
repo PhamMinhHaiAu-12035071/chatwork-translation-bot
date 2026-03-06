@@ -8,6 +8,7 @@ import {
 import type { ChatworkWebhookEvent, ProviderCreateContext } from '@chatwork-bot/core'
 import { env } from '~/env'
 import { writeTranslationOutput } from '~/utils/output-writer'
+import { logTranslationRequest } from '~/utils/request-log'
 import { sendTranslatedMessage } from '~/services/chatwork-sender'
 
 export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
@@ -22,17 +23,29 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
     return
   }
 
+  const plugin = getProviderPlugin(env.AI_PROVIDER)
+  const modelId = env.AI_MODEL ?? plugin.manifest.defaultModel
+  const ctx: ProviderCreateContext = { modelId }
+  const baseUrl = process.env['CURSOR_API_URL']
+  if (baseUrl) {
+    ctx.baseUrl = baseUrl
+  }
+  const service = plugin.create(ctx)
+  const requestId = crypto.randomUUID()
+  const startMs = Date.now()
+
   try {
-    const plugin = getProviderPlugin(env.AI_PROVIDER)
-    const ctx: ProviderCreateContext = {
-      modelId: env.AI_MODEL ?? plugin.manifest.defaultModel,
-    }
-    const baseUrl = process.env['CURSOR_API_URL']
-    if (baseUrl) {
-      ctx.baseUrl = baseUrl
-    }
-    const service = plugin.create(ctx)
     const result = await translateWithPolicy(service, cleanText)
+    const latencyMs = Date.now() - startMs
+
+    logTranslationRequest({
+      requestId,
+      provider: env.AI_PROVIDER,
+      model: modelId,
+      latencyMs,
+      outcome: 'success',
+      result,
+    })
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
     await writeTranslationOutput(
@@ -45,7 +58,16 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
       destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
     })
   } catch (error) {
+    const latencyMs = Date.now() - startMs
     if (error instanceof TranslationError) {
+      logTranslationRequest({
+        requestId,
+        provider: env.AI_PROVIDER,
+        model: modelId,
+        latencyMs,
+        outcome: 'error',
+        errorCode: error.code,
+      })
       return
     }
     throw error
