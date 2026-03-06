@@ -32,6 +32,13 @@
         "zod": "^4.3.6",
       },
     },
+    "packages/translation-prompt": {
+      "name": "@chatwork-bot/translation-prompt",
+      "version": "1.0.0",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
+    },
     "packages/translator": {
       "name": "@chatwork-bot/translator",
       "version": "1.0.0",
@@ -73,6 +80,8 @@
     "@borewit/text-codec": ["@borewit/text-codec@0.2.1", "", {}, "sha512-k7vvKPbf7J2fZ5klGRD9AeKfUvojuZIQ3BT5u7Jfv+puwXkUBUT5PVyMDfJZpy30CBDXGMgw7fguK/lpOMBvgw=="],
 
     "@chatwork-bot/core": ["@chatwork-bot/core@workspace:packages/core"],
+
+    "@chatwork-bot/translation-prompt": ["@chatwork-bot/translation-prompt@workspace:packages/translation-prompt"],
 
     "@chatwork-bot/translator": ["@chatwork-bot/translator@workspace:packages/translator"],
 

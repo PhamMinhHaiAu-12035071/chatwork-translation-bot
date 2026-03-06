@@ -22,7 +22,20 @@ const config: UserConfig = {
     ],
     'subject-case': [2, 'never', ['upper-case', 'pascal-case', 'start-case']],
     'scope-empty': [2, 'never'],
-    'scope-enum': [2, 'always', ['core', 'translator', 'webhook-logger', 'repo']],
+    'scope-enum': [
+      2,
+      'always',
+      [
+        'core',
+        'translator',
+        'webhook-logger',
+        'translation-prompt',
+        'provider-gemini',
+        'provider-openai',
+        'provider-cursor',
+        'repo',
+      ],
+    ],
     'body-max-line-length': [2, 'always', 200],
   },
 }
