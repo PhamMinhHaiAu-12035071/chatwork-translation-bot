@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 import { swagger } from '@elysiajs/swagger'
 import logixlysia from 'logixlysia'
 import { healthRoutes } from './routes/health'
+import { providerHealthRoute } from './routes/provider-health'
 import { translateRoutes } from './webhook/router'
 import { env } from './env'
 
@@ -32,5 +33,5 @@ export function createApp() {
     )
   }
 
-  return app.use(healthRoutes).use(translateRoutes)
+  return app.use(healthRoutes).use(providerHealthRoute).use(translateRoutes)
 }
