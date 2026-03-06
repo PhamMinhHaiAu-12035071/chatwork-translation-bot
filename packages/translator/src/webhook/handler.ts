@@ -7,18 +7,14 @@ import {
 import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
 import { env } from '../env'
 import { writeTranslationOutput } from '../utils/output-writer'
+import { sendTranslatedMessage } from '../services/chatwork-sender'
 
 export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
   if (!isChatworkMessageEvent(event)) {
     return
   }
 
-  const {
-    room_id: _roomId,
-    account_id: _accountId,
-    message_id: _messageId,
-    body,
-  } = event.webhook_event
+  const { body } = event.webhook_event
 
   const cleanText = stripChatworkMarkup(body)
   if (!cleanText) {
@@ -32,6 +28,11 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
     await writeTranslationOutput({
       ...event,
       translation: result,
+    })
+
+    await sendTranslatedMessage(event, result, {
+      apiToken: env.CHATWORK_API_TOKEN,
+      destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
     })
   } catch (error) {
     if (error instanceof TranslationError) {
