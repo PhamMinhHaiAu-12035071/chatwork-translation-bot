@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import Elysia from 'elysia'
 import type { translateRoutes as TranslateRoutesType } from './router'
 
+const TEST_SECRET = 'test-secret-16chars-ok'
 const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
 process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
 
@@ -31,6 +32,7 @@ describe('translateRoutes', () => {
         NODE_ENV: 'test',
         CHATWORK_API_TOKEN: 'test-token',
         CHATWORK_DESTINATION_ROOM_ID: 99999,
+        INTERNAL_TRANSLATE_SECRET: TEST_SECRET,
       },
     }))
 
@@ -60,7 +62,7 @@ describe('translateRoutes', () => {
     },
   }
 
-  it('POST /internal/translate with valid payload returns 200', async () => {
+  it('returns 401 when X-Internal-Secret header is missing', async () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
@@ -68,32 +70,49 @@ describe('translateRoutes', () => {
         body: JSON.stringify(validPayload),
       }),
     )
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 401 when X-Internal-Secret header is wrong', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/internal/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': 'wrong-secret-value',
+        },
+        body: JSON.stringify(validPayload),
+      }),
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 200 OK when X-Internal-Secret is correct', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/internal/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': TEST_SECRET,
+        },
+        body: JSON.stringify(validPayload),
+      }),
+    )
     expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
   })
 
   it('POST /internal/translate with missing event returns 422', async () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': TEST_SECRET,
+        },
         body: JSON.stringify({ invalid: 'payload' }),
       }),
     )
     expect(res.status).toBe(422)
-  })
-
-  it('POST /internal/translate is fire-and-forget (returns 200 without blocking on handler)', async () => {
-    // The route uses `void handleTranslateRequest(...).catch(...)` — returns 'OK' immediately
-    // regardless of how long the handler takes or whether it fails.
-    // This test verifies the routing contract: valid payload always yields 200 synchronously.
-    const res = await app.handle(
-      new Request('http://localhost/internal/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validPayload),
-      }),
-    )
-    expect(res.status).toBe(200)
-    expect(await res.text()).toBe('OK')
   })
 })
