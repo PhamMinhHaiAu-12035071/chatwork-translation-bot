@@ -11,10 +11,10 @@ export function buildTranslatedMessage(
   result: TranslationResult,
   senderName: string,
 ): string {
-  const { room_id, message_id, body, send_time } = event.webhook_event
+  const { body, send_time } = event.webhook_event
 
   const timeStr = new Date(send_time * 1000).toISOString().slice(0, 16).replace('T', ' ')
-  const title = `📨 Room#${String(room_id)} | From: ${senderName} | MsgID:${message_id} | ${timeStr}`
+  const title = `📨 From: ${senderName} | ${timeStr}`
 
   const markupTags = (body.match(/\[(?:To|cc):\d+\]/g) ?? []).join('')
   const content = markupTags ? `${markupTags}\n${result.translatedText}` : result.translatedText

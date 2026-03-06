@@ -29,16 +29,16 @@ const makeResult = (): TranslationResult => ({
 })
 
 describe('buildTranslatedMessage', () => {
-  it('includes [info][title] wrapper with room_id, sender name, message_id, and time', () => {
+  it('includes [info][title] wrapper with sender name and datetime only', () => {
     const msg = buildTranslatedMessage(makeEvent(), makeResult(), 'Nguyen Van A')
 
     expect(msg).toContain('[info][title]')
     expect(msg).toContain('[/title]')
     expect(msg).toContain('[/info]')
-    expect(msg).toContain('Room#98765')
     expect(msg).toContain('Nguyen Van A')
-    expect(msg).toContain('MsgID:msg-123')
     expect(msg).toContain('2026-03-0') // timestamp from send_time present (date portion, UTC-safe)
+    expect(msg).not.toContain('Room#')
+    expect(msg).not.toContain('MsgID:')
   })
 
   it('includes translated text in the body', () => {
