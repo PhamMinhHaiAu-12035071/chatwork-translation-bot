@@ -25,11 +25,15 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 
 ## Environment Variables
 
-Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`, `INTERNAL_TRANSLATE_SECRET` (min 16 chars)
-Provider-specific: `GOOGLE_GENERATIVE_AI_API_KEY` (gemini), `OPENAI_API_KEY` (openai), `CURSOR_API_URL` (cursor, localhost only)
-Optional: `PORT` (default 3000), `NODE_ENV` (default development)
+Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`, `AI_PROVIDER`
+Provider-specific: Each provider requires specific env keys (see manifest.requiredEnvKeys). Run server to see startup banner for full list.
+Optional: `PORT` (default 3000), `NODE_ENV` (default development), `AI_MODEL` (default per provider)
 
 → Details: `ai_rules/security.md`
+
+## Startup Banner
+
+When the server starts, it logs a table showing all registered providers, their supported models, default model, and timeout. The active provider is marked with `*`.
 
 ## AI Rules — Read before working on related tasks
 

@@ -4,12 +4,11 @@
 
 ### Required
 
-| Variable                    | Purpose                                                     |
-| --------------------------- | ----------------------------------------------------------- |
-| `CHATWORK_API_TOKEN`        | Chatwork REST API authentication token                      |
-| `CHATWORK_WEBHOOK_SECRET`   | Secret for verifying webhook signatures                     |
-| `INTERNAL_TRANSLATE_SECRET` | Shared secret (min 16 chars) for `/internal/translate` auth |
-| `AI_PROVIDER`               | Translation provider: `gemini`, `openai`, or `cursor`       |
+| Variable                  | Purpose                                               |
+| ------------------------- | ----------------------------------------------------- |
+| `CHATWORK_API_TOKEN`      | Chatwork REST API authentication token                |
+| `CHATWORK_WEBHOOK_SECRET` | Secret for verifying webhook signatures               |
+| `AI_PROVIDER`             | Translation provider: `gemini`, `openai`, or `cursor` |
 
 ### Provider-Specific (required per AI_PROVIDER)
 
@@ -21,11 +20,11 @@
 
 ### Optional
 
-| Variable   | Default       | Purpose                |
-| ---------- | ------------- | ---------------------- |
-| `PORT`     | `3000`        | HTTP server port       |
-| `NODE_ENV` | `development` | Runtime environment    |
-| `AI_MODEL` | per provider  | Override default model |
+| Variable   | Default       | Purpose                                                                      |
+| ---------- | ------------- | ---------------------------------------------------------------------------- |
+| `PORT`     | `3000`        | HTTP server port                                                             |
+| `NODE_ENV` | `development` | Runtime environment                                                          |
+| `AI_MODEL` | per provider  | Override default model (any string accepted; unsupported models log warning) |
 
 Copy `.env.example` to `.env` and fill in real values. Never commit `.env`.
 
@@ -46,16 +45,6 @@ All incoming webhooks are verified with HMAC-SHA256 before processing:
 4. Requests with invalid signatures are rejected with 400
 
 Implementation: `packages/webhook-logger/src/routes/webhook.ts`
-
-## Internal Endpoint Authentication
-
-The `/internal/translate` endpoint is secured with a shared secret:
-
-1. Caller must include `X-Internal-Secret` header
-2. Server compares using `crypto.timingSafeEqual` (timing-attack safe)
-3. Requests with missing or incorrect secrets are rejected with 401
-
-Implementation: `packages/translator/src/webhook/router.ts`
 
 ## Cursor Provider — LOCAL DEV ONLY
 

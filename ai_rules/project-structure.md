@@ -23,7 +23,7 @@ Bun workspaces monorepo. Seven packages:
 
 Shared logic. Contains:
 
-- `src/types/` — external data shapes (webhook events, AI config domain types)
+- `src/types/` — external data shapes (webhook events, branded AIProvider type)
 - `src/interfaces/` — behavioral contracts (`ITranslationService`, `IChatworkClient`, `ProviderPlugin`)
 - `src/services/` — provider registry, execution policy
 - `src/utils/` — pure utility functions (`parseCommand`, `stripChatworkMarkup`)
