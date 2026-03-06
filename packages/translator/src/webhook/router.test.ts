@@ -2,21 +2,32 @@ import { beforeAll, describe, expect, it, mock } from 'bun:test'
 import Elysia from 'elysia'
 import type { translateRoutes as TranslateRoutesType } from './router'
 
-void mock.module('../env', () => ({
-  env: {
-    AI_PROVIDER: 'openai',
-    AI_MODEL: 'gpt-4o',
-    PORT: 3000,
-    NODE_ENV: 'test',
-    CHATWORK_API_TOKEN: 'test-token',
-  },
-}))
-
 describe('translateRoutes', () => {
   let translateRoutes: typeof TranslateRoutesType
   let app: ReturnType<typeof Elysia.prototype.use>
 
   beforeAll(async () => {
+    const realCore = await import('@chatwork-bot/core')
+
+    void mock.module('@chatwork-bot/core', () => ({
+      ...realCore,
+      ChatworkClient: class {
+        getMembers = mock(() => Promise.resolve([]))
+        sendMessage = mock(() => Promise.resolve({ message_id: 'mock-id' }))
+      },
+    }))
+
+    void mock.module('../env', () => ({
+      env: {
+        AI_PROVIDER: 'openai',
+        AI_MODEL: 'gpt-4o',
+        PORT: 3000,
+        NODE_ENV: 'test',
+        CHATWORK_API_TOKEN: 'test-token',
+        CHATWORK_DESTINATION_ROOM_ID: 99999,
+      },
+    }))
+
     const mod = await import('./router')
     translateRoutes = mod.translateRoutes
     app = new Elysia().use(translateRoutes)
