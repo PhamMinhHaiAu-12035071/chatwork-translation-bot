@@ -1,1 +1,1 @@
-export {}
+export { geminiPlugin } from './gemini-plugin'
