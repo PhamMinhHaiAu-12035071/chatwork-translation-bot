@@ -2,6 +2,7 @@ import {
   isChatworkMessageEvent,
   stripChatworkMarkup,
   getProviderPlugin,
+  translateWithPolicy,
   TranslationError,
 } from '@chatwork-bot/core'
 import type { ChatworkWebhookEvent, ProviderCreateContext } from '@chatwork-bot/core'
@@ -31,7 +32,7 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
       ctx.baseUrl = baseUrl
     }
     const service = plugin.create(ctx)
-    const result = await service.translate(cleanText)
+    const result = await translateWithPolicy(service, cleanText)
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
     await writeTranslationOutput(

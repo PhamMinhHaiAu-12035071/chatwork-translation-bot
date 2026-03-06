@@ -54,6 +54,9 @@ export {
   ProviderRegistryBootError,
 } from './services/provider-registry'
 
+// Execution policy
+export { translateWithPolicy } from './services/translation-execution-policy'
+
 // Services
 export { MockTranslationService } from './services/mock-translation'
 export { GeminiTranslationService } from './services/gemini-translation'
