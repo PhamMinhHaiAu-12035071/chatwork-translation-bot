@@ -10,10 +10,10 @@ bun run dev          # Run translator with hot-reload
 
 ```bash
 # 1. Start the cursor proxy (separate terminal):
-node_modules/.bin/cursor-api-proxy
+bun run cursor-proxy
 
 # 2. Start the translator server:
-AI_PROVIDER=cursor CURSOR_API_URL=http://localhost:3040 bun run dev
+AI_PROVIDER=cursor CURSOR_API_URL=http://localhost:8765/v1 bun run dev
 ```
 
 ## Build

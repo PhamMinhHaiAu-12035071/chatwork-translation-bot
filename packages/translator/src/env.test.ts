@@ -95,7 +95,7 @@ describe('env schema - cursor branch', () => {
     const result = schema.safeParse({
       ...base,
       AI_PROVIDER: 'cursor',
-      CURSOR_API_URL: 'http://localhost:3040',
+      CURSOR_API_URL: 'http://localhost:8765/v1',
     })
     expect(result.success).toBe(true)
   })
@@ -104,7 +104,7 @@ describe('env schema - cursor branch', () => {
     const result = schema.safeParse({
       ...base,
       AI_PROVIDER: 'cursor',
-      CURSOR_API_URL: 'http://127.0.0.1:3040',
+      CURSOR_API_URL: 'http://127.0.0.1:8765/v1',
     })
     expect(result.success).toBe(true)
   })
@@ -122,7 +122,7 @@ describe('env schema - cursor branch', () => {
     const result = schema.safeParse({
       ...base,
       AI_PROVIDER: 'cursor',
-      CURSOR_API_URL: 'http://localhost:3040',
+      CURSOR_API_URL: 'http://localhost:8765/v1',
       AI_MODEL: 'my-custom-local-model',
     })
     expect(result.success).toBe(true)

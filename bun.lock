@@ -11,6 +11,7 @@
         "@types/bun": "latest",
         "@typescript-eslint/eslint-plugin": "^8.0.0",
         "@typescript-eslint/parser": "^8.0.0",
+        "cursor-api-proxy": "github:anyrobert/cursor-api-proxy",
         "eslint": "^9.0.0",
         "eslint-import-resolver-typescript": "^4.4.4",
         "eslint-plugin-import-x": "^4.16.1",
@@ -358,6 +359,8 @@
     "cosmiconfig-typescript-loader": ["cosmiconfig-typescript-loader@6.2.0", "", { "dependencies": { "jiti": "^2.6.1" }, "peerDependencies": { "@types/node": "*", "cosmiconfig": ">=9", "typescript": ">=5" } }, "sha512-GEN39v7TgdxgIoNcdkRE3uiAzQt3UXLyHbRHD6YoL048XAeOomyxaP+Hh/+2C6C2wYjxJ2onhJcsQp+L4YEkVQ=="],
 
     "cross-spawn": ["cross-spawn@7.0.6", "", { "dependencies": { "path-key": "^3.1.0", "shebang-command": "^2.0.0", "which": "^2.0.1" } }, "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA=="],
+
+    "cursor-api-proxy": ["cursor-api-proxy@github:anyrobert/cursor-api-proxy#7c93e45", { "bin": { "cursor-api-proxy": "./dist/cli.js" } }, "anyrobert-cursor-api-proxy-7c93e45", "sha512-Un4SB6y/OdlWOWyCTPK0pDbNydlr9Kpkwl2plX8oyZbC4jQ6XqYgI8RS+eodpKKHN0wh+G7PCI+H3r0OQYrldg=="],
 
     "dargs": ["dargs@8.1.0", "", {}, "sha512-wAV9QHOsNbwnWdNW2FYvE1P56wtgSbM+3SZcdGiWQILwVjACCXDCI3Ai8QlCjMDB8YK5zySiXZYBiwGmNY3lnw=="],
 

@@ -62,8 +62,8 @@ describe('runStartupGuards', () => {
     mockFetch.mockImplementation(() => Promise.resolve({ ok: true }))
 
     const { runStartupGuards } = await import('./startup-guards')
-    const fakeEnv = { AI_PROVIDER: 'cursor', CURSOR_API_URL: 'http://localhost:3040' }
+    const fakeEnv = { AI_PROVIDER: 'cursor', CURSOR_API_URL: 'http://localhost:8765' }
     await runStartupGuards(fakeEnv as never)
-    expect(mockFetch).toHaveBeenCalledWith('http://localhost:3040/models')
+    expect(mockFetch).toHaveBeenCalledWith('http://localhost:8765/v1/models')
   })
 })
