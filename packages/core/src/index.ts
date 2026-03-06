@@ -27,6 +27,11 @@ export { AI_PROVIDER_VALUES, DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL } from '
 export type { ITranslationService, TranslationResult } from './interfaces/translation'
 export { TranslationError } from './interfaces/translation'
 export type {
+  ProviderPlugin,
+  ProviderManifest,
+  ProviderCreateContext,
+} from './interfaces/provider-plugin'
+export type {
   IChatworkClient,
   ChatworkClientConfig,
   SendMessageParams,
