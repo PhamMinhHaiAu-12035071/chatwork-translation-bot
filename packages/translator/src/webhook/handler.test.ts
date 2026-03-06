@@ -16,7 +16,16 @@ let translationResult: TranslationResult = {
 }
 
 const mockTranslate = mock((_text: string) => Promise.resolve(translationResult))
-const mockCreate = mock((_provider: string, _model?: string) => ({ translate: mockTranslate }))
+const mockPluginCreate = mock((_ctx: unknown) => ({ translate: mockTranslate }))
+const mockGetProviderPlugin = mock((_id: string) => ({
+  manifest: {
+    id: 'openai',
+    defaultModel: 'gpt-4o',
+    supportedModels: ['gpt-4o'],
+    capabilities: { streaming: false },
+  },
+  create: mockPluginCreate,
+}))
 const mockStripChatworkMarkup = mock((_text: string) => strippedText)
 const mockIsChatworkMessageEvent = mock((_event: ChatworkWebhookEvent) => isMessageEvent)
 
@@ -44,9 +53,7 @@ describe('handleTranslateRequest', () => {
       ...realCore,
       isChatworkMessageEvent: mockIsChatworkMessageEvent,
       stripChatworkMarkup: mockStripChatworkMarkup,
-      TranslationServiceFactory: {
-        create: mockCreate,
-      },
+      getProviderPlugin: mockGetProviderPlugin,
       TranslationError: MockTranslationError,
       ChatworkClient: class {
         getMembers = mock(() => Promise.resolve([]))
@@ -84,7 +91,7 @@ describe('handleTranslateRequest', () => {
     }
   })
 
-  it('translates message and calls service with stripped text', async () => {
+  it('translates message via registry-resolved provider', async () => {
     const event: ChatworkWebhookEvent = {
       webhook_setting_id: '35555',
       webhook_event_type: 'message_created',
@@ -99,13 +106,13 @@ describe('handleTranslateRequest', () => {
       },
     }
 
-    const createStart = mockCreate.mock.calls.length
+    const getStart = mockGetProviderPlugin.mock.calls.length
     const translateStart = mockTranslate.mock.calls.length
 
     await handleTranslateRequest(event)
 
-    expect(mockCreate.mock.calls.length).toBe(createStart + 1)
-    expect(mockCreate.mock.calls.at(-1)).toEqual(['openai', 'gpt-4o'])
+    expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
+    expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
     expect(mockTranslate.mock.calls.length).toBe(translateStart + 1)
     expect(mockTranslate.mock.calls.at(-1)?.[0]).toBe('A\n\nB\nC')
   })
@@ -120,12 +127,12 @@ describe('handleTranslateRequest', () => {
       webhook_event: {},
     }
 
-    const createStart = mockCreate.mock.calls.length
+    const getStart = mockGetProviderPlugin.mock.calls.length
     const translateStart = mockTranslate.mock.calls.length
 
     await handleTranslateRequest(event)
 
-    expect(mockCreate.mock.calls.length).toBe(createStart)
+    expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(mockTranslate.mock.calls.length).toBe(translateStart)
   })
 
@@ -146,12 +153,12 @@ describe('handleTranslateRequest', () => {
       },
     }
 
-    const createStart = mockCreate.mock.calls.length
+    const getStart = mockGetProviderPlugin.mock.calls.length
     const translateStart = mockTranslate.mock.calls.length
 
     await handleTranslateRequest(event)
 
-    expect(mockCreate.mock.calls.length).toBe(createStart)
+    expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(mockTranslate.mock.calls.length).toBe(translateStart)
   })
 })

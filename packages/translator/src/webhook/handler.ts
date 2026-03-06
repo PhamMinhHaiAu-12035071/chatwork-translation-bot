@@ -1,10 +1,10 @@
 import {
   isChatworkMessageEvent,
   stripChatworkMarkup,
-  TranslationServiceFactory,
+  getProviderPlugin,
   TranslationError,
 } from '@chatwork-bot/core'
-import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
+import type { ChatworkWebhookEvent, ProviderCreateContext } from '@chatwork-bot/core'
 import { env } from '~/env'
 import { writeTranslationOutput } from '~/utils/output-writer'
 import { sendTranslatedMessage } from '~/services/chatwork-sender'
@@ -22,7 +22,15 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
   }
 
   try {
-    const service = TranslationServiceFactory.create(env.AI_PROVIDER, env.AI_MODEL)
+    const plugin = getProviderPlugin(env.AI_PROVIDER)
+    const ctx: ProviderCreateContext = {
+      modelId: env.AI_MODEL ?? plugin.manifest.defaultModel,
+    }
+    const baseUrl = process.env['CURSOR_API_URL']
+    if (baseUrl) {
+      ctx.baseUrl = baseUrl
+    }
+    const service = plugin.create(ctx)
     const result = await service.translate(cleanText)
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
