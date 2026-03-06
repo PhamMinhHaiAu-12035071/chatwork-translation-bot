@@ -1,4 +1,7 @@
-import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { ChatworkWebhookEvent, TranslationResult } from '@chatwork-bot/core'
 import type { handleTranslateRequest as HandleTranslateRequestType } from './handler'
 
@@ -16,6 +19,9 @@ const mockTranslate = mock((_text: string) => Promise.resolve(translationResult)
 const mockCreate = mock((_provider: string, _model?: string) => ({ translate: mockTranslate }))
 const mockStripChatworkMarkup = mock((_text: string) => strippedText)
 const mockIsChatworkMessageEvent = mock((_event: ChatworkWebhookEvent) => isMessageEvent)
+
+const testOutputDir = mkdtempSync(join(tmpdir(), 'handler-test-'))
+process.env['OUTPUT_BASE_DIR'] = testOutputDir
 
 class MockTranslationError extends Error {
   constructor(
@@ -59,6 +65,11 @@ describe('handleTranslateRequest', () => {
 
     const mod = await import('./handler')
     handleTranslateRequest = mod.handleTranslateRequest
+  })
+
+  afterAll(() => {
+    delete process.env['OUTPUT_BASE_DIR']
+    rmSync(testOutputDir, { recursive: true, force: true })
   })
 
   beforeEach(() => {

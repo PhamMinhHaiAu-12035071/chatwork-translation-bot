@@ -1,6 +1,12 @@
-import { beforeAll, describe, expect, it, mock } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import Elysia from 'elysia'
 import type { translateRoutes as TranslateRoutesType } from './router'
+
+const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
+process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
 
 describe('translateRoutes', () => {
   let translateRoutes: typeof TranslateRoutesType
@@ -31,6 +37,11 @@ describe('translateRoutes', () => {
     const mod = await import('./router')
     translateRoutes = mod.translateRoutes
     app = new Elysia().use(translateRoutes)
+  })
+
+  afterAll(() => {
+    delete process.env['OUTPUT_BASE_DIR']
+    rmSync(routerTestOutputDir, { recursive: true, force: true })
   })
 
   const validPayload = {
