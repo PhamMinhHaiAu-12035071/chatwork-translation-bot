@@ -1,8 +1,10 @@
 import { env } from './env'
 import { registerAllProviders } from '~/bootstrap/register-providers'
+import { runStartupGuards } from '~/bootstrap/startup-guards'
 import { createServer } from './server'
 
 registerAllProviders()
+await runStartupGuards(env)
 
 const server = createServer()
 
