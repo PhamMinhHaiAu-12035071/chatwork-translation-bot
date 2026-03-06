@@ -70,11 +70,14 @@ Single source of truth in `tsconfig.base.json`. Each package extends it.
 ```
 tsconfig.base.json                          (baseUrl: ".")
   ├── tsconfig.root.json                    (root scripts only, excludes packages/)
-  ├── packages/core/tsconfig.json           (baseUrl: "../..")
-  ├── packages/translator/tsconfig.json     (baseUrl: "../..")
-  └── packages/webhook-logger/tsconfig.json (baseUrl: "../..")
+  ├── packages/core/tsconfig.json           (baseUrl: "../..", paths: ~/* → packages/core/src/*)
+  ├── packages/translator/tsconfig.json     (baseUrl: "../..", paths: ~/* → packages/translator/src/*, packages/core/src/*)
+  └── packages/webhook-logger/tsconfig.json (baseUrl: "../..", paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*)
 ```
 
 Cross-package imports (`@chatwork-bot/core`) resolve via Bun workspace symlinks in
 `node_modules`, not tsconfig paths. Do not add cross-package entries to tsconfig `paths`.
-Each package tsconfig has no local `paths` override — all inherit from base.
+Each package tsconfig defines `paths: { "~/*": [...] }` for intra-package imports.
+Do NOT add `~/` to `tsconfig.base.json` — `baseUrl` differs between root and packages.
+Dependent packages must include core's src path in their `~/*` mapping since core sources
+are loaded directly (via `"main": "./src/index.ts"`) and contain `~/` imports.

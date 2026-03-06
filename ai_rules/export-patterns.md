@@ -84,3 +84,29 @@ import { parseCommand } from 'core/utils/parse-command'
 ```
 
 If a symbol is not exported from `@chatwork-bot/core`, add it to `packages/core/src/index.ts`.
+
+## Rule: Intra-package imports must use `~/` alias
+
+Never use `../` to navigate between directories within the same package.
+Use `~/` which resolves to the package's `src/` directory.
+
+Each package's `tsconfig.json` defines: `"paths": { "~/*": ["packages/<name>/src/*"] }`
+
+```typescript
+// ✓ Correct
+import type { ParsedCommand } from '~/types/command'
+import { env } from '~/env'
+
+// ✗ Wrong — ESLint error: no-restricted-imports
+import type { ParsedCommand } from '../types/command'
+import { env } from '../env'
+```
+
+Same-directory imports (`./`) are allowed:
+
+```typescript
+// ✓ Correct — same directory
+import { TranslationSchema } from './translation-prompt'
+```
+
+Enforced by: `no-restricted-imports` with `patterns: ['../*']` (error) in `eslint.config.ts`.

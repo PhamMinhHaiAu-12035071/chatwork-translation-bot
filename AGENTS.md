@@ -13,6 +13,7 @@ Three packages: `@chatwork-bot/core` (shared logic), `@chatwork-bot/translator` 
 
 - TypeScript ESM strict mode only — never plain JS
 - Import from package name only: `@chatwork-bot/core`, never from `../../core/src/` or path aliases like `@core/*`
+- **Never** use `../` for intra-package imports — use `~/path` alias instead (e.g. `~/types/command` not `../types/command`)
 - Always use `import type` for type-only imports
 - Prefix unused vars with `_` (enforced by ESLint)
 - **Never** commit `.env`, tokens, or secrets

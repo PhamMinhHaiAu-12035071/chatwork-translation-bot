@@ -33,6 +33,7 @@ When you encounter these **keywords** in code or task description, read the link
 
 - `interface`, `type`, `IXxx`, `types/`, `interfaces/` → read `ai_rules/type-organization.md` + `ai_rules/naming-conventions.md`
 - `import`, `export`, `index.ts`, `from '@` → read `ai_rules/export-patterns.md`
+- **Never** use `../` for intra-package imports — use `~/path` alias (enforced by ESLint `no-restricted-imports`)
 
 ### Testing
 
