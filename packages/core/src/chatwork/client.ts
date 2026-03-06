@@ -1,9 +1,9 @@
-import type { ChatworkSendMessageResponse, ChatworkMember } from '../types/chatwork'
+import type { ChatworkSendMessageResponse, ChatworkMember } from '~/types/chatwork'
 import type {
   IChatworkClient,
   ChatworkClientConfig,
   SendMessageParams,
-} from '../interfaces/chatwork'
+} from '~/interfaces/chatwork'
 
 const DEFAULT_BASE_URL = 'https://api.chatwork.com/v2'
 

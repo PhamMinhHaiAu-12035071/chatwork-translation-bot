@@ -1,10 +1,10 @@
 import { generateText, Output } from 'ai'
 import { google } from '@ai-sdk/google'
-import type { ITranslationService, TranslationResult } from '../interfaces/translation'
-import { TranslationError } from '../interfaces/translation'
+import type { ITranslationService, TranslationResult } from '~/interfaces/translation'
+import { TranslationError } from '~/interfaces/translation'
 import { TranslationSchema, buildTranslationPrompt } from './translation-prompt'
-import type { GeminiModel } from '../types/ai'
-import { DEFAULT_GEMINI_MODEL } from '../types/ai'
+import type { GeminiModel } from '~/types/ai'
+import { DEFAULT_GEMINI_MODEL } from '~/types/ai'
 
 export class GeminiTranslationService implements ITranslationService {
   constructor(private readonly modelId: GeminiModel = DEFAULT_GEMINI_MODEL) {}

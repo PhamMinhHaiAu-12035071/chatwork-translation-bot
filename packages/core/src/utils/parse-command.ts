@@ -1,5 +1,5 @@
-import type { ParsedCommand } from '../types/command'
-import { isSupportedLang } from '../types/command'
+import type { ParsedCommand } from '~/types/command'
+import { isSupportedLang } from '~/types/command'
 
 // Strip Chatwork markup tags: [To:xxx], [rp aid=xxx to=xxx:xxx], etc.
 export function stripChatworkMarkup(text: string): string {

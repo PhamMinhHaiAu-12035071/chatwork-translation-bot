@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
-import type { ChatworkMember } from '../types/chatwork'
+import type { ChatworkMember } from '~/types/chatwork'
 import { ChatworkClient } from './client'
 
 describe('ChatworkClient', () => {

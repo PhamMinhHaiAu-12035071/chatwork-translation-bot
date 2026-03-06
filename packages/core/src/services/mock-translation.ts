@@ -1,4 +1,4 @@
-import type { ITranslationService, TranslationResult } from '../interfaces/translation'
+import type { ITranslationService, TranslationResult } from '~/interfaces/translation'
 
 export class MockTranslationService implements ITranslationService {
   async translate(text: string): Promise<TranslationResult> {

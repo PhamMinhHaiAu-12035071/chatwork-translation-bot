@@ -1,4 +1,4 @@
-import type { ChatworkMember } from '../types/chatwork'
+import type { ChatworkMember } from '~/types/chatwork'
 
 export interface ChatworkClientConfig {
   apiToken: string

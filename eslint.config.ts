@@ -1,5 +1,4 @@
 import tseslint from 'typescript-eslint'
-import importX from 'eslint-plugin-import-x'
 
 export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
@@ -22,17 +21,8 @@ export default tseslint.config(
     },
   },
   {
-    plugins: { 'import-x': importX },
-    settings: {
-      'import-x/resolver': {
-        typescript: {
-          alwaysTryTypes: true,
-          project: ['packages/*/tsconfig.json'],
-        },
-      },
-    },
     rules: {
-      'import-x/no-relative-parent-imports': 'error',
+      'no-restricted-imports': ['error', { patterns: ['../*'] }],
     },
   },
   {

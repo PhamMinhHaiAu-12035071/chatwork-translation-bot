@@ -1,6 +1,6 @@
-import type { ITranslationService } from '../interfaces/translation'
-import type { AIProvider, GeminiModel, OpenAIModel } from '../types/ai'
-import { DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL } from '../types/ai'
+import type { ITranslationService } from '~/interfaces/translation'
+import type { AIProvider, GeminiModel, OpenAIModel } from '~/types/ai'
+import { DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL } from '~/types/ai'
 import { GeminiTranslationService } from './gemini-translation'
 import { OpenAITranslationService } from './openai-translation'
 
