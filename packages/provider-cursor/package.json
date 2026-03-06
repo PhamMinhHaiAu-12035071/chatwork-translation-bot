@@ -17,7 +17,7 @@
   "dependencies": {
     "@chatwork-bot/core": "workspace:*",
     "@chatwork-bot/translation-prompt": "workspace:*",
-    "@ai-sdk/openai-compatible": "^0.2.0",
+    "@ai-sdk/openai-compatible": "^2.0.35",
     "ai": "^6.0.111"
   }
 }
