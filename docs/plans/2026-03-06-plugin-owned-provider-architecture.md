@@ -19,7 +19,28 @@ Non-breaking additive change. All existing manifests will need updating but noth
 - Modify: `packages/core/src/interfaces/provider-plugin.ts`
 - Test: `packages/core/src/interfaces/provider-plugin.test.ts`
 
-**Step 1: Update the interface**
+**Step 1: Add `requiredEnvKeys` to the test fixture first (TDD)**
+
+In `packages/core/src/interfaces/provider-plugin.test.ts`, add `requiredEnvKeys: []` to the existing manifest fixture. This will cause a TypeScript error because the interface doesn't have the field yet — that's intentional.
+
+Example (find the manifest fixture in the test and add the field):
+
+```typescript
+const validManifest: ProviderManifest = {
+  id: 'test-provider',
+  supportedModels: ['model-a'],
+  defaultModel: 'model-a',
+  capabilities: { streaming: false },
+  requiredEnvKeys: [], // ADD THIS LINE — will error until interface is updated
+}
+```
+
+**Step 2: Run typecheck to verify it fails**
+
+Run: `bun run typecheck 2>&1 | grep requiredEnvKeys`
+Expected: TypeScript error — `Object literal may only specify known properties`
+
+**Step 3: Update the interface**
 
 In `packages/core/src/interfaces/provider-plugin.ts`, add `requiredEnvKeys` to `ProviderManifest`:
 
@@ -36,16 +57,12 @@ export interface ProviderManifest {
 }
 ```
 
-**Step 2: Update the contract test**
-
-In `packages/core/src/interfaces/provider-plugin.test.ts`, add `requiredEnvKeys: []` to the test fixture so it conforms to the updated interface.
-
-**Step 3: Run test to verify**
+**Step 4: Run test to verify it passes**
 
 Run: `bun test packages/core/src/interfaces/provider-plugin.test.ts`
-Expected: PASS
+Expected: PASS (typecheck error gone)
 
-**Step 4: Fix all provider plugins that now fail typecheck**
+**Step 5: Fix all provider plugins that now fail typecheck**
 
 Add `requiredEnvKeys` to every plugin manifest:
 
@@ -55,12 +72,12 @@ Add `requiredEnvKeys` to every plugin manifest:
 
 Also update `packages/translator/src/bootstrap/startup-guards.test.ts` — the mock manifests need `requiredEnvKeys: []`.
 
-**Step 5: Run full typecheck + tests**
+**Step 6: Run full typecheck + tests**
 
 Run: `bun run typecheck && bun test`
 Expected: ALL PASS
 
-**Step 6: Commit**
+**Step 7: Commit**
 
 ```bash
 git add -A
@@ -87,9 +104,23 @@ Move `GEMINI_MODEL_VALUES`, `OPENAI_MODEL_VALUES`, `CURSOR_MODEL_VALUES` and the
 At the top of `packages/provider-gemini/src/gemini-plugin.ts`, add (before the class):
 
 ```typescript
-export const GEMINI_MODEL_VALUES = ['gemini-2.5-pro', 'gemini-2.0-flash'] as const
+export const GEMINI_MODEL_VALUES = [
+  // Gemini 3.1 (Feb 2026)
+  'gemini-3.1-pro-preview',
+  'gemini-3.1-flash',
+  'gemini-3.1-flash-lite',
+  // Gemini 3 (Nov 2025, GA)
+  'gemini-3-pro-preview',
+  'gemini-3-flash',
+  // Gemini 2.5 (stable)
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  // Gemini 2.0 (older, still supported)
+  'gemini-2.0-flash',
+] as const
 export type GeminiModel = (typeof GEMINI_MODEL_VALUES)[number]
-export const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-2.5-pro'
+export const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-2.5-pro' // stable, not preview
 ```
 
 Remove the imports of `GEMINI_MODEL_VALUES` and `DEFAULT_GEMINI_MODEL` from `@chatwork-bot/core`.
@@ -106,9 +137,23 @@ export type { GeminiModel } from './gemini-plugin'
 Same pattern. At the top of `packages/provider-openai/src/openai-plugin.ts`:
 
 ```typescript
-export const OPENAI_MODEL_VALUES = ['gpt-4o', 'gpt-4o-mini'] as const
+export const OPENAI_MODEL_VALUES = [
+  // GPT-5.x (2026 frontier)
+  'gpt-5.4',
+  'gpt-5.4-pro',
+  'gpt-5.2',
+  'gpt-5-mini',
+  'gpt-5-nano',
+  'gpt-5.3-codex',
+  // GPT-4.1 (still widely used)
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  // GPT-4o (deprecated in ChatGPT but API still available)
+  'gpt-4o',
+  'gpt-4o-mini',
+] as const
 export type OpenAIModel = (typeof OPENAI_MODEL_VALUES)[number]
-export const DEFAULT_OPENAI_MODEL: OpenAIModel = 'gpt-4o'
+export const DEFAULT_OPENAI_MODEL: OpenAIModel = 'gpt-5.4'
 ```
 
 Remove the imports from `@chatwork-bot/core`.
@@ -136,14 +181,14 @@ export const CURSOR_MODEL_VALUES = [
   'claude-opus-4-5-thinking',
   'claude-opus-4-6',
   'claude-opus-4-6-thinking',
-  // Google
+  // Google (Gemini 3 GA Nov 2025)
   'gemini-2.5-flash',
   'gemini-3-flash',
   'gemini-3-pro',
-  // OpenAI
+  // OpenAI (GPT-5 API available 2026)
   'gpt-5.2',
   'gpt-5.3-codex',
-  // Cursor own
+  // Cursor native
   'composer-1',
   'composer-1.5',
   'cursor-small',
@@ -163,12 +208,69 @@ export { CursorTranslationService } from './cursor-translation'
 export { extractJsonFromText } from './extract-json'
 ```
 
-**Step 4: Run typecheck to see remaining references to old core exports**
+**Step 4: Write tests for model values in each provider package**
+
+Create `packages/provider-gemini/src/gemini-plugin.test.ts` (or add to existing):
+
+```typescript
+import { describe, expect, it } from 'bun:test'
+import { GEMINI_MODEL_VALUES, DEFAULT_GEMINI_MODEL } from './gemini-plugin'
+
+describe('gemini model values', () => {
+  it('includes latest Gemini 3.x models', () => {
+    expect(GEMINI_MODEL_VALUES).toContain('gemini-3.1-pro-preview')
+    expect(GEMINI_MODEL_VALUES).toContain('gemini-3-flash')
+    expect(GEMINI_MODEL_VALUES).toContain('gemini-2.5-pro')
+    expect(GEMINI_MODEL_VALUES).toContain('gemini-2.5-flash')
+  })
+
+  it('default model is stable (not preview)', () => {
+    expect(DEFAULT_GEMINI_MODEL).toBe('gemini-2.5-pro')
+    expect(GEMINI_MODEL_VALUES).toContain(DEFAULT_GEMINI_MODEL)
+  })
+})
+```
+
+Add same pattern to `packages/provider-openai/src/openai-plugin.test.ts`:
+
+```typescript
+import { describe, expect, it } from 'bun:test'
+import { OPENAI_MODEL_VALUES, DEFAULT_OPENAI_MODEL } from './openai-plugin'
+
+describe('openai model values', () => {
+  it('includes latest GPT-5.x models', () => {
+    expect(OPENAI_MODEL_VALUES).toContain('gpt-5.4')
+    expect(OPENAI_MODEL_VALUES).toContain('gpt-5-mini')
+    expect(OPENAI_MODEL_VALUES).toContain('gpt-4.1')
+  })
+
+  it('includes legacy GPT-4o for backwards compatibility', () => {
+    expect(OPENAI_MODEL_VALUES).toContain('gpt-4o')
+  })
+
+  it('default is latest frontier model', () => {
+    expect(DEFAULT_OPENAI_MODEL).toBe('gpt-5.4')
+    expect(OPENAI_MODEL_VALUES).toContain(DEFAULT_OPENAI_MODEL)
+  })
+})
+```
+
+**Step 5: Run tests to verify they fail (values not exported yet)**
+
+Run: `bun test packages/provider-gemini/src/gemini-plugin.test.ts packages/provider-openai/src/openai-plugin.test.ts`
+Expected: FAIL — cannot find `GEMINI_MODEL_VALUES` export
+
+**Step 6: Run typecheck to see remaining references to old core exports**
 
 Run: `bun run typecheck`
 Expected: Errors in `core/index.ts`, `env.ts`, and `env.test.ts` (they still import from core). These will be fixed in later tasks. Provider packages should be clean.
 
-**Step 5: Commit (providers only)**
+**Step 7: Run tests for providers to verify they pass**
+
+Run: `bun test packages/provider-gemini/ packages/provider-openai/ packages/provider-cursor/`
+Expected: ALL PASS
+
+**Step 8: Commit (providers only)**
 
 ```bash
 git add packages/provider-*/
@@ -184,10 +286,37 @@ Remove provider-specific model values from core. Replace with a minimal branded 
 **Files:**
 
 - Rewrite: `packages/core/src/types/ai.ts`
+- Rewrite: `packages/core/src/types/ai.test.ts` (replace old provider-specific tests with toAIProvider tests)
 - Modify: `packages/core/src/index.ts`
-- Delete: `packages/core/src/types/ai.test.ts` (tests move to provider packages)
 
-**Step 1: Rewrite ai.ts**
+**Step 1: Write failing tests for branded AIProvider (TDD)**
+
+Replace `packages/core/src/types/ai.test.ts` with tests for the new `toAIProvider` function:
+
+```typescript
+import { describe, expect, it } from 'bun:test'
+import { toAIProvider } from './ai'
+
+describe('toAIProvider', () => {
+  it('returns the same string value', () => {
+    const provider = toAIProvider('gemini')
+    expect(provider).toBe('gemini')
+  })
+
+  it('works with any string', () => {
+    expect(toAIProvider('openai')).toBe('openai')
+    expect(toAIProvider('cursor')).toBe('cursor')
+    expect(toAIProvider('groq')).toBe('groq')
+  })
+})
+```
+
+**Step 2: Run test to verify it fails**
+
+Run: `bun test packages/core/src/types/ai.test.ts`
+Expected: FAIL — `toAIProvider` not found (old ai.ts has different exports)
+
+**Step 3: Rewrite ai.ts**
 
 Replace the entire content of `packages/core/src/types/ai.ts` with:
 
@@ -199,7 +328,12 @@ export function toAIProvider(value: string): AIProvider {
 }
 ```
 
-**Step 2: Update core/index.ts exports**
+**Step 4: Run test to verify it passes**
+
+Run: `bun test packages/core/src/types/ai.test.ts`
+Expected: PASS
+
+**Step 5: Update core/index.ts exports**
 
 Replace the old ai.ts export block:
 
@@ -219,16 +353,12 @@ export type { AIProvider } from './types/ai'
 export { toAIProvider } from './types/ai'
 ```
 
-**Step 3: Delete the old ai.test.ts**
-
-Delete `packages/core/src/types/ai.test.ts` — the tests there asserted provider-specific model values that are now owned by each provider package.
-
-**Step 4: Run typecheck**
+**Step 6: Run typecheck**
 
 Run: `bun run typecheck`
 Expected: Errors in `translator/env.ts`, `translator/env.test.ts` (they import old values from core). These are expected and fixed in next tasks.
 
-**Step 5: Commit**
+**Step 7: Commit**
 
 ```bash
 git add packages/core/
@@ -723,16 +853,13 @@ git commit -m "feat(translator): add startup banner showing providers and models
 
 ---
 
-## Task 7: Update remaining tests and fix router.test.ts
+## Task 7: Fix router.test.ts env mock
 
-Update tests that still reference old core exports or old env shape.
+Update the webhook router test to use the new flat env shape.
 
 **Files:**
 
 - Modify: `packages/translator/src/webhook/router.test.ts` — update mocked env shape
-- Modify: `packages/translator/src/webhook/handler.ts` — update env usage if needed
-- Modify: `packages/provider-cursor/src/cursor-plugin.test.ts` — update model assertions
-- Modify: `packages/translator/src/routes/provider-health.ts` — enhance response
 
 **Step 1: Update router.test.ts mock env**
 
@@ -751,15 +878,88 @@ void mock.module('../env', () => ({
 }))
 ```
 
-(This mock already matches the flat schema, so it should work as-is.)
+**Step 2: Run router tests**
 
-**Step 2: Update cursor-plugin.test.ts model assertions**
+Run: `bun test packages/translator/src/webhook/router.test.ts`
+Expected: ALL PASS
 
-Update tests that assert on `CURSOR_MODEL_VALUES` to include the new expanded model list.
+**Step 3: Commit**
 
-**Step 3: Enhance provider-health.ts**
+```bash
+git add packages/translator/src/webhook/router.test.ts
+git commit -m "test(translator): update router test env mock to flat schema"
+```
 
-Update `packages/translator/src/routes/provider-health.ts` to include `requiredEnvKeys`, `timeoutMs`, and `capabilities`:
+---
+
+## Task 8: Update cursor-plugin.test.ts model assertions
+
+Sync cursor test assertions with the new expanded model list defined in Task 2.
+
+**Files:**
+
+- Modify: `packages/provider-cursor/src/cursor-plugin.test.ts`
+
+**Step 1: Update model assertions**
+
+In `packages/provider-cursor/src/cursor-plugin.test.ts`, replace any assertions that check the old (small) model list with the expanded list. The exact assertions to add/update:
+
+````typescript
+import { describe, expect, it } from 'bun:test'
+import { CURSOR_MODEL_VALUES, DEFAULT_CURSOR_MODEL } from './cursor-plugin'
+
+describe('cursor model values', () => {
+  it('includes confirmed Anthropic models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('claude-sonnet-4-5')
+    expect(CURSOR_MODEL_VALUES).toContain('claude-sonnet-4-6')
+    expect(CURSOR_MODEL_VALUES).toContain('claude-opus-4-5')
+  })
+
+  it('includes Google models (Gemini 3 GA Nov 2025)', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-2.5-flash')
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-3-flash')
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-3-pro')
+  })
+
+  it('includes OpenAI models (GPT-5 API available 2026)', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.2')
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.3-codex')
+  })
+
+  it('includes Cursor-native models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('cursor-small')
+    expect(CURSOR_MODEL_VALUES).toContain('composer-1')
+  })
+
+  it('default model is in supported list', () => {
+    expect(CURSOR_MODEL_VALUES).toContain(DEFAULT_CURSOR_MODEL)
+    expect(DEFAULT_CURSOR_MODEL).toBe('claude-sonnet-4-5')
+  })
+})
+
+**Step 2: Run cursor tests**
+
+Run: `bun test packages/provider-cursor/src/cursor-plugin.test.ts`
+Expected: ALL PASS
+
+**Step 3: Commit**
+
+```bash
+git add packages/provider-cursor/src/cursor-plugin.test.ts
+git commit -m "test(provider-cursor): update model assertions for expanded model list"
+````
+
+---
+
+## Task 9: Enhance provider-health.ts response
+
+Add `requiredEnvKeys`, `timeoutMs`, and `capabilities` to the health endpoint.
+
+**Files:**
+
+- Modify: `packages/translator/src/routes/provider-health.ts`
+
+**Step 1: Update provider-health.ts**
 
 ```typescript
 import { Elysia } from 'elysia'
@@ -782,21 +982,21 @@ export const providerHealthRoute = new Elysia().get('/health/provider', () => {
 })
 ```
 
-**Step 4: Run all tests**
+**Step 2: Run all tests**
 
 Run: `bun test`
 Expected: ALL PASS
 
-**Step 5: Commit**
+**Step 3: Commit**
 
 ```bash
-git add -A
-git commit -m "refactor(translator): update tests and enhance provider health endpoint"
+git add packages/translator/src/routes/provider-health.ts
+git commit -m "feat(translator): enhance provider health endpoint with manifest details"
 ```
 
 ---
 
-## Task 8: Update .env.example and documentation
+## Task 10: Update .env.example and documentation
 
 Update `.env.example` to reflect the new architecture and update `ai_rules/architecture-patterns.md`.
 
@@ -841,7 +1041,7 @@ git commit -m "docs(repo): update env example and architecture docs for plugin-o
 
 ---
 
-## Task 9: Final verification
+## Task 11: Final verification
 
 Run the full Definition of Done check.
 

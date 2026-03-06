@@ -11,9 +11,6 @@ const baseEnv = z.object({
   CHATWORK_DESTINATION_ROOM_ID: z.coerce.number().int().positive(),
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
-  INTERNAL_TRANSLATE_SECRET: z
-    .string()
-    .min(16, 'INTERNAL_TRANSLATE_SECRET must be at least 16 characters'),
 })
 
 const providerUnion = z.discriminatedUnion('AI_PROVIDER', [

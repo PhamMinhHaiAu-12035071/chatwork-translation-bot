@@ -12,8 +12,8 @@ export async function runStartupGuards(
   }
 
   if (env.AI_PROVIDER === 'cursor') {
-    const proxyUrl = env.CURSOR_API_URL ?? 'http://localhost:8765'
-    const ok = await fetch(`${proxyUrl}/v1/models`)
+    const proxyUrl = env.CURSOR_API_URL ?? 'http://localhost:8765/v1'
+    const ok = await fetch(`${proxyUrl}/models`)
       .then((r) => r.ok)
       .catch(() => false)
     if (!ok) {

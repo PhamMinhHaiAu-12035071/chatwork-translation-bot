@@ -32,7 +32,11 @@ export {
 } from './types/ai'
 
 // Interfaces
-export type { ITranslationService, TranslationResult } from './interfaces/translation'
+export type {
+  ITranslationService,
+  TranslationResult,
+  TranslateOptions,
+} from './interfaces/translation'
 export { TranslationError } from './interfaces/translation'
 export type {
   ProviderPlugin,
@@ -56,6 +60,7 @@ export {
 
 // Execution policy
 export { translateWithPolicy } from './services/translation-execution-policy'
+export type { PolicyOptions } from './services/translation-execution-policy'
 
 // Chatwork client
 export { ChatworkClient } from './chatwork/client'

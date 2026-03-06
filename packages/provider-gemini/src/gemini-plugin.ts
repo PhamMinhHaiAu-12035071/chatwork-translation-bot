@@ -1,6 +1,6 @@
 import { generateText, Output } from 'ai'
 import { google } from '@ai-sdk/google'
-import type { ITranslationService, TranslationResult } from '@chatwork-bot/core'
+import type { ITranslationService, TranslationResult, TranslateOptions } from '@chatwork-bot/core'
 import { TranslationError, GEMINI_MODEL_VALUES, DEFAULT_GEMINI_MODEL } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
 import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/translation-prompt'
@@ -8,7 +8,7 @@ import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/transla
 class GeminiTranslationService implements ITranslationService {
   constructor(private readonly modelId: string = DEFAULT_GEMINI_MODEL) {}
 
-  async translate(text: string): Promise<TranslationResult> {
+  async translate(text: string, options?: TranslateOptions): Promise<TranslationResult> {
     try {
       const { output } = await generateText({
         model: google(this.modelId),
@@ -16,6 +16,7 @@ class GeminiTranslationService implements ITranslationService {
         prompt: buildTranslationPrompt(text),
         temperature: 0,
         maxOutputTokens: 1200,
+        ...(options?.signal && { abortSignal: options.signal }),
       })
       return {
         cleanText: text,

@@ -1,6 +1,6 @@
 import { generateText, Output } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import type { ITranslationService, TranslationResult } from '@chatwork-bot/core'
+import type { ITranslationService, TranslationResult, TranslateOptions } from '@chatwork-bot/core'
 import { TranslationError, OPENAI_MODEL_VALUES, DEFAULT_OPENAI_MODEL } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
 import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/translation-prompt'
@@ -8,7 +8,7 @@ import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/transla
 class OpenAITranslationService implements ITranslationService {
   constructor(private readonly modelId: string = DEFAULT_OPENAI_MODEL) {}
 
-  async translate(text: string): Promise<TranslationResult> {
+  async translate(text: string, options?: TranslateOptions): Promise<TranslationResult> {
     try {
       const { output } = await generateText({
         model: openai(this.modelId),
@@ -16,6 +16,7 @@ class OpenAITranslationService implements ITranslationService {
         prompt: buildTranslationPrompt(text),
         temperature: 0,
         maxOutputTokens: 1200,
+        ...(options?.signal && { abortSignal: options.signal }),
       })
       return {
         cleanText: text,

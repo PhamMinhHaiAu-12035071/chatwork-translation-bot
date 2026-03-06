@@ -5,7 +5,6 @@ import { join } from 'node:path'
 import Elysia from 'elysia'
 import type { translateRoutes as TranslateRoutesType } from './router'
 
-const TEST_SECRET = 'test-secret-16chars-ok'
 const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
 process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
 
@@ -32,7 +31,6 @@ describe('translateRoutes', () => {
         NODE_ENV: 'test',
         CHATWORK_API_TOKEN: 'test-token',
         CHATWORK_DESTINATION_ROOM_ID: 99999,
-        INTERNAL_TRANSLATE_SECRET: TEST_SECRET,
       },
     }))
 
@@ -62,39 +60,11 @@ describe('translateRoutes', () => {
     },
   }
 
-  it('returns 401 when X-Internal-Secret header is missing', async () => {
+  it('returns 200 OK with valid payload', async () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validPayload),
-      }),
-    )
-    expect(res.status).toBe(401)
-  })
-
-  it('returns 401 when X-Internal-Secret header is wrong', async () => {
-    const res = await app.handle(
-      new Request('http://localhost/internal/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': 'wrong-secret-value',
-        },
-        body: JSON.stringify(validPayload),
-      }),
-    )
-    expect(res.status).toBe(401)
-  })
-
-  it('returns 200 OK when X-Internal-Secret is correct', async () => {
-    const res = await app.handle(
-      new Request('http://localhost/internal/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': TEST_SECRET,
-        },
         body: JSON.stringify(validPayload),
       }),
     )
@@ -106,10 +76,7 @@ describe('translateRoutes', () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': TEST_SECRET,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invalid: 'payload' }),
       }),
     )

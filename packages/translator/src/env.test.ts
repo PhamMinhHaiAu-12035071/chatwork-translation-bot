@@ -7,7 +7,6 @@ const baseEnv = z.object({
   CHATWORK_DESTINATION_ROOM_ID: z.coerce.number().int().positive(),
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
-  INTERNAL_TRANSLATE_SECRET: z.string().min(16),
 })
 
 const providerUnion = z.discriminatedUnion('AI_PROVIDER', [
@@ -35,7 +34,6 @@ const schema = baseEnv.and(providerUnion)
 const base = {
   CHATWORK_API_TOKEN: 'tok-123',
   CHATWORK_DESTINATION_ROOM_ID: '12345',
-  INTERNAL_TRANSLATE_SECRET: 'minimum-16-chars-secret',
 }
 
 describe('env schema - gemini branch', () => {
@@ -139,16 +137,6 @@ describe('env schema - base fields', () => {
     const result = schema.safeParse({
       ...base,
       AI_PROVIDER: 'unknown-provider',
-      GOOGLE_GENERATIVE_AI_API_KEY: 'gkey',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects INTERNAL_TRANSLATE_SECRET shorter than 16 chars', () => {
-    const result = schema.safeParse({
-      ...base,
-      INTERNAL_TRANSLATE_SECRET: 'tooshort',
-      AI_PROVIDER: 'gemini',
       GOOGLE_GENERATIVE_AI_API_KEY: 'gkey',
     })
     expect(result.success).toBe(false)

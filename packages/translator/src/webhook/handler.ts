@@ -35,7 +35,10 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
   const startMs = Date.now()
 
   try {
-    const result = await translateWithPolicy(service, cleanText)
+    const policyOptions = plugin.manifest.timeoutMs
+      ? { timeoutMs: plugin.manifest.timeoutMs }
+      : undefined
+    const result = await translateWithPolicy(service, cleanText, policyOptions)
     const latencyMs = Date.now() - startMs
 
     logTranslationRequest({

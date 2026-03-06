@@ -1,23 +1,16 @@
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
 import type { cursorPlugin as cursorPluginType } from './cursor-plugin'
 
-let mockSourceLang = 'English'
-let mockTranslated = 'Xin chào từ Cursor'
+let mockResponseText = '{"sourceLang": "Japanese", "translated": "Xin chào thế giới"}'
 
-const generateTextMock = mock((_config: unknown) =>
-  Promise.resolve({
-    output: { sourceLang: mockSourceLang, translated: mockTranslated },
-  }),
+const generateTextMock = mock((_config: unknown) => Promise.resolve({ text: mockResponseText }))
+
+const createOpenAICompatibleMock = mock((_opts: unknown) =>
+  mock((_modelId: string) => ({ provider: 'cursor', modelId: _modelId })),
 )
-
-const outputObjectMock = mock((config: unknown) => config)
-const createOpenAICompatibleMock = mock((_config: unknown) => {
-  return (_modelId: string) => ({ provider: 'cursor', modelId: _modelId })
-})
 
 void mock.module('ai', () => ({
   generateText: generateTextMock,
-  Output: { object: outputObjectMock },
 }))
 
 void mock.module('@ai-sdk/openai-compatible', () => ({
@@ -36,40 +29,76 @@ describe('cursorPlugin', () => {
     expect(cursorPlugin.manifest.id).toBe('cursor')
   })
 
-  it('manifest defaultModel is claude-sonnet-4-5', () => {
-    expect(cursorPlugin.manifest.defaultModel).toBe('claude-sonnet-4-5')
+  it('create requires baseUrl', () => {
+    expect(() => cursorPlugin.create({ modelId: 'claude-sonnet-4-5' })).toThrow(
+      'cursor provider requires baseUrl',
+    )
   })
 
-  it('manifest supportedModels contains all cursor models', () => {
-    expect(cursorPlugin.manifest.supportedModels).toContain('claude-sonnet-4-5')
-    expect(cursorPlugin.manifest.supportedModels).toContain('gpt-4o')
-    expect(cursorPlugin.manifest.supportedModels).toContain('cursor-small')
-  })
-
-  it('create returns a service that translates text', async () => {
-    mockSourceLang = 'English'
-    mockTranslated = 'Xin chào từ Cursor'
+  it('translates pure JSON response', async () => {
+    mockResponseText = '{"sourceLang": "English", "translated": "Xin chào"}'
     const service = cursorPlugin.create({
       modelId: 'claude-sonnet-4-5',
-      baseUrl: 'http://localhost:3040',
+      baseUrl: 'http://127.0.0.1:8765/v1',
     })
-    const result = await service.translate('Hello from Cursor')
-    expect(result.cleanText).toBe('Hello from Cursor')
-    expect(result.translatedText).toBe('Xin chào từ Cursor')
+    const result = await service.translate('Hello')
+    expect(result.cleanText).toBe('Hello')
+    expect(result.translatedText).toBe('Xin chào')
     expect(result.sourceLang).toBe('English')
     expect(result.targetLang).toBe('Vietnamese')
+    expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('throws if baseUrl is missing', () => {
-    expect(() => cursorPlugin.create({ modelId: 'claude-sonnet-4-5' })).toThrow(/baseUrl/)
+  it('translates JSON wrapped in markdown code block', async () => {
+    mockResponseText =
+      'Here is the translation:\n```json\n{"sourceLang": "Japanese", "translated": "Xin chào"}\n```'
+    const service = cursorPlugin.create({
+      modelId: 'claude-sonnet-4-5',
+      baseUrl: 'http://127.0.0.1:8765/v1',
+    })
+    const result = await service.translate('こんにちは')
+    expect(result.translatedText).toBe('Xin chào')
+    expect(result.sourceLang).toBe('Japanese')
   })
 
-  it('wraps API errors in TranslationError', async () => {
-    generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('proxy down')))
+  it('throws INVALID_RESPONSE on invalid JSON schema', async () => {
+    mockResponseText = '{"wrong_field": "value"}'
     const { TranslationError } = await import('@chatwork-bot/core')
     const service = cursorPlugin.create({
       modelId: 'claude-sonnet-4-5',
-      baseUrl: 'http://localhost:3040',
+      baseUrl: 'http://127.0.0.1:8765/v1',
+    })
+    try {
+      await service.translate('test')
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(TranslationError)
+      expect((error as InstanceType<typeof TranslationError>).code).toBe('INVALID_RESPONSE')
+    }
+  })
+
+  it('throws API_ERROR on network failure', async () => {
+    generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('connection refused')))
+    const { TranslationError } = await import('@chatwork-bot/core')
+    const service = cursorPlugin.create({
+      modelId: 'claude-sonnet-4-5',
+      baseUrl: 'http://127.0.0.1:8765/v1',
+    })
+    try {
+      await service.translate('test')
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(TranslationError)
+      expect((error as InstanceType<typeof TranslationError>).code).toBe('API_ERROR')
+    }
+  })
+
+  it('throws API_ERROR when response contains no JSON', async () => {
+    mockResponseText = 'Sorry, I cannot translate that text.'
+    const { TranslationError } = await import('@chatwork-bot/core')
+    const service = cursorPlugin.create({
+      modelId: 'claude-sonnet-4-5',
+      baseUrl: 'http://127.0.0.1:8765/v1',
     })
     try {
       await service.translate('test')

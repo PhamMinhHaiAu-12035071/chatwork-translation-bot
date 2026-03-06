@@ -32,14 +32,14 @@ describe('translateWithPolicy', () => {
     let attempt = 0
     const service = makeService(() => {
       attempt++
-      if (attempt < 3) {
+      if (attempt < 2) {
         return Promise.reject(new TranslationError('transient', 'API_ERROR'))
       }
       return Promise.resolve(okResult)
     })
     const result = await policy(service, 'Hello')
     expect(result.translatedText).toBe('Xin chào')
-    expect(attempt).toBe(3)
+    expect(attempt).toBe(2)
   })
 
   it('does not retry on QUOTA_EXCEEDED (non-transient)', async () => {
@@ -74,7 +74,7 @@ describe('translateWithPolicy', () => {
     expect(attempt).toBe(1)
   })
 
-  it('stops retrying after 2 retries (3 total attempts) on persistent API_ERROR', async () => {
+  it('stops retrying after 1 retry (2 total attempts) on persistent API_ERROR', async () => {
     const policy = await getPolicy()
     let attempt = 0
     const service = makeService(() => {
@@ -87,6 +87,6 @@ describe('translateWithPolicy', () => {
     } catch {
       // expected
     }
-    expect(attempt).toBe(3)
+    expect(attempt).toBe(2)
   })
 })

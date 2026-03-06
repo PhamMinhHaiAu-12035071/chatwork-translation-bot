@@ -12,6 +12,7 @@ export interface ProviderManifest {
   readonly capabilities: {
     readonly streaming: boolean
   }
+  readonly timeoutMs?: number
 }
 
 export interface ProviderPlugin {

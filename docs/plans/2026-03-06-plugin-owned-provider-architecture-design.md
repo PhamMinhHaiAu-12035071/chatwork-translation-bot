@@ -1,5 +1,7 @@
 # Plugin-Owned Provider Architecture
 
+> **Implementation:** See [`2026-03-06-plugin-owned-provider-architecture.md`](./2026-03-06-plugin-owned-provider-architecture.md) for the step-by-step implementation plan.
+
 ## Problem
 
 The current codebase has a tightly coupled provider/model system:
@@ -82,20 +84,25 @@ const envSchema = z.object({
 
 Each provider defines its own `as const` array internally:
 
-**@chatwork-bot/provider-gemini:**
+**@chatwork-bot/provider-gemini (10 models, default: `gemini-2.5-pro`):**
 
-- `gemini-2.5-pro` (default), `gemini-2.0-flash`
+- Gemini 3.1 (Feb 2026): `gemini-3.1-pro-preview`, `gemini-3.1-flash`, `gemini-3.1-flash-lite`
+- Gemini 3 GA (Nov 2025): `gemini-3-pro-preview`, `gemini-3-flash`
+- Gemini 2.5 (stable): `gemini-2.5-pro` _(default)_, `gemini-2.5-flash`, `gemini-2.5-flash-lite`
+- Gemini 2.0 (older): `gemini-2.0-flash`
 
-**@chatwork-bot/provider-openai:**
+**@chatwork-bot/provider-openai (11 models, default: `gpt-5.4`):**
 
-- `gpt-4o` (default), `gpt-4o-mini`
+- GPT-5.x frontier: `gpt-5.4` _(default)_, `gpt-5.4-pro`, `gpt-5.2`, `gpt-5.3-codex`, `gpt-5-mini`, `gpt-5-nano`
+- GPT-4.1: `gpt-4.1`, `gpt-4.1-mini`
+- GPT-4o (deprecated in ChatGPT, API still available): `gpt-4o`, `gpt-4o-mini`
 
-**@chatwork-bot/provider-cursor (17 models from 4 vendors + Cursor own):**
+**@chatwork-bot/provider-cursor (19 models from 4 vendors + Cursor own, default: `claude-sonnet-4-5`):**
 
 - Anthropic: `claude-sonnet-4`, `claude-sonnet-4-5`, `claude-sonnet-4-5-thinking`, `claude-sonnet-4-6`, `claude-sonnet-4-6-thinking`, `claude-opus-4-5`, `claude-opus-4-5-thinking`, `claude-opus-4-6`, `claude-opus-4-6-thinking`
-- Google: `gemini-2.5-flash`, `gemini-3-flash`, `gemini-3-pro`
+- Google (Gemini 3 GA): `gemini-2.5-flash`, `gemini-3-flash`, `gemini-3-pro`
 - OpenAI: `gpt-5.2`, `gpt-5.3-codex`
-- Cursor: `composer-1`, `composer-1.5`, `cursor-small`
+- Cursor native: `composer-1`, `composer-1.5`, `cursor-small`
 
 ### Startup Banner
 

@@ -6,8 +6,12 @@ export interface TranslationResult {
   timestamp: string
 }
 
+export interface TranslateOptions {
+  signal?: AbortSignal
+}
+
 export interface ITranslationService {
-  translate(text: string): Promise<TranslationResult>
+  translate(text: string, options?: TranslateOptions): Promise<TranslationResult>
 }
 
 export class TranslationError extends Error {

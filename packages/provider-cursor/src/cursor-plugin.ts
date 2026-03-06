@@ -9,6 +9,7 @@ export const cursorPlugin: ProviderPlugin = {
     supportedModels: CURSOR_MODEL_VALUES,
     defaultModel: DEFAULT_CURSOR_MODEL,
     capabilities: { streaming: false },
+    timeoutMs: 120_000,
   },
   create(ctx: ProviderCreateContext): ITranslationService {
     if (!ctx.baseUrl) {
