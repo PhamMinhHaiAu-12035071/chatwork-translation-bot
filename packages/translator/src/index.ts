@@ -1,5 +1,8 @@
 import { env } from './env'
+import { registerAllProviders } from '~/bootstrap/register-providers'
 import { createServer } from './server'
+
+registerAllProviders()
 
 const server = createServer()
 

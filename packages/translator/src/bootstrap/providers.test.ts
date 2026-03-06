@@ -1,18 +1,29 @@
-import { describe, expect, it } from 'bun:test'
+import { beforeAll, describe, expect, it } from 'bun:test'
+import { listProviderPlugins, resetProviderRegistryForTest } from '@chatwork-bot/core'
 
-describe('provider package resolution', () => {
-  it('can import @chatwork-bot/provider-gemini', async () => {
-    const mod = await import('@chatwork-bot/provider-gemini')
-    expect(mod).toBeDefined()
+describe('registerAllProviders', () => {
+  beforeAll(async () => {
+    resetProviderRegistryForTest()
+    const { registerAllProviders } = await import('./register-providers')
+    registerAllProviders()
   })
 
-  it('can import @chatwork-bot/provider-openai', async () => {
-    const mod = await import('@chatwork-bot/provider-openai')
-    expect(mod).toBeDefined()
+  it('registers exactly 3 providers', () => {
+    expect(listProviderPlugins()).toHaveLength(3)
   })
 
-  it('can import @chatwork-bot/provider-cursor', async () => {
-    const mod = await import('@chatwork-bot/provider-cursor')
-    expect(mod).toBeDefined()
+  it('registers gemini provider', () => {
+    const ids = listProviderPlugins().map((p) => p.manifest.id)
+    expect(ids).toContain('gemini')
+  })
+
+  it('registers openai provider', () => {
+    const ids = listProviderPlugins().map((p) => p.manifest.id)
+    expect(ids).toContain('openai')
+  })
+
+  it('registers cursor provider', () => {
+    const ids = listProviderPlugins().map((p) => p.manifest.id)
+    expect(ids).toContain('cursor')
   })
 })
