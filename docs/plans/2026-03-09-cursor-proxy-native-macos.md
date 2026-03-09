@@ -19,6 +19,12 @@ Trước khi bắt tay vào làm, hãy đọc:
 - `docker-compose.dev.yml` — File hiện tại (cần sửa)
 - `ai_rules/commands.md` — Cần update Cursor Provider section
 
+**File states** (verified via `git status`):
+
+- `scripts/dev.sh` — untracked (created but not committed yet) → overwrite
+- `docker-compose.dev.yml` — tracked, modified → edit in place
+- `Dockerfile.cursor-proxy` — untracked → delete with `rm` (not `git rm`)
+
 **Commit scope hợp lệ** (xem `ai_rules/commit-conventions.md`):
 `repo`, `translator`, `core`, `webhook-logger`, etc.
 
@@ -282,12 +288,6 @@ ls Dockerfile.cursor-proxy 2>/dev/null && echo "exists" || echo "not found"
 ```
 
 **Step 2: Xóa file**
-
-```bash
-git rm Dockerfile.cursor-proxy
-```
-
-Nếu file chưa được track bởi git:
 
 ```bash
 rm Dockerfile.cursor-proxy
