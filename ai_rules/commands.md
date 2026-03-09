@@ -3,18 +3,31 @@
 ## Development
 
 ```bash
-bun run dev          # Run translator with hot-reload
+# First-time setup (for IDE type-checking only — Docker doesn't need this):
+bun install
+
+# Start all services (translator + webhook-logger + localtunnel):
+bun run dev
+
+# Stop all services:
+bun run dev:down
+
+# Tail logs from all services:
+bun run dev:logs
 ```
 
 ### Cursor Provider (local dev)
 
 ```bash
-# 1. Start the cursor proxy (separate terminal):
-bun run cursor-proxy
+# Starts translator + webhook-logger + localtunnel + cursor-proxy:
+bun run dev:cursor
 
-# 2. Start the translator server:
-AI_PROVIDER=cursor CURSOR_API_URL=http://localhost:8765/v1 bun run dev
+# Stop:
+bun run dev:down
 ```
+
+> `bun run dev` starts the full stack via Docker Compose (`docker-compose.dev.yml`).
+> Services run with hot-reload via volume mounts. Localtunnel auto-restarts if it drops.
 
 ## Build
 
@@ -45,10 +58,25 @@ bun test packages/core/src/utils/parse-command.test.ts     # Run single file
 
 ## Docker
 
+### Dev (hot-reload, all services, no build needed)
+
 ```bash
-docker compose up            # Run on port 3000 with healthcheck
-docker compose up --build    # Rebuild image and run
+bun run dev           # Start: translator + webhook-logger + localtunnel
+bun run dev:cursor    # Start with cursor-proxy (COMPOSE_PROFILES=cursor)
+bun run dev:down      # Stop all dev services
+bun run dev:logs      # Tail logs from all dev services
 ```
+
+### Production (distroless builds)
+
+```bash
+bun run start                  # docker compose up (uses docker-compose.yml)
+bun run start:down             # docker compose down
+docker compose up --build      # Rebuild production images and start
+```
+
+> Dev uses `docker-compose.dev.yml` (standalone file, not an override).
+> Prod uses `docker-compose.yml` (distroless images, no volume mounts).
 
 ## Standards Verification
 
