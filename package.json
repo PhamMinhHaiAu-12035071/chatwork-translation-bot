@@ -48,6 +48,7 @@
     "@types/bun": "latest",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "concurrently": "^9.2.1",
     "cursor-api-proxy": "github:anyrobert/cursor-api-proxy",
     "eslint": "^9.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
