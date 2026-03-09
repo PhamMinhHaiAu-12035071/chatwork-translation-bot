@@ -1,18 +1,27 @@
 import { env } from './env'
+import { getProviderPlugin } from '@chatwork-bot/core'
 import { registerAllProviders } from '~/bootstrap/register-providers'
 import { runStartupGuards } from '~/bootstrap/startup-guards'
+import { logStartupBanner } from '~/bootstrap/startup-banner'
 import { createServer } from './server'
 
 registerAllProviders()
 await runStartupGuards(env)
+
+const activePlugin = getProviderPlugin(env.AI_PROVIDER)
+const activeModel = env.AI_MODEL ?? activePlugin.manifest.defaultModel
 
 const server = createServer()
 
 server.listen(env.PORT)
 
 console.log(`[translator] AI Translation Service started on port ${env.PORT.toString()}`)
-console.log(`[translator] Provider: ${env.AI_PROVIDER}`)
-console.log(`[translator] Environment: ${env.NODE_ENV}`)
+logStartupBanner({
+  provider: env.AI_PROVIDER,
+  model: activeModel,
+  port: env.PORT,
+  nodeEnv: env.NODE_ENV,
+})
 console.log(`[translator] Health check: http://localhost:${env.PORT.toString()}/health`)
 console.log(
   `[translator] Internal endpoint: http://localhost:${env.PORT.toString()}/internal/translate`,
