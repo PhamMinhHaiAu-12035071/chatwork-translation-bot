@@ -41,6 +41,7 @@ export const openaiPlugin: ProviderPlugin = {
     supportedModels: OPENAI_MODEL_VALUES,
     defaultModel: DEFAULT_OPENAI_MODEL,
     capabilities: { streaming: false },
+    requiredEnvKeys: ['OPENAI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ITranslationService {
     return new OpenAITranslationService(ctx.modelId)

@@ -15,6 +15,7 @@ function makePlugin(id: string): ProviderPlugin {
       supportedModels: ['model-x'] as const,
       defaultModel: 'model-x',
       capabilities: { streaming: false },
+      requiredEnvKeys: [],
     },
     create: () => ({ translate: () => Promise.reject(new Error('not implemented')) }),
   }

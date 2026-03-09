@@ -9,6 +9,7 @@ describe('ProviderPlugin contract', () => {
       supportedModels: ['model-a', 'model-b'] as const,
       defaultModel: 'model-a',
       capabilities: { streaming: false },
+      requiredEnvKeys: [],
     }
 
     const plugin: ProviderPlugin = {

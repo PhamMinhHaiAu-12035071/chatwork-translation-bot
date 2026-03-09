@@ -20,6 +20,7 @@ describe('runStartupGuards', () => {
         supportedModels: ['m'],
         defaultModel: 'm',
         capabilities: { streaming: false },
+        requiredEnvKeys: [],
       },
       create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })
@@ -55,6 +56,7 @@ describe('runStartupGuards', () => {
         supportedModels: ['m'],
         defaultModel: 'm',
         capabilities: { streaming: false },
+        requiredEnvKeys: [],
       },
       create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })

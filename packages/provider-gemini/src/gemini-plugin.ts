@@ -41,6 +41,7 @@ export const geminiPlugin: ProviderPlugin = {
     supportedModels: GEMINI_MODEL_VALUES,
     defaultModel: DEFAULT_GEMINI_MODEL,
     capabilities: { streaming: false },
+    requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ITranslationService {
     return new GeminiTranslationService(ctx.modelId)

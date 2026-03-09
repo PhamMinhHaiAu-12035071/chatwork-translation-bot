@@ -13,6 +13,7 @@ describe('GET /health/provider', () => {
         supportedModels: ['gemini-2.5-pro'] as readonly string[],
         defaultModel: 'gemini-2.5-pro',
         capabilities: { streaming: false },
+        requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
       },
       create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })
