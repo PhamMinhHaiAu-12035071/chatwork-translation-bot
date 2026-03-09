@@ -1,2 +1,7 @@
-export { TranslationSchema, buildTranslationPrompt } from './translation-prompt'
+export {
+  TranslationSchema,
+  buildTranslationPrompt,
+  buildSystemPrompt,
+  buildUserPrompt,
+} from './translation-prompt'
 export type { TranslationOutput } from './translation-prompt'
