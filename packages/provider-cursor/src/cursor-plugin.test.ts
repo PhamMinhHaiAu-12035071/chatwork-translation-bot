@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
+import { CURSOR_MODEL_VALUES, DEFAULT_CURSOR_MODEL } from './cursor-plugin'
 import type { cursorPlugin as cursorPluginType } from './cursor-plugin'
 
 let mockResponseText = '{"sourceLang": "Japanese", "translated": "Xin chào thế giới"}'
@@ -16,6 +17,35 @@ void mock.module('ai', () => ({
 void mock.module('@ai-sdk/openai-compatible', () => ({
   createOpenAICompatible: createOpenAICompatibleMock,
 }))
+
+describe('cursor model values', () => {
+  it('includes confirmed Anthropic models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('claude-sonnet-4-5')
+    expect(CURSOR_MODEL_VALUES).toContain('claude-sonnet-4-6')
+    expect(CURSOR_MODEL_VALUES).toContain('claude-opus-4-5')
+  })
+
+  it('includes Google models (Gemini 3 GA Nov 2025)', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-2.5-flash')
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-3-flash')
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-3-pro')
+  })
+
+  it('includes OpenAI models (GPT-5 API available 2026)', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.2')
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.3-codex')
+  })
+
+  it('includes Cursor-native models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('cursor-small')
+    expect(CURSOR_MODEL_VALUES).toContain('composer-1')
+  })
+
+  it('default model is in supported list', () => {
+    expect(CURSOR_MODEL_VALUES).toContain(DEFAULT_CURSOR_MODEL)
+    expect(DEFAULT_CURSOR_MODEL).toBe('claude-sonnet-4-5')
+  })
+})
 
 describe('cursorPlugin', () => {
   let cursorPlugin: typeof cursorPluginType
