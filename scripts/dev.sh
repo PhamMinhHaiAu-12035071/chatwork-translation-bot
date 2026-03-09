@@ -15,15 +15,15 @@ if [ "$ACTION" = "up" ]; then
       --names "cursor-proxy,docker" \
       --prefix-colors "cyan,green" \
       "bun run cursor-proxy" \
-      "docker compose -f docker-compose.dev.yml up"
+      "docker compose -f docker-compose.dev.yml up --remove-orphans"
   else
-    exec docker compose -f docker-compose.dev.yml up
+    exec docker compose -f docker-compose.dev.yml up --remove-orphans
   fi
 
 elif [ "$ACTION" = "down" ]; then
   # Kill cursor-proxy native process if running (matches node process running cli.js)
   pkill -f "cursor-api-proxy" 2>/dev/null || true
-  exec docker compose -f docker-compose.dev.yml down
+  exec docker compose -f docker-compose.dev.yml down --remove-orphans
 
 else
   # Pass-through: logs, ps, pull, config, etc.
