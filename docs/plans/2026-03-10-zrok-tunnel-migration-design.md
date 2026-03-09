@@ -70,8 +70,10 @@ zrok is an infrastructure layer only — no application code changes.
 
 ```yaml
 # docker-compose.dev.yml — service zrok
+# Pin to a specific version tag for reproducibility.
+# Check latest stable at: https://hub.docker.com/r/openziti/zrok/tags
 zrok:
-  image: openziti/zrok
+  image: openziti/zrok:latest # replace with specific tag e.g. openziti/zrok:1.0.0
   restart: unless-stopped
   networks: [chatwork-net]
   volumes:
@@ -109,8 +111,10 @@ ZROK_UNIQUE_NAME=your-reserved-share-name
 
 ## One-Time Setup (outside Docker)
 
+> **CLI version note**: The commands below use the zrok 1.x CLI syntax (`zrok reserve public`, `zrok share reserved`). If using an older zrok 0.4.x installation, commands may differ — verify against [zrok docs](https://docs.zrok.io/docs/getting-started/). The Docker image version should match the CLI version used to enable the environment; mismatches can cause `environment.json` incompatibility.
+
 1. Register at zrok.io, get enable token
-2. Install zrok CLI locally
+2. Install zrok CLI locally (1.x recommended)
 3. `zrok enable <token>`
 4. `zrok reserve public http://localhost:3001 --unique-name <name>`
 5. Note the reserved URL → configure as Chatwork webhook URL with path `/webhook`

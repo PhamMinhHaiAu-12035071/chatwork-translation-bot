@@ -69,8 +69,9 @@ Add the following service block just before the `networks:` section:
 ```yaml
 # zrok reserved public share — stable HTTPS URL for Chatwork webhook
 # One-time setup: see docs/operations/zrok.md
+# Pin to a specific version for reproducibility — check https://hub.docker.com/r/openziti/zrok/tags
 zrok:
-  image: openziti/zrok
+  image: openziti/zrok:latest # replace with specific tag e.g. openziti/zrok:1.0.0
   restart: unless-stopped
   networks: [chatwork-net]
   volumes:
