@@ -125,7 +125,11 @@ services:
     restart: unless-stopped
     networks: [chatwork-net]
     healthcheck:
-      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
+      test:
+        - 'CMD'
+        - 'bun'
+        - '--eval'
+        - "const r = await fetch('http://localhost:3000/health'); if (!r.ok) process.exit(1)"
       interval: 30s
       timeout: 10s
       retries: 3
