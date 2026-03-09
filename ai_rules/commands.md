@@ -6,7 +6,7 @@
 # First-time setup (for IDE type-checking only — Docker doesn't need this):
 bun install
 
-# Start all services (translator + webhook-logger + localtunnel):
+# Start all services (translator + webhook-logger + zrok):
 bun run dev
 
 # Stop all services:
@@ -64,7 +64,7 @@ bun test packages/core/src/utils/parse-command.test.ts     # Run single file
 ### Dev (hot-reload, all services, no build needed)
 
 ```bash
-bun run dev           # Start: translator + webhook-logger + localtunnel (+ cursor-proxy if AI_PROVIDER=cursor)
+bun run dev           # Start: translator + webhook-logger + zrok (+ cursor-proxy if AI_PROVIDER=cursor)
 bun run dev:down      # Stop all dev services
 bun run dev:logs      # Tail logs from all dev services
 ```
