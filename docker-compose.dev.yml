@@ -80,8 +80,8 @@ services:
     environment:
       - ZROK_ENABLE_TOKEN=${ZROK_ENABLE_TOKEN}
       - ZROK_UNIQUE_NAME=${ZROK_UNIQUE_NAME}
-    command:
-      - sh
+    entrypoint:
+      - /bin/sh
       - -c
       - |
         [ -f /home/ziggy/.zrok/environment.json ] || zrok enable ${ZROK_ENABLE_TOKEN}
