@@ -80,14 +80,15 @@ services:
     environment:
       - ZROK_ENABLE_TOKEN=${ZROK_ENABLE_TOKEN}
       - ZROK_UNIQUE_NAME=${ZROK_UNIQUE_NAME}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        [ -f /home/ziggy/.zrok/environment.json ] || zrok enable ${ZROK_ENABLE_TOKEN}
-        zrok share reserved ${ZROK_UNIQUE_NAME} \
-          --override-endpoint http://webhook-logger:3001 \
-          --headless
+    # Image entrypoint handles `zrok enable ${ZROK_ENABLE_TOKEN}` non-interactively
+    # when environment.json is missing. Command is passed as args to zrok.
+    command:
+      - share
+      - reserved
+      - ${ZROK_UNIQUE_NAME}
+      - --override-endpoint
+      - http://webhook-logger:3001
+      - --headless
     depends_on:
       webhook-logger:
         condition: service_healthy
