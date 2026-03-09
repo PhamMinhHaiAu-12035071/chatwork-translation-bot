@@ -32,8 +32,8 @@ describe('openaiPlugin', () => {
     expect(openaiPlugin.manifest.id).toBe('openai')
   })
 
-  it('manifest defaultModel is gpt-4o', () => {
-    expect(openaiPlugin.manifest.defaultModel).toBe('gpt-4o')
+  it('manifest defaultModel is gpt-5.4', () => {
+    expect(openaiPlugin.manifest.defaultModel).toBe('gpt-5.4')
   })
 
   it('manifest supportedModels contains gpt-4o and gpt-4o-mini', () => {
