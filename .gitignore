@@ -35,3 +35,6 @@ output/
 
 # Worktrees
 .worktrees/
+
+# zrok local environment state (bind mount for docker-compose.dev.yml)
+.docker/
