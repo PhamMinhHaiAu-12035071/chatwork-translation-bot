@@ -6,7 +6,9 @@
 
 **Architecture:** cursor-proxy chạy native trên macOS (port 8765). Docker services kết nối đến nó qua `host.docker.internal:8765` — magic hostname của Docker Desktop for Mac tự resolve về macOS host. `scripts/dev.sh` sử dụng `bunx concurrently` để chạy cursor-proxy và docker compose song song với colored logs khi AI_PROVIDER=cursor.
 
-**Tech Stack:** Bun v1.3+ · sh (POSIX shell) · bunx concurrently · Docker Compose v2
+**Tech Stack:** Bun v1.3+ · sh (POSIX shell) · `concurrently` (devDependency) · Docker Compose v2
+
+> **macOS only:** `host.docker.internal` là Docker Desktop for Mac/Windows hostname. Linux không có built-in, cần `extra_hosts: host.docker.internal:host-gateway`. Cursor provider là local dev only nên giới hạn macOS là acceptable.
 
 ---
 
@@ -76,7 +78,7 @@ fi
 
 **Key decisions:**
 
-- `bunx concurrently`: không cần install, bun tự cache. Colored logs cho dễ đọc.
+- `concurrently` (devDependency, `bun add -d concurrently`): Colored logs, parallel process management. Explicit trong lockfile cho reproducibility.
 - `pkill -f "cursor-api-proxy"`: tìm process theo tên binary, không cần PID file.
 - `exec` thay thế shell process (không tạo thêm process cha thừa).
 

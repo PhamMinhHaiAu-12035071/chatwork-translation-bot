@@ -6,7 +6,7 @@
 
 **Architecture:** `scripts/dev.sh` dùng `bunx concurrently` để chạy `cursor-proxy` (native macOS) và `docker compose` song song khi `AI_PROVIDER=cursor`. Docker containers kết nối đến cursor-proxy qua `host.docker.internal:8765` — magic hostname của Docker Desktop for Mac. Cursor-proxy service bị xóa hoàn toàn khỏi `docker-compose.dev.yml`.
 
-**Tech Stack:** Bun v1.3+ · POSIX sh · `bunx concurrently` · Docker Compose v2 · Monorepo
+**Tech Stack:** Bun v1.3+ · POSIX sh · `concurrently` (devDependency) · Docker Compose v2 · Monorepo
 
 ---
 
@@ -21,6 +21,94 @@ Trước khi bắt tay vào làm, hãy đọc:
 
 **Commit scope hợp lệ** (xem `ai_rules/commit-conventions.md`):
 `repo`, `translator`, `core`, `webhook-logger`, etc.
+
+---
+
+### Task 0: Install concurrently as devDependency
+
+**Files:**
+
+- Modify: `package.json` (devDependencies), `bun.lock`
+
+**Step 1: Install package**
+
+```bash
+bun add -d concurrently
+```
+
+Expected: `concurrently` xuất hiện trong `devDependencies` của `package.json`.
+
+**Step 2: Verify**
+
+```bash
+bunx concurrently --version
+```
+
+Expected: in ra version number (e.g. `9.x.x`), không có network fetch warning.
+
+**Step 3: Commit**
+
+```bash
+git add package.json bun.lock
+git commit -m "chore(repo): add concurrently devDependency for dev.sh parallel processes"
+```
+
+---
+
+### Task 0.5: Fix startup-guard — đổi throw → warn cho cursor proxy check
+
+**Files:**
+
+- Modify: `packages/translator/src/bootstrap/startup-guards.ts` (lines 38-52)
+
+**Context:** `startup-guards.ts` hiện throw `ProviderRegistryBootError` nếu cursor proxy không reachable tại boot. Khi `concurrently` khởi động song song, translator có thể start trước cursor-proxy vài giây → throw → container crash → Docker restart sau 30s. Đổi sang `console.warn` thì translator start được, translation requests sẽ fail gracefully nếu proxy chưa sẵn sàng.
+
+**Step 1: Đọc đoạn cần sửa**
+
+```bash
+sed -n '38,53p' packages/translator/src/bootstrap/startup-guards.ts
+```
+
+Expected: thấy block `if (env.AI_PROVIDER === 'cursor')` với `throw new ProviderRegistryBootError`.
+
+**Step 2: Đổi throw → console.warn**
+
+Tìm:
+
+```typescript
+    if (!ok) {
+      throw new ProviderRegistryBootError(
+        `[startup] Cursor proxy not reachable at ${proxyUrl}\n` + ...
+      )
+    }
+```
+
+Thay bằng:
+
+```typescript
+if (!ok) {
+  console.warn(
+    `[startup] ⚠ Cursor proxy not reachable at ${proxyUrl} — translation requests will fail.\n` +
+      '  Fix: bun run dev   (auto-starts cursor-proxy natively when AI_PROVIDER=cursor)\n' +
+      '       bun run cursor-proxy  (native dev, separate terminal)',
+  )
+}
+```
+
+**Step 3: Typecheck**
+
+```bash
+bun run typecheck
+```
+
+Expected: no errors.
+
+**Step 4: Commit**
+
+```bash
+git add packages/translator/src/bootstrap/startup-guards.ts
+git commit -m "fix(translator): downgrade cursor proxy startup check to warn — prevents race on concurrent boot"
+```
 
 ---
 

@@ -40,13 +40,13 @@ export async function runStartupGuards(env: StartupEnv): Promise<void> {
     const ok = await fetch(`${proxyUrl}/models`)
       .then((r) => r.ok)
       .catch(() => false)
+
     if (!ok) {
-      console.error(
-        `[startup] Cursor proxy not reachable at ${proxyUrl}\n` +
-          '  Fix: Start the proxy first →  bun run cursor-proxy\n' +
-          '  Then: bun run dev',
+      console.warn(
+        `[startup] ⚠ Cursor proxy not reachable at ${proxyUrl} — translation requests will fail.\n` +
+          '  Fix: bun run dev   (auto-starts cursor-proxy natively when AI_PROVIDER=cursor)\n' +
+          '       bun run cursor-proxy  (native dev, separate terminal)',
       )
-      process.exit(1)
     }
   }
 }
