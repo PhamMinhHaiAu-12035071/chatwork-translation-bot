@@ -13,7 +13,6 @@
     "start:down": "docker compose down",
     "build": "bun build packages/translator/src/index.ts --outfile dist/server.js --target bun --minify",
     "logger": "bun run --hot packages/webhook-logger/src/index.ts",
-    "tunnel:logger": "bunx localtunnel --port 3001 --subdomain chatwork-logger",
     "lint": "bun run --workspaces --if-present --sequential lint",
     "lint:fix": "bun run --workspaces --if-present --sequential lint:fix",
     "format": "bun run --workspaces --if-present --sequential format && prettier --write \"*.{json,md,yml,yaml}\" \"docs/**/*.md\"",
