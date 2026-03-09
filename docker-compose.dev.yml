@@ -1,0 +1,88 @@
+version: '3.9'
+
+services:
+  translator:
+    image: oven/bun:1.1-alpine
+    command: bun --hot packages/translator/src/index.ts
+    working_dir: /app
+    volumes:
+      - .:/app
+      # Anonymous volume prevents host node_modules from overriding container's
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      # Override for Docker internal networking
+      - CURSOR_API_URL=http://cursor-proxy:8765/v1
+    ports:
+      - '${PORT:-3000}:3000'
+    restart: unless-stopped
+    networks: [chatwork-net]
+    # bun:1.1-alpine has wget, but use bun --eval for consistency with production
+    healthcheck:
+      test:
+        - 'CMD'
+        - 'bun'
+        - '--eval'
+        - "const r = await fetch('http://localhost:3000/health'); if (!r.ok) process.exit(1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  webhook-logger:
+    image: oven/bun:1.1-alpine
+    command: bun --hot packages/webhook-logger/src/index.ts
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      # Override localhost → Docker service name
+      - TRANSLATOR_URL=http://translator:3000
+    ports:
+      - '${LOGGER_PORT:-3001}:3001'
+    restart: unless-stopped
+    networks: [chatwork-net]
+    depends_on:
+      translator:
+        condition: service_healthy
+
+  # Localtunnel with auto-restart loop — keeps reconnecting if disconnected
+  # URL is always https://chatwork-logger.loca.lt (set once in Chatwork)
+  tunnel:
+    image: node:20-alpine
+    restart: always
+    networks: [chatwork-net]
+    command: >
+      sh -c "while true; do
+        npx --yes localtunnel@2
+          --port 3001
+          --subdomain chatwork-logger
+          --local-host webhook-logger;
+        echo '[tunnel] Disconnected. Reconnecting in 3s...';
+        sleep 3;
+      done"
+    depends_on: [webhook-logger]
+
+  # Cursor API proxy — only starts when COMPOSE_PROFILES=cursor
+  cursor-proxy:
+    profiles: [cursor]
+    image: node:20-alpine
+    restart: unless-stopped
+    networks: [chatwork-net]
+    ports:
+      - '8765:8765'
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+      # Mount Cursor credentials from host (read-only)
+      - ${HOME}/.cursor:/root/.cursor:ro
+    command: node node_modules/cursor-api-proxy/dist/cli.js
+
+networks:
+  chatwork-net:
+    driver: bridge
