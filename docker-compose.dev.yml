@@ -12,8 +12,8 @@ services:
     env_file:
       - .env
     environment:
-      # Override for Docker internal networking
-      - CURSOR_API_URL=http://cursor-proxy:8765/v1
+      # host.docker.internal resolves to macOS host on Docker Desktop
+      - CURSOR_API_URL=http://host.docker.internal:8765/v1
     ports:
       - '${PORT:-3000}:3000'
     restart: unless-stopped
@@ -66,22 +66,6 @@ services:
         sleep 3;
       done"
     depends_on: [webhook-logger]
-
-  # Cursor API proxy — only starts when COMPOSE_PROFILES=cursor
-  cursor-proxy:
-    profiles: [cursor]
-    image: node:20-alpine
-    restart: unless-stopped
-    networks: [chatwork-net]
-    ports:
-      - '8765:8765'
-    working_dir: /app
-    volumes:
-      - .:/app
-      - /app/node_modules
-      # Mount Cursor credentials from host (read-only)
-      - ${HOME}/.cursor:/root/.cursor:ro
-    command: node node_modules/cursor-api-proxy/dist/cli.js
 
 networks:
   chatwork-net:
