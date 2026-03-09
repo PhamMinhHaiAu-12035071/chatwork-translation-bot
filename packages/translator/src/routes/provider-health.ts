@@ -10,6 +10,9 @@ export const providerHealthRoute = new Elysia().get('/health/provider', () => {
       id: p.manifest.id,
       defaultModel: p.manifest.defaultModel,
       supportedModels: p.manifest.supportedModels,
+      capabilities: p.manifest.capabilities,
+      timeoutMs: p.manifest.timeoutMs ?? null,
+      requiredEnvKeys: p.manifest.requiredEnvKeys,
     })),
   }
 })
