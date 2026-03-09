@@ -18,16 +18,19 @@ bun run dev:logs
 
 ### Cursor Provider (local dev)
 
-```bash
-# Starts translator + webhook-logger + localtunnel + cursor-proxy:
-bun run dev:cursor
+Set `AI_PROVIDER=cursor` trong `.env`. Khi đó `bun run dev` tự phát hiện và khởi động
+cursor-proxy natively trên macOS cùng với Docker services (colored logs via `concurrently`):
 
-# Stop:
+```bash
+# Auto-starts cursor-proxy (native macOS) + all Docker services:
+bun run dev
+
+# Stop cursor-proxy + all Docker services:
 bun run dev:down
 ```
 
-> `bun run dev` starts the full stack via Docker Compose (`docker-compose.dev.yml`).
-> Services run with hot-reload via volume mounts. Localtunnel auto-restarts if it drops.
+> cursor-proxy chạy native, không trong Docker. Translator kết nối đến nó qua
+> `http://host.docker.internal:8765/v1` (Docker Desktop for Mac magic hostname).
 
 ## Build
 
@@ -61,8 +64,7 @@ bun test packages/core/src/utils/parse-command.test.ts     # Run single file
 ### Dev (hot-reload, all services, no build needed)
 
 ```bash
-bun run dev           # Start: translator + webhook-logger + localtunnel
-bun run dev:cursor    # Start with cursor-proxy (COMPOSE_PROFILES=cursor)
+bun run dev           # Start: translator + webhook-logger + localtunnel (+ cursor-proxy if AI_PROVIDER=cursor)
 bun run dev:down      # Stop all dev services
 bun run dev:logs      # Tail logs from all dev services
 ```
