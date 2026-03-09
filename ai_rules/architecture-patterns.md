@@ -80,12 +80,24 @@ Model validation also happens at startup — models not in `manifest.supportedMo
 
 ## Runtime Endpoints
 
-| Endpoint              | Method | Package    | Purpose                                 |
-| --------------------- | ------ | ---------- | --------------------------------------- |
-| `/health`             | GET    | both       | Health check (returns 200 OK)           |
-| `/health/provider`    | GET    | translator | Provider registry detail (JSON)         |
-| `/webhook`            | POST   | logger     | Chatwork webhook receiver               |
-| `/internal/translate` | POST   | translator | Internal translate (shared-secret auth) |
+|| Endpoint | Method | Package | Purpose |
+|| --------------------- | ------ | ---------- | --------------------------------------- |
+|| `/health` | GET | both | Health check (returns 200 OK) |
+|| `/health/provider` | GET | translator | Provider registry detail (JSON) |
+|| `/webhook` | POST | logger | Chatwork webhook receiver |
+|| `/internal/translate` | POST | translator | Internal translate (shared-secret auth) |
+
+## Docker Service Networking (Dev + Prod)
+
+When running via Docker Compose, services communicate over the `chatwork-net` bridge network
+using Docker service names — **not** `localhost`:
+
+| From           | To         | URL                      |
+| -------------- | ---------- | ------------------------ |
+| webhook-logger | translator | `http://translator:3000` |
+
+This is injected automatically via `environment:` in the compose files. The `.env` file
+keeps `TRANSLATOR_URL=http://localhost:3000` for native dev (without Docker).
 
 ## Plugin-Owned Architecture
 
