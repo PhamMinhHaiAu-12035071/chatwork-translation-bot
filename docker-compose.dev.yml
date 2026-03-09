@@ -87,7 +87,18 @@ services:
       - -c
       - |
         [ -f /home/ziggy/.zrok/environment.json ] || zrok enable ${ZROK_ENABLE_TOKEN} --headless
-        zrok share public http://webhook-logger:3001 --headless
+        zrok share public http://webhook-logger:3001 --headless 2>&1 | while IFS= read -r line; do
+          echo "$line"
+          url=$(echo "$line" | grep -o '[a-zA-Z0-9-]*\.shares\.zrok\.io' 2>/dev/null)
+          if [ -n "$url" ]; then
+            echo ""
+            echo "============================================="
+            echo " WEBHOOK URL : https://${url}"
+            echo " -> Chatwork : Webhook settings -> URL"
+            echo "============================================="
+            echo ""
+          fi
+        done
     depends_on:
       webhook-logger:
         condition: service_healthy
