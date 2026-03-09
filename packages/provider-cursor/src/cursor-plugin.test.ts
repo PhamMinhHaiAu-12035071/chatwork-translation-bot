@@ -19,31 +19,52 @@ void mock.module('@ai-sdk/openai-compatible', () => ({
 }))
 
 describe('cursor model values', () => {
-  it('includes confirmed Anthropic models', () => {
-    expect(CURSOR_MODEL_VALUES).toContain('claude-sonnet-4-5')
-    expect(CURSOR_MODEL_VALUES).toContain('claude-sonnet-4-6')
-    expect(CURSOR_MODEL_VALUES).toContain('claude-opus-4-5')
+  it('includes Cursor Native models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('auto')
+    expect(CURSOR_MODEL_VALUES).toContain('composer-1')
+    expect(CURSOR_MODEL_VALUES).toContain('composer-1.5')
   })
 
-  it('includes Google models (Gemini 3 GA Nov 2025)', () => {
-    expect(CURSOR_MODEL_VALUES).toContain('gemini-2.5-flash')
+  it('includes Slow Request models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('sonnet-4.5')
     expect(CURSOR_MODEL_VALUES).toContain('gemini-3-flash')
     expect(CURSOR_MODEL_VALUES).toContain('gemini-3-pro')
+    expect(CURSOR_MODEL_VALUES).toContain('gemini-3.1-pro')
+    expect(CURSOR_MODEL_VALUES).toContain('kimi-k2.5')
+    expect(CURSOR_MODEL_VALUES).toContain('grok')
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.1-codex-mini')
   })
 
-  it('includes OpenAI models (GPT-5 API available 2026)', () => {
+  it('includes Fast Request models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('sonnet-4.6')
+    expect(CURSOR_MODEL_VALUES).toContain('opus-4.5')
+    expect(CURSOR_MODEL_VALUES).toContain('opus-4.6')
     expect(CURSOR_MODEL_VALUES).toContain('gpt-5.2')
     expect(CURSOR_MODEL_VALUES).toContain('gpt-5.3-codex')
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.4-high')
   })
 
-  it('includes Cursor-native models', () => {
-    expect(CURSOR_MODEL_VALUES).toContain('cursor-small')
-    expect(CURSOR_MODEL_VALUES).toContain('composer-1')
+  it('includes Max Mode models', () => {
+    expect(CURSOR_MODEL_VALUES).toContain('sonnet-4.6-thinking')
+    expect(CURSOR_MODEL_VALUES).toContain('opus-4.6-thinking')
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.3-codex-xhigh')
+    expect(CURSOR_MODEL_VALUES).toContain('gpt-5.1-codex-max')
+  })
+
+  it('does NOT include invalid models removed from proxy', () => {
+    expect(CURSOR_MODEL_VALUES).not.toContain('gpt-5-mini')
+    expect(CURSOR_MODEL_VALUES).not.toContain('cursor-small')
+    expect(CURSOR_MODEL_VALUES).not.toContain('claude-sonnet-4-5')
+    expect(CURSOR_MODEL_VALUES).not.toContain('gemini-2.5-flash')
   })
 
   it('default model is in supported list', () => {
     expect(CURSOR_MODEL_VALUES).toContain(DEFAULT_CURSOR_MODEL)
-    expect(DEFAULT_CURSOR_MODEL).toBe('claude-sonnet-4-5')
+    expect(DEFAULT_CURSOR_MODEL).toBe('sonnet-4.6')
+  })
+
+  it('contains exactly 45 models', () => {
+    expect(CURSOR_MODEL_VALUES).toHaveLength(45)
   })
 })
 
