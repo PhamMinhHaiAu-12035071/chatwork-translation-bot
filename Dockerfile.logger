@@ -1,0 +1,39 @@
+# Stage 1: Builder
+FROM oven/bun:1.1-alpine AS builder
+
+WORKDIR /app
+
+# Copy workspace config files
+COPY package.json bun.lock* ./
+COPY tsconfig.base.json ./
+
+# Copy packages
+COPY packages/core/package.json ./packages/core/
+COPY packages/webhook-logger/package.json ./packages/webhook-logger/
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source files
+COPY packages/core/src ./packages/core/src
+COPY packages/webhook-logger/src ./packages/webhook-logger/src
+
+# Build the webhook-logger
+RUN bun build packages/webhook-logger/src/index.ts \
+    --outfile dist/logger.js \
+    --target bun \
+    --minify
+
+# Stage 2: Runtime (distroless)
+FROM oven/bun:1.1-distroless AS runtime
+
+WORKDIR /app
+
+COPY --from=builder /app/dist/logger.js ./logger.js
+
+ENV NODE_ENV=production
+ENV LOGGER_PORT=3001
+
+EXPOSE 3001
+
+CMD ["bun", "run", "logger.js"]
