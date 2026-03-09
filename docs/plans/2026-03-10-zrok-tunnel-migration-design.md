@@ -30,28 +30,29 @@ zrok is an infrastructure layer only — no application code changes.
 
 ## Decisions
 
-| Decision          | Choice                           | Rationale                                                              |
-| ----------------- | -------------------------------- | ---------------------------------------------------------------------- | -------------- | --------------------------------- |
-| Environment       | Dev only                         | Production has no tunnel service; deploy to real server with public IP |
-| zrok mode         | Hosted zrok.io                   | No self-hosting complexity; free tier sufficient                       |
-| Share type        | Reserved share                   | Fixed subdomain across restarts; configure Chatwork webhook once       |
-| Compose structure | Inline in docker-compose.dev.yml | Consistent with existing tunnel pattern                                |
-| Restart strategy  | Docker `restart: unless-stopped` | zrok has internal reconnect; no custom retry script needed             |
-| Secrets           | `.env` file                      | Consistent with existing CHATWORK_API_TOKEN, GOOGLE_API_KEY pattern    |
-| Port exposure     | Keep `${LOGGER_PORT:-3001}:3001` | Dev debugging convenience; no security concern in dev                  |
-| Documentation     | `docs/operations/zrok.md`        | Separate ops doc, keep README clean                                    |
-| Init strategy     | Inline command with `            |                                                                        | true` fallback | KISS; no extra script file needed |
+| Decision          | Choice                            | Rationale                                                                                   |
+| ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| Environment       | Dev only                          | Production has no tunnel service; deploy to real server with public IP                      |
+| zrok mode         | Hosted zrok.io                    | No self-hosting complexity; free tier sufficient                                            |
+| Share type        | Reserved share                    | Fixed subdomain across restarts; configure Chatwork webhook once                            |
+| Compose structure | Inline in docker-compose.dev.yml  | Consistent with existing tunnel pattern                                                     |
+| Restart strategy  | Docker `restart: unless-stopped`  | zrok has internal reconnect; no custom retry script needed                                  |
+| Secrets           | `.env` file                       | Consistent with existing CHATWORK_API_TOKEN, GOOGLE_API_KEY pattern                         |
+| Port exposure     | Keep `${LOGGER_PORT:-3001}:3001`  | Dev debugging convenience; no security concern in dev                                       |
+| Documentation     | `docs/operations/zrok.md`         | Separate ops doc, keep README clean                                                         |
+| Init strategy     | Named volume + conditional enable | Persist `~/.zrok` across restarts; avoid creating duplicate environments in zrok.io account |
 
 ## Files Changed
 
 ### Modified
 
-| File                     | Change                                                                 |
-| ------------------------ | ---------------------------------------------------------------------- |
-| `docker-compose.dev.yml` | Remove `tunnel` service, add `zrok` service                            |
-| `.env.example`           | Remove localtunnel vars, add `ZROK_ENABLE_TOKEN`, `ZROK_UNIQUE_NAME`   |
-| `ai_rules/commands.md`   | Update "localtunnel" → "zrok" in comment strings                       |
-| `ai_rules/security.md`   | Add `ZROK_ENABLE_TOKEN`, `ZROK_UNIQUE_NAME` to Optional env vars table |
+| File                     | Change                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------- |
+| `docker-compose.dev.yml` | Remove `tunnel` service, add `zrok` service with named volume; add `zrok-env` volume section |
+| `.env.example`           | Remove localtunnel vars, add `ZROK_ENABLE_TOKEN`, `ZROK_UNIQUE_NAME`                         |
+| `package.json`           | Remove `tunnel:logger` script (`bunx localtunnel`)                                           |
+| `ai_rules/commands.md`   | Update "localtunnel" → "zrok" in comment strings                                             |
+| `ai_rules/security.md`   | Add `ZROK_ENABLE_TOKEN`, `ZROK_UNIQUE_NAME` to Optional env vars table                       |
 
 ### Created
 
@@ -73,6 +74,8 @@ zrok:
   image: openziti/zrok
   restart: unless-stopped
   networks: [chatwork-net]
+  volumes:
+    - zrok-env:/home/ziggy/.zrok # persist enable state; avoids duplicate environments
   environment:
     - ZROK_ENABLE_TOKEN=${ZROK_ENABLE_TOKEN}
     - ZROK_UNIQUE_NAME=${ZROK_UNIQUE_NAME}
@@ -80,17 +83,21 @@ zrok:
     - sh
     - -c
     - |
-      zrok enable ${ZROK_ENABLE_TOKEN} 2>/dev/null || true
+      [ -f /home/ziggy/.zrok/environment.json ] || zrok enable ${ZROK_ENABLE_TOKEN}
       zrok share reserved ${ZROK_UNIQUE_NAME} \
         --override-endpoint http://webhook-logger:3001 \
         --headless
   depends_on:
     webhook-logger:
       condition: service_healthy
+
+volumes:
+  zrok-env:
 ```
 
 No healthcheck — zrok does not expose an internal HTTP endpoint.
 Docker restart policy handles crash recovery.
+Named volume `zrok-env` persists `/home/ziggy/.zrok/environment.json` so `zrok enable` runs only once per volume lifecycle (not on every container restart).
 
 ## Environment Variables
 
@@ -109,6 +116,20 @@ ZROK_UNIQUE_NAME=your-reserved-share-name
 5. Note the reserved URL → configure as Chatwork webhook URL with path `/webhook`
 
 After this, Docker handles everything automatically on each `bun run dev`.
+
+## Rollback
+
+If zrok is unstable, revert to localtunnel:
+
+```bash
+git revert HEAD~N..HEAD   # revert all Phase A commits, or manually:
+git checkout HEAD~N -- docker-compose.dev.yml .env.example package.json \
+  ai_rules/commands.md ai_rules/security.md
+git rm --force scripts/run-localtunnel.sh 2>/dev/null; git checkout HEAD~N -- scripts/run-localtunnel.sh
+bun run dev
+```
+
+The `zrok-env` Docker volume can be removed with `docker volume rm <project>_zrok-env` if needed.
 
 ## What Does NOT Change
 
