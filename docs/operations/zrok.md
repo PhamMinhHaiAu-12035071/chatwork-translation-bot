@@ -2,68 +2,83 @@
 
 zrok provides a stable HTTPS URL for exposing `webhook-logger` to Chatwork webhooks during local development.
 
-The reserved share URL does not change across Docker restarts.
+The reserved name URL does not change across Docker restarts.
 Configure Chatwork webhook URL once, then forget about it.
 
 ---
 
 ## One-Time Setup
 
-### 1. Register and enable
+### 1. Create account and get enable token
 
 1. Create a free account at [zrok.io](https://zrok.io)
-2. Copy your **enable token** from the dashboard
-3. Install the zrok CLI (1.x recommended): follow [zrok docs](https://docs.zrok.io/docs/getting-started/)
-4. Enable your environment (run this once on your machine):
+2. Copy your **enable token** from the dashboard (Account → Enable Token)
+3. Set it in `.env`:
 
 ```bash
-zrok enable <your-enable-token>
+ZROK_ENABLE_TOKEN=<your-enable-token>
+ZROK_UNIQUE_NAME=chatwork-webhook   # or any lowercase name you prefer
 ```
 
-> **CLI version note**: The commands below use the zrok 1.x CLI syntax. If you have an older zrok 0.4.x
-> installation, commands may differ. The Docker image version (`openziti/zrok`) should match the CLI
-> version used to enable the environment — mismatched versions can cause `environment.json` incompatibility.
-
-### 2. Reserve a share
-
-Reserve a unique name — this gives you a fixed subdomain (e.g. `my-bot.share.zrok.io`):
+### 2. Start the stack once (auto-enables environment)
 
 ```bash
-zrok reserve public http://localhost:3001 --unique-name <your-unique-name>
+sh scripts/dev.sh up
 ```
 
-Note the URL in the output — it looks like:
+The zrok container runs `zrok enable` automatically on first start and saves the environment to `.docker/zrok/`.
+
+### 3. Reserve your unique name (run once)
+
+After the stack is up, open a second terminal and run:
+
+```bash
+docker exec chatwork-translation-bot-zrok-1 \
+  zrok create name ${ZROK_UNIQUE_NAME}
+```
+
+Or with the CLI directly (if installed):
+
+```bash
+ZROK_API_ENDPOINT=https://api-v2.zrok.io zrok create name chatwork-webhook
+```
+
+This reserves `chatwork-webhook.shares.zrok.io` permanently — it won't be taken by anyone else.
+
+### 4. Restart zrok to use the reserved name
+
+```bash
+sh scripts/dev.sh down && sh scripts/dev.sh up
+```
+
+The log will show:
 
 ```
-https://<your-unique-name>.share.zrok.io
+=============================================
+ WEBHOOK URL : https://chatwork-webhook.shares.zrok.io
+ -> Chatwork : Webhook settings -> URL
+=============================================
 ```
 
-### 3. Configure Chatwork webhook
+### 5. Configure Chatwork webhook
 
 In your Chatwork webhook settings, set the webhook URL to:
 
 ```
-https://<your-unique-name>.share.zrok.io/webhook
+https://chatwork-webhook.shares.zrok.io/webhook
 ```
 
-### 4. Set environment variables
-
-In your `.env` file:
-
-```bash
-ZROK_ENABLE_TOKEN=<your-enable-token>
-ZROK_UNIQUE_NAME=<your-unique-name>
-```
+This URL is now **permanent** — no need to update it after restarts.
 
 ---
 
 ## Daily Usage
 
 ```bash
-bun run dev
+sh scripts/dev.sh up
 ```
 
-That's it. zrok starts automatically as part of Docker Compose.
+That's it. zrok starts automatically, attaches to the reserved name, and the URL stays the same.
 
 ---
 
@@ -72,18 +87,16 @@ That's it. zrok starts automatically as part of Docker Compose.
 **zrok container exits immediately:**
 Check `docker compose -f docker-compose.dev.yml logs zrok` — likely `ZROK_ENABLE_TOKEN` or `ZROK_UNIQUE_NAME` is missing or invalid.
 
-**Chatwork webhook fails to reach bot:**
-Verify the reserved share is active: run `zrok status` locally. If the share was deleted, re-run `zrok reserve public`.
+**URL still random after reserving name:**
+Make sure you ran `zrok create name <name>` with the same name as `ZROK_UNIQUE_NAME` in `.env`.
 
-**URL changed unexpectedly:**
-Ephemeral shares generate new URLs on each start. Make sure you are using a **reserved** share (`zrok reserve public`), not an ephemeral one.
+**Environment already exists / 401 error:**
+The enable token is one-time use. If it failed mid-run, go to `api-v2.zrok.io` → Environments, delete the orphaned environment, generate a new token, update `.env`.
 
-**Environment already exists error on container start:**
-The named volume `zrok-env` persists `/home/ziggy/.zrok/environment.json` to avoid duplicate environments.
-If the volume is corrupt or from a different zrok account, remove it and re-enable:
+**Reset local environment:**
 
 ```bash
-docker volume rm chatwork-translation-bot_zrok-env
-# Then restart: bun run dev
-# zrok enable will run automatically on first start
+rm -rf .docker/zrok/
+# Update ZROK_ENABLE_TOKEN in .env with a fresh token
+sh scripts/dev.sh up
 ```
