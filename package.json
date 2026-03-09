@@ -6,10 +6,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "docker compose -f docker-compose.dev.yml up",
-    "dev:cursor": "COMPOSE_PROFILES=cursor docker compose -f docker-compose.dev.yml up",
-    "dev:down": "docker compose -f docker-compose.dev.yml down",
-    "dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
+    "dev": "sh scripts/dev.sh up",
+    "dev:down": "sh scripts/dev.sh down",
+    "dev:logs": "sh scripts/dev.sh logs -f",
     "start": "docker compose up",
     "start:down": "docker compose down",
     "build": "bun build packages/translator/src/index.ts --outfile dist/server.js --target bun --minify",
