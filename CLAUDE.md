@@ -13,6 +13,7 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 
 ```
 @chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
+                                  ←── imported by ── @chatwork-bot/translator
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/translator
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/webhook-logger
