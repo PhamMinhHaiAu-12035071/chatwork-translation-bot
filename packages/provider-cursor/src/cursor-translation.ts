@@ -2,7 +2,7 @@ import { generateText } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { ITranslationService, TranslationResult, TranslateOptions } from '@chatwork-bot/core'
 import { TranslationError } from '@chatwork-bot/core'
-import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/translation-prompt'
+import { TranslationDraftSchema, buildTranslationPrompts } from '@chatwork-bot/translation-prompt'
 import { extractJsonFromText } from './extract-json'
 
 // Cursor has no native structured output; this prompt enforces JSON compatible with
@@ -65,9 +65,41 @@ export class CursorTranslationService implements ITranslationService {
   async translate(text: string, options?: TranslateOptions): Promise<TranslationResult> {
     let rawText: string
     try {
+      // Build a simple analysis for cursor (no full analysis phase)
+      const simpleAnalysis = {
+        skopos: {
+          purpose: 'technical' as const,
+          audience: 'Vietnamese professional',
+          strategy: 'instrumental' as const,
+          register: 'semi-formal' as const,
+        },
+        extratextual: {
+          sender: 'unknown',
+          intention: 'translation request',
+          audience: 'general',
+          medium: 'API',
+          temporalContext: 'real-time',
+        },
+        intratextual: {
+          subjectMatter: 'general text',
+          contentSummary: 'text to be translated',
+          presuppositions: 'standard business context',
+          textStructure: 'prose',
+          lexisNotes: 'standard terms',
+          nonVerbalElements: 'none',
+        },
+        crossCutting: {
+          textFunction: 'informative',
+          registerTone: 'professional',
+          expectedEffect: 'clear communication',
+        },
+      }
+
+      const prompts = buildTranslationPrompts(text, simpleAnalysis)
       const result = await generateText({
         model: this.provider(this.modelId),
-        prompt: buildTranslationPrompt(text) + JSON_FORMAT_INSTRUCTION,
+        system: prompts.system,
+        prompt: prompts.user + JSON_FORMAT_INSTRUCTION,
         ...(options?.signal && { abortSignal: options.signal }),
       })
       rawText = result.text
@@ -90,19 +122,19 @@ export class CursorTranslationService implements ITranslationService {
       )
     }
 
-    const result = TranslationSchema.safeParse(json)
-    if (!result.success) {
+    const parseResult = TranslationDraftSchema.safeParse(json)
+    if (!parseResult.success) {
       throw new TranslationError(
-        `Invalid Cursor response schema: ${result.error.message}`,
+        `Invalid Cursor response schema: ${parseResult.error.message}`,
         'INVALID_RESPONSE',
-        result.error,
+        parseResult.error,
       )
     }
 
     return {
       cleanText: text,
-      translatedText: result.data.translated,
-      sourceLang: result.data.sourceLang,
+      translatedText: parseResult.data.translated,
+      sourceLang: parseResult.data.sourceLang,
       targetLang: 'Vietnamese',
       timestamp: new Date().toISOString(),
     }
