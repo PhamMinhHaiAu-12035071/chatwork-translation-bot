@@ -67,10 +67,25 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
       destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
     })
 
-    await writeTranslationOutput(
-      { ...outputRecord, delivery },
-      ...(outputBaseDir ? [outputBaseDir] : []),
-    )
+    try {
+      await writeTranslationOutput(
+        { ...outputRecord, delivery },
+        ...(outputBaseDir ? [outputBaseDir] : []),
+      )
+    } catch (error) {
+      const messageId = event.webhook_event.message_id
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'output-rewrite-failed',
+          messageId,
+          errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
+          error: error instanceof Error ? error.message : String(error),
+          context: { origin: outputRecord.origin, deliveryStatus: delivery.status },
+        }),
+      )
+      throw error
+    }
 
     if (origin.type === 'automation') {
       await notifyDatasetRunner(
