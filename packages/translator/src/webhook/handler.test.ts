@@ -15,8 +15,16 @@ let translationResult: TranslationResult = {
   timestamp: '2026-03-04T14:16:21.864Z',
 }
 
-const mockTranslate = mock((_text: string) => Promise.resolve(translationResult))
-const mockPluginCreate = mock((_ctx: unknown) => ({ translate: mockTranslate }))
+const mockPipelineRun = mock((_text: string) =>
+  Promise.resolve({ result: translationResult, trace: { rounds: [], escalated: false } }),
+)
+
+class MockTranslationPipeline {
+  run = mockPipelineRun
+}
+
+const mockExecute = mock(() => Promise.resolve({}))
+const mockPluginCreate = mock((_ctx: unknown) => ({ execute: mockExecute }))
 const mockGetProviderPlugin = mock((_id: string) => ({
   manifest: {
     id: 'openai',
@@ -35,7 +43,7 @@ process.env['OUTPUT_BASE_DIR'] = testOutputDir
 class MockTranslationError extends Error {
   constructor(
     message: string,
-    public readonly code: 'API_ERROR' | 'QUOTA_EXCEEDED' | 'INVALID_RESPONSE' | 'UNKNOWN',
+    public readonly code: 'API_ERROR' | 'QUOTA_EXCEEDED' | 'INVALID_RESPONSE' | 'UNKNOWN' | 'ABORTED',
     public override readonly cause?: unknown,
   ) {
     super(message)
@@ -68,6 +76,10 @@ describe('handleTranslateRequest', () => {
         CHATWORK_API_TOKEN: 'test-token',
         CHATWORK_DESTINATION_ROOM_ID: 99999,
       },
+    }))
+
+    void mock.module('~/pipeline/pipeline', () => ({
+      TranslationPipeline: MockTranslationPipeline,
     }))
 
     const mod = await import('./handler')
@@ -107,14 +119,14 @@ describe('handleTranslateRequest', () => {
     }
 
     const getStart = mockGetProviderPlugin.mock.calls.length
-    const translateStart = mockTranslate.mock.calls.length
+    const runStart = mockPipelineRun.mock.calls.length
 
     await handleTranslateRequest(event)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
     expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
-    expect(mockTranslate.mock.calls.length).toBe(translateStart + 1)
-    expect(mockTranslate.mock.calls.at(-1)?.[0]).toBe('A\n\nB\nC')
+    expect(mockPipelineRun.mock.calls.length).toBe(runStart + 1)
+    expect(mockPipelineRun.mock.calls.at(-1)?.[0]).toBe('A\n\nB\nC')
   })
 
   it('skips non-message events', async () => {
@@ -128,12 +140,12 @@ describe('handleTranslateRequest', () => {
     }
 
     const getStart = mockGetProviderPlugin.mock.calls.length
-    const translateStart = mockTranslate.mock.calls.length
+    const runStart = mockPipelineRun.mock.calls.length
 
     await handleTranslateRequest(event)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
-    expect(mockTranslate.mock.calls.length).toBe(translateStart)
+    expect(mockPipelineRun.mock.calls.length).toBe(runStart)
   })
 
   it('skips when stripped message is empty', async () => {
@@ -154,11 +166,11 @@ describe('handleTranslateRequest', () => {
     }
 
     const getStart = mockGetProviderPlugin.mock.calls.length
-    const translateStart = mockTranslate.mock.calls.length
+    const runStart = mockPipelineRun.mock.calls.length
 
     await handleTranslateRequest(event)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
-    expect(mockTranslate.mock.calls.length).toBe(translateStart)
+    expect(mockPipelineRun.mock.calls.length).toBe(runStart)
   })
 })
