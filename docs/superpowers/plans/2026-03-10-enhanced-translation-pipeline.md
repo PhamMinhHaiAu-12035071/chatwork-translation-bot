@@ -2559,6 +2559,80 @@ git status  # verify nothing unexpected
 git commit -m "feat(pipeline): enhanced 4-phase translation pipeline — big bang migration complete"
 ```
 
+### Task 13: Update project documentation
+
+Update docs to reflect new architecture. Run after all tests pass.
+
+**Files:**
+
+- Modify: `AGENTS.md`
+- Modify: `CLAUDE.md`
+- Modify: `ai_rules/project-structure.md`
+
+- [ ] **Step 13.1: Update `AGENTS.md` package descriptions**
+
+Change the package list section to:
+
+```markdown
+- `@chatwork-bot/core` — types, interfaces, `ILLMExecutor`, plugin registry (NO provider-specific model values)
+- `@chatwork-bot/translation-prompt` — 4-phase prompt builders (analysis, translation, review), Zod schemas (analysis, review, pipeline-trace), and prompt sections
+- `@chatwork-bot/provider-gemini` — Gemini provider plugin (`@ai-sdk/google`), implements `ILLMExecutor`
+- `@chatwork-bot/provider-openai` — OpenAI provider plugin (`@ai-sdk/openai`), implements `ILLMExecutor`
+- `@chatwork-bot/provider-cursor` — Cursor provider plugin, LOCAL DEV ONLY (`@ai-sdk/openai-compatible`), implements `ILLMExecutor`
+- `@chatwork-bot/translator` — HTTP server, env validation, `TranslationPipeline` orchestration, translation handler
+- `@chatwork-bot/webhook-logger` — webhook receiver, forwards to translator
+```
+
+- [ ] **Step 13.2: Update `CLAUDE.md` monorepo section**
+
+Update the monorepo section description of `@chatwork-bot/translation-prompt`:
+
+```
+@chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
+@chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/translator (TranslationPipeline)
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/translator
+@chatwork-bot/core                ←── imported by ── @chatwork-bot/webhook-logger
+@chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
+```
+
+- [ ] **Step 13.3: Update `ai_rules/project-structure.md`**
+
+Find the file structure section and add the new directories. The key additions:
+
+```
+packages/translation-prompt/src/
+├── index.ts
+├── translation-prompt.ts          ← public API: buildAnalysisPrompts, buildTranslationPrompts, buildReviewPrompts
+├── sections/
+│   ├── core.ts                    ← PERSONA + CORE_DOCTRINE
+│   ├── language-layers.ts         ← JP cultural rules
+│   ├── humanizer.ts               ← formatting doctrine
+│   ├── constraints.ts             ← hard constraints
+│   ├── analysis.ts                ← 14D analysis prompt builder
+│   └── review.ts                  ← 3-Persona MQM-Lite review prompt builder
+└── schemas/
+    ├── analysis.schema.ts         ← SkoposSchema, AnalysisSchema
+    ├── review.schema.ts           ← MQMLiteSchema, ReviewSchema, TranslationDraftSchema
+    └── pipeline-trace.schema.ts   ← PipelineTraceSchema
+
+packages/translator/src/
+├── pipeline/
+│   └── pipeline.ts                ← TranslationPipeline (4-phase orchestration)
+├── webhook/
+│   └── handler.ts                 ← calls pipeline.run() directly
+└── ...
+```
+
+- [ ] **Step 13.4: Commit documentation updates**
+
+```bash
+git add AGENTS.md CLAUDE.md ai_rules/project-structure.md
+git commit -m "docs(repo): update project structure docs for enhanced pipeline architecture"
+```
+
 ---
 
 ## Key Caveats for Implementer
