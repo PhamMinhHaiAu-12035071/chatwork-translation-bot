@@ -173,6 +173,33 @@ describe('handleTranslateRequest', () => {
     expect(executeCallCount).toBeGreaterThanOrEqual(1)
   })
 
+  it('writes delivery metadata after destination send completes', async () => {
+    const event: ChatworkWebhookEvent = {
+      webhook_setting_id: '35555',
+      webhook_event_type: 'message_created',
+      webhook_event_time: 1772633778,
+      webhook_event: {
+        message_id: '2081046619322847232',
+        room_id: 424846369,
+        account_id: 8315321,
+        body: 'A\n\nB\nC',
+        send_time: 1772633778,
+        update_time: 0,
+      },
+    }
+
+    await handleTranslateRequest(event)
+
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const filepath = join(testOutputDir, dateStr, '2081046619322847232.json')
+    const content = (await Bun.file(filepath).json()) as {
+      origin?: { type: string }
+      delivery?: { status: string }
+    }
+    expect(content.origin?.type).toBe('manual')
+    expect(content.delivery?.status).toBe('sent')
+  })
+
   it('skips non-message events', async () => {
     isMessageEvent = false
 

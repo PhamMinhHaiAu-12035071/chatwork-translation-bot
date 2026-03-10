@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { ChatworkMessageEvent, TranslationResult } from '@chatwork-bot/core'
+import type { OutputDelivery } from '~/types/output'
 
 import { buildTranslatedMessage } from './chatwork-sender'
 
@@ -109,7 +110,7 @@ describe('sendTranslatedMessage', () => {
     event: ChatworkMessageEvent,
     result: TranslationResult,
     config: { apiToken: string; destinationRoomId: number },
-  ) => Promise<void>
+  ) => Promise<OutputDelivery>
 
   beforeAll(async () => {
     const realCore = await import('@chatwork-bot/core')
@@ -166,25 +167,46 @@ describe('sendTranslatedMessage', () => {
     expect(sentMessage).toContain('#34567')
   })
 
-  it('does not throw when getMembers fails — swallows error', async () => {
-    mockGetMembers.mockImplementationOnce(() => Promise.reject(new Error('network error')))
-
-    await sendTranslatedMessage(makeEvent(), makeResult(), {
+  it('returns sent delivery metadata when destination send succeeds', async () => {
+    const result = await sendTranslatedMessage(makeEvent(), makeResult(), {
       apiToken: 'test-token',
       destinationRoomId: 55555,
     })
-    // resolves without throwing
-    expect(true).toBe(true)
+
+    expect(result.status).toBe('sent')
+    expect(result.destinationRoomId).toBe(55555)
+    expect(result.destinationMessageId).toBe('sent-456')
   })
 
-  it('does not throw when sendMessage fails — swallows error', async () => {
+  it('returns failed delivery metadata when destination send fails', async () => {
     mockSendMessage.mockImplementationOnce(() => Promise.reject(new Error('API error')))
 
-    await sendTranslatedMessage(makeEvent(), makeResult(), {
+    const result = await sendTranslatedMessage(makeEvent(), makeResult(), {
       apiToken: 'test-token',
       destinationRoomId: 55555,
     })
-    // resolves without throwing
-    expect(true).toBe(true)
+
+    expect(result.status).toBe('failed')
+    expect(result.errorMessage).toContain('API error')
+  })
+
+  it('does not throw when getMembers fails — returns failed delivery', async () => {
+    mockGetMembers.mockImplementationOnce(() => Promise.reject(new Error('network error')))
+
+    const result = await sendTranslatedMessage(makeEvent(), makeResult(), {
+      apiToken: 'test-token',
+      destinationRoomId: 55555,
+    })
+    expect(result.status).toBe('failed')
+  })
+
+  it('does not throw when sendMessage fails — returns failed delivery', async () => {
+    mockSendMessage.mockImplementationOnce(() => Promise.reject(new Error('API error')))
+
+    const result = await sendTranslatedMessage(makeEvent(), makeResult(), {
+      apiToken: 'test-token',
+      destinationRoomId: 55555,
+    })
+    expect(result.status).toBe('failed')
   })
 })

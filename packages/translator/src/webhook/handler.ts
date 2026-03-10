@@ -10,6 +10,8 @@ import { TranslationPipeline } from '~/pipeline/pipeline'
 import { writeTranslationOutput } from '~/utils/output-writer'
 import { logTranslationRequest } from '~/utils/request-log'
 import { sendTranslatedMessage } from '~/services/chatwork-sender'
+import { resolveOutputOrigin } from '~/services/output-origin'
+import { notifyDatasetRunner } from '~/services/dataset-runner-callback'
 
 export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
   if (!isChatworkMessageEvent(event)) {
@@ -50,15 +52,40 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
     })
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
-    await writeTranslationOutput(
-      { ...event, translation: result, pipeline: trace },
-      ...(outputBaseDir ? [outputBaseDir] : []),
+
+    const origin = await resolveOutputOrigin(
+      event.webhook_event.message_id,
+      process.env['DATASET_INPUT_DIR'] ?? './input',
     )
 
-    await sendTranslatedMessage(event, result, {
+    const outputRecord = { ...event, translation: result, pipeline: trace, origin }
+
+    await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
+
+    const delivery = await sendTranslatedMessage(event, result, {
       apiToken: env.CHATWORK_API_TOKEN,
       destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
     })
+
+    await writeTranslationOutput(
+      { ...outputRecord, delivery },
+      ...(outputBaseDir ? [outputBaseDir] : []),
+    )
+
+    if (origin.type === 'automation') {
+      await notifyDatasetRunner(
+        {
+          sourceMessageId: event.webhook_event.message_id,
+          ...delivery,
+          ackedAt: new Date().toISOString(),
+        },
+        {
+          callbackUrl:
+            process.env['DATASET_RUNNER_CALLBACK_URL'] ??
+            'http://dataset-runner:3002/internal/delivery-acks',
+        },
+      )
+    }
   } catch (error) {
     const latencyMs = Date.now() - startMs
     if (error instanceof TranslationError) {

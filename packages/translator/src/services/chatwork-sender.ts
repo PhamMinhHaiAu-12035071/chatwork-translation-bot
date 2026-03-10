@@ -1,5 +1,6 @@
 import { ChatworkClient } from '@chatwork-bot/core'
 import type { ChatworkMessageEvent, TranslationResult } from '@chatwork-bot/core'
+import type { OutputDelivery } from '~/types/output'
 
 /**
  * Builds the translated message string to send to the destination Chatwork room.
@@ -25,13 +26,13 @@ export function buildTranslatedMessage(
 /**
  * Looks up the sender's name, builds the translated message, and sends it
  * to the configured destination Chatwork room.
- * Swallows all errors — output file is always preserved regardless of send status.
+ * Returns delivery metadata — never throws; errors are captured in the returned status.
  */
 export async function sendTranslatedMessage(
   event: ChatworkMessageEvent,
   result: TranslationResult,
   config: { apiToken: string; destinationRoomId: number },
-): Promise<void> {
+): Promise<OutputDelivery> {
   try {
     const client = new ChatworkClient({ apiToken: config.apiToken })
     const members = await client.getMembers(event.webhook_event.room_id)
@@ -39,9 +40,21 @@ export async function sendTranslatedMessage(
     const senderName = sender?.name ?? `#${String(event.webhook_event.account_id)}`
 
     const message = buildTranslatedMessage(event, result, senderName)
-    await client.sendMessage({ roomId: config.destinationRoomId, message })
-    console.log(`[chatwork-sender] Sent translation to room#${String(config.destinationRoomId)}`)
+    const response = await client.sendMessage({ roomId: config.destinationRoomId, message })
+
+    return {
+      status: 'sent',
+      destinationRoomId: config.destinationRoomId,
+      destinationMessageId: response.message_id,
+      sentAt: new Date().toISOString(),
+    }
   } catch (error) {
-    console.error('[chatwork-sender] Failed to send translated message:', error)
+    return {
+      status: 'failed',
+      destinationRoomId: config.destinationRoomId,
+      errorCode: 'CHATWORK_API',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      sentAt: new Date().toISOString(),
+    }
   }
 }
