@@ -1,4 +1,4 @@
-import { generateText, Output } from 'ai'
+import { generateText, Output, type FlexibleSchema } from 'ai'
 import { google } from '@ai-sdk/google'
 import type { ILLMExecutor, PromptPair, ISchema } from '@chatwork-bot/core'
 import { TranslationError } from '@chatwork-bot/core'
@@ -30,18 +30,19 @@ class GeminiExecutor implements ILLMExecutor {
     schema: ISchema<T>,
     options?: { signal?: AbortSignal },
   ): Promise<T> {
+    const outputSchema = schema as unknown as FlexibleSchema<T>
+
     try {
       const { output } = await generateText({
         model: google(this.modelId),
         system: prompts.system,
         prompt: prompts.user,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-        output: Output.object({ schema: schema as any }),
+        output: Output.object({ schema: outputSchema }),
         temperature: 0,
         maxOutputTokens: 4000,
         ...(options?.signal && { abortSignal: options.signal }),
       })
-      return output as T
+      return output
     } catch (cause) {
       throw new TranslationError(
         `Gemini API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,

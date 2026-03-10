@@ -1,5 +1,13 @@
 import type { ILLMExecutor } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
+import { CursorExecutor } from './cursor-translation'
+
+type CursorExecutorConstructor = new (
+  modelId: ProviderCreateContext['modelId'],
+  baseUrl: string,
+) => ILLMExecutor
+
+const CursorExecutorCtor = CursorExecutor as unknown as CursorExecutorConstructor
 
 export const CURSOR_MODEL_VALUES = [
   // === CURSOR NATIVE ===
@@ -61,7 +69,6 @@ export const CURSOR_MODEL_VALUES = [
 ] as const
 export type CursorModel = (typeof CURSOR_MODEL_VALUES)[number]
 export const DEFAULT_CURSOR_MODEL: CursorModel = 'sonnet-4.6'
-import { CursorExecutor } from './cursor-translation'
 
 export const cursorPlugin: ProviderPlugin = {
   manifest: {
@@ -69,7 +76,7 @@ export const cursorPlugin: ProviderPlugin = {
     supportedModels: CURSOR_MODEL_VALUES,
     defaultModel: DEFAULT_CURSOR_MODEL,
     capabilities: { streaming: false },
-    timeoutMs: 120_000,
+    timeoutMs: 600_000,
     requiredEnvKeys: ['CURSOR_API_URL'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {
@@ -78,6 +85,6 @@ export const cursorPlugin: ProviderPlugin = {
         'cursor provider requires baseUrl in ProviderCreateContext (set CURSOR_API_URL)',
       )
     }
-    return new CursorExecutor(ctx.modelId, ctx.baseUrl)
+    return new CursorExecutorCtor(ctx.modelId, ctx.baseUrl)
   },
 }

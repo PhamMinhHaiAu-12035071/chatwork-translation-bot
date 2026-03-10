@@ -80,6 +80,10 @@ describe('cursorPlugin', () => {
     expect(cursorPlugin.manifest.id).toBe('cursor')
   })
 
+  it('uses 10-minute provider timeout for pipeline execution', () => {
+    expect(cursorPlugin.manifest.timeoutMs).toBe(600_000)
+  })
+
   it('create requires baseUrl', () => {
     expect(() => cursorPlugin.create({ modelId: 'sonnet-4.6' })).toThrow(
       'cursor provider requires baseUrl',

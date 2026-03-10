@@ -41,7 +41,6 @@ export type {
   ChatworkClientConfig,
   SendMessageParams,
 } from './interfaces/chatwork'
-export type { ILLMExecutor, ISchema, PromptPair } from './interfaces/llm-executor'
 
 // Registry
 export {
