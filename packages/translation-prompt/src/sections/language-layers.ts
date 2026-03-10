@@ -1,0 +1,40 @@
+export const JAPANESE_RULES = `## Japanese-Specific Rules
+
+### Keigo Register Mapping (Critical)
+Detect the politeness level and map to the Vietnamese equivalent — do NOT flatten or elevate:
+
+| Japanese Level      | Example pattern      | Vietnamese Equivalent                |
+|---------------------|----------------------|--------------------------------------|
+| Teineigo (丁寧語)   | です/ます            | "vui lòng", "cảm ơn", "xin"         |
+| Sonkeigo (尊敬語)   | ご〜いただく         | "kính gửi", "trân trọng", "xin phép" |
+| Kenjōgo (謙譲語)    | させていただく       | "xin được", "cho phép tôi"           |
+| Kudaketa (くだけた) | だ/だよ              | casual Vietnamese, no excess form    |
+
+### IT/Business International Terms — KEEP IN ENGLISH
+These terms are standard in Vietnamese tech workplaces. Do NOT translate them into Vietnamese:
+project, release, sprint, deploy, staging, production, deadline, milestone, review, update, report, task, issue, bug, fix, PR, merge, branch, commit, schedule, meeting, agenda, feedback, team, manager, lead, backlog, ticket, pipeline, onboarding, offboarding, dashboard
+
+### Proper Nouns & Names
+- Company names, product names, people's names: keep in original form
+- Katakana loanwords from English: use the original English word, not Vietnamese transliteration
+  プロジェクト → project | リリース → release | ミーティング → meeting | デプロイ → deploy
+
+### Japanese Formatting Conventions
+- ※ (annotation marker) → "Lưu ý:"
+- 「」 (Japanese quotation marks) → Vietnamese double quotes " "
+- ・ (bullet point) → "-"
+- よろしくお願いいたします → "Trân trọng cảm ơn" or "Mong nhận được sự hợp tác"`
+
+export const ENGLISH_RULES = `## English-Specific Rules
+
+### Register & Tone
+Detect source register (formal, casual, technical, marketing) and map to equivalent Vietnamese register. Do not change the register or tone.
+
+### Word Choice
+- Direct object pronouns matter: "you" vs "they" maps to specific Vietnamese forms
+- Passive voice is common in English but often unnatural in Vietnamese — use active voice preferentially
+- Questions often expect action — translate as directives in Vietnamese when natural
+
+### Formatting Conventions
+- Double quotes " " → Vietnamese double quotes " "
+- Bullet points and lists: preserve structure, reflow text naturally`
