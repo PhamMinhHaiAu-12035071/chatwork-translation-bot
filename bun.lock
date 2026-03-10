@@ -35,6 +35,17 @@
         "zod": "^4.3.6",
       },
     },
+    "packages/dataset-runner": {
+      "name": "@chatwork-bot/dataset-runner",
+      "version": "1.0.0",
+      "dependencies": {
+        "@chatwork-bot/core": "workspace:*",
+        "@elysiajs/swagger": "^1.3.1",
+        "elysia": "^1.4.27",
+        "logixlysia": "^6.2.0",
+        "zod": "^4.3.6",
+      },
+    },
     "packages/provider-cursor": {
       "name": "@chatwork-bot/provider-cursor",
       "version": "1.0.0",
@@ -119,6 +130,8 @@
     "@borewit/text-codec": ["@borewit/text-codec@0.2.1", "", {}, "sha512-k7vvKPbf7J2fZ5klGRD9AeKfUvojuZIQ3BT5u7Jfv+puwXkUBUT5PVyMDfJZpy30CBDXGMgw7fguK/lpOMBvgw=="],
 
     "@chatwork-bot/core": ["@chatwork-bot/core@workspace:packages/core"],
+
+    "@chatwork-bot/dataset-runner": ["@chatwork-bot/dataset-runner@workspace:packages/dataset-runner"],
 
     "@chatwork-bot/provider-cursor": ["@chatwork-bot/provider-cursor@workspace:packages/provider-cursor"],
 

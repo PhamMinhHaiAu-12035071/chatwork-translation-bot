@@ -1,0 +1,23 @@
+{
+  "name": "@chatwork-bot/dataset-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun src/index.ts",
+    "lint": "eslint \"**/*.ts\"",
+    "lint:fix": "eslint \"**/*.ts\" --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@chatwork-bot/core": "workspace:*",
+    "@elysiajs/swagger": "^1.3.1",
+    "elysia": "^1.4.27",
+    "logixlysia": "^6.2.0",
+    "zod": "^4.3.6"
+  }
+}
