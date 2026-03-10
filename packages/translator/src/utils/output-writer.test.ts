@@ -62,4 +62,37 @@ describe('writeTranslationOutput', () => {
 
     await rm(testDir, { recursive: true, force: true })
   })
+
+  it('rewrites an existing output file with delivery metadata', async () => {
+    await writeTranslationOutput(sampleRecord, testDir)
+
+    await writeTranslationOutput(
+      {
+        ...sampleRecord,
+        origin: {
+          type: 'automation',
+          datasetFile: '001-vfa-thinhntt-2026-03-10.jsonl',
+          datasetItemId: 'vfa-001',
+          datasetLineNumber: 1,
+        },
+        delivery: {
+          status: 'sent',
+          destinationRoomId: 55555,
+          destinationMessageId: 'dest-123',
+          sentAt: '2026-03-10T12:00:00.000Z',
+        },
+      },
+      testDir,
+    )
+
+    const filepath = join(testDir, '2026-03-04', 'msg_001.json')
+    const content = (await Bun.file(filepath).json()) as OutputRecord
+
+    expect(content.origin?.type).toBe('automation')
+    expect(content.origin?.datasetItemId).toBe('vfa-001')
+    expect(content.delivery?.status).toBe('sent')
+    expect(content.delivery?.destinationMessageId).toBe('dest-123')
+
+    await rm(testDir, { recursive: true, force: true })
+  })
 })
