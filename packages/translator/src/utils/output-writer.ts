@@ -1,4 +1,3 @@
-// packages/translator/src/utils/output-writer.ts
 import { mkdir, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { OutputRecord } from '~/types/output'
@@ -9,6 +8,12 @@ async function writeJsonAtomically(filepath: string, content: string): Promise<v
   await rename(tempPath, filepath)
 }
 
+/**
+ * Persists a translation record to output/{dateStr}/{messageId}.json.
+ * Writes are atomic (temp file + rename) — safe to call concurrently for different message IDs.
+ * @param record - The webhook event extended with translation and optional origin/delivery data.
+ * @param baseDir - Output base directory (defaults to `output/` in cwd). Override in tests.
+ */
 export async function writeTranslationOutput(
   record: OutputRecord,
   baseDir: string = join(process.cwd(), 'output'),
