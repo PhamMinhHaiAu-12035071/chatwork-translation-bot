@@ -44,6 +44,7 @@ describe('notifyDatasetRunner', () => {
       caughtError = err
     }
 
+    expect(fetchMock.mock.calls.length).toBe(3)
     expect(caughtError).toBeInstanceOf(Error)
     expect((caughtError as Error).message).toContain(
       'Dataset-runner callback failed after bounded retries',
