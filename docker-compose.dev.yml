@@ -68,6 +68,38 @@ services:
       retries: 3
       start_period: 10s
 
+  dataset-runner:
+    image: oven/bun:1.3-alpine
+    command:
+      - sh
+      - -c
+      - bun install --frozen-lockfile && bun --hot packages/dataset-runner/src/index.ts
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - HUSKY=0
+    restart: unless-stopped
+    networks: [chatwork-net]
+    depends_on:
+      translator:
+        condition: service_healthy
+      webhook-logger:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - 'CMD'
+        - 'bun'
+        - '--eval'
+        - "const r = await fetch('http://localhost:3002/health'); if (!r.ok) process.exit(1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # zrok reserved public share — stable HTTPS URL for Chatwork webhook
   # One-time setup: see docs/operations/zrok.md
   # Pin to a specific version for reproducibility — check https://hub.docker.com/r/openziti/zrok/tags

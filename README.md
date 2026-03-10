@@ -9,6 +9,7 @@ A webhook-based bot that listens for Chatwork messages, parses `/translate` comm
 - Pluggable translation service via `ITranslationService` interface
 - Async fire-and-forget processing (returns 200 immediately)
 - Health check endpoint (`GET /health`)
+- Dataset automation sidecar for translation testing (`input/pending/*.jsonl`, local dev only)
 
 ## Tech Stack
 
@@ -39,12 +40,16 @@ cp .env.example .env
 
 Edit `.env` with your credentials:
 
-| Variable                  | Required | Default       | Description                             |
-| ------------------------- | -------- | ------------- | --------------------------------------- |
-| `CHATWORK_API_TOKEN`      | Yes      | —             | Chatwork API token for sending messages |
-| `CHATWORK_WEBHOOK_SECRET` | Yes      | —             | Secret for verifying webhook signatures |
-| `PORT`                    | No       | `3000`        | HTTP server port                        |
-| `NODE_ENV`                | No       | `development` | `development` \| `production` \| `test` |
+| Variable                      | Required | Default       | Description                                         |
+| ----------------------------- | -------- | ------------- | --------------------------------------------------- |
+| `CHATWORK_API_TOKEN`          | Yes      | —             | Chatwork API token for sending messages             |
+| `CHATWORK_WEBHOOK_SECRET`     | Yes      | —             | Secret for verifying webhook signatures             |
+| `PORT`                        | No       | `3000`        | HTTP server port                                    |
+| `NODE_ENV`                    | No       | `development` | `development` \| `production` \| `test`             |
+| `CHATWORK_ORIGINAL_ROOM_ID`   | Dev only | —             | Room for dataset injection (dataset-runner sidecar) |
+| `DATASET_AUTORUN`             | No       | `false`       | Enable dataset-runner queue (idle by default)       |
+| `DATASET_INPUT_DIR`           | No       | `./input`     | Root dir for pending/archive/failed/state           |
+| `DATASET_RUNNER_CALLBACK_URL` | No       | —             | ACK callback URL (set automatically in Docker dev)  |
 
 ### 3. Run the bot
 
@@ -66,23 +71,32 @@ The bot will reply with the translated text in the same room.
 
 ## Project Structure
 
-Bun workspaces monorepo with three packages:
+Bun workspaces monorepo:
 
 ```
 packages/
 ├── core/            # @chatwork-bot/core — shared types, interfaces, utils, services
-│   └── src/
-│       ├── types/       # Chatwork webhook & command types
-│       ├── interfaces/  # ITranslationService interface
-│       ├── services/    # Translation prompt builder
-│       └── utils/       # Command parser, output writer
-├── translator/      # @chatwork-bot/translator — HTTP server (Elysia), webhook handler
-│   └── src/
-│       ├── webhook/     # Handler, routes
-│       └── utils/       # Output writer
-└── webhook-logger/  # @chatwork-bot/webhook-logger — debug logger server
-    └── src/
+├── translation-prompt/  # @chatwork-bot/translation-prompt — 4-phase pipeline prompts + Zod schemas
+├── provider-gemini/ # @chatwork-bot/provider-gemini — Gemini provider plugin
+├── provider-openai/ # @chatwork-bot/provider-openai — OpenAI provider plugin
+├── provider-cursor/ # @chatwork-bot/provider-cursor — Cursor provider (LOCAL DEV ONLY)
+├── translator/      # @chatwork-bot/translator — HTTP server, webhook handler
+├── webhook-logger/  # @chatwork-bot/webhook-logger — webhook receiver, forwards to translator
+└── dataset-runner/  # @chatwork-bot/dataset-runner — ACK-driven queue runner sidecar (LOCAL DEV ONLY)
 ```
+
+### Dataset Testing
+
+Drop JSONL batch files into `input/pending/` to run automated translation tests:
+
+```bash
+cp input/samples/001-vfa-thinhntt-2026-03-10.jsonl input/pending/
+# set DATASET_AUTORUN=true in .env
+bun run dev
+```
+
+Output `origin.type` field distinguishes `manual` (real webhook) from `automation` (dataset-runner) runs.
+See `docs/operations/dataset-runner.md` for replay/reset options.
 
 ## Scripts
 

@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) and Cursor.
 
 Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, parses
 `/translate <lang> <text>`, translates, replies. Pure backend, no frontend or database.
+Includes a local-dev dataset-runner sidecar for automated dataset injection and translation testing.
 
 **Stack**: Bun v1.1+ · TypeScript 5.4+ strict · Bun.serve() · Zod · Docker (oven/bun:1.1-distroless)
 
@@ -20,6 +21,7 @@ Chatwork Translation Bot — webhook-based bot. Receives Chatwork messages, pars
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
+@chatwork-bot/dataset-runner      ←── standalone sidecar (LOCAL DEV ONLY, DATASET_AUTORUN=false by default)
 ```
 
 → Details: `ai_rules/project-structure.md`

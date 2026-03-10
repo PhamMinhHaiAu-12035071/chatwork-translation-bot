@@ -6,7 +6,7 @@
 # First-time setup (for IDE type-checking only — Docker doesn't need this):
 bun install
 
-# Start all services (translator + webhook-logger + zrok):
+# Start all services (translator + webhook-logger + zrok + dataset-runner):
 bun run dev
 
 # Stop all services:
@@ -15,6 +15,22 @@ bun run dev:down
 # Tail logs from all services:
 bun run dev:logs
 ```
+
+> `bun run dev` now includes the `dataset-runner` sidecar. It starts idle by default
+> (`DATASET_AUTORUN=false`). Set `DATASET_AUTORUN=true` in `.env` to activate.
+> Copy seed batches: `cp input/samples/*.jsonl input/pending/`
+
+### Dataset Replay / Reset
+
+Control replay behavior via env vars before running `bun run dev`:
+
+| Variable               | Values                                          | Purpose                                       |
+| ---------------------- | ----------------------------------------------- | --------------------------------------------- |
+| `DATASET_RESET_MODE`   | `resume` (default) / `from-start` / `from-line` | Resume from checkpoint or replay              |
+| `DATASET_RESET_FILE`   | filename (e.g. `001-vfa-*.jsonl`)               | Target file for `from-start` / `from-line`    |
+| `DATASET_RESET_LINE`   | integer                                         | Line number to replay from (`from-line` mode) |
+| `DATASET_CLEAR_FAILED` | `true` / `false`                                | Delete previous `failed.jsonl` before run     |
+| `DATASET_CLEAR_OUTPUT` | `true` / `false`                                | Delete previous output files before run       |
 
 ### Cursor Provider (local dev)
 

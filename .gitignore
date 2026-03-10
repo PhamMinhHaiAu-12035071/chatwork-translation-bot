@@ -38,3 +38,9 @@ output/
 
 # zrok local environment state (bind mount for docker-compose.dev.yml)
 .docker/
+
+# Dataset runner local artifacts (runtime-only, not committed)
+input/pending/
+input/archive/
+input/failed/
+input/state/

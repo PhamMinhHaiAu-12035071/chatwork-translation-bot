@@ -2,7 +2,7 @@
 
 ## Monorepo Layout
 
-Bun workspaces monorepo. Seven packages:
+Bun workspaces monorepo. Eight packages:
 
 ```
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
@@ -35,7 +35,7 @@ No build step needed — Bun resolves TypeScript directly.
 
 ### `packages/translation-prompt` (`@chatwork-bot/translation-prompt`)
 
-4-phase translation pipeline prompts and Zod schemas. Contains: `src/sections/` (prompt builders), `src/schemas/` (`AnalysisSchema`, `ReviewSchema`, `TranslationDraftSchema`, `PipelineTraceSchema`). Exports `PromptPair` type. Used by provider-* AND translator packages.
+4-phase translation pipeline prompts and Zod schemas. Contains: `src/sections/` (prompt builders), `src/schemas/` (`AnalysisSchema`, `ReviewSchema`, `TranslationDraftSchema`, `PipelineTraceSchema`). Exports `PromptPair` type. Used by provider-\* AND translator packages.
 
 ### `packages/provider-gemini` (`@chatwork-bot/provider-gemini`)
 
@@ -64,6 +64,20 @@ Runnable HTTP server. Owns:
 ### `packages/webhook-logger` (`@chatwork-bot/webhook-logger`)
 
 Webhook receiver. Receives webhooks from Chatwork and forwards to translator.
+
+### `packages/dataset-runner` (`@chatwork-bot/dataset-runner`)
+
+ACK-driven queue runner sidecar (LOCAL DEV ONLY). Reads JSONL files from `input/pending/`,
+injects them into the original Chatwork room via the Chatwork API, then waits for an ACK
+callback from the translator before advancing to the next item. This enables automated,
+ordered dataset injection for translation testing without polling.
+
+- Port: 3002 (internal only, not published to the host)
+- Controlled by `DATASET_AUTORUN` (default `false` — idle until enabled)
+- Queue advances via POST `/internal/delivery-acks` (internal callback from translator)
+- Status available at GET `/status` (runner mode, active item, counts)
+- Input layout: `input/pending/` (active), `input/archive/` (done), `input/failed/` (DLQ)
+- Seed batches are committed under `input/samples/` and copied to `pending/` to run
 
 ## Key Files
 

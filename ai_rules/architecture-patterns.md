@@ -122,3 +122,48 @@ Each provider package owns its model list, required env keys, and capabilities. 
 - Zero changes to `core`, `env.ts`, or other packages
 
 See `docs/plans/2026-03-06-plugin-owned-provider-architecture-design.md` for full design rationale.
+
+## Dataset-Driven Flow (Local Dev Only)
+
+The dataset-runner sidecar enables automated, ordered translation testing via JSONL batch files.
+
+```
+dataset-runner
+→ reads item from input/pending/*.jsonl
+→ POST Chatwork API (CHATWORK_ORIGINAL_ROOM_ID) — injects message
+→ waits for ACK (blocks queue)
+
+webhook-logger
+→ receives Chatwork webhook event for that message
+→ forwards to translator /internal/translate
+
+translator
+→ translates, logs result
+→ POST DATASET_RUNNER_CALLBACK_URL (/internal/delivery-acks) — ACK
+
+dataset-runner
+→ receives ACK → advances to next item
+```
+
+### ACK Callback as Queue Synchronization Primitive
+
+The ACK callback (`POST /internal/delivery-acks`) is the **only** mechanism that advances
+the dataset-runner queue. This replaces polling and ensures strict ordering: one item is
+in-flight at a time. The callback URL is injected by dataset-runner into each translate
+request; the translator fires it after writing the translation result.
+
+- Endpoint: internal Docker network only (port 3002, no host binding)
+- If ACK does not arrive within `DATASET_ITEM_TIMEOUT_MS`, the item is retried or moved to DLQ
+- `DATASET_RUNNER_CALLBACK_URL` is set in `.env.example` for local dev; it is consumed by
+  the translator package (not defined in dataset-runner's own env schema)
+
+### `origin.type` Observability
+
+Every translation request carries an `origin` field in the structured log output:
+
+| Value        | Meaning                                              |
+| ------------ | ---------------------------------------------------- |
+| `manual`     | Triggered by a real Chatwork webhook (human message) |
+| `automation` | Injected by dataset-runner                           |
+
+This allows filtering logs by source to separate manual usage from test runs.
