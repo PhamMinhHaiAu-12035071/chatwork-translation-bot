@@ -1,4 +1,3 @@
-import type { PromptPair } from '@chatwork-bot/core'
 import { PERSONA, CORE_DOCTRINE } from '~/sections/core'
 import { JAPANESE_RULES } from '~/sections/language-layers'
 import { HUMANIZER, STRUCTURAL } from '~/sections/humanizer'
@@ -9,6 +8,9 @@ import type { AnalysisResult } from '~/schemas/analysis.schema'
 import { TranslationDraftSchema, ReviewSchema } from '~/schemas/review.schema'
 import { AnalysisSchema } from '~/schemas/analysis.schema'
 import { PipelineTraceSchema } from '~/schemas/pipeline-trace.schema'
+
+/** Prompt input pair for LLM execution. */
+export interface PromptPair { system: string; user: string }
 
 export { TranslationDraftSchema }
 export type { TranslationDraft } from '~/schemas/review.schema'

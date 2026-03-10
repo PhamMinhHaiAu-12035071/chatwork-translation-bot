@@ -1,4 +1,4 @@
-import type { PromptPair } from '@chatwork-bot/core'
+import type { PromptPair } from '~/translation-prompt'
 import type { AnalysisResult } from '~/schemas/analysis.schema'
 
 function buildReviewSystem(escalated = false): string {
@@ -70,7 +70,7 @@ export function buildReviewPrompts(
 ): PromptPair {
   return {
     system: buildReviewSystem(escalated),
-    user: `## Round ${round} Review
+    user: `## Round ${String(round)} Review
 
 ## Skopos Context
 - Strategy: ${analysis.skopos.strategy}

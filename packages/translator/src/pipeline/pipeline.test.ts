@@ -62,7 +62,7 @@ function makeMockExecutor(responses: unknown[]): ILLMExecutor {
   return {
     execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
       const response = responses[callCount++]
-      return Promise.resolve(schema.parse(response) as T)
+      return Promise.resolve(schema.parse(response))
     },
   }
 }

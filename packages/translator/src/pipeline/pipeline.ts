@@ -39,7 +39,7 @@ export class TranslationPipeline {
 
     this.checkAbort(signal)
 
-    const isShortText = [...text].length < SHORT_TEXT_THRESHOLD
+    const isShortText = Array.from(text).length < SHORT_TEXT_THRESHOLD
 
     // ── Phase 0+1: Analysis (skip for short text) ──────────────────────────
     let analysis: AnalysisResult
@@ -105,7 +105,7 @@ export class TranslationPipeline {
       rounds.push(review)
       currentDraft = review.refinedTranslation
 
-      if (review.totalScore > (bestRound.totalScore ?? 0)) {
+      if (review.totalScore > bestRound.totalScore) {
         bestRound = review
       }
 
@@ -131,13 +131,13 @@ export class TranslationPipeline {
   private buildSignal(options: PipelineRunOptions): AbortSignal {
     const timeoutMs = options.timeoutMs ?? this.opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
     const timeoutController = new AbortController()
-    setTimeout(() => timeoutController.abort(), timeoutMs)
+    setTimeout(() => { timeoutController.abort() }, timeoutMs)
 
     if (options.signal) {
       if (options.signal.aborted) {
         timeoutController.abort() // propagate immediately if already aborted
       } else {
-        options.signal.addEventListener('abort', () => timeoutController.abort())
+        options.signal.addEventListener('abort', () => { timeoutController.abort() })
       }
     }
     return timeoutController.signal

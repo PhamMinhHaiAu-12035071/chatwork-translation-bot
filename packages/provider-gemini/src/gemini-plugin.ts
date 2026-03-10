@@ -31,12 +31,11 @@ class GeminiExecutor implements ILLMExecutor {
     options?: { signal?: AbortSignal },
   ): Promise<T> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { output } = await generateText({
         model: google(this.modelId),
         system: prompts.system,
         prompt: prompts.user,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         output: Output.object({ schema: schema as any }),
         temperature: 0,
         maxOutputTokens: 4000,

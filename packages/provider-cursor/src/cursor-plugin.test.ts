@@ -121,8 +121,12 @@ describe('cursorPlugin', () => {
     const strictSchema = {
       parse(d: unknown): { sourceLang: string; translated: string } {
         const obj = d as Record<string, unknown>
-        if (!obj.sourceLang || !obj.translated) throw new Error('Missing required fields')
-        return { sourceLang: String(obj.sourceLang), translated: String(obj.translated) }
+        const sourceLang = obj['sourceLang']
+        const translated = obj['translated']
+        if (typeof sourceLang !== 'string' || typeof translated !== 'string') {
+          throw new Error('Missing required fields')
+        }
+        return { sourceLang, translated }
       },
     }
     try {

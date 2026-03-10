@@ -1,4 +1,4 @@
-import type { PromptPair } from '@chatwork-bot/core'
+import type { PromptPair } from '~/translation-prompt'
 
 const ANALYSIS_SYSTEM = `You are a professional translation analyst specializing in Skopos Theory and source-text analysis for Japanese-to-Vietnamese translation.
 

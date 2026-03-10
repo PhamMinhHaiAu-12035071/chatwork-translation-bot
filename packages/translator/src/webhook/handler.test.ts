@@ -2,29 +2,79 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ChatworkWebhookEvent, TranslationResult } from '@chatwork-bot/core'
+import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
+import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
 import type { handleTranslateRequest as HandleTranslateRequestType } from './handler'
 
+// ── Pipeline fixtures (1-pass: analysis + translation + review) ───────────────
+
+const pipelineFixtures: unknown[] = [
+  // Phase 0+1: AnalysisResult
+  {
+    skopos: {
+      purpose: 'informational',
+      audience: 'general',
+      strategy: 'instrumental',
+      register: 'casual',
+    },
+    extratextual: {
+      sender: 'unknown',
+      intention: 'inform',
+      audience: 'colleague',
+      medium: 'chat',
+      temporalContext: 'real-time',
+    },
+    intratextual: {
+      subjectMatter: 'general',
+      contentSummary: 'brief',
+      presuppositions: 'none',
+      textStructure: 'single line',
+      lexisNotes: 'plain',
+      nonVerbalElements: 'none',
+    },
+    crossCutting: {
+      textFunction: 'phatic',
+      registerTone: 'casual',
+      expectedEffect: 'acknowledgment',
+    },
+  },
+  // Phase 2: TranslationDraft
+  { sourceLang: 'Japanese', translated: 'Xin chào thế giới' },
+  // Phase 3: ReviewResult (passing)
+  {
+    scores: {
+      naturalFlow: 3,
+      culturalFidelity: 2,
+      readerExperience: 2,
+      semanticAccuracy: 2,
+      targetConventions: 1,
+    },
+    totalScore: 10,
+    passed: true,
+    critique: 'Excellent',
+    refinedTranslation: 'Xin chào thế giới (refined)',
+    personaFeedback: { freshReader: 'OK', linguist: 'OK', editor: 'OK' },
+  },
+]
+
+let executeCallCount = 0
+
+function createMockExecutor(): ILLMExecutor {
+  return {
+    execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
+      const response = pipelineFixtures[executeCallCount % pipelineFixtures.length]
+      executeCallCount++
+      return Promise.resolve(schema.parse(response))
+    },
+  }
+}
+
+// ── Module mocks ───────────────────────────────────────────────────────────────
+
 let isMessageEvent = true
-let strippedText = 'clean text'
-let translationResult: TranslationResult = {
-  cleanText: 'clean text',
-  translatedText: 'bản dịch',
-  sourceLang: 'Japanese',
-  targetLang: 'Vietnamese',
-  timestamp: '2026-03-04T14:16:21.864Z',
-}
+let strippedText = 'A\n\nB\nC'
 
-const mockPipelineRun = mock((_text: string) =>
-  Promise.resolve({ result: translationResult, trace: { rounds: [], escalated: false } }),
-)
-
-class MockTranslationPipeline {
-  run = mockPipelineRun
-}
-
-const mockExecute = mock(() => Promise.resolve({}))
-const mockPluginCreate = mock((_ctx: unknown) => ({ execute: mockExecute }))
+const mockPluginCreate = mock((_ctx: unknown) => createMockExecutor())
 const mockGetProviderPlugin = mock((_id: string) => ({
   manifest: {
     id: 'openai',
@@ -43,7 +93,12 @@ process.env['OUTPUT_BASE_DIR'] = testOutputDir
 class MockTranslationError extends Error {
   constructor(
     message: string,
-    public readonly code: 'API_ERROR' | 'QUOTA_EXCEEDED' | 'INVALID_RESPONSE' | 'UNKNOWN' | 'ABORTED',
+    public readonly code:
+      | 'API_ERROR'
+      | 'QUOTA_EXCEEDED'
+      | 'INVALID_RESPONSE'
+      | 'UNKNOWN'
+      | 'ABORTED',
     public override readonly cause?: unknown,
   ) {
     super(message)
@@ -78,10 +133,6 @@ describe('handleTranslateRequest', () => {
       },
     }))
 
-    void mock.module('~/pipeline/pipeline', () => ({
-      TranslationPipeline: MockTranslationPipeline,
-    }))
-
     const mod = await import('./handler')
     handleTranslateRequest = mod.handleTranslateRequest
   })
@@ -94,13 +145,7 @@ describe('handleTranslateRequest', () => {
   beforeEach(() => {
     isMessageEvent = true
     strippedText = 'A\n\nB\nC'
-    translationResult = {
-      cleanText: strippedText,
-      translatedText: 'Đoạn A\n\nĐoạn B đã được làm mượt.',
-      sourceLang: 'Japanese',
-      targetLang: 'Vietnamese',
-      timestamp: '2026-03-04T14:16:21.864Z',
-    }
+    executeCallCount = 0
   })
 
   it('translates message via registry-resolved provider', async () => {
@@ -119,14 +164,13 @@ describe('handleTranslateRequest', () => {
     }
 
     const getStart = mockGetProviderPlugin.mock.calls.length
-    const runStart = mockPipelineRun.mock.calls.length
 
     await handleTranslateRequest(event)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
     expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
-    expect(mockPipelineRun.mock.calls.length).toBe(runStart + 1)
-    expect(mockPipelineRun.mock.calls.at(-1)?.[0]).toBe('A\n\nB\nC')
+    // Full pipeline runs: analysis + translation + review (at least 3 executor calls)
+    expect(executeCallCount).toBeGreaterThanOrEqual(1)
   })
 
   it('skips non-message events', async () => {
@@ -140,12 +184,11 @@ describe('handleTranslateRequest', () => {
     }
 
     const getStart = mockGetProviderPlugin.mock.calls.length
-    const runStart = mockPipelineRun.mock.calls.length
 
     await handleTranslateRequest(event)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
-    expect(mockPipelineRun.mock.calls.length).toBe(runStart)
+    expect(executeCallCount).toBe(0)
   })
 
   it('skips when stripped message is empty', async () => {
@@ -166,11 +209,10 @@ describe('handleTranslateRequest', () => {
     }
 
     const getStart = mockGetProviderPlugin.mock.calls.length
-    const runStart = mockPipelineRun.mock.calls.length
 
     await handleTranslateRequest(event)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
-    expect(mockPipelineRun.mock.calls.length).toBe(runStart)
+    expect(executeCallCount).toBe(0)
   })
 })

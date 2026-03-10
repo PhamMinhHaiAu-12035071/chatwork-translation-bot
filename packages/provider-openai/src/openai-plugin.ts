@@ -35,7 +35,7 @@ class OpenAIExecutor implements ILLMExecutor {
         model: openai(this.modelId),
         system: prompts.system,
         prompt: prompts.user,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         output: Output.object({ schema: schema as any }),
         temperature: 0,
         maxOutputTokens: 4000,
