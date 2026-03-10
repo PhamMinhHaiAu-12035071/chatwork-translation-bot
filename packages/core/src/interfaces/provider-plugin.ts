@@ -1,4 +1,4 @@
-import type { ITranslationService } from './translation'
+import type { ILLMExecutor } from './llm-executor'
 
 export interface ProviderCreateContext {
   modelId: string
@@ -18,5 +18,5 @@ export interface ProviderManifest {
 
 export interface ProviderPlugin {
   readonly manifest: ProviderManifest
-  create(ctx: ProviderCreateContext): ITranslationService
+  create(ctx: ProviderCreateContext): ILLMExecutor
 }

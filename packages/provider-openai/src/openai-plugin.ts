@@ -1,9 +1,8 @@
 import { generateText, Output } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import type { ITranslationService, TranslationResult, TranslateOptions } from '@chatwork-bot/core'
+import type { ILLMExecutor, PromptPair, ISchema } from '@chatwork-bot/core'
 import { TranslationError } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
-import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/translation-prompt'
 
 export const OPENAI_MODEL_VALUES = [
   // GPT-5.x (2026 frontier)
@@ -23,26 +22,26 @@ export const OPENAI_MODEL_VALUES = [
 export type OpenAIModel = (typeof OPENAI_MODEL_VALUES)[number]
 export const DEFAULT_OPENAI_MODEL: OpenAIModel = 'gpt-5.4'
 
-class OpenAITranslationService implements ITranslationService {
+class OpenAIExecutor implements ILLMExecutor {
   constructor(private readonly modelId: string = DEFAULT_OPENAI_MODEL) {}
 
-  async translate(text: string, options?: TranslateOptions): Promise<TranslationResult> {
+  async execute<T>(
+    prompts: PromptPair,
+    schema: ISchema<T>,
+    options?: { signal?: AbortSignal },
+  ): Promise<T> {
     try {
       const { output } = await generateText({
         model: openai(this.modelId),
-        output: Output.object({ schema: TranslationSchema }),
-        prompt: buildTranslationPrompt(text),
+        system: prompts.system,
+        prompt: prompts.user,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
+        output: Output.object({ schema: schema as any }),
         temperature: 0,
-        maxOutputTokens: 1200,
+        maxOutputTokens: 4000,
         ...(options?.signal && { abortSignal: options.signal }),
       })
-      return {
-        cleanText: text,
-        translatedText: output.translated,
-        sourceLang: output.sourceLang,
-        targetLang: 'Vietnamese',
-        timestamp: new Date().toISOString(),
-      }
+      return output as T
     } catch (cause) {
       throw new TranslationError(
         `OpenAI API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
@@ -61,7 +60,7 @@ export const openaiPlugin: ProviderPlugin = {
     capabilities: { streaming: false },
     requiredEnvKeys: ['OPENAI_API_KEY'],
   },
-  create(ctx: ProviderCreateContext): ITranslationService {
-    return new OpenAITranslationService(ctx.modelId)
+  create(ctx: ProviderCreateContext): ILLMExecutor {
+    return new OpenAIExecutor(ctx.modelId)
   },
 }

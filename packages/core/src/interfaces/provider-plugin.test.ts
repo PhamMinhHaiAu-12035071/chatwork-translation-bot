@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import type { ProviderPlugin, ProviderManifest, ProviderCreateContext } from './provider-plugin'
-import type { ITranslationService, TranslationResult } from './translation'
+import type { ILLMExecutor, ISchema, PromptPair } from './llm-executor'
 
 describe('ProviderPlugin contract', () => {
   it('accepts a conforming plugin object', () => {
@@ -14,16 +14,10 @@ describe('ProviderPlugin contract', () => {
 
     const plugin: ProviderPlugin = {
       manifest,
-      create(_ctx: ProviderCreateContext): ITranslationService {
+      create(_ctx: ProviderCreateContext): ILLMExecutor {
         return {
-          translate(_text: string): Promise<TranslationResult> {
-            return Promise.resolve({
-              cleanText: _text,
-              translatedText: 'bản dịch',
-              sourceLang: 'English',
-              targetLang: 'Vietnamese',
-              timestamp: new Date().toISOString(),
-            })
+          execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
+            return Promise.resolve(schema.parse({}))
           },
         }
       },

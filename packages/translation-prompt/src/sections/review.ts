@@ -1,7 +1,7 @@
-import type { PromptPair } from '@chatwork-bot/core'
+import type { PromptPair } from '~/translation-prompt'
 import type { AnalysisResult } from '~/schemas/analysis.schema'
 
-function buildReviewSystem(escalated: boolean = false): string {
+function buildReviewSystem(escalated = false): string {
   const escalationNote = escalated
     ? '\n\n## ESCALATION MODE\nPrevious rounds were stuck. Skopos strategy has been switched. Apply stricter critique and force meaningful changes in the refinement.'
     : ''

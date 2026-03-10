@@ -81,46 +81,56 @@ describe('cursorPlugin', () => {
   })
 
   it('create requires baseUrl', () => {
-    expect(() => cursorPlugin.create({ modelId: 'claude-sonnet-4-5' })).toThrow(
+    expect(() => cursorPlugin.create({ modelId: 'sonnet-4.6' })).toThrow(
       'cursor provider requires baseUrl',
     )
   })
 
-  it('translates pure JSON response', async () => {
+  it('executes with pure JSON response', async () => {
     mockResponseText = '{"sourceLang": "English", "translated": "Xin chào"}'
-    const service = cursorPlugin.create({
-      modelId: 'claude-sonnet-4-5',
+    const executor = cursorPlugin.create({
+      modelId: 'sonnet-4.6',
       baseUrl: 'http://127.0.0.1:8765/v1',
     })
-    const result = await service.translate('Hello')
-    expect(result.cleanText).toBe('Hello')
-    expect(result.translatedText).toBe('Xin chào')
+    const schema = { parse: (d: unknown) => d as { sourceLang: string; translated: string } }
+    const result = await executor.execute({ system: 'translate', user: 'Hello' }, schema)
     expect(result.sourceLang).toBe('English')
-    expect(result.targetLang).toBe('Vietnamese')
-    expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(result.translated).toBe('Xin chào')
   })
 
-  it('translates JSON wrapped in markdown code block', async () => {
+  it('executes with JSON wrapped in markdown code block', async () => {
     mockResponseText =
       'Here is the translation:\n```json\n{"sourceLang": "Japanese", "translated": "Xin chào"}\n```'
-    const service = cursorPlugin.create({
-      modelId: 'claude-sonnet-4-5',
+    const executor = cursorPlugin.create({
+      modelId: 'sonnet-4.6',
       baseUrl: 'http://127.0.0.1:8765/v1',
     })
-    const result = await service.translate('こんにちは')
-    expect(result.translatedText).toBe('Xin chào')
+    const schema = { parse: (d: unknown) => d as { sourceLang: string; translated: string } }
+    const result = await executor.execute({ system: 'translate', user: 'こんにちは' }, schema)
     expect(result.sourceLang).toBe('Japanese')
+    expect(result.translated).toBe('Xin chào')
   })
 
-  it('throws INVALID_RESPONSE on invalid JSON schema', async () => {
+  it('throws INVALID_RESPONSE when schema.parse throws', async () => {
     mockResponseText = '{"wrong_field": "value"}'
     const { TranslationError } = await import('@chatwork-bot/core')
-    const service = cursorPlugin.create({
-      modelId: 'claude-sonnet-4-5',
+    const executor = cursorPlugin.create({
+      modelId: 'sonnet-4.6',
       baseUrl: 'http://127.0.0.1:8765/v1',
     })
+    const strictSchema = {
+      parse(d: unknown): { sourceLang: string; translated: string } {
+        const obj = d as Record<string, unknown>
+        const sourceLang = obj['sourceLang']
+        const translated = obj['translated']
+        if (typeof sourceLang !== 'string' || typeof translated !== 'string') {
+          throw new Error('Missing required fields')
+        }
+        return { sourceLang, translated }
+      },
+    }
     try {
-      await service.translate('test')
+      await executor.execute({ system: 'sys', user: 'test' }, strictSchema)
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
@@ -131,12 +141,12 @@ describe('cursorPlugin', () => {
   it('throws API_ERROR on network failure', async () => {
     generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('connection refused')))
     const { TranslationError } = await import('@chatwork-bot/core')
-    const service = cursorPlugin.create({
-      modelId: 'claude-sonnet-4-5',
+    const executor = cursorPlugin.create({
+      modelId: 'sonnet-4.6',
       baseUrl: 'http://127.0.0.1:8765/v1',
     })
     try {
-      await service.translate('test')
+      await executor.execute({ system: 'sys', user: 'test' }, { parse: (d: unknown) => d })
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
@@ -147,12 +157,12 @@ describe('cursorPlugin', () => {
   it('throws API_ERROR when response contains no JSON', async () => {
     mockResponseText = 'Sorry, I cannot translate that text.'
     const { TranslationError } = await import('@chatwork-bot/core')
-    const service = cursorPlugin.create({
-      modelId: 'claude-sonnet-4-5',
+    const executor = cursorPlugin.create({
+      modelId: 'sonnet-4.6',
       baseUrl: 'http://127.0.0.1:8765/v1',
     })
     try {
-      await service.translate('test')
+      await executor.execute({ system: 'sys', user: 'test' }, { parse: (d: unknown) => d })
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)

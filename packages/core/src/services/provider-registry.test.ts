@@ -17,7 +17,7 @@ function makePlugin(id: string): ProviderPlugin {
       capabilities: { streaming: false },
       requiredEnvKeys: [],
     },
-    create: () => ({ translate: () => Promise.reject(new Error('not implemented')) }),
+    create: () => ({ execute: () => Promise.reject(new Error('not implemented')) }),
   }
 }
 

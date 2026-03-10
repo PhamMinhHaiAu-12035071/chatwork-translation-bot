@@ -7,8 +7,8 @@ This file provides guidance for Codex and other AI agents.
 Chatwork Translation Bot — Bun + TypeScript monorepo. Webhook-based bot, no frontend or database.
 Seven packages:
 
-- `@chatwork-bot/core` — types, interfaces, plugin registry, execution policy (NO provider-specific model values)
-- `@chatwork-bot/translation-prompt` — shared translation prompt + Zod schema
+- `@chatwork-bot/core` — types, interfaces, ILLMExecutor, plugin registry (NO provider-specific model values)
+- `@chatwork-bot/translation-prompt` — 4-phase pipeline prompts + Zod schemas (AnalysisSchema, ReviewSchema, PipelineTraceSchema)
 - `@chatwork-bot/provider-gemini` — Gemini provider plugin (`@ai-sdk/google`)
 - `@chatwork-bot/provider-openai` — OpenAI provider plugin (`@ai-sdk/openai`)
 - `@chatwork-bot/provider-cursor` — Cursor provider plugin, LOCAL DEV ONLY (`@ai-sdk/openai-compatible`)

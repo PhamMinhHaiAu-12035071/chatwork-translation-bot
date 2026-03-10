@@ -40,37 +40,37 @@ describe('buildReviewPrompts', () => {
 
   it('user prompt contains the original text', () => {
     const prompts = buildReviewPrompts('original text', fakeAnalysis, 'draft vi', 1)
-    expect((prompts.user as string)).toContain('original text')
+    expect(prompts.user).toContain('original text')
   })
 
   it('user prompt contains the current draft', () => {
     const prompts = buildReviewPrompts('original text', fakeAnalysis, 'bản dịch hiện tại', 1)
-    expect((prompts.user as string)).toContain('bản dịch hiện tại')
+    expect(prompts.user).toContain('bản dịch hiện tại')
   })
 
   it('system prompt includes all 3 persona names', () => {
     const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 1)
-    expect((prompts.system as string)).toContain('Fresh Reader')
-    expect((prompts.system as string)).toContain('Linguist')
-    expect((prompts.system as string)).toContain('Tuổi Trẻ')
+    expect(prompts.system).toContain('Fresh Reader')
+    expect(prompts.system).toContain('Linguist')
+    expect(prompts.system).toContain('Tuổi Trẻ')
   })
 
   it('system prompt includes all 5 MQM-Lite axes', () => {
     const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 1)
-    expect((prompts.system as string)).toContain('naturalFlow')
-    expect((prompts.system as string)).toContain('culturalFidelity')
-    expect((prompts.system as string)).toContain('readerExperience')
-    expect((prompts.system as string)).toContain('semanticAccuracy')
-    expect((prompts.system as string)).toContain('targetConventions')
+    expect(prompts.system).toContain('naturalFlow')
+    expect(prompts.system).toContain('culturalFidelity')
+    expect(prompts.system).toContain('readerExperience')
+    expect(prompts.system).toContain('semanticAccuracy')
+    expect(prompts.system).toContain('targetConventions')
   })
 
   it('includes round number in user prompt', () => {
     const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 3)
-    expect((prompts.user as string)).toContain('3')
+    expect(prompts.user).toContain('3')
   })
 
   it('includes escalated note when escalated=true', () => {
     const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 4, true)
-    expect((prompts.system as string)).toMatch(/escalat/i)
+    expect(prompts.system).toMatch(/escalat/i)
   })
 })

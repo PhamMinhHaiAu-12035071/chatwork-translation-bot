@@ -25,7 +25,7 @@ describe('logStartupBanner', () => {
         capabilities: { streaming: false },
         requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
       },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
+      create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })
 
     const { logStartupBanner } = await import('./startup-banner')
@@ -51,7 +51,7 @@ describe('logStartupBanner', () => {
         capabilities: { streaming: false },
         requiredEnvKeys: [],
       },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
+      create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })
 
     const { logStartupBanner } = await import('./startup-banner')

@@ -5,7 +5,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
-      "~/*": ["packages/translator/src/*", "packages/core/src/*"]
+      "~/*": ["packages/translator/src/*", "packages/core/src/*", "packages/translation-prompt/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

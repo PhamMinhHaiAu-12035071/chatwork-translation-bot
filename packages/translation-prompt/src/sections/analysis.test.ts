@@ -11,44 +11,44 @@ describe('buildAnalysisPrompts', () => {
   it('embeds the source text in the user prompt', () => {
     const text = 'こんにちは、お世話になっております。'
     const prompts = buildAnalysisPrompts(text)
-    expect(prompts.user as string).toContain(text)
+    expect(prompts.user).toContain(text)
   })
 
   it('system prompt contains all 5 extratextual dimension names', () => {
     const prompts = buildAnalysisPrompts('test')
-    expect((prompts.system as string)).toContain('sender')
-    expect((prompts.system as string)).toContain('intention')
-    expect((prompts.system as string)).toContain('audience')
-    expect((prompts.system as string)).toContain('medium')
-    expect((prompts.system as string)).toContain('temporalContext')
+    expect(prompts.system).toContain('sender')
+    expect(prompts.system).toContain('intention')
+    expect(prompts.system).toContain('audience')
+    expect(prompts.system).toContain('medium')
+    expect(prompts.system).toContain('temporalContext')
   })
 
   it('system prompt contains all 6 intratextual dimension names', () => {
     const prompts = buildAnalysisPrompts('test')
-    expect((prompts.system as string)).toContain('subjectMatter')
-    expect((prompts.system as string)).toContain('contentSummary')
-    expect((prompts.system as string)).toContain('presuppositions')
-    expect((prompts.system as string)).toContain('textStructure')
-    expect((prompts.system as string)).toContain('lexisNotes')
-    expect((prompts.system as string)).toContain('nonVerbalElements')
+    expect(prompts.system).toContain('subjectMatter')
+    expect(prompts.system).toContain('contentSummary')
+    expect(prompts.system).toContain('presuppositions')
+    expect(prompts.system).toContain('textStructure')
+    expect(prompts.system).toContain('lexisNotes')
+    expect(prompts.system).toContain('nonVerbalElements')
   })
 
   it('system prompt contains all 3 cross-cutting dimension names', () => {
     const prompts = buildAnalysisPrompts('test')
-    expect((prompts.system as string)).toContain('textFunction')
-    expect((prompts.system as string)).toContain('registerTone')
-    expect((prompts.system as string)).toContain('expectedEffect')
+    expect(prompts.system).toContain('textFunction')
+    expect(prompts.system).toContain('registerTone')
+    expect(prompts.system).toContain('expectedEffect')
   })
 
   it('system prompt describes all 4 skopos fields', () => {
     const prompts = buildAnalysisPrompts('test')
-    expect((prompts.system as string)).toContain('instrumental')
-    expect((prompts.system as string)).toContain('documentary')
-    expect((prompts.system as string)).toContain('formal')
+    expect(prompts.system).toContain('instrumental')
+    expect(prompts.system).toContain('documentary')
+    expect(prompts.system).toContain('formal')
   })
 
   it('user prompt instructs to output JSON only', () => {
     const prompts = buildAnalysisPrompts('test')
-    expect((prompts.user as string).toLowerCase()).toContain('json')
+    expect(prompts.user.toLowerCase()).toContain('json')
   })
 })

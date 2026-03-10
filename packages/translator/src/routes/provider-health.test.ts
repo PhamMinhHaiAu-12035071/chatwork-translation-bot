@@ -15,7 +15,7 @@ describe('GET /health/provider', () => {
         capabilities: { streaming: false },
         requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
       },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
+      create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })
 
     const { providerHealthRoute } = await import('./provider-health')

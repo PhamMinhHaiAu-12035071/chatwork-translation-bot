@@ -10,7 +10,8 @@ Bun workspaces monorepo. Seven packages:
  registry, execution policy)                         @chatwork-bot/webhook-logger
 
 @chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
-(shared prompt + Zod schema)
+(4-phase pipeline prompts +                          @chatwork-bot/translator
+ Zod schemas)
 
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
@@ -24,7 +25,7 @@ Bun workspaces monorepo. Seven packages:
 Shared logic. Contains:
 
 - `src/types/` — external data shapes (webhook events, branded AIProvider type)
-- `src/interfaces/` — behavioral contracts (`ITranslationService`, `IChatworkClient`, `ProviderPlugin`)
+- `src/interfaces/` — behavioral contracts (`ILLMExecutor`, `ISchema`, `IChatworkClient`, `ProviderPlugin`)
 - `src/services/` — provider registry, execution policy
 - `src/utils/` — pure utility functions (`parseCommand`, `stripChatworkMarkup`)
 - `src/chatwork/` — Chatwork REST API client
@@ -34,20 +35,19 @@ No build step needed — Bun resolves TypeScript directly.
 
 ### `packages/translation-prompt` (`@chatwork-bot/translation-prompt`)
 
-Shared translation prompt and `TranslationSchema` (Zod). Used by all provider packages.
+4-phase translation pipeline prompts and Zod schemas. Contains: `src/sections/` (prompt builders), `src/schemas/` (`AnalysisSchema`, `ReviewSchema`, `TranslationDraftSchema`, `PipelineTraceSchema`). Exports `PromptPair` type. Used by provider-* AND translator packages.
 
 ### `packages/provider-gemini` (`@chatwork-bot/provider-gemini`)
 
-Gemini provider plugin. Implements `ProviderPlugin` using `@ai-sdk/google`.
+Gemini provider plugin. Implements `ILLMExecutor.execute<T>()` using `Output.object({ schema })` from `@ai-sdk/google`.
 
 ### `packages/provider-openai` (`@chatwork-bot/provider-openai`)
 
-OpenAI provider plugin. Implements `ProviderPlugin` using `@ai-sdk/openai`.
+OpenAI provider plugin. Implements `ILLMExecutor.execute<T>()` using `Output.object({ schema })` from `@ai-sdk/openai`.
 
 ### `packages/provider-cursor` (`@chatwork-bot/provider-cursor`)
 
-Cursor provider plugin (LOCAL DEV ONLY). Uses `@ai-sdk/openai-compatible` with a local
-`cursor-api-proxy`. Must not be used in production.
+Cursor provider plugin (LOCAL DEV ONLY). Implements `ILLMExecutor.execute<T>()` using `extractJsonFromText` + `schema.parse()`. Must not be used in production.
 
 ### `packages/translator` (`@chatwork-bot/translator`)
 
@@ -59,6 +59,7 @@ Runnable HTTP server. Owns:
 - Webhook event handling (`src/webhook/handler.ts`)
 - Structured JSON request logging (`src/utils/request-log.ts`)
 - Provider health endpoint (`src/routes/provider-health.ts`)
+- 4-phase translation pipeline (`src/pipeline/pipeline.ts`)
 
 ### `packages/webhook-logger` (`@chatwork-bot/webhook-logger`)
 
@@ -95,7 +96,7 @@ tsconfig.base.json                          (baseUrl: ".")
   ├── packages/provider-gemini/tsconfig.json
   ├── packages/provider-openai/tsconfig.json
   ├── packages/provider-cursor/tsconfig.json
-  ├── packages/translator/tsconfig.json     (paths: ~/* → packages/translator/src/*, packages/core/src/*)
+  ├── packages/translator/tsconfig.json     (paths: ~/* → packages/translator/src/*, packages/core/src/*, packages/translation-prompt/src/*)
   └── packages/webhook-logger/tsconfig.json (paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*)
 ```
 
@@ -105,3 +106,4 @@ Each package tsconfig defines `paths: { "~/*": [...] }` for intra-package import
 Do NOT add `~/` to `tsconfig.base.json` — `baseUrl` differs between root and packages.
 Dependent packages must include core's src path in their `~/*` mapping since core sources
 are loaded directly (via `"main": "./src/index.ts"`) and contain `~/` imports.
+Packages that import translation-prompt (whose source files contain `~/schemas/*` and `~/sections/*` imports) must also include `packages/translation-prompt/src/*` in their `~/*` mapping.
