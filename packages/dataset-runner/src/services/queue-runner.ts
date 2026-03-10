@@ -92,8 +92,9 @@ export class QueueRunner {
     state: DatasetFileState,
     record: PendingRecord,
   ): Promise<DatasetFileState> {
+    const { inFlight: _inFlight, ...rest } = state
     const nextState: DatasetFileState = {
-      ...state,
+      ...rest,
       nextLineNumber: record.lineNumber + 1,
       completedItemIds: [...state.completedItemIds, record.item.id],
       updatedAt: new Date().toISOString(),
@@ -124,8 +125,9 @@ export class QueueRunner {
       })}\n`,
     )
 
+    const { inFlight: _inFlight, ...rest } = state
     const nextState: DatasetFileState = {
-      ...state,
+      ...rest,
       failedItemIds: [...state.failedItemIds, record.item.id],
       updatedAt: new Date().toISOString(),
     }
@@ -237,7 +239,7 @@ export class QueueRunner {
 
                 sendAttempt += 1
                 if (sendAttempt <= this.config.maxRetries) {
-                  await Bun.sleep(this.backoffMs(sendAttempt - 1))
+                  await Bun.sleep(this.backoffMs(sendAttempt))
                 }
               }
             }
@@ -298,6 +300,9 @@ export class QueueRunner {
             await Bun.sleep(this.config.cooldownMs)
           }
 
+          // Archive the file unconditionally — failed items are captured in the DLQ.
+          // The pending file is always moved to archive/ after all records are processed,
+          // even if some or all records failed.
           // Archive the file and clean up source-map entries for this file
           const pendingPath = join(this.config.inputDir, 'pending', file.fileName)
           const archivePath = join(this.config.inputDir, 'archive', file.fileName)
