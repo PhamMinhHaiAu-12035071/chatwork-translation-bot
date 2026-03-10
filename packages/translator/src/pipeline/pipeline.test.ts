@@ -1,8 +1,7 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect } from 'bun:test'
 import type { ILLMExecutor, PromptPair, ISchema } from '@chatwork-bot/core'
 import { TranslationPipeline } from './pipeline'
-import type { AnalysisResult } from '@chatwork-bot/translation-prompt'
-import type { ReviewResult } from '@chatwork-bot/translation-prompt'
+import type { AnalysisResult, ReviewResult } from '@chatwork-bot/translation-prompt'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -48,7 +47,7 @@ const makeReview = (totalScore: number): ReviewResult => ({
   totalScore,
   passed: totalScore >= 9,
   critique: totalScore < 9 ? 'Needs improvement.' : 'Good.',
-  refinedTranslation: `Bản dịch refined (score ${totalScore}).`,
+  refinedTranslation: `Bản dịch refined (score ${String(totalScore)}).`,
   personaFeedback: {
     freshReader: 'OK',
     linguist: 'OK',
@@ -61,10 +60,10 @@ const makeReview = (totalScore: number): ReviewResult => ({
 function makeMockExecutor(responses: unknown[]): ILLMExecutor {
   let callCount = 0
   return {
-    execute: mock(async <T>(_prompts: PromptPair, schema: ISchema<T>) => {
+    execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
       const response = responses[callCount++]
-      return schema.parse(response) as T
-    }),
+      return Promise.resolve(schema.parse(response) as T)
+    },
   }
 }
 
@@ -104,7 +103,6 @@ describe('TranslationPipeline', () => {
   describe('escalation — stuck after 3 rounds', () => {
     it('marks escalated=true and continues for up to 2 more rounds', async () => {
       const failReview = makeReview(8)
-      // 3 fails → escalation → 1 more fail → 1 pass
       const passReview = makeReview(9)
       const executor = makeMockExecutor([
         fakeAnalysis,
@@ -116,7 +114,7 @@ describe('TranslationPipeline', () => {
         passReview, // round 4
       ])
       const pipeline = new TranslationPipeline(executor)
-      const { trace } = await pipeline.run('test')
+      const { trace } = await pipeline.run('テスト用のテキスト')
 
       expect(trace.escalated).toBe(true)
     })
@@ -124,28 +122,26 @@ describe('TranslationPipeline', () => {
 
   describe('max rounds — returns best result', () => {
     it('returns best round when all 5 rounds fail', async () => {
-      const reviews = [
-        makeReview(7),
-        makeReview(8), // best
-        makeReview(7),
-        makeReview(6),
-        makeReview(6),
-      ]
+      const review0 = makeReview(7)
+      const review1 = makeReview(8) // best
+      const review2 = makeReview(7)
+      const review3 = makeReview(6)
+      const review4 = makeReview(6)
       const executor = makeMockExecutor([
         fakeAnalysis,
         fakeDraft,
-        reviews[0]!,
-        reviews[1]!,
-        reviews[2]!, // round 3 = stuck → escalation
+        review0,
+        review1,
+        review2, // round 3 = stuck → escalation
         fakeDraft, // Phase 2 rebuilt
-        reviews[3]!,
-        reviews[4]!,
+        review3,
+        review4,
       ])
       const pipeline = new TranslationPipeline(executor)
-      const { result, trace } = await pipeline.run('test')
+      const { result, trace } = await pipeline.run('テスト用のテキスト')
 
       expect(trace.totalRounds).toBeLessThanOrEqual(5)
-      expect(result.translatedText).toBe(reviews[1]!.refinedTranslation) // best was round 2
+      expect(result.translatedText).toBe(review1.refinedTranslation) // best was round 2
     })
   })
 

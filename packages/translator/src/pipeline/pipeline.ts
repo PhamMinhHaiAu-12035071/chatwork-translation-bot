@@ -128,15 +128,17 @@ export class TranslationPipeline {
     return { result, trace }
   }
 
-  private buildSignal(options: PipelineRunOptions): AbortSignal | undefined {
+  private buildSignal(options: PipelineRunOptions): AbortSignal {
     const timeoutMs = options.timeoutMs ?? this.opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
     const timeoutController = new AbortController()
     setTimeout(() => timeoutController.abort(), timeoutMs)
 
     if (options.signal) {
-      // Combine external signal + timeout signal
-      options.signal.addEventListener('abort', () => timeoutController.abort())
-      return timeoutController.signal
+      if (options.signal.aborted) {
+        timeoutController.abort() // propagate immediately if already aborted
+      } else {
+        options.signal.addEventListener('abort', () => timeoutController.abort())
+      }
     }
     return timeoutController.signal
   }
