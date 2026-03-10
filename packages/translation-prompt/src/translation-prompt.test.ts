@@ -79,6 +79,17 @@ describe('buildSystemPrompt', () => {
   it('is a pure function — same input always returns same output', () => {
     expect(buildSystemPrompt()).toBe(buildSystemPrompt())
   })
+
+  it('does not contain the old strict line-break rule', () => {
+    expect(buildSystemPrompt()).not.toContain('Preserve ALL line breaks')
+  })
+
+  it('contains the 3-tier formatting doctrine', () => {
+    expect(buildSystemPrompt()).toContain('Formatting Doctrine')
+    expect(buildSystemPrompt()).toContain('Tier 1')
+    expect(buildSystemPrompt()).toContain('Tier 2')
+    expect(buildSystemPrompt()).toContain('Tier 3')
+  })
 })
 
 describe('buildUserPrompt', () => {
@@ -112,6 +123,11 @@ describe('buildUserPrompt', () => {
     const prompt = buildUserPrompt('test')
     expect(prompt).toContain('deploy')
     expect(prompt).toContain('staging')
+  })
+
+  it('contains few-shot example demonstrating mid-sentence line break merge', () => {
+    const prompt = buildUserPrompt('test')
+    expect(prompt).toContain('引き継ぎ')
   })
 
   it('is a pure function — same text always returns same output', () => {

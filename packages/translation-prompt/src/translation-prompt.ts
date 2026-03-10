@@ -110,17 +110,28 @@ Silently verify all 4 conditions before producing the JSON:
 1. ✓ Natural Vietnamese — would a native professional write it exactly this way?
 2. ✓ Register preserved — politeness level correctly mapped to Vietnamese equivalent?
 3. ✓ IT terms in English — no translated tech jargon anywhere in the output?
-4. ✓ Line breaks identical — every \\n in source appears exactly in translation?`,
+4. ✓ Formatting natural — does the translation follow target-language (Vietnamese) line-break conventions, not the source language's typographic habits?`,
 }
 
-// Section 5: Structural rules — FORMAT preservation
+// Section 5: Structural rules — FORMAT conventions of the target language
 const SECTION_STRUCTURAL: PromptSection = {
   id: 'structural',
-  content: `## Structural Rules
+  content: `## Formatting Doctrine
 
-Line Breaks: Preserve ALL line breaks exactly as they appear in the source text.
-Every single newline (\\n) in source = the same newline in translation.
-Do NOT add or remove blank lines. This is critical for Chatwork message formatting.`,
+Apply the formatting conventions of the target language, not the source.
+
+Tier 1 — Paragraph dividers (blank lines \\n\\n)
+Preserve blank lines that separate distinct topics or paragraphs.
+
+Tier 2 — Prose line breaks (single \\n)
+Merge when a break falls inside a grammatical unit (mid-sentence: clause ending
+with など, が, は, を, commas, or similar unfinished constructs). Reflow prose so
+it reads as a native Vietnamese professional would naturally write it.
+
+Tier 3 — Structural elements and Chatwork markup
+Use judgment: preserve lists, numbered items, and Chatwork tags ([info][/info],
+[code][/code], [qt][/qt], [To:x]) if they carry structural meaning. Reflow if
+the prose context makes them unnatural in the target language.`,
 }
 
 // Section 6: Hard constraints — what to NEVER do
@@ -132,6 +143,7 @@ const SECTION_CONSTRAINTS: PromptSection = {
 - Do NOT add formality that was not present in the original
 - Do NOT reduce formality that WAS present in the original
 - Do NOT summarize, paraphrase beyond natural adaptation, or omit any content
+- Do NOT strip or modify Chatwork markup tags ([info][/info], [code][/code], [qt][/qt], [To:xxx]) — translate only the text content inside them
 - Do NOT prefix the JSON response with any text — output JSON immediately`,
 }
 
@@ -175,6 +187,9 @@ Output: {"sourceLang":"Japanese","translated":"Kính gửi anh/chị,\\nTôi xin
 
 Input: "The deploy is scheduled for Monday. Please make sure staging is ready."
 Output: {"sourceLang":"English","translated":"Deploy được lên kế hoạch vào thứ Hai. Nhờ anh/chị đảm bảo staging đã sẵn sàng nhé."}
+
+Input: "実装してみてテストが荒くなるようでしたらあちらに引き継ぎしちゃうなど\\nそのあたりは柔軟に相談できると思います。"
+Output: {"sourceLang":"Japanese","translated":"Nếu lúc implement thử mà thấy phần test có vẻ phức tạp thì mình cứ bàn giao lại cho bên đó chẳng hạn, mấy vấn đề đó mình nghĩ có thể trao đổi linh hoạt được."}
 
 Text:
 ${text}`
