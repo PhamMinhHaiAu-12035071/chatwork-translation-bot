@@ -1,9 +1,8 @@
 import { generateText, Output } from 'ai'
 import { google } from '@ai-sdk/google'
-import type { ITranslationService, TranslationResult, TranslateOptions } from '@chatwork-bot/core'
+import type { ILLMExecutor, PromptPair, ISchema } from '@chatwork-bot/core'
 import { TranslationError } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
-import { TranslationSchema, buildTranslationPrompt } from '@chatwork-bot/translation-prompt'
 
 export const GEMINI_MODEL_VALUES = [
   // Gemini 3.1 (Feb 2026)
@@ -23,26 +22,27 @@ export const GEMINI_MODEL_VALUES = [
 export type GeminiModel = (typeof GEMINI_MODEL_VALUES)[number]
 export const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-2.5-pro'
 
-class GeminiTranslationService implements ITranslationService {
+class GeminiExecutor implements ILLMExecutor {
   constructor(private readonly modelId: string = DEFAULT_GEMINI_MODEL) {}
 
-  async translate(text: string, options?: TranslateOptions): Promise<TranslationResult> {
+  async execute<T>(
+    prompts: PromptPair,
+    schema: ISchema<T>,
+    options?: { signal?: AbortSignal },
+  ): Promise<T> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { output } = await generateText({
         model: google(this.modelId),
-        output: Output.object({ schema: TranslationSchema }),
-        prompt: buildTranslationPrompt(text),
+        system: prompts.system,
+        prompt: prompts.user,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        output: Output.object({ schema: schema as any }),
         temperature: 0,
-        maxOutputTokens: 1200,
+        maxOutputTokens: 4000,
         ...(options?.signal && { abortSignal: options.signal }),
       })
-      return {
-        cleanText: text,
-        translatedText: output.translated,
-        sourceLang: output.sourceLang,
-        targetLang: 'Vietnamese',
-        timestamp: new Date().toISOString(),
-      }
+      return output as T
     } catch (cause) {
       throw new TranslationError(
         `Gemini API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
@@ -61,7 +61,7 @@ export const geminiPlugin: ProviderPlugin = {
     capabilities: { streaming: false },
     requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
   },
-  create(ctx: ProviderCreateContext): ITranslationService {
-    return new GeminiTranslationService(ctx.modelId)
+  create(ctx: ProviderCreateContext): ILLMExecutor {
+    return new GeminiExecutor(ctx.modelId)
   },
 }

@@ -1,13 +1,10 @@
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
 import type { geminiPlugin as geminiPluginType } from './gemini-plugin'
 
-let mockSourceLang = 'English'
-let mockTranslated = 'Xin chào thế giới'
+let mockOutput: unknown = { sourceLang: 'English', translated: 'Xin chào thế giới' }
 
 const generateTextMock = mock((_config: unknown) =>
-  Promise.resolve({
-    output: { sourceLang: mockSourceLang, translated: mockTranslated },
-  }),
+  Promise.resolve({ output: mockOutput }),
 )
 
 const outputObjectMock = mock((config: unknown) => config)
@@ -41,30 +38,28 @@ describe('geminiPlugin', () => {
     expect(geminiPlugin.manifest.supportedModels).toContain('gemini-2.0-flash')
   })
 
-  it('create returns a service that translates text', async () => {
-    mockSourceLang = 'English'
-    mockTranslated = 'Xin chào thế giới'
-    const service = geminiPlugin.create({ modelId: 'gemini-2.5-pro' })
-    const result = await service.translate('Hello World')
-    expect(result.cleanText).toBe('Hello World')
-    expect(result.translatedText).toBe('Xin chào thế giới')
+  it('create returns an executor that calls generateText with prompts', async () => {
+    mockOutput = { sourceLang: 'English', translated: 'Xin chào thế giới' }
+    const executor = geminiPlugin.create({ modelId: 'gemini-2.5-pro' })
+    const schema = { parse: (d: unknown) => d as { sourceLang: string; translated: string } }
+    const result = await executor.execute({ system: 'translate', user: 'Hello World' }, schema)
     expect(result.sourceLang).toBe('English')
-    expect(result.targetLang).toBe('Vietnamese')
-    expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(result.translated).toBe('Xin chào thế giới')
   })
 
   it('passes the modelId through to google()', async () => {
-    const service = geminiPlugin.create({ modelId: 'gemini-2.0-flash' })
-    await service.translate('test')
+    const executor = geminiPlugin.create({ modelId: 'gemini-2.0-flash' })
+    const schema = { parse: (d: unknown) => d }
+    await executor.execute({ system: 'sys', user: 'test' }, schema)
     expect(googleMock.mock.calls.at(-1)?.[0]).toBe('gemini-2.0-flash')
   })
 
   it('wraps API errors in TranslationError', async () => {
     generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('network error')))
     const { TranslationError } = await import('@chatwork-bot/core')
-    const service = geminiPlugin.create({ modelId: 'gemini-2.5-pro' })
+    const executor = geminiPlugin.create({ modelId: 'gemini-2.5-pro' })
     try {
-      await service.translate('test')
+      await executor.execute({ system: 'sys', user: 'test' }, { parse: (d: unknown) => d })
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)

@@ -1,13 +1,10 @@
 import { beforeAll, describe, expect, it, mock } from 'bun:test'
 import type { openaiPlugin as openaiPluginType } from './openai-plugin'
 
-let mockSourceLang = 'Japanese'
-let mockTranslated = 'おはようございます、世界！'
+let mockOutput: unknown = { sourceLang: 'English', translated: 'Xin chào thế giới' }
 
 const generateTextMock = mock((_config: unknown) =>
-  Promise.resolve({
-    output: { sourceLang: mockSourceLang, translated: mockTranslated },
-  }),
+  Promise.resolve({ output: mockOutput }),
 )
 
 const outputObjectMock = mock((config: unknown) => config)
@@ -36,35 +33,33 @@ describe('openaiPlugin', () => {
     expect(openaiPlugin.manifest.defaultModel).toBe('gpt-5.4')
   })
 
-  it('manifest supportedModels contains gpt-4o and gpt-4o-mini', () => {
+  it('manifest supportedModels contains gpt-5.4 and gpt-4o', () => {
+    expect(openaiPlugin.manifest.supportedModels).toContain('gpt-5.4')
     expect(openaiPlugin.manifest.supportedModels).toContain('gpt-4o')
-    expect(openaiPlugin.manifest.supportedModels).toContain('gpt-4o-mini')
   })
 
-  it('create returns a service that translates text', async () => {
-    mockSourceLang = 'Japanese'
-    mockTranslated = 'おはようございます、世界！'
-    const service = openaiPlugin.create({ modelId: 'gpt-4o' })
-    const result = await service.translate('おはようございます、世界！')
-    expect(result.cleanText).toBe('おはようございます、世界！')
-    expect(result.translatedText).toBe('おはようございます、世界！')
-    expect(result.sourceLang).toBe('Japanese')
-    expect(result.targetLang).toBe('Vietnamese')
-    expect(result.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+  it('create returns an executor that calls generateText with prompts', async () => {
+    mockOutput = { sourceLang: 'English', translated: 'Xin chào thế giới' }
+    const executor = openaiPlugin.create({ modelId: 'gpt-5.4' })
+    const schema = { parse: (d: unknown) => d as { sourceLang: string; translated: string } }
+    const result = await executor.execute({ system: 'translate', user: 'Hello World' }, schema)
+    expect(result.sourceLang).toBe('English')
+    expect(result.translated).toBe('Xin chào thế giới')
   })
 
   it('passes the modelId through to openai()', async () => {
-    const service = openaiPlugin.create({ modelId: 'gpt-4o-mini' })
-    await service.translate('test')
-    expect(openaiMock.mock.calls.at(-1)?.[0]).toBe('gpt-4o-mini')
+    const executor = openaiPlugin.create({ modelId: 'gpt-4o' })
+    const schema = { parse: (d: unknown) => d }
+    await executor.execute({ system: 'sys', user: 'test' }, schema)
+    expect(openaiMock.mock.calls.at(-1)?.[0]).toBe('gpt-4o')
   })
 
   it('wraps API errors in TranslationError', async () => {
-    generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('quota exceeded')))
+    generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('network error')))
     const { TranslationError } = await import('@chatwork-bot/core')
-    const service = openaiPlugin.create({ modelId: 'gpt-4o' })
+    const executor = openaiPlugin.create({ modelId: 'gpt-5.4' })
     try {
-      await service.translate('test')
+      await executor.execute({ system: 'sys', user: 'test' }, { parse: (d: unknown) => d })
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
