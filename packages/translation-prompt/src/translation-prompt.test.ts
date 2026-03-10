@@ -1,158 +1,93 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, it, expect } from 'bun:test'
 import {
-  TranslationSchema,
-  buildTranslationPrompt,
-  buildSystemPrompt,
-  buildUserPrompt,
+  buildAnalysisPrompts,
+  buildTranslationPrompts,
+  buildReviewPrompts,
+  TranslationDraftSchema,
 } from './translation-prompt'
+import type { AnalysisResult } from './schemas/analysis.schema'
 
-describe('buildTranslationPrompt', () => {
-  it('includes the source text in the prompt', () => {
-    const text = 'Hello World'
-    const prompt = buildTranslationPrompt(text)
-    expect(prompt).toContain(text)
+const fakeAnalysis: AnalysisResult = {
+  skopos: {
+    purpose: 'informational',
+    audience: 'Vietnamese engineer',
+    strategy: 'instrumental',
+    register: 'semi-formal',
+  },
+  extratextual: {
+    sender: 'PM',
+    intention: 'request deploy status',
+    audience: 'engineer',
+    medium: 'chat',
+    temporalContext: 'end of sprint',
+  },
+  intratextual: {
+    subjectMatter: 'deployment',
+    contentSummary: 'asking for deploy timing confirmation',
+    presuppositions: 'reader knows the project timeline',
+    textStructure: 'single paragraph',
+    lexisNotes: 'business Japanese sonkeigo register',
+    nonVerbalElements: 'none',
+  },
+  crossCutting: {
+    textFunction: 'directive',
+    registerTone: 'polite-formal',
+    expectedEffect: 'reader confirms deploy schedule',
+  },
+}
+
+describe('buildAnalysisPrompts', () => {
+  it('returns PromptPair', () => {
+    const result = buildAnalysisPrompts('テスト')
+    expect(typeof result.system).toBe('string')
+    expect(typeof result.user).toBe('string')
   })
 
-  it('mentions Vietnamese as the target language', () => {
-    const prompt = buildTranslationPrompt('test')
-    expect(prompt.toLowerCase()).toContain('vietnamese')
-  })
-
-  it('mentions detecting the source language', () => {
-    const prompt = buildTranslationPrompt('test')
-    expect(prompt.toLowerCase()).toContain('detect')
-  })
-})
-
-describe('TranslationSchema', () => {
-  it('parses a valid object', () => {
-    const result = TranslationSchema.parse({ sourceLang: 'English', translated: 'Xin chào' })
-    expect(result.sourceLang).toBe('English')
-    expect(result.translated).toBe('Xin chào')
-  })
-
-  it('rejects an empty translated string', () => {
-    expect(() => TranslationSchema.parse({ sourceLang: 'English', translated: '' })).toThrow()
-  })
-
-  it('rejects a missing sourceLang', () => {
-    expect(() => TranslationSchema.parse({ translated: 'Xin chào' })).toThrow()
-  })
-
-  it('rejects a sourceLang shorter than 2 chars', () => {
-    expect(() => TranslationSchema.parse({ sourceLang: 'E', translated: 'Xin chào' })).toThrow()
-  })
-
-  it('accepts a sourceLang up to 50 chars', () => {
-    const lang = 'A'.repeat(50)
-    expect(() => TranslationSchema.parse({ sourceLang: lang, translated: 'ok' })).not.toThrow()
-  })
-})
-
-describe('buildSystemPrompt', () => {
-  it('returns a non-empty string', () => {
-    expect(buildSystemPrompt().length).toBeGreaterThan(100)
-  })
-
-  it('mentions elite translator persona', () => {
-    expect(buildSystemPrompt().toLowerCase()).toContain('translator')
-  })
-
-  it('mentions vietnamese', () => {
-    expect(buildSystemPrompt().toLowerCase()).toContain('vietnamese')
-  })
-
-  it('mentions keigo', () => {
-    expect(buildSystemPrompt().toLowerCase()).toContain('keigo')
-  })
-
-  it('does not contain JSON format spec (that belongs in buildUserPrompt)', () => {
-    expect(buildSystemPrompt()).not.toContain('"sourceLang"')
-  })
-
-  it('accepts a custom sections array', () => {
-    const custom = [{ id: 'test', content: 'Custom section content here' }]
-    const result = buildSystemPrompt(custom)
-    expect(result).toBe('Custom section content here')
-  })
-
-  it('is a pure function — same input always returns same output', () => {
-    expect(buildSystemPrompt()).toBe(buildSystemPrompt())
-  })
-
-  it('does not contain the old strict line-break rule', () => {
-    expect(buildSystemPrompt()).not.toContain('Preserve ALL line breaks')
-  })
-
-  it('contains the 3-tier formatting doctrine', () => {
-    expect(buildSystemPrompt()).toContain('Formatting Doctrine')
-    expect(buildSystemPrompt()).toContain('Tier 1')
-    expect(buildSystemPrompt()).toContain('Tier 2')
-    expect(buildSystemPrompt()).toContain('Tier 3')
+  it('embeds source text in user prompt', () => {
+    const text = 'お世話になっております。'
+    const result = buildAnalysisPrompts(text)
+    expect(result.user).toContain(text)
   })
 })
 
-describe('buildUserPrompt', () => {
-  it('includes the source text', () => {
-    const text = 'こんにちは世界'
-    expect(buildUserPrompt(text)).toContain(text)
+describe('buildTranslationPrompts', () => {
+  it('returns PromptPair', () => {
+    const result = buildTranslationPrompts('テスト', fakeAnalysis)
+    expect(typeof result.system).toBe('string')
+    expect(typeof result.user).toBe('string')
   })
 
-  it('instructs JSON-only output', () => {
-    const prompt = buildUserPrompt('test')
-    expect(prompt.toLowerCase()).toContain('json')
+  it('embeds source text in user prompt', () => {
+    const text = 'リリースの件でご確認をお願いしたく'
+    const result = buildTranslationPrompts(text, fakeAnalysis)
+    expect(result.user).toContain(text)
   })
 
-  it('specifies the required JSON format fields', () => {
-    const prompt = buildUserPrompt('test')
-    expect(prompt).toContain('"sourceLang"')
-    expect(prompt).toContain('"translated"')
+  it('embeds skopos strategy in user prompt', () => {
+    const result = buildTranslationPrompts('test', fakeAnalysis)
+    expect(result.user).toContain('instrumental')
   })
 
-  it('instructs no markdown or code block', () => {
-    const prompt = buildUserPrompt('test')
-    expect(prompt.toLowerCase()).toContain('no markdown')
-  })
-
-  it('contains few-shot example with japanese keigo input', () => {
-    const prompt = buildUserPrompt('test')
-    expect(prompt).toContain('お世話')
-  })
-
-  it('contains few-shot example showing IT terms kept in English', () => {
-    const prompt = buildUserPrompt('test')
-    expect(prompt).toContain('deploy')
-    expect(prompt).toContain('staging')
-  })
-
-  it('contains few-shot example demonstrating mid-sentence line break merge', () => {
-    const prompt = buildUserPrompt('test')
-    expect(prompt).toContain('引き継ぎ')
-  })
-
-  it('is a pure function — same text always returns same output', () => {
-    expect(buildUserPrompt('hello')).toBe(buildUserPrompt('hello'))
+  it('system prompt mentions Vietnamese as target language', () => {
+    const result = buildTranslationPrompts('test', fakeAnalysis)
+    expect(result.system.toLowerCase()).toContain('vietnamese')
   })
 })
 
-describe('buildTranslationPrompt backward compat', () => {
-  it('still includes the source text', () => {
-    expect(buildTranslationPrompt('hello')).toContain('hello')
+describe('buildReviewPrompts', () => {
+  it('returns PromptPair with round number', () => {
+    const result = buildReviewPrompts('original', fakeAnalysis, 'draft vi', 1)
+    expect(result.user).toContain('1')
+  })
+})
+
+describe('TranslationDraftSchema', () => {
+  it('parses valid draft', () => {
+    const result = TranslationDraftSchema.parse({ sourceLang: 'Japanese', translated: 'Xin chào' })
+    expect(result.sourceLang).toBe('Japanese')
   })
 
-  it('still mentions vietnamese', () => {
-    expect(buildTranslationPrompt('test').toLowerCase()).toContain('vietnamese')
-  })
-
-  it('still mentions detecting source language', () => {
-    expect(buildTranslationPrompt('test').toLowerCase()).toContain('detect')
-  })
-
-  it('composes system + user prompt', () => {
-    const full = buildTranslationPrompt('hello')
-    const system = buildSystemPrompt()
-    const user = buildUserPrompt('hello')
-    expect(full).toContain(system)
-    expect(full).toContain(user)
+  it('rejects empty translated', () => {
+    expect(() => TranslationDraftSchema.parse({ sourceLang: 'Japanese', translated: '' })).toThrow()
   })
 })
