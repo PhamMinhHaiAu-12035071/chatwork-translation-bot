@@ -73,7 +73,7 @@ services:
   # Pin to a specific version for reproducibility — check https://hub.docker.com/r/openziti/zrok/tags
   zrok:
     image: openziti/zrok:2.0.0-rc4
-    restart: unless-stopped
+    restart: on-failure
     networks: [chatwork-net]
     volumes:
       # Bind mount so host user owns the dir — named volumes create root-owned dirs
@@ -87,6 +87,15 @@ services:
       - -c
       - |
         [ -f /home/ziggy/.zrok/environment.json ] || zrok enable ${ZROK_ENABLE_TOKEN} --headless
+        # Best-effort cleanup for stale share state from previous runs.
+        existing_share_token=$$(zrok list names --namespace-token public --json 2>/dev/null | \
+          grep -A 8 "\"name\": \"${ZROK_UNIQUE_NAME}\"" | \
+          sed -n 's/.*"shareToken": "\(.*\)".*/\1/p' | \
+          head -n 1)
+        if [ -n "$$existing_share_token" ]; then
+          echo "[zrok] unsharing stale token: $$existing_share_token"
+          zrok unshare "$$existing_share_token" >/dev/null 2>&1 || true
+        fi
         zrok share public http://webhook-logger:3001 --headless -n public:${ZROK_UNIQUE_NAME} 2>&1 | while IFS= read -r line; do
           echo "$$line"
           url=$$(echo "$$line" | grep -o '[a-zA-Z0-9-]*\.shares\.zrok\.io' 2>/dev/null)

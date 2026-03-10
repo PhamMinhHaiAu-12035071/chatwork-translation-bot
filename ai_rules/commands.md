@@ -31,6 +31,10 @@ bun run dev:down
 
 > cursor-proxy chạy native, không trong Docker. Translator kết nối đến nó qua
 > `http://host.docker.internal:8765/v1` (Docker Desktop for Mac magic hostname).
+>
+> `bun run dev` có cơ chế self-heal xung đột port local: nếu proxy trên port hiện tại
+> healthy (`/models` OK) thì tái sử dụng; nếu unhealthy thì tự cleanup và khởi động lại.
+> `bun run dev:down` cũng cleanup listener local theo `CURSOR_API_URL` để giảm lỗi `EADDRINUSE`.
 
 ## Build
 

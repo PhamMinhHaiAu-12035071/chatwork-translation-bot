@@ -87,6 +87,10 @@ That's it. zrok starts automatically, attaches to the reserved name, and the URL
 **zrok container exits immediately:**
 Check `docker compose -f docker-compose.dev.yml logs zrok` — likely `ZROK_ENABLE_TOKEN` or `ZROK_UNIQUE_NAME` is missing or invalid.
 
+**`shareConflict` (409) with `name ... already in use`:**
+`docker-compose.dev.yml` now runs `zrok unshare` before opening a new share, so stale share state from previous local runs is auto-cleaned.
+If conflict still appears, the same reserved name is likely active in another environment/machine. Stop that session or change `ZROK_UNIQUE_NAME`.
+
 **URL still random after reserving name:**
 Make sure you ran `zrok create name <name>` with the same name as `ZROK_UNIQUE_NAME` in `.env`.
 
