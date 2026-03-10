@@ -2,10 +2,7 @@ import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DeliveryAckPayload } from '~/types/delivery-ack'
 
-export interface DeliveryAckRecord extends DeliveryAckPayload {
-  sourceMessageId: string
-  ackedAt: string
-}
+export type DeliveryAckRecord = DeliveryAckPayload
 
 function ackPath(inputDir: string, sourceMessageId: string): string {
   return join(inputDir, 'state', 'acks', `${sourceMessageId}.json`)
