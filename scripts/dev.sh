@@ -95,11 +95,64 @@ terminate_pid() {
     return 0
   fi
 
+  # A stopped parent can leave a defunct child behind on macOS. In that case
+  # kill -0 still reports the PID as alive even though the listener is already
+  # gone, so use the port as the source of truth before treating cleanup as a failure.
+  remaining_listener_pid="$(get_listener_pid)"
+  if [ -z "$remaining_listener_pid" ] || [ "$remaining_listener_pid" != "$pid" ]; then
+    return 0
+  fi
+
   return 1
 }
 
 probe_proxy_health() {
   curl -fsS --max-time 2 "$PROXY_HEALTH_URL" >/dev/null 2>&1
+}
+
+check_duplicate_env_keys() {
+  if [ ! -f .env ]; then
+    return 0
+  fi
+
+  duplicates="$(
+    awk '
+      /^[[:space:]]*#/ { next }
+      /^[[:space:]]*$/ { next }
+      {
+        line=$0
+        sub(/^[[:space:]]+/, "", line)
+        if (line !~ /^[A-Za-z_][A-Za-z0-9_]*=/) next
+        key=line
+        sub(/=.*/, "", key)
+
+        if (key ~ /^(AI_|CHATWORK_|DATASET_)/) {
+          count[key]++
+          if (lines[key] == "") {
+            lines[key] = NR
+          } else {
+            lines[key] = lines[key] "," NR
+          }
+        }
+      }
+      END {
+        for (k in count) {
+          if (count[k] > 1) print k ":" lines[k]
+        }
+      }
+    ' .env | sort
+  )"
+
+  if [ -n "$duplicates" ]; then
+    echo "[dev] ERROR: duplicate keys detected in .env for AI_/CHATWORK_/DATASET_:" >&2
+    echo "$duplicates" | while IFS=: read -r key line_numbers; do
+      echo "[dev] - ${key} (lines: ${line_numbers})" >&2
+    done
+    echo "[dev] Please keep only one definition per key before running dev." >&2
+    return 1
+  fi
+
+  return 0
 }
 
 cleanup_local_proxy() {
@@ -128,15 +181,16 @@ cleanup_local_proxy() {
 }
 
 start_proxy_and_docker() {
-  exec bunx concurrently \
+  bunx concurrently \
     --names "cursor-proxy,docker" \
     --prefix-colors "cyan,green" \
+    --kill-others \
     "bun run cursor-proxy" \
-    "docker compose -f docker-compose.dev.yml up --remove-orphans"
+    "docker compose -f $COMPOSE_FILE up --remove-orphans --abort-on-container-exit"
 }
 
 start_docker_only() {
-  exec docker compose -f docker-compose.dev.yml up --remove-orphans
+  docker compose -f "$COMPOSE_FILE" up --remove-orphans --abort-on-container-exit
 }
 
 AI_PROVIDER="$(get_env_value "AI_PROVIDER")"
@@ -154,8 +208,35 @@ fi
 
 PROXY_HEALTH_URL="${CURSOR_API_URL%/}/models"
 ACTION="${1:-up}"
+COMPOSE_FILE="docker-compose.dev.yml"
+
+DEV_FAIL_SERVICE=""
+DEV_FAIL_REASON=""
+
+trap_cleanup() {
+  echo "[dev] shutting down stack..." >&2
+  docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+  if [ "$AI_PROVIDER" = "cursor" ] && is_local_host "$CURSOR_API_HOST"; then
+    cleanup_local_proxy 2>/dev/null || true
+  fi
+  if [ -n "$DEV_FAIL_SERVICE" ]; then
+    echo "" >&2
+    echo "=============================================" >&2
+    echo " FAIL-FAST TRIGGERED" >&2
+    echo " Service : $DEV_FAIL_SERVICE" >&2
+    echo " Reason  : $DEV_FAIL_REASON" >&2
+    echo " Time    : $(date '+%Y-%m-%d %H:%M:%S')" >&2
+    echo " Next steps:" >&2
+    echo "   docker compose -f $COMPOSE_FILE logs $DEV_FAIL_SERVICE" >&2
+    echo "   bun run dev" >&2
+    echo "=============================================" >&2
+  fi
+}
+trap trap_cleanup EXIT INT TERM
 
 if [ "$ACTION" = "up" ]; then
+  check_duplicate_env_keys || exit 1
+
   if [ "$AI_PROVIDER" != "cursor" ]; then
     start_docker_only
   fi
