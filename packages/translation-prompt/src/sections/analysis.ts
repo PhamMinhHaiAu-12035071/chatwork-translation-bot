@@ -52,7 +52,7 @@ Output a single JSON object with exactly these fields:
     "renderingPolicy": {
       "strategy": "functional_vietnamese",
       "targetStyle": "<one of: natural_office_vi | technical_vi | customer_service_vi>",
-      "preserveAmbiguity": <true if the utterance is an ambiguous short utterance (e.g. すみません) where multiple meanings coexist — when true, the translation step must render all meanings slash-separated (e.g. Xin lỗi / Xin phép) rather than choosing one>,
+      "preserveAmbiguity": <true only when phraseType is ambiguous_short_utterance (e.g. すみません) where multiple meanings coexist — when true, the translation step must render all meanings slash-separated (e.g. Xin lỗi / Xin phép) rather than choosing one>,
       "allowNaturalAdaptation": <true if natural Vietnamese adaptation is appropriate>,
       "avoidLiteralFormulaTranslation": <true if the text contains formulaic Japanese expressions that must not be translated literally>
     },
@@ -62,8 +62,8 @@ Output a single JSON object with exactly these fields:
       "preserveUnits": <true if numeric units (px, ms, GB, etc.) must be kept as-is>,
       "preserveChatworkMarkup": <true if Chatwork markup tags must be kept verbatim>,
       "preserveJapaneseNameScript": <true if Japanese proper names must remain in their original script>,
-      "allowRomajiGloss": <true if a romaji gloss may be added alongside the Japanese name>,
-      "forbidGenderInference": <true if gender-specific Vietnamese pronouns must be avoided>
+      "allowRomajiGloss": <default false — set true only if a romaji gloss alongside the original Japanese script would aid comprehension>,
+      "forbidGenderInference": <default true — set false only when the source text unambiguously establishes gender of the named person>
     },
     "reviewFocus": ["<string topics the review step should pay special attention to, derived only from source-text evidence>"]
   }
@@ -91,7 +91,7 @@ Classify the communicative function of the message, NOT its literal surface form
 - ambiguous_short_utterance: very short utterances where the communicative intent is ambiguous (e.g. すみません can mean apology or a request for attention)
 
 ### renderingPolicy — preserveAmbiguity
-When preserveAmbiguity is true (i.e., phraseType is ambiguous_short_utterance or the source text is genuinely multi-interpretable), the translation step MUST render all plausible meanings slash-separated rather than picking one interpretation. Example: すみません → Xin lỗi / Xin phép.
+When preserveAmbiguity is true (i.e., phraseType is ambiguous_short_utterance), the translation step MUST render all plausible meanings slash-separated rather than picking one interpretation. Example: すみません → Xin lỗi / Xin phép.
 
 ### preservationRules
 Identify preservation-sensitive fragments in the source text:
@@ -100,6 +100,7 @@ Identify preservation-sensitive fragments in the source text:
 - Units: numeric + unit combinations (100ms, 2GB, 768px) must be kept as-is (preserveUnits: true)
 - Chatwork markup: [To:], [info][/info], [code][/code], (bow), etc. must be kept verbatim (preserveChatworkMarkup: true)
 - Japanese names: proper names in kanji/katakana that are names of people or companies (preserveJapaneseNameScript: true)
+- forbidGenderInference defaults to true for Japanese names unless gender is unambiguously established in the source.
 
 ### reviewFocus
 List specific aspects reviewers should verify, inferred only from the source text. Do not invent issues not evidenced in the source.
