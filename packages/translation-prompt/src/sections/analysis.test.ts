@@ -51,4 +51,24 @@ describe('buildAnalysisPrompts', () => {
     const prompts = buildAnalysisPrompts('test')
     expect(prompts.user.toLowerCase()).toContain('json')
   })
+
+  it('system prompt requires structuredHints output', () => {
+    const prompts = buildAnalysisPrompts('テスト')
+    expect(prompts.system).toContain('structuredHints')
+  })
+
+  it('system prompt mentions preserve-sensitive fragments', () => {
+    const prompts = buildAnalysisPrompts('https://api.example.com')
+    expect(prompts.system).toMatch(/preserve|URL|code|unit/i)
+  })
+
+  it('system prompt instructs preserveAmbiguity rendering as slash-separated options', () => {
+    const prompts = buildAnalysisPrompts('すみません')
+    expect(prompts.system).toMatch(/preserveAmbiguity|slash-separated|ambiguous utterance/i)
+  })
+
+  it('system prompt documents formula classification phraseType labels', () => {
+    const prompts = buildAnalysisPrompts('test')
+    expect(prompts.system).toContain('phraseType')
+  })
 })
