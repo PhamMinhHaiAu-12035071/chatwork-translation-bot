@@ -48,6 +48,32 @@ export function buildAnalysisPrompts(text: string): PromptPair {
   return _buildAnalysisPrompts(text)
 }
 
+function buildStructuredHintsBlock(analysis: AnalysisResult): string {
+  const { structuredHints } = analysis
+  const { intentLabels, renderingPolicy, preservationRules, reviewFocus } = structuredHints
+
+  const reviewFocusLines =
+    reviewFocus.length > 0 ? reviewFocus.map((f) => `- ${f}`).join('\n') : '- (none)'
+
+  return `## Structured Hints
+- Phrase type: ${intentLabels.phraseType} (${intentLabels.confidence} confidence)
+- Target style: ${renderingPolicy.targetStyle}
+- avoidLiteralFormulaTranslation: ${String(renderingPolicy.avoidLiteralFormulaTranslation)}
+- Preserve ambiguity: ${String(renderingPolicy.preserveAmbiguity)}
+
+## Preservation Rules
+- preserveUrl: ${String(preservationRules.preserveUrl)}
+- preserveCode: ${String(preservationRules.preserveCode)}
+- preserveUnits: ${String(preservationRules.preserveUnits)}
+- preserveChatworkMarkup: ${String(preservationRules.preserveChatworkMarkup)}
+- preserveJapaneseNameScript: ${String(preservationRules.preserveJapaneseNameScript)}
+- allowRomajiGloss: ${String(preservationRules.allowRomajiGloss)}
+- forbidGenderInference: ${String(preservationRules.forbidGenderInference)}
+
+## Review Focus
+${reviewFocusLines}`
+}
+
 /**
  * Phase 2: Translation informed by analysis context.
  * Returns prompts for the LLM to produce a TranslationDraft JSON.
@@ -64,9 +90,13 @@ export function buildTranslationPrompts(text: string, analysis: AnalysisResult):
 
 Apply this context to produce a translation that serves the Vietnamese reader (${analysis.skopos.strategy} strategy).`
 
+  const hintsBlock = buildStructuredHintsBlock(analysis)
+
   return {
     system: TRANSLATION_SYSTEM,
     user: `${analysisContext}
+
+${hintsBlock}
 
 Translate the following text into natural Vietnamese.
 Respond ONLY with valid JSON:

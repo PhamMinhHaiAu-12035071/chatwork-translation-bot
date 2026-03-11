@@ -61,6 +61,33 @@ Scoring calibration:
 Output JSON only. No markdown. No explanation.${escalationNote}`
 }
 
+function buildStructuredHintsBlock(analysis: AnalysisResult): string {
+  const { structuredHints } = analysis
+  const { intentLabels, renderingPolicy, preservationRules, reviewFocus } = structuredHints
+
+  const reviewFocusLines =
+    reviewFocus.length > 0 ? reviewFocus.map((f) => `- ${f}`).join('\n') : '- (none)'
+
+  return `## Structured Hints
+- Phrase type: ${intentLabels.phraseType} (${intentLabels.confidence} confidence)
+- Rendering strategy: ${renderingPolicy.strategy}
+- Target style: ${renderingPolicy.targetStyle}
+- avoidLiteralFormulaTranslation: ${String(renderingPolicy.avoidLiteralFormulaTranslation)}
+- Preserve ambiguity: ${String(renderingPolicy.preserveAmbiguity)}
+
+## Preservation Rules
+- preserveUrl: ${String(preservationRules.preserveUrl)}
+- preserveCode: ${String(preservationRules.preserveCode)}
+- preserveUnits: ${String(preservationRules.preserveUnits)}
+- preserveChatworkMarkup: ${String(preservationRules.preserveChatworkMarkup)}
+- preserveJapaneseNameScript: ${String(preservationRules.preserveJapaneseNameScript)}
+- allowRomajiGloss: ${String(preservationRules.allowRomajiGloss)}
+- forbidGenderInference: ${String(preservationRules.forbidGenderInference)}
+
+## Review Focus
+${reviewFocusLines}`
+}
+
 export function buildReviewPrompts(
   originalText: string,
   analysis: AnalysisResult,
@@ -68,6 +95,8 @@ export function buildReviewPrompts(
   round: number,
   escalated = false,
 ): PromptPair {
+  const hintsBlock = buildStructuredHintsBlock(analysis)
+
   return {
     system: buildReviewSystem(escalated),
     user: `## Round ${String(round)} Review
@@ -77,6 +106,8 @@ export function buildReviewPrompts(
 - Register: ${analysis.skopos.register}
 - Audience: ${analysis.skopos.audience}
 - Expected effect: ${analysis.crossCutting.expectedEffect}
+
+${hintsBlock}
 
 ## Original Text
 ${originalText}

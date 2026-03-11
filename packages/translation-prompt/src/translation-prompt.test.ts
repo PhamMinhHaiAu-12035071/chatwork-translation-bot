@@ -101,6 +101,26 @@ describe('buildTranslationPrompts', () => {
     const result = buildTranslationPrompts('test', fakeAnalysis)
     expect(result.system.toLowerCase()).toContain('vietnamese')
   })
+
+  it('translation prompt includes structured hints block', () => {
+    const result = buildTranslationPrompts('テスト', fakeAnalysis)
+    expect(result.user).toContain('Structured Hints')
+  })
+
+  it('translation prompt includes phrase type from intentLabels', () => {
+    const result = buildTranslationPrompts('テスト', fakeAnalysis)
+    expect(result.user).toContain('general_statement')
+  })
+
+  it('translation prompt includes preservation rules', () => {
+    const result = buildTranslationPrompts('テスト', fakeAnalysis)
+    expect(result.user).toContain('preserveJapaneseNameScript')
+  })
+
+  it('translation prompt includes rendering policy avoidLiteralFormulaTranslation', () => {
+    const result = buildTranslationPrompts('テスト', fakeAnalysis)
+    expect(result.user).toContain('avoidLiteralFormulaTranslation')
+  })
 })
 
 describe('buildReviewPrompts', () => {

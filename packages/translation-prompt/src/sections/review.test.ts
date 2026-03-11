@@ -102,4 +102,19 @@ describe('buildReviewPrompts', () => {
     const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 4, true)
     expect(prompts.system).toMatch(/escalat/i)
   })
+
+  it('review prompt includes structured hints block', () => {
+    const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 1)
+    expect(prompts.user).toContain('Structured Hints')
+  })
+
+  it('review prompt includes preservationRules field name', () => {
+    const prompts = buildReviewPrompts('original', fakeAnalysis, 'draft', 1)
+    expect(prompts.user).toContain('preserveJapaneseNameScript')
+  })
+
+  it('review prompt includes rendering strategy', () => {
+    const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 1)
+    expect(prompts.user).toContain('functional_vietnamese')
+  })
 })
