@@ -5,6 +5,7 @@ import { CursorExecutor } from './cursor-translation'
 type CursorExecutorConstructor = new (
   modelId: ProviderCreateContext['modelId'],
   baseUrl: string,
+  sleepFn?: (ms: number) => Promise<void>,
 ) => ILLMExecutor
 
 const CursorExecutorCtor = CursorExecutor as unknown as CursorExecutorConstructor
