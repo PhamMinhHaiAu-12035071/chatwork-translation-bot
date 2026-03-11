@@ -34,6 +34,35 @@ const fakeAnalysis: AnalysisResult = {
     registerTone: 'polite-formal',
     expectedEffect: 'reader confirms deploy schedule',
   },
+  structuredHints: {
+    sourceProfile: {
+      language: 'japanese',
+      medium: 'chat',
+      domain: 'business',
+      hasCode: false,
+      hasUrl: false,
+      hasJapaneseName: false,
+      hasSpecialFormatting: false,
+    },
+    intentLabels: { phraseType: 'general_statement', confidence: 'high' },
+    renderingPolicy: {
+      strategy: 'functional_vietnamese',
+      targetStyle: 'natural_office_vi',
+      preserveAmbiguity: false,
+      allowNaturalAdaptation: true,
+      avoidLiteralFormulaTranslation: true,
+    },
+    preservationRules: {
+      preserveUrl: false,
+      preserveCode: false,
+      preserveUnits: false,
+      preserveChatworkMarkup: false,
+      preserveJapaneseNameScript: false,
+      allowRomajiGloss: false,
+      forbidGenderInference: false,
+    },
+    reviewFocus: [],
+  },
 }
 
 describe('buildAnalysisPrompts', () => {

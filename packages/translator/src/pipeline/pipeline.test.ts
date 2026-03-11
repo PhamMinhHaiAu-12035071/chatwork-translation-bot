@@ -32,6 +32,35 @@ const fakeAnalysis: AnalysisResult = {
     registerTone: 'polite-formal',
     expectedEffect: 'reader confirms',
   },
+  structuredHints: {
+    sourceProfile: {
+      language: 'japanese',
+      medium: 'chat',
+      domain: 'business',
+      hasCode: false,
+      hasUrl: false,
+      hasJapaneseName: false,
+      hasSpecialFormatting: false,
+    },
+    intentLabels: { phraseType: 'general_statement', confidence: 'high' },
+    renderingPolicy: {
+      strategy: 'functional_vietnamese',
+      targetStyle: 'natural_office_vi',
+      preserveAmbiguity: false,
+      allowNaturalAdaptation: true,
+      avoidLiteralFormulaTranslation: true,
+    },
+    preservationRules: {
+      preserveUrl: false,
+      preserveCode: false,
+      preserveUnits: false,
+      preserveChatworkMarkup: false,
+      preserveJapaneseNameScript: false,
+      allowRomajiGloss: false,
+      forbidGenderInference: false,
+    },
+    reviewFocus: [],
+  },
 }
 
 const fakeDraft = { sourceLang: 'Japanese', translated: 'Bản dịch ban đầu.' }
