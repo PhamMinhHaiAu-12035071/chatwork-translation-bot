@@ -19,7 +19,6 @@ services:
       - HUSKY=0
     ports:
       - '${PORT:-3000}:3000'
-    restart: unless-stopped
     networks: [chatwork-net]
     # bun:1.3-alpine has wget, but use bun --eval for consistency with production
     healthcheck:
@@ -31,7 +30,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      # First boot recreates anonymous /app/node_modules and runs bun install inside the container.
+      # Give startup enough time so Compose does not mark the service unhealthy before the app listens.
+      start_period: 180s
 
   webhook-logger:
     image: oven/bun:1.3-alpine
@@ -52,7 +53,6 @@ services:
       - HUSKY=0
     ports:
       - '${LOGGER_PORT:-3001}:3001'
-    restart: unless-stopped
     networks: [chatwork-net]
     depends_on:
       translator:
@@ -66,9 +66,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 180s
 
   dataset-runner:
+    profiles: ['dataset']
     image: oven/bun:1.3-alpine
     command:
       - sh
@@ -81,8 +82,8 @@ services:
     env_file:
       - .env
     environment:
+      - DATASET_AUTORUN=${DATASET_AUTORUN:-false}
       - HUSKY=0
-    restart: unless-stopped
     networks: [chatwork-net]
     depends_on:
       translator:
@@ -98,14 +99,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 180s
 
   # zrok reserved public share — stable HTTPS URL for Chatwork webhook
   # One-time setup: see docs/operations/zrok.md
   # Pin to a specific version for reproducibility — check https://hub.docker.com/r/openziti/zrok/tags
   zrok:
     image: openziti/zrok:2.0.0-rc4
-    restart: on-failure
     networks: [chatwork-net]
     volumes:
       # Bind mount so host user owns the dir — named volumes create root-owned dirs
