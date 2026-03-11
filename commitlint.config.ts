@@ -26,6 +26,7 @@ const config: UserConfig = {
       2,
       'always',
       [
+        'chatwork',
         'core',
         'translator',
         'webhook-logger',

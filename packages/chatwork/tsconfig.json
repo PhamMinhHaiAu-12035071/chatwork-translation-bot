@@ -5,7 +5,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
-      "~/*": ["packages/chatwork/src/*"]
+      "~/*": ["packages/chatwork/src/*", "packages/core/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

@@ -23,6 +23,14 @@
         "typescript-eslint": "^8.0.0",
       },
     },
+    "packages/chatwork": {
+      "name": "@chatwork-bot/chatwork",
+      "version": "1.0.0",
+      "dependencies": {
+        "@chatwork-bot/core": "workspace:*",
+        "@sinclair/typebox": "^0.34.48",
+      },
+    },
     "packages/core": {
       "name": "@chatwork-bot/core",
       "version": "1.0.0",
@@ -129,6 +137,8 @@
     "@babel/helper-validator-identifier": ["@babel/helper-validator-identifier@7.28.5", "", {}, "sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q=="],
 
     "@borewit/text-codec": ["@borewit/text-codec@0.2.1", "", {}, "sha512-k7vvKPbf7J2fZ5klGRD9AeKfUvojuZIQ3BT5u7Jfv+puwXkUBUT5PVyMDfJZpy30CBDXGMgw7fguK/lpOMBvgw=="],
+
+    "@chatwork-bot/chatwork": ["@chatwork-bot/chatwork@workspace:packages/chatwork"],
 
     "@chatwork-bot/core": ["@chatwork-bot/core@workspace:packages/core"],
 
