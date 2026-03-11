@@ -192,6 +192,7 @@ export class QueueRunner {
     const { inFlight: _inFlight, ...rest } = state
     const nextState: DatasetFileState = {
       ...rest,
+      nextLineNumber: record.lineNumber + 1,
       failedItemIds: [...state.failedItemIds, record.item.id],
       updatedAt: new Date().toISOString(),
     }
@@ -378,7 +379,8 @@ export class QueueRunner {
             }
 
             if (ack.status === 'failed') {
-              this.logEvent('error', 'dataset_ack_failed', {
+              this.logEvent('error', 'dataset_hard_stop', {
+                reason: 'translation_delivery_failed',
                 sourceMessageId,
                 datasetFile: file.fileName,
                 datasetItemId: record.item.id,
@@ -386,14 +388,13 @@ export class QueueRunner {
                 errorCode: ack.errorCode,
                 errorMessage: ack.errorMessage,
               })
-              workingState = await this.markRecordFailed(file.fileName, workingState, record, {
+              await this.markRecordFailed(file.fileName, workingState, record, {
                 errorCode: ack.errorCode ?? 'CALLBACK_DELIVERY_FAILED',
                 errorMessage:
                   ack.errorMessage ?? 'Translator reported destination delivery failure',
               })
               await clearDeliveryAck(this.config.inputDir, sourceMessageId)
-              state = workingState
-              continue
+              process.exit(1)
             }
 
             this.logEvent('info', 'dataset_ack_received', {
