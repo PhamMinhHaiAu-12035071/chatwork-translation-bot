@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test'
-import { AnalysisSchema, SkoposSchema } from './analysis.schema'
+import { AnalysisSchema, SkoposSchema, StructuredHintsSchema } from './analysis.schema'
 
 describe('SkoposSchema', () => {
   it('parses valid skopos', () => {
@@ -109,174 +109,41 @@ describe('AnalysisSchema', () => {
 
 describe('StructuredHintsSchema', () => {
   it('parses a valid structuredHints payload', () => {
-    const fullAnalysis = {
-      skopos: {
-        purpose: 'technical',
-        audience: 'developers',
-        strategy: 'instrumental',
-        register: 'semi-formal',
-      },
-      extratextual: {
-        sender: 'PM',
-        intention: 'request confirmation',
-        audience: 'engineer',
-        medium: 'chat',
-        temporalContext: 'end of sprint',
-      },
-      intratextual: {
-        subjectMatter: 'release schedule',
-        contentSummary: 'asking about deploy timing',
-        presuppositions: 'reader knows the project',
-        textStructure: 'single paragraph request',
-        lexisNotes: 'formal Japanese business register',
-        nonVerbalElements: 'none',
-      },
-      crossCutting: {
-        textFunction: 'directive',
-        registerTone: 'polite formal',
-        expectedEffect: 'reader provides confirmation',
-      },
-      structuredHints: validStructuredHints,
-    }
-    const result = AnalysisSchema.parse(fullAnalysis)
-    expect(result.structuredHints.intentLabels.phraseType).toBe('keigo_request')
-    expect(result.structuredHints.intentLabels.confidence).toBe('high')
-    expect(result.structuredHints.renderingPolicy.strategy).toBe('functional_vietnamese')
-    expect(result.structuredHints.renderingPolicy.targetStyle).toBe('natural_office_vi')
-    expect(result.structuredHints.preservationRules.forbidGenderInference).toBe(true)
-    expect(result.structuredHints.reviewFocus).toEqual(['formula function'])
+    const result = StructuredHintsSchema.parse(validStructuredHints)
+    expect(result.intentLabels.phraseType).toBe('keigo_request')
+    expect(result.intentLabels.confidence).toBe('high')
+    expect(result.renderingPolicy.strategy).toBe('functional_vietnamese')
+    expect(result.renderingPolicy.targetStyle).toBe('natural_office_vi')
+    expect(result.preservationRules.forbidGenderInference).toBe(true)
+    expect(result.reviewFocus).toEqual(['formula function'])
   })
 
   it('rejects invalid phraseType enum value', () => {
-    const badHints = {
+    const bad = {
       ...validStructuredHints,
       intentLabels: { phraseType: 'invalid_phrase_type', confidence: 'high' },
     }
-    expect(() =>
-      AnalysisSchema.parse({
-        skopos: {
-          purpose: 'technical',
-          audience: 'developers',
-          strategy: 'instrumental',
-          register: 'semi-formal',
-        },
-        extratextual: {
-          sender: 'PM',
-          intention: 'req',
-          audience: 'eng',
-          medium: 'chat',
-          temporalContext: 'now',
-        },
-        intratextual: {
-          subjectMatter: 'x',
-          contentSummary: 'x',
-          presuppositions: 'x',
-          textStructure: 'x',
-          lexisNotes: 'x',
-          nonVerbalElements: 'x',
-        },
-        crossCutting: { textFunction: 'x', registerTone: 'x', expectedEffect: 'x' },
-        structuredHints: badHints,
-      }),
-    ).toThrow()
+    expect(() => StructuredHintsSchema.parse(bad)).toThrow()
   })
 
   it('rejects invalid confidence enum value', () => {
-    const badHints = {
+    const bad = {
       ...validStructuredHints,
       intentLabels: { phraseType: 'general_statement', confidence: 'very_high' },
     }
-    expect(() =>
-      AnalysisSchema.parse({
-        skopos: {
-          purpose: 'technical',
-          audience: 'developers',
-          strategy: 'instrumental',
-          register: 'semi-formal',
-        },
-        extratextual: {
-          sender: 'PM',
-          intention: 'req',
-          audience: 'eng',
-          medium: 'chat',
-          temporalContext: 'now',
-        },
-        intratextual: {
-          subjectMatter: 'x',
-          contentSummary: 'x',
-          presuppositions: 'x',
-          textStructure: 'x',
-          lexisNotes: 'x',
-          nonVerbalElements: 'x',
-        },
-        crossCutting: { textFunction: 'x', registerTone: 'x', expectedEffect: 'x' },
-        structuredHints: badHints,
-      }),
-    ).toThrow()
+    expect(() => StructuredHintsSchema.parse(bad)).toThrow()
   })
 
   it('enforces required preservation booleans are present', () => {
     const { preservationRules: _, ...hintsWithoutPreservation } = validStructuredHints
-    expect(() =>
-      AnalysisSchema.parse({
-        skopos: {
-          purpose: 'technical',
-          audience: 'developers',
-          strategy: 'instrumental',
-          register: 'semi-formal',
-        },
-        extratextual: {
-          sender: 'PM',
-          intention: 'req',
-          audience: 'eng',
-          medium: 'chat',
-          temporalContext: 'now',
-        },
-        intratextual: {
-          subjectMatter: 'x',
-          contentSummary: 'x',
-          presuppositions: 'x',
-          textStructure: 'x',
-          lexisNotes: 'x',
-          nonVerbalElements: 'x',
-        },
-        crossCutting: { textFunction: 'x', registerTone: 'x', expectedEffect: 'x' },
-        structuredHints: hintsWithoutPreservation,
-      }),
-    ).toThrow()
+    expect(() => StructuredHintsSchema.parse(hintsWithoutPreservation)).toThrow()
   })
 
   it('rejects invalid renderingPolicy strategy enum value', () => {
-    const badHints = {
+    const bad = {
       ...validStructuredHints,
       renderingPolicy: { ...validStructuredHints.renderingPolicy, strategy: 'literal' },
     }
-    expect(() =>
-      AnalysisSchema.parse({
-        skopos: {
-          purpose: 'technical',
-          audience: 'developers',
-          strategy: 'instrumental',
-          register: 'semi-formal',
-        },
-        extratextual: {
-          sender: 'PM',
-          intention: 'req',
-          audience: 'eng',
-          medium: 'chat',
-          temporalContext: 'now',
-        },
-        intratextual: {
-          subjectMatter: 'x',
-          contentSummary: 'x',
-          presuppositions: 'x',
-          textStructure: 'x',
-          lexisNotes: 'x',
-          nonVerbalElements: 'x',
-        },
-        crossCutting: { textFunction: 'x', registerTone: 'x', expectedEffect: 'x' },
-        structuredHints: badHints,
-      }),
-    ).toThrow()
+    expect(() => StructuredHintsSchema.parse(bad)).toThrow()
   })
 })

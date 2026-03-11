@@ -10,12 +10,22 @@ import { AnalysisSchema } from '~/schemas/analysis.schema'
 import { PipelineTraceSchema } from '~/schemas/pipeline-trace.schema'
 
 /** Prompt input pair for LLM execution. */
-export interface PromptPair { system: string; user: string }
+export interface PromptPair {
+  system: string
+  user: string
+}
 
 export { TranslationDraftSchema }
 export type { TranslationDraft } from '~/schemas/review.schema'
 export { AnalysisSchema }
 export type { AnalysisResult } from '~/schemas/analysis.schema'
+export type {
+  SourceProfile,
+  IntentLabels,
+  RenderingPolicy,
+  PreservationRules,
+  StructuredHints,
+} from '~/schemas/analysis.schema'
 export { ReviewSchema }
 export type { ReviewResult } from '~/schemas/review.schema'
 export { PipelineTraceSchema }
