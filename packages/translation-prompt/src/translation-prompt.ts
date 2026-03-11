@@ -4,6 +4,7 @@ import { HUMANIZER, STRUCTURAL } from '~/sections/humanizer'
 import { CONSTRAINTS } from '~/sections/constraints'
 import { buildAnalysisPrompts as _buildAnalysisPrompts } from '~/sections/analysis'
 import { buildReviewPrompts as _buildReviewPrompts } from '~/sections/review'
+import { buildStructuredHintsBlock } from '~/sections/hints'
 import type { AnalysisResult } from '~/schemas/analysis.schema'
 import { TranslationDraftSchema, ReviewSchema } from '~/schemas/review.schema'
 import { AnalysisSchema } from '~/schemas/analysis.schema'
@@ -48,32 +49,6 @@ export function buildAnalysisPrompts(text: string): PromptPair {
   return _buildAnalysisPrompts(text)
 }
 
-function buildStructuredHintsBlock(analysis: AnalysisResult): string {
-  const { structuredHints } = analysis
-  const { intentLabels, renderingPolicy, preservationRules, reviewFocus } = structuredHints
-
-  const reviewFocusLines =
-    reviewFocus.length > 0 ? reviewFocus.map((f) => `- ${f}`).join('\n') : '- (none)'
-
-  return `## Structured Hints
-- Phrase type: ${intentLabels.phraseType} (${intentLabels.confidence} confidence)
-- Target style: ${renderingPolicy.targetStyle}
-- avoidLiteralFormulaTranslation: ${String(renderingPolicy.avoidLiteralFormulaTranslation)}
-- Preserve ambiguity: ${String(renderingPolicy.preserveAmbiguity)}
-
-## Preservation Rules
-- preserveUrl: ${String(preservationRules.preserveUrl)}
-- preserveCode: ${String(preservationRules.preserveCode)}
-- preserveUnits: ${String(preservationRules.preserveUnits)}
-- preserveChatworkMarkup: ${String(preservationRules.preserveChatworkMarkup)}
-- preserveJapaneseNameScript: ${String(preservationRules.preserveJapaneseNameScript)}
-- allowRomajiGloss: ${String(preservationRules.allowRomajiGloss)}
-- forbidGenderInference: ${String(preservationRules.forbidGenderInference)}
-
-## Review Focus
-${reviewFocusLines}`
-}
-
 /**
  * Phase 2: Translation informed by analysis context.
  * Returns prompts for the LLM to produce a TranslationDraft JSON.
@@ -92,11 +67,16 @@ Apply this context to produce a translation that serves the Vietnamese reader ($
 
   const hintsBlock = buildStructuredHintsBlock(analysis)
 
+  const renderingPriority = `## Rendering Priority
+Strategy: ${analysis.structuredHints.renderingPolicy.strategy} — render formulaic Japanese expressions by communicative function, not literal surface. When avoidLiteralFormulaTranslation is true, this outranks word-for-word carryover.`
+
   return {
     system: TRANSLATION_SYSTEM,
     user: `${analysisContext}
 
 ${hintsBlock}
+
+${renderingPriority}
 
 Translate the following text into natural Vietnamese.
 Respond ONLY with valid JSON:

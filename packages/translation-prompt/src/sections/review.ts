@@ -1,5 +1,6 @@
 import type { PromptPair } from '~/translation-prompt'
 import type { AnalysisResult } from '~/schemas/analysis.schema'
+import { buildStructuredHintsBlock } from '~/sections/hints'
 
 function buildReviewSystem(escalated = false): string {
   const escalationNote = escalated
@@ -61,33 +62,6 @@ Scoring calibration:
 Output JSON only. No markdown. No explanation.${escalationNote}`
 }
 
-function buildStructuredHintsBlock(analysis: AnalysisResult): string {
-  const { structuredHints } = analysis
-  const { intentLabels, renderingPolicy, preservationRules, reviewFocus } = structuredHints
-
-  const reviewFocusLines =
-    reviewFocus.length > 0 ? reviewFocus.map((f) => `- ${f}`).join('\n') : '- (none)'
-
-  return `## Structured Hints
-- Phrase type: ${intentLabels.phraseType} (${intentLabels.confidence} confidence)
-- Rendering strategy: ${renderingPolicy.strategy}
-- Target style: ${renderingPolicy.targetStyle}
-- avoidLiteralFormulaTranslation: ${String(renderingPolicy.avoidLiteralFormulaTranslation)}
-- Preserve ambiguity: ${String(renderingPolicy.preserveAmbiguity)}
-
-## Preservation Rules
-- preserveUrl: ${String(preservationRules.preserveUrl)}
-- preserveCode: ${String(preservationRules.preserveCode)}
-- preserveUnits: ${String(preservationRules.preserveUnits)}
-- preserveChatworkMarkup: ${String(preservationRules.preserveChatworkMarkup)}
-- preserveJapaneseNameScript: ${String(preservationRules.preserveJapaneseNameScript)}
-- allowRomajiGloss: ${String(preservationRules.allowRomajiGloss)}
-- forbidGenderInference: ${String(preservationRules.forbidGenderInference)}
-
-## Review Focus
-${reviewFocusLines}`
-}
-
 export function buildReviewPrompts(
   originalText: string,
   analysis: AnalysisResult,
@@ -96,6 +70,9 @@ export function buildReviewPrompts(
   escalated = false,
 ): PromptPair {
   const hintsBlock = buildStructuredHintsBlock(analysis)
+
+  const scoringGuidance = `## Scoring Guidance
+Apply preservation rules strictly: any violation of a true preservation flag (preserveUrl, preserveCode, preserveUnits, preserveChatworkMarkup, preserveJapaneseNameScript) is an accuracy error. forbidGenderInference=true means adding gender-specific honorifics from a name alone is an accuracy error. Review Focus items are additional axes to examine.`
 
   return {
     system: buildReviewSystem(escalated),
@@ -108,6 +85,8 @@ export function buildReviewPrompts(
 - Expected effect: ${analysis.crossCutting.expectedEffect}
 
 ${hintsBlock}
+
+${scoringGuidance}
 
 ## Original Text
 ${originalText}
