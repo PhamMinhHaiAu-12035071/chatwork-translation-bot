@@ -20,6 +20,9 @@ export {
 export type { ParsedCommand, SupportedLang } from './types/command'
 export { SUPPORTED_LANGUAGES, isSupportedLang } from './types/command'
 
+export type { TranslationIngressCommand } from './types/translation-ingress'
+export { TranslationIngressCommandSchema } from './types/translation-ingress'
+
 export type { AIProvider } from './types/ai'
 export { toAIProvider } from './types/ai'
 
