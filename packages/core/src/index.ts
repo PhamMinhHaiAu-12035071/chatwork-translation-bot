@@ -60,3 +60,4 @@ export { ChatworkClient } from './chatwork/client'
 
 // Utils
 export { parseCommand, stripChatworkMarkup } from './utils/parse-command'
+export { strictBooleanFromEnv } from './utils/env-boolean'

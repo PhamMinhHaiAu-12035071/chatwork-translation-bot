@@ -7,6 +7,10 @@ export interface RunnerLockLease {
   ownerId: string
 }
 
+export interface RunnerLockHeartbeat {
+  stop(): Promise<void>
+}
+
 function statePath(baseDir: string, fileName: string): string {
   return join(baseDir, 'state', `${fileName}.state.json`)
 }
@@ -57,6 +61,32 @@ export async function heartbeatRunnerLock(lease: RunnerLockLease): Promise<void>
     lease.lockPath,
     JSON.stringify({ ownerId: lease.ownerId, heartbeatAt: new Date().toISOString() }),
   )
+}
+
+export function startRunnerLockHeartbeat(
+  lease: RunnerLockLease,
+  intervalMs: number,
+): RunnerLockHeartbeat {
+  let stopped = false
+  let inFlight = Promise.resolve()
+
+  const timer = setInterval(() => {
+    if (stopped) return
+
+    inFlight = inFlight.then(async () => {
+      await heartbeatRunnerLock(lease)
+    })
+  }, intervalMs)
+
+  return {
+    async stop(): Promise<void> {
+      if (stopped) return
+
+      stopped = true
+      clearInterval(timer)
+      await inFlight
+    },
+  }
 }
 
 export async function releaseRunnerLock(lease: RunnerLockLease): Promise<void> {

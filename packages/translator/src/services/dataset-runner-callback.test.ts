@@ -1,35 +1,32 @@
-import { describe, expect, it, mock } from 'bun:test'
-import { notifyDatasetRunner } from './dataset-runner-callback'
+import { describe, expect, it } from 'bun:test'
+import { execFileSync } from 'node:child_process'
 
-describe('notifyDatasetRunner', () => {
-  it('POSTs one ACK payload to dataset-runner', async () => {
-    const fetchMock = mock(() => Promise.resolve(new Response(null, { status: 202 })))
+interface CallbackEvalResult {
+  callsLength: number
+  firstUrl?: string
+  errorMessage?: string
+}
 
-    await notifyDatasetRunner(
-      {
-        sourceMessageId: 'source-1',
-        status: 'sent',
-        destinationRoomId: 55555,
-        ackedAt: '2026-03-10T12:00:00.000Z',
-        sentAt: '2026-03-10T12:00:00.000Z',
-      },
-      {
-        callbackUrl: 'http://dataset-runner:3002/internal/delivery-acks',
-        fetchImpl: fetchMock as unknown as typeof fetch,
-      },
-    )
+function runCallbackEval(responseStatus: number): CallbackEvalResult {
+  const moduleUrl = new URL('./dataset-runner-callback-client.ts', import.meta.url).href
+  const serializedStatus = JSON.stringify(responseStatus)
+  const script = `
+    import { notifyDatasetRunner } from ${JSON.stringify(moduleUrl)};
 
-    expect(fetchMock.mock.calls.length).toBe(1)
-  })
+    const calls = [];
+    const fetchImpl = async (url, init) => {
+      calls.push({
+        url: typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url,
+        method: init?.method,
+      });
+      return new Response(null, { status: ${serializedStatus} });
+    };
 
-  it('throws after exhausting retries when server returns non-ok non-202', async () => {
-    const fetchMock = mock(() => Promise.resolve(new Response(null, { status: 500 })))
-
-    let caughtError: unknown
+    let errorMessage;
     try {
       await notifyDatasetRunner(
         {
-          sourceMessageId: 'source-2',
+          sourceMessageId: 'source-1',
           status: 'sent',
           destinationRoomId: 55555,
           ackedAt: '2026-03-10T12:00:00.000Z',
@@ -37,17 +34,41 @@ describe('notifyDatasetRunner', () => {
         },
         {
           callbackUrl: 'http://dataset-runner:3002/internal/delivery-acks',
-          fetchImpl: fetchMock as unknown as typeof fetch,
+          fetchImpl,
         },
-      )
-    } catch (err) {
-      caughtError = err
+      );
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : String(error);
     }
 
-    expect(fetchMock.mock.calls.length).toBe(3)
-    expect(caughtError).toBeInstanceOf(Error)
-    expect((caughtError as Error).message).toContain(
-      'Dataset-runner callback failed after bounded retries',
-    )
+    console.log(JSON.stringify({
+      callsLength: calls.length,
+      firstUrl: calls[0]?.url,
+      errorMessage,
+    }));
+  `
+
+  const stdout = execFileSync('bun', ['--eval', script], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  })
+
+  return JSON.parse(stdout.trim()) as CallbackEvalResult
+}
+
+describe('notifyDatasetRunner', () => {
+  it('POSTs one ACK payload to dataset-runner', () => {
+    const result = runCallbackEval(202)
+
+    expect(result.callsLength).toBe(1)
+    expect(result.firstUrl).toBe('http://dataset-runner:3002/internal/delivery-acks')
+    expect(result.errorMessage).toBeUndefined()
+  })
+
+  it('throws after exhausting retries when server returns non-ok non-202', () => {
+    const result = runCallbackEval(500)
+
+    expect(result.callsLength).toBe(3)
+    expect(result.errorMessage).toContain('Dataset-runner callback failed after bounded retries')
   })
 })

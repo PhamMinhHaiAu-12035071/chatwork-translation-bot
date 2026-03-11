@@ -8,10 +8,16 @@ import type { ChatworkWebhookEvent, ProviderCreateContext } from '@chatwork-bot/
 import { env } from '~/env'
 import { TranslationPipeline } from '~/pipeline/pipeline'
 import { writeTranslationOutput } from '~/utils/output-writer'
-import { logTranslationRequest } from '~/utils/request-log'
 import { sendTranslatedMessage } from '~/services/chatwork-sender'
 import { resolveOutputOrigin } from '~/services/output-origin'
 import { notifyDatasetRunner } from '~/services/dataset-runner-callback'
+import type { OutputDelivery } from '~/types/output'
+import {
+  getTranslatorObservabilityConfig,
+  getTranslatorStatusStore,
+  logTranslatorEvent,
+} from '~/services/translator-observability-runtime'
+import { createPhaseObserver } from '~/services/phase-observer'
 
 export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
   if (!isChatworkMessageEvent(event)) {
@@ -34,37 +40,135 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
   }
   const executor = plugin.create(ctx)
   const requestId = crypto.randomUUID()
-  const startMs = Date.now()
+  const origin = await resolveOutputOrigin(
+    event.webhook_event.message_id,
+    process.env['DATASET_INPUT_DIR'] ?? './input',
+  )
+  const observer = createPhaseObserver({
+    logger: logTranslatorEvent,
+    statusStore: getTranslatorStatusStore(),
+    ...getTranslatorObservabilityConfig(),
+    request: {
+      requestId,
+      sourceMessageId: event.webhook_event.message_id,
+      originType: origin.type,
+      provider: env.AI_PROVIDER,
+      model: modelId,
+      roomId: event.webhook_event.room_id,
+      inputLength: Array.from(cleanText).length,
+      ...(origin.datasetFile !== undefined ? { datasetFile: origin.datasetFile } : {}),
+      ...(origin.datasetItemId !== undefined ? { datasetItemId: origin.datasetItemId } : {}),
+      ...(origin.datasetLineNumber !== undefined
+        ? { datasetLineNumber: origin.datasetLineNumber }
+        : {}),
+    },
+  })
+
+  observer.markRequestReceived()
+  const callbackUrl =
+    process.env['DATASET_RUNNER_CALLBACK_URL'] ??
+    'http://dataset-runner:3002/internal/delivery-acks'
+
+  const notifyDatasetRunnerAck = async (delivery: OutputDelivery): Promise<void> => {
+    if (origin.type !== 'automation') return
+
+    await observer.runPhase('ack_callback', async () => {
+      observer.logEvent('info', 'translation_ack_callback_started', {
+        phase: 'ack_callback',
+        ackStatus: 'sent',
+      })
+
+      try {
+        await notifyDatasetRunner(
+          {
+            sourceMessageId: event.webhook_event.message_id,
+            ...delivery,
+            ackedAt: new Date().toISOString(),
+          },
+          { callbackUrl },
+        )
+        observer.logEvent('info', 'translation_ack_callback_completed', {
+          phase: 'ack_callback',
+          ackStatus: 'sent',
+        })
+      } catch (error) {
+        observer.logEvent('error', 'translation_ack_callback_failed', {
+          phase: 'ack_callback',
+          ackStatus: 'failed',
+          errorCode: error instanceof Error ? error.name : 'UnknownError',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        })
+        throw error
+      }
+    })
+  }
 
   try {
     const timeoutMs = plugin.manifest.timeoutMs
     const pipeline = new TranslationPipeline(executor, timeoutMs ? { timeoutMs } : {})
-    const { result, trace } = await pipeline.run(cleanText)
-    const latencyMs = Date.now() - startMs
-
-    logTranslationRequest({
-      requestId,
-      provider: env.AI_PROVIDER,
-      model: modelId,
-      latencyMs,
-      outcome: 'success',
-      result,
+    const { result, trace } = await pipeline.run(cleanText, {
+      phaseObserver: {
+        onPhaseStarted: ({ phase, round }) => {
+          observer.markPhaseStarted(phase, {
+            ...(round !== undefined ? { phaseRound: round } : {}),
+          })
+        },
+        onPhaseCompleted: () => {
+          observer.markPhaseCompleted()
+        },
+        onPhaseFailed: ({ error }) => {
+          observer.markPhaseFailed(error)
+        },
+        onEscalationStarted: ({ round }) => {
+          observer.logEvent('info', 'translation_escalation_started', {
+            phase: 'review',
+            phaseRound: round,
+          })
+        },
+        onEscalationCompleted: ({ round }) => {
+          observer.logEvent('info', 'translation_escalation_completed', {
+            phase: 'review',
+            phaseRound: round,
+          })
+        },
+      },
     })
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
-
-    const origin = await resolveOutputOrigin(
-      event.webhook_event.message_id,
-      process.env['DATASET_INPUT_DIR'] ?? './input',
-    )
 
     const outputRecord = { ...event, translation: result, pipeline: trace, origin }
 
     await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
 
-    const delivery = await sendTranslatedMessage(event, result, {
-      apiToken: env.CHATWORK_API_TOKEN,
-      destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
+    const delivery = await observer.runPhase('delivery', async () => {
+      observer.logEvent('info', 'translation_delivery_started', {
+        phase: 'delivery',
+      })
+
+      const deliveryResult = await sendTranslatedMessage(event, result, {
+        apiToken: env.CHATWORK_API_TOKEN,
+        destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
+      })
+
+      if (deliveryResult.status === 'failed') {
+        observer.logEvent('error', 'translation_delivery_failed', {
+          phase: 'delivery',
+          deliveryStatus: deliveryResult.status,
+          ...(deliveryResult.errorCode !== undefined
+            ? { errorCode: deliveryResult.errorCode }
+            : {}),
+          ...(deliveryResult.errorMessage !== undefined
+            ? { errorMessage: deliveryResult.errorMessage }
+            : {}),
+        })
+      } else {
+        observer.logEvent('info', 'translation_delivery_completed', {
+          phase: 'delivery',
+          deliveryStatus: deliveryResult.status,
+        })
+      }
+
+      return deliveryResult
     })
 
     try {
@@ -72,6 +176,9 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
         { ...outputRecord, delivery },
         ...(outputBaseDir ? [outputBaseDir] : []),
       )
+      observer.logEvent('info', 'translation_output_persisted', {
+        deliveryStatus: delivery.status,
+      })
     } catch (error) {
       const messageId = event.webhook_event.message_id
       console.error(
@@ -87,33 +194,53 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
       throw error
     }
 
-    if (origin.type === 'automation') {
-      await notifyDatasetRunner(
-        {
-          sourceMessageId: event.webhook_event.message_id,
-          ...delivery,
-          ackedAt: new Date().toISOString(),
-        },
-        {
-          callbackUrl:
-            process.env['DATASET_RUNNER_CALLBACK_URL'] ??
-            'http://dataset-runner:3002/internal/delivery-acks',
-        },
-      )
-    }
+    await notifyDatasetRunnerAck(delivery)
+
+    observer.completeRequest({
+      finalPhase: origin.type === 'automation' ? 'ack_callback' : 'delivery',
+      deliveryStatus: delivery.status,
+      ...(origin.type === 'automation' ? { ackStatus: 'sent' as const } : {}),
+    })
   } catch (error) {
-    const latencyMs = Date.now() - startMs
+    const errorCode =
+      error instanceof TranslationError
+        ? error.code
+        : error instanceof Error
+          ? error.name
+          : 'UnknownError'
+    const errorMessage = error instanceof Error ? error.message : String(error)
+
+    if (origin.type === 'automation') {
+      const failedDelivery: OutputDelivery = {
+        status: 'failed',
+        destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
+        sentAt: new Date().toISOString(),
+        errorCode,
+        errorMessage,
+      }
+
+      try {
+        await notifyDatasetRunnerAck(failedDelivery)
+      } catch {
+        // Ack callback failure is intentionally logged inside notifyDatasetRunnerAck.
+        // Fallthrough to report the original translation error to keep error visibility.
+      }
+    }
+
     if (error instanceof TranslationError) {
-      logTranslationRequest({
-        requestId,
-        provider: env.AI_PROVIDER,
-        model: modelId,
-        latencyMs,
-        outcome: 'error',
+      observer.failRequest({
+        finalStatus: error.code === 'ABORTED' ? 'aborted' : 'failed',
         errorCode: error.code,
+        errorMessage: error.message,
       })
       return
     }
+
+    observer.failRequest({
+      finalStatus: 'failed',
+      errorCode: error instanceof Error ? error.name : 'UnknownError',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
     throw error
   }
 }

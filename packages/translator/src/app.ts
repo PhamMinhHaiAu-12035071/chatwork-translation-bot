@@ -3,6 +3,8 @@ import { swagger } from '@elysiajs/swagger'
 import logixlysia from 'logixlysia'
 import { healthRoutes } from './routes/health'
 import { providerHealthRoute } from './routes/provider-health'
+import { createStatusRoute } from './routes/status'
+import { getTranslatorStatusSnapshot } from './services/translator-observability-runtime'
 import { translateRoutes } from './webhook/router'
 import { env } from './env'
 
@@ -33,5 +35,9 @@ export function createApp() {
     )
   }
 
-  return app.use(healthRoutes).use(providerHealthRoute).use(translateRoutes)
+  return app
+    .use(healthRoutes)
+    .use(providerHealthRoute)
+    .use(createStatusRoute(() => getTranslatorStatusSnapshot()))
+    .use(translateRoutes)
 }

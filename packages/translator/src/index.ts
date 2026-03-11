@@ -23,6 +23,7 @@ logStartupBanner({
   nodeEnv: env.NODE_ENV,
 })
 console.log(`[translator] Health check: http://localhost:${env.PORT.toString()}/health`)
+console.log(`[translator] Status endpoint: http://localhost:${env.PORT.toString()}/status`)
 console.log(
   `[translator] Internal endpoint: http://localhost:${env.PORT.toString()}/internal/translate`,
 )

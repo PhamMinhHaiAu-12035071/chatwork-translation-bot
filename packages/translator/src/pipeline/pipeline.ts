@@ -15,6 +15,26 @@ import type { AnalysisResult, ReviewResult, PipelineTrace } from '@chatwork-bot/
 export interface PipelineRunOptions {
   signal?: AbortSignal
   timeoutMs?: number
+  phaseObserver?: {
+    onPhaseStarted?: (params: {
+      phase: 'analysis' | 'translation' | 'review'
+      round?: number
+      escalated: boolean
+    }) => Promise<void> | void
+    onPhaseCompleted?: (params: {
+      phase: 'analysis' | 'translation' | 'review'
+      round?: number
+      escalated: boolean
+    }) => Promise<void> | void
+    onPhaseFailed?: (params: {
+      phase: 'analysis' | 'translation' | 'review'
+      round?: number
+      escalated: boolean
+      error: unknown
+    }) => Promise<void> | void
+    onEscalationStarted?: (params: { round: number }) => Promise<void> | void
+    onEscalationCompleted?: (params: { round: number }) => Promise<void> | void
+  }
 }
 
 export interface PipelineRunResult {
@@ -48,15 +68,22 @@ export class TranslationPipeline {
       analysis = this.buildFastPathAnalysis()
     } else {
       this.checkAbort(signal)
-      analysis = await this.executor.execute(buildAnalysisPrompts(text), AnalysisSchema, { signal })
+      analysis = await this.runObservedPhase(
+        'analysis',
+        async () => this.executor.execute(buildAnalysisPrompts(text), AnalysisSchema, { signal }),
+        options,
+      )
     }
 
     // ── Phase 2: Translation ───────────────────────────────────────────────
     this.checkAbort(signal)
-    const draft = await this.executor.execute(
-      buildTranslationPrompts(text, analysis),
-      TranslationDraftSchema,
-      { signal },
+    const draft = await this.runObservedPhase(
+      'translation',
+      async () =>
+        this.executor.execute(buildTranslationPrompts(text, analysis), TranslationDraftSchema, {
+          signal,
+        }),
+      options,
     )
 
     // Fast path: return immediately for short text (no review loop)
@@ -85,22 +112,36 @@ export class TranslationPipeline {
 
       // Escalation: after ESCALATION_ROUND stuck rounds, switch Skopos + rebuild Phase 2
       if (round === ESCALATION_ROUND + 1 && !escalated && rounds.every((r) => !r.passed)) {
+        await options.phaseObserver?.onEscalationStarted?.({ round })
         escalated = true
         const switchedAnalysis = this.switchSkopos(analysis)
         this.checkAbort(signal)
-        const rebuiltDraft = await this.executor.execute(
-          buildTranslationPrompts(text, switchedAnalysis),
-          TranslationDraftSchema,
-          { signal },
+        const rebuiltDraft = await this.runObservedPhase(
+          'translation',
+          async () =>
+            this.executor.execute(
+              buildTranslationPrompts(text, switchedAnalysis),
+              TranslationDraftSchema,
+              { signal },
+            ),
+          options,
+          { escalated: true, round },
         )
         currentDraft = rebuiltDraft.translated
         analysis = switchedAnalysis
+        await options.phaseObserver?.onEscalationCompleted?.({ round })
       }
 
-      const review = await this.executor.execute(
-        buildReviewPrompts(text, analysis, currentDraft, round, escalated),
-        ReviewSchema,
-        { signal },
+      const review = await this.runObservedPhase(
+        'review',
+        async () =>
+          this.executor.execute(
+            buildReviewPrompts(text, analysis, currentDraft, round, escalated),
+            ReviewSchema,
+            { signal },
+          ),
+        options,
+        { round, escalated },
       )
       rounds.push(review)
       currentDraft = review.refinedTranslation
@@ -131,13 +172,17 @@ export class TranslationPipeline {
   private buildSignal(options: PipelineRunOptions): AbortSignal {
     const timeoutMs = options.timeoutMs ?? this.opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
     const timeoutController = new AbortController()
-    setTimeout(() => { timeoutController.abort() }, timeoutMs)
+    setTimeout(() => {
+      timeoutController.abort()
+    }, timeoutMs)
 
     if (options.signal) {
       if (options.signal.aborted) {
         timeoutController.abort() // propagate immediately if already aborted
       } else {
-        options.signal.addEventListener('abort', () => { timeoutController.abort() })
+        options.signal.addEventListener('abort', () => {
+          timeoutController.abort()
+        })
       }
     }
     return timeoutController.signal
@@ -146,6 +191,29 @@ export class TranslationPipeline {
   private checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) {
       throw new TranslationError('Translation pipeline aborted', 'ABORTED')
+    }
+  }
+
+  private async runObservedPhase<T>(
+    phase: 'analysis' | 'translation' | 'review',
+    run: () => Promise<T>,
+    options: PipelineRunOptions,
+    meta: { round?: number; escalated?: boolean } = {},
+  ): Promise<T> {
+    const params = {
+      phase,
+      ...(meta.round !== undefined ? { round: meta.round } : {}),
+      escalated: meta.escalated ?? false,
+    }
+
+    await options.phaseObserver?.onPhaseStarted?.(params)
+    try {
+      const result = await run()
+      await options.phaseObserver?.onPhaseCompleted?.(params)
+      return result
+    } catch (error) {
+      await options.phaseObserver?.onPhaseFailed?.({ ...params, error })
+      throw error
     }
   }
 

@@ -16,11 +16,31 @@ export class ChatworkClient implements IChatworkClient {
     this.baseUrl = config.baseUrl ?? DEFAULT_BASE_URL
   }
 
+  private assertNoRealChatworkCallInTestEnv(): void {
+    if (process.env.NODE_ENV !== 'test') return
+
+    let parsedUrl: URL
+    try {
+      parsedUrl = new URL(this.baseUrl)
+    } catch {
+      // If baseUrl is malformed, let downstream fetch error handle it.
+      return
+    }
+
+    if (parsedUrl.hostname === 'api.chatwork.com') {
+      throw new Error(
+        'Refusing to call real Chatwork API when NODE_ENV=test. Use a mocked client or non-production baseUrl.',
+      )
+    }
+  }
+
   async sendMessage({
     roomId,
     message,
     unread = false,
   }: SendMessageParams): Promise<ChatworkSendMessageResponse> {
+    this.assertNoRealChatworkCallInTestEnv()
+
     const url = `${this.baseUrl}/rooms/${roomId.toString()}/messages`
 
     const body = new URLSearchParams({
@@ -48,6 +68,8 @@ export class ChatworkClient implements IChatworkClient {
   }
 
   async getMembers(roomId: number): Promise<ChatworkMember[]> {
+    this.assertNoRealChatworkCallInTestEnv()
+
     const url = `${this.baseUrl}/rooms/${roomId.toString()}/members`
 
     const response = await fetch(url, {

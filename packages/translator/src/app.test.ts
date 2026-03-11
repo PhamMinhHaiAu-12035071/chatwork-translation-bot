@@ -25,6 +25,13 @@ describe('createApp (translator)', () => {
     expect(res.status).toBe(200)
   })
 
+  it('GET /status returns 200', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const res = await app.handle(new Request('http://localhost/status'))
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(res.status).toBe(200)
+  })
+
   // NOTE: /internal/translate endpoint is comprehensively tested in router.test.ts
   // Removed duplicate test to avoid file creation side effects during test runs
 

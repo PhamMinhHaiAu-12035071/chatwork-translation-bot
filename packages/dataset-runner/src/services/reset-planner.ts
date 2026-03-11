@@ -8,6 +8,7 @@ export interface StartupResetConfig {
   mode: 'resume' | 'from-start' | 'from-line'
   fileName?: string
   lineNumber?: number
+  confirmToken?: string
   clearFailed: boolean
   clearOutput: boolean
 }
@@ -23,11 +24,20 @@ export async function applyStartupReset(
   config: StartupResetConfig,
 ): Promise<StartupResetSummary | null> {
   if (config.mode === 'resume' || !config.fileName) return null
+  if (!config.confirmToken) {
+    throw new Error('DATASET_RESET_CONFIRM is required when reset mode is not resume')
+  }
 
   const appliedAt = new Date().toISOString()
   const statePath = join(config.inputDir, 'state', `${config.fileName}.state.json`)
   const archivePath = join(config.inputDir, 'archive', config.fileName)
   const pendingPath = join(config.inputDir, 'pending', config.fileName)
+  const markerPath = join(
+    config.inputDir,
+    'state',
+    'reset-consumed',
+    `${encodeURIComponent(config.mode)}--${encodeURIComponent(config.fileName)}--${encodeURIComponent(config.confirmToken)}.json`,
+  )
   const failedPath = join(
     config.inputDir,
     'failed',
@@ -35,6 +45,9 @@ export async function applyStartupReset(
   )
 
   await mkdir(join(config.inputDir, 'pending'), { recursive: true })
+  await mkdir(join(config.inputDir, 'state', 'reset-consumed'), { recursive: true })
+
+  if (await Bun.file(markerPath).exists()) return null
 
   if (config.mode === 'from-start') {
     if (await Bun.file(archivePath).exists()) {
@@ -67,8 +80,21 @@ export async function applyStartupReset(
   }
 
   if (config.clearOutput) {
-    await rm(config.outputDir, { recursive: true, force: true })
+    console.warn(
+      '[dataset-runner] DATASET_CLEAR_OUTPUT is deprecated and ignored; output is never auto-deleted.',
+    )
   }
+
+  await Bun.write(
+    markerPath,
+    JSON.stringify({
+      mode: config.mode,
+      fileName: config.fileName,
+      ...(config.lineNumber !== undefined ? { lineNumber: config.lineNumber } : {}),
+      confirmToken: config.confirmToken,
+      appliedAt,
+    }),
+  )
 
   const summary: StartupResetSummary = {
     mode: config.mode,

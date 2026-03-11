@@ -14,11 +14,14 @@ const runner = new QueueRunner({
   resetMode: env.DATASET_RESET_MODE,
   ...(env.DATASET_RESET_FILE !== undefined ? { resetFile: env.DATASET_RESET_FILE } : {}),
   ...(env.DATASET_RESET_LINE !== undefined ? { resetLine: env.DATASET_RESET_LINE } : {}),
+  ...(env.DATASET_RESET_CONFIRM !== undefined ? { resetConfirm: env.DATASET_RESET_CONFIRM } : {}),
   clearFailed: env.DATASET_CLEAR_FAILED,
   clearOutput: env.DATASET_CLEAR_OUTPUT,
 })
 
-void runner.run().catch((error: unknown) => {
+const runPromise = runner.run()
+
+void runPromise.catch((error: unknown) => {
   console.error(
     JSON.stringify({ level: 'error', event: 'queue-loop-failed', error: String(error) }),
   )
@@ -33,11 +36,21 @@ server.listen(env.DATASET_RUNNER_PORT)
 
 console.log(`[dataset-runner] Listening on http://0.0.0.0:${env.DATASET_RUNNER_PORT.toString()}`)
 
-function shutdown(signal: string): never {
+let shuttingDown = false
+
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return
+  shuttingDown = true
+
   console.error(JSON.stringify({ level: 'info', event: 'shutdown', signal }))
   runner.shutdown()
+  await runPromise.catch(() => undefined)
   process.exit(0)
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'))
-process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM')
+})
+process.on('SIGINT', () => {
+  void shutdown('SIGINT')
+})

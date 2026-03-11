@@ -30,6 +30,7 @@ describe('applyStartupReset', () => {
       outputDir,
       mode: 'from-start',
       fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
+      confirmToken: 'nonce-1',
       clearFailed: false,
       clearOutput: false,
     })
@@ -64,6 +65,7 @@ describe('applyStartupReset', () => {
       mode: 'from-line',
       fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
       lineNumber: 2,
+      confirmToken: 'nonce-2',
       clearFailed: false,
       clearOutput: false,
     })
@@ -81,5 +83,85 @@ describe('applyStartupReset', () => {
     expect(state.completedItemIds).toEqual([])
     expect(state.failedItemIds).toEqual([])
     expect(state.inFlight).toBeUndefined()
+  })
+
+  it('consumes reset token and does not re-apply the same reset twice', async () => {
+    await mkdir(join(baseDir, 'state'), { recursive: true })
+    await Bun.write(
+      join(baseDir, 'state', '001-vfa-thinhntt-2026-03-10.jsonl.state.json'),
+      JSON.stringify({
+        fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
+        nextLineNumber: 10,
+        completedItemIds: ['vfa-001'],
+        failedItemIds: [],
+        updatedAt: '2026-03-10T11:36:19.619Z',
+      }),
+    )
+
+    const first = await applyStartupReset({
+      inputDir: baseDir,
+      outputDir,
+      mode: 'from-line',
+      fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
+      lineNumber: 2,
+      confirmToken: 'nonce-repeat',
+      clearFailed: false,
+      clearOutput: false,
+    })
+
+    const second = await applyStartupReset({
+      inputDir: baseDir,
+      outputDir,
+      mode: 'from-line',
+      fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
+      lineNumber: 8,
+      confirmToken: 'nonce-repeat',
+      clearFailed: false,
+      clearOutput: false,
+    })
+
+    expect(first?.mode).toBe('from-line')
+    expect(second).toBeNull()
+
+    const state = (await Bun.file(
+      join(baseDir, 'state', '001-vfa-thinhntt-2026-03-10.jsonl.state.json'),
+    ).json()) as { nextLineNumber: number }
+    expect(state.nextLineNumber).toBe(2)
+  })
+
+  it('never deletes output directory even when clearOutput=true', async () => {
+    await mkdir(outputDir, { recursive: true })
+    await Bun.write(join(outputDir, 'keep.txt'), 'keep')
+
+    await applyStartupReset({
+      inputDir: baseDir,
+      outputDir,
+      mode: 'from-start',
+      fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
+      confirmToken: 'nonce-3',
+      clearFailed: false,
+      clearOutput: true,
+    })
+
+    expect(await Bun.file(join(outputDir, 'keep.txt')).exists()).toBe(true)
+  })
+
+  it('throws when reset mode is non-resume but confirmToken is missing', async () => {
+    let caught: unknown
+    try {
+      await applyStartupReset({
+        inputDir: baseDir,
+        outputDir,
+        mode: 'from-start',
+        fileName: '001-vfa-thinhntt-2026-03-10.jsonl',
+        clearFailed: false,
+        clearOutput: false,
+      })
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(Error)
+    expect((caught as Error).message).toContain('DATASET_RESET_CONFIRM')
   })
 })

@@ -156,6 +156,55 @@ describe('TranslationPipeline', () => {
     })
   })
 
+  describe('phase hooks', () => {
+    it('emits lifecycle hooks for phases and escalation', async () => {
+      const failReview = makeReview(8)
+      const passReview = makeReview(9)
+      const executor = makeMockExecutor([
+        fakeAnalysis,
+        fakeDraft,
+        failReview,
+        failReview,
+        failReview,
+        fakeDraft,
+        passReview,
+      ])
+      const pipeline = new TranslationPipeline(executor)
+      const calls: string[] = []
+
+      await pipeline.run('テスト用のテキスト', {
+        phaseObserver: {
+          onPhaseStarted: ({ phase, round, escalated }) => {
+            calls.push(`start:${phase}:${String(round ?? 0)}:${String(escalated)}`)
+          },
+          onPhaseCompleted: ({ phase, round, escalated }) => {
+            calls.push(`done:${phase}:${String(round ?? 0)}:${String(escalated)}`)
+          },
+          onPhaseFailed: ({ phase, round }) => {
+            calls.push(`fail:${phase}:${String(round ?? 0)}`)
+          },
+          onEscalationStarted: ({ round }) => {
+            calls.push(`escalation-start:${String(round)}`)
+          },
+          onEscalationCompleted: ({ round }) => {
+            calls.push(`escalation-done:${String(round)}`)
+          },
+        },
+      })
+
+      expect(calls).toContain('start:analysis:0:false')
+      expect(calls).toContain('done:analysis:0:false')
+      expect(calls).toContain('start:translation:0:false')
+      expect(calls).toContain('done:translation:0:false')
+      expect(calls).toContain('start:review:1:false')
+      expect(calls).toContain('done:review:1:false')
+      expect(calls).toContain('escalation-start:4')
+      expect(calls).toContain('escalation-done:4')
+      expect(calls).toContain('start:review:4:true')
+      expect(calls).toContain('done:review:4:true')
+    })
+  })
+
   describe('abort signal', () => {
     it('throws TranslationError with ABORTED code when signal is already aborted', async () => {
       const controller = new AbortController()

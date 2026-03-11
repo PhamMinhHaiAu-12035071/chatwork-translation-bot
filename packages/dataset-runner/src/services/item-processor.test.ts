@@ -7,6 +7,12 @@ import { processDatasetItem } from './item-processor'
 
 describe('processDatasetItem', () => {
   it('returns sent source metadata after Chatwork source send succeeds', async () => {
+    const loggedLines: string[] = []
+    const originalConsoleLog = console.log
+    console.log = mock((...args: unknown[]) => {
+      loggedLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.log
+
     const client: IChatworkClient = {
       sendMessage: mock(() => Promise.resolve({ message_id: 'source-1' })),
       getMembers: mock(() => Promise.resolve([])),
@@ -29,6 +35,14 @@ describe('processDatasetItem', () => {
     expect(result.status).toBe('sent')
     expect(result.sourceMessageId).toBe('source-1')
     expect((client.sendMessage as ReturnType<typeof mock>).mock.calls.length).toBe(1)
+    expect(loggedLines.some((line) => line.includes('"event":"dataset_item_send_started"'))).toBe(
+      true,
+    )
+    expect(loggedLines.some((line) => line.includes('"event":"dataset_item_send_completed"'))).toBe(
+      true,
+    )
+
+    console.log = originalConsoleLog
   })
 
   it('writes one source-map entry immediately after source send', async () => {
@@ -63,6 +77,12 @@ describe('processDatasetItem', () => {
   })
 
   it('returns failed when Chatwork source send throws', async () => {
+    const loggedLines: string[] = []
+    const originalConsoleError = console.error
+    console.error = mock((...args: unknown[]) => {
+      loggedLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.error
+
     const client: IChatworkClient = {
       sendMessage: mock(() => Promise.reject(new Error('Network error'))),
       getMembers: mock(() => Promise.resolve([])),
@@ -86,5 +106,10 @@ describe('processDatasetItem', () => {
     if (result.status === 'failed') {
       expect(result.errorCode).toBe('CHATWORK_API')
     }
+    expect(loggedLines.some((line) => line.includes('"event":"dataset_item_send_failed"'))).toBe(
+      true,
+    )
+
+    console.error = originalConsoleError
   })
 })
