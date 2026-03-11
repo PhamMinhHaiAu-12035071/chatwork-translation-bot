@@ -8,21 +8,25 @@ Local-only sidecar that reads JSONL files from `input/pending/` and injects them
 
 1. Copy seed batch: `cp input/samples/001-vfa-thinhntt-2026-03-10.jsonl input/pending/`
 2. Set `DATASET_AUTORUN=true` in `.env`
-3. Run `bun run dev`
+3. Run `bun run dev:dataset`
+
+`bun run dev` is manual-flow only and does not start `dataset-runner`.
 
 ## Replay / reset
 
 - **Resume from checkpoint** (default): `DATASET_RESET_MODE=resume`
 - **Replay from start**:
   - `DATASET_RESET_MODE=from-start`
+  - `DATASET_RESET_CONFIRM=<nonce>`
   - `DATASET_RESET_FILE=001-vfa-thinhntt-2026-03-10.jsonl`
 - **Replay from line N**:
   - `DATASET_RESET_MODE=from-line`
+  - `DATASET_RESET_CONFIRM=<nonce>`
   - `DATASET_RESET_FILE=001-vfa-thinhntt-2026-03-10.jsonl`
   - `DATASET_RESET_LINE=14`
 - Optional cleanup:
   - `DATASET_CLEAR_FAILED=true` — delete previous failed.jsonl
-  - `DATASET_CLEAR_OUTPUT=true` — delete previous output/ files
+  - `DATASET_CLEAR_OUTPUT` is deprecated and ignored; output is never auto-deleted
 
 ## File layout
 
@@ -40,12 +44,17 @@ input/
 ## Observability
 
 - `origin.type` in output JSON: `manual` (webhook-triggered) or `automation` (dataset-runner)
-- Logs expose dataset file, item id, and source message id — not message body
+- Logs expose dataset file, item id, source line number, and source message id — not message body
 - `/status` HTTP endpoint returns runner mode, active item, and counts
 - Internal callback ACK (not polling) advances the queue
+- Use `sourceMessageId` to correlate one automation item across:
+  - dataset-runner logs (`dataset_item_send_*`, `dataset_ack_*`)
+  - webhook-logger logs (`webhook_received`, `translation_forward_*`)
+  - translator logs/status (`translation_phase_*`, `translation_delivery_*`, `translation_ack_callback_*`)
 
 ## Result
 
 - Success: pending file moves to `archive/`, source-map entries cleaned up
 - Failure after retries: item appended to `failed/*.failed.jsonl`
 - Monitor: `docker compose -f docker-compose.dev.yml logs dataset-runner`
+- Live translator phase view: `curl -s http://localhost:3000/status`

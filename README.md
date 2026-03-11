@@ -9,6 +9,7 @@ A webhook-based bot that listens for Chatwork messages, parses `/translate` comm
 - Pluggable translation service via `ITranslationService` interface
 - Async fire-and-forget processing (returns 200 immediately)
 - Health check endpoint (`GET /health`)
+- Translator status endpoint (`GET /status`) for active/recent request phases
 - Dataset automation sidecar for translation testing (`input/pending/*.jsonl`, local dev only)
 
 ## Tech Stack
@@ -40,16 +41,25 @@ cp .env.example .env
 
 Edit `.env` with your credentials:
 
-| Variable                      | Required | Default       | Description                                         |
-| ----------------------------- | -------- | ------------- | --------------------------------------------------- |
-| `CHATWORK_API_TOKEN`          | Yes      | —             | Chatwork API token for sending messages             |
-| `CHATWORK_WEBHOOK_SECRET`     | Yes      | —             | Secret for verifying webhook signatures             |
-| `PORT`                        | No       | `3000`        | HTTP server port                                    |
-| `NODE_ENV`                    | No       | `development` | `development` \| `production` \| `test`             |
-| `CHATWORK_ORIGINAL_ROOM_ID`   | Dev only | —             | Room for dataset injection (dataset-runner sidecar) |
-| `DATASET_AUTORUN`             | No       | `false`       | Enable dataset-runner queue (idle by default)       |
-| `DATASET_INPUT_DIR`           | No       | `./input`     | Root dir for pending/archive/failed/state           |
-| `DATASET_RUNNER_CALLBACK_URL` | No       | —             | ACK callback URL (set automatically in Docker dev)  |
+| Variable                            | Required | Default       | Description                                           |
+| ----------------------------------- | -------- | ------------- | ----------------------------------------------------- |
+| `CHATWORK_API_TOKEN`                | Yes      | —             | Chatwork API token for sending messages               |
+| `CHATWORK_WEBHOOK_SECRET`           | Yes      | —             | Secret for verifying webhook signatures               |
+| `PORT`                              | No       | `3000`        | HTTP server port                                      |
+| `NODE_ENV`                          | No       | `development` | `development` \| `production` \| `test`               |
+| `TRANSLATOR_PHASE_HEARTBEAT_MS`     | No       | `30000`       | Heartbeat interval after a phase crosses budget       |
+| `TRANSLATOR_ANALYSIS_BUDGET_MS`     | No       | `60000`       | Soft observability budget for analysis phase          |
+| `TRANSLATOR_TRANSLATION_BUDGET_MS`  | No       | `60000`       | Soft observability budget for translation phase       |
+| `TRANSLATOR_REVIEW_BUDGET_MS`       | No       | `60000`       | Soft observability budget for each review round       |
+| `TRANSLATOR_DELIVERY_BUDGET_MS`     | No       | `15000`       | Soft observability budget for Chatwork delivery       |
+| `TRANSLATOR_ACK_CALLBACK_BUDGET_MS` | No       | `10000`       | Soft observability budget for dataset ACK callback    |
+| `TRANSLATOR_STATUS_HISTORY_LIMIT`   | No       | `20`          | Number of finished requests kept in `/status`         |
+| `CHATWORK_ORIGINAL_ROOM_ID`         | Dev only | —             | Room for dataset injection (dataset-runner sidecar)   |
+| `DATASET_AUTORUN`                   | No       | `false`       | Enable dataset-runner queue (idle by default)         |
+| `DATASET_INPUT_DIR`                 | No       | `./input`     | Root dir for pending/archive/failed/state             |
+| `DATASET_RESET_MODE`                | No       | `resume`      | Replay mode: `resume` \| `from-start` \| `from-line`  |
+| `DATASET_RESET_CONFIRM`             | No       | —             | One-shot confirmation token required for replay modes |
+| `DATASET_RUNNER_CALLBACK_URL`       | No       | —             | ACK callback URL (set automatically in Docker dev)    |
 
 ### 3. Run the bot
 
@@ -58,6 +68,13 @@ bun run dev
 ```
 
 The server starts at `http://localhost:3000` with hot-reload enabled.
+
+Useful local endpoints:
+
+- `GET /health` — translator process health
+- `GET /health/provider` — registered provider health snapshot
+- `GET /status` — active translation phases and recent completed/failed requests
+- `POST /internal/translate` — internal webhook forward target from `webhook-logger`
 
 ## Usage
 
@@ -91,12 +108,32 @@ Drop JSONL batch files into `input/pending/` to run automated translation tests:
 
 ```bash
 cp input/samples/001-vfa-thinhntt-2026-03-10.jsonl input/pending/
-# set DATASET_AUTORUN=true in .env
+# dev (manual flow only)
 bun run dev
+
+# dataset automation flow
+bun run dev:dataset
 ```
 
 Output `origin.type` field distinguishes `manual` (real webhook) from `automation` (dataset-runner) runs.
 See `docs/operations/dataset-runner.md` for replay/reset options.
+
+### Observability
+
+Translator, webhook-logger, and dataset-runner now emit structured JSON lifecycle logs keyed by
+`sourceMessageId`. Logs are metadata-only: they do not include raw message text, prompts,
+translations, or full provider payloads.
+
+When a translation is in flight:
+
+- `GET /status` on the translator shows the current phase, round, elapsed time, and whether the
+  phase is over budget
+- translator logs emit `translation_phase_started`, `translation_phase_completed`,
+  `translation_phase_failed`, and `translation_phase_heartbeat`
+- webhook-logger logs emit `webhook_received` and translation forward events
+- dataset-runner logs emit send/ACK wait/ACK result events for automation traffic
+
+See `docs/operations/translator-observability.md` for the full event contract and debugging flow.
 
 ## Scripts
 

@@ -104,6 +104,7 @@
       "dependencies": {
         "@chatwork-bot/core": "workspace:*",
         "@elysiajs/swagger": "^1.3.1",
+        "@sinclair/typebox": "^0.34.48",
         "elysia": "^1.4.27",
         "logixlysia": "^6.2.0",
         "zod": "^4.3.6",
