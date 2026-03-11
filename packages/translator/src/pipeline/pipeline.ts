@@ -47,6 +47,26 @@ const ESCALATION_ROUND = 3
 const SHORT_TEXT_THRESHOLD = 5 // grapheme count
 const DEFAULT_TIMEOUT_MS = 120_000
 
+const CJK_HIRAGANA = /[\u3040-\u309F]/
+const CJK_KATAKANA = /[\u30A0-\u30FF]/
+const CJK_KANJI = /[\u4E00-\u9FFF]/
+const URL_LIKE = /https?:\/\//
+const CODE_LIKE = /[`{}/]|\/\//
+const NUMERIC_SLASH_WORD = /\d+\s*\/\s*\w/
+const CHATWORK_MARKUP = /\[(?:To:|info|code)/i
+
+function shouldUseFastPath(text: string): boolean {
+  if (Array.from(text).length >= SHORT_TEXT_THRESHOLD) return false
+  if (CJK_HIRAGANA.test(text)) return false
+  if (CJK_KATAKANA.test(text)) return false
+  if (CJK_KANJI.test(text)) return false
+  if (URL_LIKE.test(text)) return false
+  if (CODE_LIKE.test(text)) return false
+  if (NUMERIC_SLASH_WORD.test(text)) return false
+  if (CHATWORK_MARKUP.test(text)) return false
+  return true
+}
+
 export class TranslationPipeline {
   constructor(
     private readonly executor: ILLMExecutor,
@@ -59,7 +79,7 @@ export class TranslationPipeline {
 
     this.checkAbort(signal)
 
-    const isShortText = Array.from(text).length < SHORT_TEXT_THRESHOLD
+    const isShortText = shouldUseFastPath(text)
 
     // ── Phase 0+1: Analysis (skip for short text) ──────────────────────────
     let analysis: AnalysisResult

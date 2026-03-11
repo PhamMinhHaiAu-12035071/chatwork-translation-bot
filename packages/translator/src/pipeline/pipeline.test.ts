@@ -183,6 +183,101 @@ describe('TranslationPipeline', () => {
       expect(result.sourceLang).toBe('Japanese')
       expect(trace.rounds).toHaveLength(0)
     })
+
+    it('short Japanese text still goes through full analysis (NOT fast-pathed)', async () => {
+      const passingReview = makeReview(9)
+      // Full pipeline: analysis + translation + review = 3 calls
+      const executor = makeMockExecutor([fakeAnalysis, fakeDraft, passingReview])
+      let callCount = 0
+      const countingExecutor: ILLMExecutor = {
+        execute<T>(
+          prompts: Parameters<ILLMExecutor['execute']>[0],
+          schema: ISchema<T>,
+        ): Promise<T> {
+          callCount++
+          return executor.execute(prompts, schema)
+        },
+      }
+      const pipeline = new TranslationPipeline(countingExecutor)
+      await pipeline.run('あい') // short but Japanese (Hiragana)
+
+      expect(callCount).toBeGreaterThanOrEqual(3)
+    })
+
+    it('short text containing a URL does NOT use fast path', async () => {
+      const passingReview = makeReview(9)
+      const executor = makeMockExecutor([fakeAnalysis, fakeDraft, passingReview])
+      let callCount = 0
+      const countingExecutor: ILLMExecutor = {
+        execute<T>(
+          prompts: Parameters<ILLMExecutor['execute']>[0],
+          schema: ISchema<T>,
+        ): Promise<T> {
+          callCount++
+          return executor.execute(prompts, schema)
+        },
+      }
+      const pipeline = new TranslationPipeline(countingExecutor)
+      await pipeline.run('https://x') // short URL-containing text
+
+      expect(callCount).toBeGreaterThanOrEqual(3)
+    })
+
+    it('short text with code-like syntax does NOT use fast path', async () => {
+      const passingReview = makeReview(9)
+      const executor = makeMockExecutor([fakeAnalysis, fakeDraft, passingReview])
+      let callCount = 0
+      const countingExecutor: ILLMExecutor = {
+        execute<T>(
+          prompts: Parameters<ILLMExecutor['execute']>[0],
+          schema: ISchema<T>,
+        ): Promise<T> {
+          callCount++
+          return executor.execute(prompts, schema)
+        },
+      }
+      const pipeline = new TranslationPipeline(countingExecutor)
+      await pipeline.run('`x`') // short but has backtick
+
+      expect(callCount).toBeGreaterThanOrEqual(3)
+    })
+
+    it('short Chatwork markup text does NOT use fast path', async () => {
+      const passingReview = makeReview(9)
+      const executor = makeMockExecutor([fakeAnalysis, fakeDraft, passingReview])
+      let callCount = 0
+      const countingExecutor: ILLMExecutor = {
+        execute<T>(
+          prompts: Parameters<ILLMExecutor['execute']>[0],
+          schema: ISchema<T>,
+        ): Promise<T> {
+          callCount++
+          return executor.execute(prompts, schema)
+        },
+      }
+      const pipeline = new TranslationPipeline(countingExecutor)
+      await pipeline.run('[To:') // short but has Chatwork markup
+
+      expect(callCount).toBeGreaterThanOrEqual(3)
+    })
+
+    it('low-risk short Latin text CAN use fast path (1 executor call)', async () => {
+      const executor = makeMockExecutor([fakeDraft]) // only Phase 2 called
+      let callCount = 0
+      const countingExecutor: ILLMExecutor = {
+        execute<T>(
+          prompts: Parameters<ILLMExecutor['execute']>[0],
+          schema: ISchema<T>,
+        ): Promise<T> {
+          callCount++
+          return executor.execute(prompts, schema)
+        },
+      }
+      const pipeline = new TranslationPipeline(countingExecutor)
+      await pipeline.run('ok') // short, plain Latin text
+
+      expect(callCount).toBe(1) // fast path: only translation, no analysis or review
+    })
   })
 
   describe('phase hooks', () => {
