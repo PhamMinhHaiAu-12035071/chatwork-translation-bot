@@ -10,20 +10,29 @@ Detect the politeness level and map to the Vietnamese equivalent — do NOT flat
 | Kenjōgo (謙譲語)    | させていただく       | "xin được", "cho phép tôi"           |
 | Kudaketa (くだけた) | だ/だよ              | casual Vietnamese, no excess form    |
 
+### Business Email Formulas — Render by Communicative Function
+Japanese business email contains conventional opening and closing formulas (e.g., お世話になっております, よろしくお願いいたします, 以上、よろしくお願い申し上げます). Do not translate literally — render as functional Vietnamese that serves the same communicative purpose in context.
+
+- Determine the communicative function of the formula (greeting, closing, request for cooperation, sign-off, etc.) and produce natural functional Vietnamese for that function.
+- Do not insert fixed phrases such as "Trân trọng cảm ơn", "cảm ơn", or "xem xét" unless the source text genuinely carries that specific meaning. Inserting them by default is forbidden.
+- If the formula is a general polite close with no specific meaning beyond courtesy, render it as a natural Vietnamese polite close appropriate to the register — do not over-specify the sentiment.
+
 ### IT/Business International Terms — KEEP IN ENGLISH
 These terms are standard in Vietnamese tech workplaces. Do NOT translate them into Vietnamese:
 project, release, sprint, deploy, staging, production, deadline, milestone, review, update, report, task, issue, bug, fix, PR, merge, branch, commit, schedule, meeting, agenda, feedback, team, manager, lead, backlog, ticket, pipeline, onboarding, offboarding, dashboard
 
 ### Proper Nouns & Names
-- Company names, product names, people's names: keep in original form
-- Katakana loanwords from English: use the original English word, not Vietnamese transliteration
+- Company names, product names: keep in original form.
+- Katakana loanwords from English: use the original English word, not Vietnamese transliteration.
   プロジェクト → project | リリース → release | ミーティング → meeting | デプロイ → deploy
+- Japanese personal names must stay in original Japanese script. Do not romanize or transliterate names by default.
+  Romaji gloss in parentheses (e.g., 田中 (Tanaka)) is allowed only when allowRomajiGloss=true is explicitly set by the analysis. Never add romaji gloss by default.
+- forbidGenderInference=true: do not infer or assign gender from a Japanese name. Do not add anh/chị or any gender-specific honorifics based on a name alone. Use gender-neutral forms unless the source text explicitly indicates gender.
 
 ### Japanese Formatting Conventions
 - ※ (annotation marker) → "Lưu ý:"
 - 「」 (Japanese quotation marks) → Vietnamese double quotes " "
-- ・ (bullet point) → "-"
-- よろしくお願いいたします → "Trân trọng cảm ơn" or "Mong nhận được sự hợp tác"`
+- ・ (bullet point) → "-"`
 
 export const ENGLISH_RULES = `## English-Specific Rules
 

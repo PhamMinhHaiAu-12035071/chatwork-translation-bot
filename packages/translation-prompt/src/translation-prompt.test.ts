@@ -123,6 +123,42 @@ describe('buildTranslationPrompts', () => {
   })
 })
 
+describe('Japanese formula and name rules in system prompt', () => {
+  it('system prompt instructs formulaic Japanese to be rendered functionally', () => {
+    const result = buildTranslationPrompts('お世話になっております', fakeAnalysis)
+    expect(result.system).toMatch(/functional Vietnamese|email formula|do not translate literally/i)
+  })
+
+  it('system prompt forbids auto-inserting fixed Vietnamese phrases unless source carries that meaning', () => {
+    const result = buildTranslationPrompts('よろしくお願いいたします', fakeAnalysis)
+    expect(result.system).toMatch(
+      /do not.*insert|forbid.*insert|unless.*source|communicative function/i,
+    )
+  })
+
+  it('system prompt does not contain rigid word-to-word mapping for よろしくお願いいたします', () => {
+    const result = buildTranslationPrompts('よろしくお願いいたします', fakeAnalysis)
+    expect(result.system).not.toContain('よろしくお願いいたします → ')
+  })
+
+  it('system prompt instructs Japanese names to stay in original Japanese script', () => {
+    const result = buildTranslationPrompts('田中さん', fakeAnalysis)
+    expect(result.system).toMatch(
+      /Japanese.*name.*original.*script|preserve.*name.*script|name.*Japanese.*script/i,
+    )
+  })
+
+  it('system prompt allows romaji gloss only when allowRomajiGloss is set', () => {
+    const result = buildTranslationPrompts('田中さん', fakeAnalysis)
+    expect(result.system).toMatch(/romaji.*gloss|allowRomajiGloss/i)
+  })
+
+  it('system prompt forbids gender inference from names', () => {
+    const result = buildTranslationPrompts('田中さん', fakeAnalysis)
+    expect(result.system).toMatch(/forbid.*gender|gender.*inference|do not.*anh.*chị|no.*gender/i)
+  })
+})
+
 describe('buildReviewPrompts', () => {
   it('returns PromptPair with round number', () => {
     const result = buildReviewPrompts('original', fakeAnalysis, 'draft vi', 1)
