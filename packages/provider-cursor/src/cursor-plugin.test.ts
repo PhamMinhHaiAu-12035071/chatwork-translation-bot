@@ -143,7 +143,9 @@ describe('cursorPlugin', () => {
   })
 
   it('throws API_ERROR on network failure', async () => {
-    generateTextMock.mockImplementationOnce(() => Promise.reject(new Error('connection refused')))
+    generateTextMock.mockImplementation(() => Promise.reject(new Error('connection refused')))
+    const originalSleep = Bun.sleep
+    Bun.sleep = mock((_ms: number) => Promise.resolve()) as typeof Bun.sleep
     const { TranslationError } = await import('@chatwork-bot/core')
     const executor = cursorPlugin.create({
       modelId: 'sonnet-4.6',
@@ -155,6 +157,9 @@ describe('cursorPlugin', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
       expect((error as InstanceType<typeof TranslationError>).code).toBe('API_ERROR')
+    } finally {
+      Bun.sleep = originalSleep
+      generateTextMock.mockImplementation(() => Promise.resolve({ text: mockResponseText }))
     }
   })
 
@@ -171,5 +176,25 @@ describe('cursorPlugin', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
     }
+  })
+})
+
+describe('CursorExecutor retry behavior', () => {
+  it('retries on API_ERROR and calls sleepFn', async () => {
+    const { CursorExecutor } = await import('./cursor-translation')
+    const apiError = new Error('The operation timed out.')
+    let callCount = 0
+    generateTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) return Promise.reject(apiError)
+      return Promise.resolve({ text: '{"sourceLang":"ja","translated":"こんにちは"}' })
+    })
+    const sleepFn = mock((_ms: number) => Promise.resolve())
+    const executor = new CursorExecutor('sonnet-4.6', 'http://127.0.0.1:8765/v1', sleepFn)
+    const schema = { parse: (d: unknown) => d as { sourceLang: string; translated: string } }
+    const result = await executor.execute({ system: 'translate', user: 'hello' }, schema)
+    expect(result.translated).toBe('こんにちは')
+    expect(sleepFn).toHaveBeenCalledWith(240_000)
+    generateTextMock.mockReset()
   })
 })
