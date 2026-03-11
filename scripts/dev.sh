@@ -236,6 +236,9 @@ trap_cleanup() {
   fi
 }
 trap trap_cleanup EXIT INT TERM
+# Ctrl-Z (SIGTSTP) suspends the shell but leaves Docker containers running via the daemon.
+# Intercept it: run cleanup first, then exit so the EXIT trap does not double-fire.
+trap 'trap_cleanup; exit 130' TSTP
 
 if [ "$ACTION" = "up" ]; then
   check_duplicate_env_keys || exit 1
