@@ -76,7 +76,7 @@ export const cursorPlugin: ProviderPlugin = {
     supportedModels: CURSOR_MODEL_VALUES,
     defaultModel: DEFAULT_CURSOR_MODEL,
     capabilities: { streaming: false },
-    timeoutMs: 600_000,
+    timeoutMs: 1_800_000,
     requiredEnvKeys: ['CURSOR_API_URL'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {

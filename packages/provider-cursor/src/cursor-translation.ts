@@ -32,9 +32,10 @@ export class CursorExecutor implements ILLMExecutor {
       })
       rawText = result.text
     } catch (cause) {
+      const isAbort = cause instanceof Error && cause.name === 'AbortError'
       throw new TranslationError(
         `Cursor API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
-        'API_ERROR',
+        isAbort ? 'TIMEOUT' : 'API_ERROR',
         cause,
       )
     }

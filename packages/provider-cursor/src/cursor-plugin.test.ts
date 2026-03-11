@@ -80,8 +80,8 @@ describe('cursorPlugin', () => {
     expect(cursorPlugin.manifest.id).toBe('cursor')
   })
 
-  it('uses 10-minute provider timeout for pipeline execution', () => {
-    expect(cursorPlugin.manifest.timeoutMs).toBe(600_000)
+  it('uses 30-minute provider timeout for pipeline execution', () => {
+    expect(cursorPlugin.manifest.timeoutMs).toBe(1_800_000)
   })
 
   it('create requires baseUrl', () => {

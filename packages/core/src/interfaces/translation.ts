@@ -22,7 +22,8 @@ export class TranslationError extends Error {
       | 'QUOTA_EXCEEDED'
       | 'INVALID_RESPONSE'
       | 'UNKNOWN'
-      | 'ABORTED',
+      | 'ABORTED'
+      | 'TIMEOUT',
     public override readonly cause?: unknown,
   ) {
     super(message)
