@@ -1,6 +1,20 @@
 import type { TranslationIngressCommand } from '@chatwork-bot/core'
-import { stripChatworkMarkup } from '@chatwork-bot/core'
 import type { ChatworkWebhookPayload } from '~/types/webhook'
+
+/**
+ * Strips Chatwork-specific markup tags from a message body.
+ * This is a Chatwork-specific concern and intentionally lives in this package.
+ */
+function stripChatworkMarkup(text: string): string {
+  return text
+    .replace(/\[To:\d+\]/g, '')
+    .replace(/\[rp aid=\d+ to=\d+:\d+\]/g, '')
+    .replace(/\[quote\][\s\S]*?\[\/quote\]/g, '')
+    .replace(/\[info\][\s\S]*?\[\/info\]/g, '')
+    .replace(/\[title\][\s\S]*?\[\/title\]/g, '')
+    .replace(/\[code\][\s\S]*?\[\/code\]/g, '')
+    .trim()
+}
 
 /**
  * Maps a normalized Chatwork webhook payload to the neutral `TranslationIngressCommand` DTO.
