@@ -212,10 +212,13 @@ COMPOSE_FILE="docker-compose.dev.yml"
 
 DEV_FAIL_SERVICE=""
 DEV_FAIL_REASON=""
+_CLEANUP_DONE=0
 
 trap_cleanup() {
+  [ "$_CLEANUP_DONE" -eq 1 ] && return
+  _CLEANUP_DONE=1
   echo "[dev] shutting down stack..." >&2
-  docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+  docker compose -f "$COMPOSE_FILE" down --remove-orphans || true
   if [ "$AI_PROVIDER" = "cursor" ] && is_local_host "$CURSOR_API_HOST"; then
     cleanup_local_proxy 2>/dev/null || true
   fi
