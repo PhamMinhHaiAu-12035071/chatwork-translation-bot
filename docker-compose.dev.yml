@@ -74,7 +74,7 @@ services:
     command:
       - sh
       - -c
-      - bun install --frozen-lockfile && bun --hot packages/dataset-runner/src/index.ts
+      - bun install --frozen-lockfile && sleep ${DATASET_RUNNER_START_DELAY:-35} && bun --hot packages/dataset-runner/src/index.ts
     working_dir: /app
     volumes:
       - .:/app
