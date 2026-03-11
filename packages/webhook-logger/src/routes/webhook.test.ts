@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeAll, describe, expect, it, mock } from 'bun:test'
 import Elysia from 'elysia'
 import type { webhookRoutes as WebhookRoutesType } from './webhook'
 
@@ -14,6 +14,9 @@ void mock.module('../env', () => ({
 // Mock fetch to avoid real HTTP calls to translator
 const mockFetch = mock(() => Promise.resolve(new Response('OK', { status: 200 })))
 global.fetch = mockFetch as unknown as typeof fetch
+const consoleLogLines: string[] = []
+const originalConsoleLog = console.log
+const originalConsoleError = console.error
 
 describe('webhookRoutes', () => {
   let webhookRoutes: typeof WebhookRoutesType
@@ -39,6 +42,12 @@ describe('webhookRoutes', () => {
     },
   }
 
+  afterEach(() => {
+    console.log = originalConsoleLog
+    console.error = originalConsoleError
+    consoleLogLines.length = 0
+  })
+
   it('POST /webhook with valid body returns 200', async () => {
     mockFetch.mockClear()
     const res = await app.handle(
@@ -62,7 +71,10 @@ describe('webhookRoutes', () => {
     expect(res.status).toBe(422)
   })
 
-  it('POST /webhook forwards event to translator (fire-and-forget)', async () => {
+  it('POST /webhook forwards event to translator and logs completion', async () => {
+    console.log = mock((...args: unknown[]) => {
+      consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.log
     mockFetch.mockClear()
     await app.handle(
       new Request('http://localhost/webhook', {
@@ -71,8 +83,63 @@ describe('webhookRoutes', () => {
         body: JSON.stringify(validEvent),
       }),
     )
-    // Give fire-and-forget time to complete
-    await new Promise((resolve) => setTimeout(resolve, 10))
     expect(mockFetch.mock.calls.length).toBeGreaterThan(0)
+    const jsonLogs = consoleLogLines
+      .filter((line) => line.startsWith('{'))
+      .map((line) => JSON.parse(line) as { event: string })
+    expect(jsonLogs.some((entry) => entry.event === 'webhook_received')).toBe(true)
+    expect(jsonLogs.some((entry) => entry.event === 'translation_forward_started')).toBe(true)
+    expect(jsonLogs.some((entry) => entry.event === 'translation_forward_completed')).toBe(true)
+  })
+
+  it('returns 503 when translator is not reachable (network error)', async () => {
+    mockFetch.mockClear()
+    mockFetch.mockImplementationOnce(() => Promise.reject(new Error('fetch failed')))
+
+    const res = await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validEvent),
+      }),
+    )
+
+    expect(res.status).toBe(503)
+  })
+
+  it('returns 502 when translator returns non-2xx', async () => {
+    mockFetch.mockClear()
+    mockFetch.mockImplementationOnce(() => Promise.resolve(new Response('error', { status: 500 })))
+
+    const res = await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validEvent),
+      }),
+    )
+
+    expect(res.status).toBe(502)
+  })
+
+  it('logs translation_forward_failed when translator forwarding rejects', async () => {
+    console.error = mock((...args: unknown[]) => {
+      consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.error
+    mockFetch.mockClear()
+    mockFetch.mockImplementationOnce(() => Promise.reject(new Error('translator down')))
+
+    await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validEvent),
+      }),
+    )
+
+    const jsonLogs = consoleLogLines
+      .filter((line) => line.startsWith('{'))
+      .map((line) => JSON.parse(line) as { event: string; errorMessage?: string })
+    expect(jsonLogs.some((entry) => entry.event === 'translation_forward_failed')).toBe(true)
   })
 })
