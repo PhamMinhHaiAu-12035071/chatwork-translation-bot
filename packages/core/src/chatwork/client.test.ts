@@ -5,9 +5,10 @@ import { ChatworkClient } from './client'
 describe('ChatworkClient', () => {
   let client: ChatworkClient
   const originalFetch = globalThis.fetch
+  const TEST_BASE_URL = 'https://chatwork.test/v2'
 
   beforeEach(() => {
-    client = new ChatworkClient({ apiToken: 'test-token' })
+    client = new ChatworkClient({ apiToken: 'test-token', baseUrl: TEST_BASE_URL })
   })
 
   afterEach(() => {
@@ -33,7 +34,7 @@ describe('ChatworkClient', () => {
 
       await client.sendMessage({ roomId: 42, message: 'hello' })
 
-      expect(capturedUrl).toBe('https://api.chatwork.com/v2/rooms/42/messages')
+      expect(capturedUrl).toBe('https://chatwork.test/v2/rooms/42/messages')
       expect(capturedInit?.method).toBe('POST')
       if (capturedInit?.headers) {
         expect(capturedInit.headers).toMatchObject({ 'X-ChatWorkToken': 'test-token' })
@@ -120,7 +121,7 @@ describe('ChatworkClient', () => {
 
       const result = await client.getMembers(42)
 
-      expect(capturedUrl).toBe('https://api.chatwork.com/v2/rooms/42/members')
+      expect(capturedUrl).toBe('https://chatwork.test/v2/rooms/42/members')
       expect(result).toHaveLength(1)
       const member: ChatworkMember | undefined = result[0]
       expect(member?.account_id).toBe(123)
@@ -139,6 +140,32 @@ describe('ChatworkClient', () => {
         expect(false).toBe(true)
       } catch (error) {
         expect(String(error)).toContain('Chatwork API error')
+      }
+    })
+
+    it('blocks calls to real Chatwork API domain when NODE_ENV=test', async () => {
+      const savedNodeEnv = process.env.NODE_ENV
+      process.env.NODE_ENV = 'test'
+      try {
+        const realApiClient = new ChatworkClient({ apiToken: 'tok' })
+        const fetchSpy = mock(() =>
+          Promise.resolve(new Response(JSON.stringify({ message_id: '123' }), { status: 200 })),
+        )
+        globalThis.fetch = fetchSpy as unknown as typeof fetch
+
+        try {
+          await realApiClient.getMembers(42)
+          expect(false).toBe(true)
+        } catch (error) {
+          expect(String(error)).toContain('Refusing to call real Chatwork API when NODE_ENV=test')
+        }
+        expect(fetchSpy.mock.calls.length).toBe(0)
+      } finally {
+        if (savedNodeEnv === undefined) {
+          delete process.env.NODE_ENV
+        } else {
+          process.env.NODE_ENV = savedNodeEnv
+        }
       }
     })
   })
