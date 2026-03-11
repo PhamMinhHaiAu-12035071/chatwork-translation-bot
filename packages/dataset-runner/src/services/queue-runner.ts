@@ -8,9 +8,9 @@ import { processDatasetItem } from '~/services/item-processor'
 import { applyStartupReset } from '~/services/reset-planner'
 import {
   acquireRunnerLock,
-  heartbeatRunnerLock,
   readDatasetState,
   releaseRunnerLock,
+  startRunnerLockHeartbeat,
   writeDatasetState,
 } from '~/services/state-store'
 import type { DeliveryAckRecord } from '~/services/ack-store'
@@ -21,6 +21,9 @@ type PendingRecord = Awaited<ReturnType<typeof loadDatasetRecords>>[number]
 export class QueueRunner {
   private readonly status: RunnerStatusSnapshot
   private readonly ackCoordinator = new AckCoordinator()
+  private readonly shutdownSignal: Promise<void>
+  private shutdownRequested = false
+  private resolveShutdown!: () => void
 
   constructor(
     private readonly config: {
@@ -35,10 +38,15 @@ export class QueueRunner {
       resetMode: 'resume' | 'from-start' | 'from-line'
       resetFile?: string
       resetLine?: number
+      resetConfirm?: string
       clearFailed: boolean
       clearOutput: boolean
     },
   ) {
+    this.shutdownSignal = new Promise<void>((resolve) => {
+      this.resolveShutdown = resolve
+    })
+
     this.status = {
       mode: 'idle',
       autorun: config.autorun,
@@ -76,14 +84,70 @@ export class QueueRunner {
     return 2000 * 2 ** (sendAttempt - 1)
   }
 
-  private async waitForTerminalAck(sourceMessageId: string): Promise<DeliveryAckRecord | null> {
+  private ackHeartbeatMs(): number {
+    return Math.min(30_000, Math.max(1_000, Math.floor(this.config.timeoutMs / 3)))
+  }
+
+  private shouldStop(): boolean {
+    return this.shutdownRequested
+  }
+
+  private logEvent(
+    level: 'info' | 'warn' | 'error',
+    event: string,
+    extra: Record<string, unknown> = {},
+  ): void {
+    console[level === 'error' ? 'error' : 'log'](
+      JSON.stringify({
+        level,
+        service: 'dataset-runner',
+        event,
+        timestamp: new Date().toISOString(),
+        ...extra,
+      }),
+    )
+  }
+
+  private async sleepOrShutdown(ms: number): Promise<boolean> {
+    if (this.shouldStop()) return true
+
+    await Promise.race([Bun.sleep(ms), this.shutdownSignal])
+    return this.shouldStop()
+  }
+
+  private async waitForTerminalAck(
+    sourceMessageId: string,
+    meta: { fileName: string; itemId: string; lineNumber: number },
+  ): Promise<DeliveryAckRecord | null> {
     const durableAck = await readDeliveryAck(this.config.inputDir, sourceMessageId)
     if (durableAck) return durableAck
 
+    const startedAt = Date.now()
+    const heartbeat = setInterval(() => {
+      if (this.shutdownRequested) return
+
+      this.logEvent('warn', 'dataset_ack_wait_heartbeat', {
+        sourceMessageId,
+        datasetFile: meta.fileName,
+        datasetItemId: meta.itemId,
+        datasetLineNumber: meta.lineNumber,
+        elapsedMs: Date.now() - startedAt,
+        timeoutMs: this.config.timeoutMs,
+      })
+    }, this.ackHeartbeatMs())
+
+    heartbeat.unref()
+
     try {
-      return await this.ackCoordinator.waitForAck(sourceMessageId, this.config.timeoutMs)
+      return await Promise.race([
+        this.ackCoordinator.waitForAck(sourceMessageId, this.config.timeoutMs),
+        this.shutdownSignal.then(() => null),
+      ])
     } catch {
+      if (this.shouldStop()) return null
       return await readDeliveryAck(this.config.inputDir, sourceMessageId)
+    } finally {
+      clearInterval(heartbeat)
     }
   }
 
@@ -143,10 +207,8 @@ export class QueueRunner {
   async run(): Promise<void> {
     if (!this.config.autorun) return
 
-    const lock = await acquireRunnerLock(
-      this.config.inputDir,
-      Math.max(this.config.timeoutMs, 60_000),
-    )
+    const lock = await acquireRunnerLock(this.config.inputDir, 30_000)
+    const lockHeartbeat = startRunnerLockHeartbeat(lock, 5_000)
     const client = new ChatworkClient({ apiToken: this.config.apiToken })
 
     try {
@@ -156,6 +218,9 @@ export class QueueRunner {
         mode: this.config.resetMode,
         ...(this.config.resetFile !== undefined ? { fileName: this.config.resetFile } : {}),
         ...(this.config.resetLine !== undefined ? { lineNumber: this.config.resetLine } : {}),
+        ...(this.config.resetConfirm !== undefined
+          ? { confirmToken: this.config.resetConfirm }
+          : {}),
         clearFailed: this.config.clearFailed,
         clearOutput: this.config.clearOutput,
       })
@@ -166,20 +231,23 @@ export class QueueRunner {
       }
 
       for (;;) {
-        await heartbeatRunnerLock(lock)
+        if (this.shouldStop()) return
+
         const files = await listPendingDatasetFiles(this.config.inputDir)
         this.status.pendingFiles = files.length
         this.status.updatedAt = new Date().toISOString()
 
         if (files.length === 0) {
           this.status.mode = 'idle'
-          await Bun.sleep(2000)
+          if (await this.sleepOrShutdown(2000)) return
           continue
         }
 
         this.status.mode = 'running'
 
         for (const file of files) {
+          if (this.shouldStop()) return
+
           let state = (await readDatasetState(this.config.inputDir, file.fileName)) ?? {
             fileName: file.fileName,
             nextLineNumber: 1,
@@ -192,6 +260,8 @@ export class QueueRunner {
           const pending = records.filter((record) => record.lineNumber >= state.nextLineNumber)
 
           for (const record of pending) {
+            if (this.shouldStop()) return
+
             let workingState = state
             this.status.activeFile = file.fileName
             this.status.activeItemId = record.item.id
@@ -239,18 +309,24 @@ export class QueueRunner {
 
                 sendAttempt += 1
                 if (sendAttempt <= this.config.maxRetries) {
-                  await Bun.sleep(this.backoffMs(sendAttempt))
+                  if (await this.sleepOrShutdown(this.backoffMs(sendAttempt))) return
                 }
               }
             }
 
             if (!sourceMessageId) {
-              workingState = await this.markRecordFailed(file.fileName, workingState, record, {
+              this.logEvent('error', 'dataset_hard_stop', {
+                reason: 'chatwork_api_retry_exhausted',
+                datasetFile: file.fileName,
+                datasetItemId: record.item.id,
+                datasetLineNumber: record.lineNumber,
+                maxRetries: this.config.maxRetries,
+              })
+              await this.markRecordFailed(file.fileName, workingState, record, {
                 errorCode: 'CHATWORK_API',
                 errorMessage: 'Source-room send failed after retry exhaustion',
               })
-              state = workingState
-              continue
+              process.exit(1)
             }
 
             workingState = {
@@ -269,20 +345,47 @@ export class QueueRunner {
 
             this.status.activeSourceMessageId = sourceMessageId
             this.status.waitingForAck = true
+            this.logEvent('info', 'dataset_ack_wait_started', {
+              sourceMessageId,
+              datasetFile: file.fileName,
+              datasetItemId: record.item.id,
+              datasetLineNumber: record.lineNumber,
+              timeoutMs: this.config.timeoutMs,
+            })
 
-            const ack = await this.waitForTerminalAck(sourceMessageId)
+            const ack = await this.waitForTerminalAck(sourceMessageId, {
+              fileName: file.fileName,
+              itemId: record.item.id,
+              lineNumber: record.lineNumber,
+            })
+            if (this.shouldStop()) return
 
             if (!ack) {
-              workingState = await this.markRecordFailed(file.fileName, workingState, record, {
+              this.logEvent('error', 'dataset_hard_stop', {
+                reason: 'ack_timeout',
+                sourceMessageId,
+                datasetFile: file.fileName,
+                datasetItemId: record.item.id,
+                datasetLineNumber: record.lineNumber,
+                timeoutMs: this.config.timeoutMs,
+              })
+              await this.markRecordFailed(file.fileName, workingState, record, {
                 errorCode: 'CALLBACK_TIMEOUT',
                 errorMessage: `No internal delivery ACK was received for ${sourceMessageId}`,
               })
               await clearDeliveryAck(this.config.inputDir, sourceMessageId)
-              state = workingState
-              continue
+              process.exit(1)
             }
 
             if (ack.status === 'failed') {
+              this.logEvent('error', 'dataset_ack_failed', {
+                sourceMessageId,
+                datasetFile: file.fileName,
+                datasetItemId: record.item.id,
+                datasetLineNumber: record.lineNumber,
+                errorCode: ack.errorCode,
+                errorMessage: ack.errorMessage,
+              })
               workingState = await this.markRecordFailed(file.fileName, workingState, record, {
                 errorCode: ack.errorCode ?? 'CALLBACK_DELIVERY_FAILED',
                 errorMessage:
@@ -293,11 +396,17 @@ export class QueueRunner {
               continue
             }
 
+            this.logEvent('info', 'dataset_ack_received', {
+              sourceMessageId,
+              datasetFile: file.fileName,
+              datasetItemId: record.item.id,
+              datasetLineNumber: record.lineNumber,
+            })
             workingState = await this.markRecordSucceeded(file.fileName, workingState, record)
             await clearDeliveryAck(this.config.inputDir, sourceMessageId)
             this.status.updatedAt = new Date().toISOString()
             state = workingState
-            await Bun.sleep(this.config.cooldownMs)
+            if (await this.sleepOrShutdown(this.config.cooldownMs)) return
           }
 
           // Archive the file unconditionally — failed items are captured in the DLQ.
@@ -330,11 +439,16 @@ export class QueueRunner {
         }
       }
     } finally {
+      await lockHeartbeat.stop()
       await releaseRunnerLock(lock)
     }
   }
 
   shutdown(): void {
+    if (this.shouldStop()) return
+
+    this.shutdownRequested = true
+    this.resolveShutdown()
     console.error(JSON.stringify({ level: 'info', event: 'shutdown-requested' }))
   }
 }
