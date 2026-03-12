@@ -10,6 +10,8 @@ services:
       - .:/app
       # Shared named volume so bun install runs once (translator) and is reused by other services
       - node_modules:/app/node_modules
+      # Named volume for bun cache — keeps it on fast Linux FS inside Docker (avoids re-downloading on container recreate)
+      - bun_cache:/root/.bun/install/cache
     env_file:
       - .env
     environment:
@@ -17,6 +19,8 @@ services:
       - CURSOR_API_URL=http://host.docker.internal:8765/v1
       # Skip husky prepare hook during in-container install
       - HUSKY=0
+      # Point bun cache to the named volume (warning about slow FS on /app bind mount is cosmetic, unavoidable on macOS)
+      - BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache
     ports:
       - '${PORT:-3000}:3000'
     networks: [chatwork-net]
@@ -44,6 +48,7 @@ services:
     volumes:
       - .:/app
       - node_modules:/app/node_modules
+      - bun_cache:/root/.bun/install/cache
     env_file:
       - .env
     environment:
@@ -51,6 +56,7 @@ services:
       - TRANSLATOR_URL=http://translator:3000
       # Skip husky prepare hook during in-container install
       - HUSKY=0
+      - BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache
     ports:
       - '${LOGGER_PORT:-3001}:3001'
     networks: [chatwork-net]
@@ -79,11 +85,13 @@ services:
     volumes:
       - .:/app
       - node_modules:/app/node_modules
+      - bun_cache:/root/.bun/install/cache
     env_file:
       - .env
     environment:
       - DATASET_AUTORUN=${DATASET_AUTORUN:-false}
       - HUSKY=0
+      - BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache
     networks: [chatwork-net]
     depends_on:
       translator:
@@ -151,3 +159,5 @@ networks:
 volumes:
   # Shared node_modules: translator installs once, other services reuse instantly
   node_modules:
+  # Bun package cache on fast Linux FS — survives container recreations, avoids re-downloading packages
+  bun_cache:

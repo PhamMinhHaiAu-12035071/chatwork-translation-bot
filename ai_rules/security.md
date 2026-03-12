@@ -64,9 +64,10 @@ Copy `.env.example` to `.env` and fill in real values. Never commit `.env`.
 All incoming webhooks are verified with HMAC-SHA256 before processing:
 
 1. Chatwork sends `X-ChatWorkWebhookSignature` header with every request
-2. Bot computes HMAC-SHA256 of request body using `CHATWORK_WEBHOOK_SECRET`
-3. Signatures are compared using constant-time comparison (timing-attack safe)
-4. Requests with invalid signatures are rejected with 400
+2. Raw body is captured via Elysia `.derive()` + `request.clone().text()` before JSON parsing
+3. Bot computes HMAC-SHA256 of raw body using `CHATWORK_WEBHOOK_SECRET`
+4. Signatures are compared using constant-time comparison (timing-attack safe)
+5. Requests with missing or invalid signatures are rejected with **422**
 
 Implementation: `packages/webhook-logger/src/routes/webhook.ts`
 

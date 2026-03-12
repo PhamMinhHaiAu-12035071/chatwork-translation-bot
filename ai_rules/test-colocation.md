@@ -4,15 +4,16 @@
 
 ```
 packages/core/src/
-├── chatwork/
-│   ├── client.ts
-│   └── client.test.ts ← same folder, not in __tests__/
 ├── utils/
 │   ├── parse-command.ts
-│   └── parse-command.test.ts
+│   └── parse-command.test.ts ← same folder, not in __tests__/
 └── services/
     ├── gemini-translation.ts
     └── gemini-translation.test.ts
+
+packages/chatwork/src/services/
+├── verify-webhook-signature.ts
+└── verify-webhook-signature.test.ts ← co-located
 ```
 
 **Never** create a `__tests__/` folder or a top-level `tests/` directory. All test files live
@@ -41,7 +42,7 @@ Never use Vitest, Jest, or other test frameworks.
 ## Rule: Run a single test file during development
 
 ```bash
-bun test packages/core/src/chatwork/client.test.ts
+bun test packages/chatwork/src/services/verify-webhook-signature.test.ts
 ```
 
 Run the full suite only before committing:
@@ -49,6 +50,28 @@ Run the full suite only before committing:
 ```bash
 bun test
 ```
+
+## Rule: Mocking HTTP (`fetch`) in chatwork package tests
+
+Use `spyOn(globalThis, 'fetch')` from `bun:test`. Install a default spy in `beforeEach` that throws on unexpected real calls, then override per-test:
+
+```typescript
+import { beforeEach, afterEach, spyOn, mock } from 'bun:test'
+
+let fetchSpy: ReturnType<typeof spyOn>
+
+beforeEach(() => {
+  fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(() => {
+    throw new Error('Unexpected real HTTP call')
+  })
+})
+
+afterEach(() => {
+  fetchSpy.mockRestore()
+})
+```
+
+This ensures tests never reach `api.chatwork.com`.
 
 ## Rule: What to test
 

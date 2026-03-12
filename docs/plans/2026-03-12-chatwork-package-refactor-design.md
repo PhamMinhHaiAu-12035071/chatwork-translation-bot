@@ -89,17 +89,48 @@ Uses Chatwork message-send use cases instead of a low-level Chatwork client.
 
 ## Public API Design
 
-The new package exposes intent-oriented use cases. The public surface for v1 should include:
+The new package exposes intent-oriented use cases. The public surface for v1 with concrete signatures:
 
-- `verifyWebhookSignature(...)`
-- `normalizeWebhookPayload(...)`
-- `mapWebhookToTranslationCommand(...)`
-- `sendRoomMessage(...)`
-- `deleteRoomMessage(...)`
-- `getRoomMessage(...)`
-- `listRoomMessages(...)`
-- `getRoomMembers(...)`
-- `resolveRoomMemberDisplayName(...)`
+```typescript
+// Inbound — throws on failure, never returns a result union
+function verifyWebhookSignature(rawBody: string, signature: string, secret: string): void
+// throws ChatworkWebhookSignatureError
+
+function normalizeWebhookPayload(rawBody: string): ChatworkWebhookPayload
+// throws ChatworkWebhookPayloadError
+
+function mapWebhookToTranslationCommand(
+  payload: ChatworkWebhookPayload,
+  receivedAt: string,
+): TranslationIngressCommand
+
+// Outbound
+function sendRoomMessage(
+  roomId: number,
+  message: string,
+  token: string,
+): Promise<{ messageId: string }>
+
+function deleteRoomMessage(roomId: number, messageId: string, token: string): Promise<void>
+
+function getRoomMessage(roomId: number, messageId: string, token: string): Promise<ChatworkMessage>
+
+function listRoomMessages(
+  roomId: number,
+  token: string,
+  options?: { force?: boolean },
+): Promise<ChatworkMessage[]>
+
+function getRoomMembers(roomId: number, token: string): Promise<ChatworkMember[]>
+
+function resolveRoomMemberDisplayName(
+  roomId: number,
+  accountId: number,
+  token: string,
+  cache?: Map<number, string>,
+): Promise<string>
+// returns '#<accountId>' when member not found
+```
 
 The package must not publicly expose:
 
@@ -184,6 +215,66 @@ Consumers catch and map these errors at their adapter layer:
 - `webhook-logger` maps signature/payload errors to ingress responses and logs
 - `translator` maps outbound failures to delivery metadata/logging
 - `dataset-runner` maps outbound failures to retry and DLQ behavior
+
+## Technical Decisions (from Interview 2026-03-12)
+
+The following decisions were confirmed during structured interview and must be respected during implementation.
+
+### Raw Body Handling in webhook-logger
+
+Use Elysia `derive` with `request.clone().text()` to capture the raw request body before Elysia's body parser consumes the stream:
+
+```typescript
+new Elysia()
+  .derive(async ({ request }) => ({
+    rawBody: await request.clone().text(),
+  }))
+  .post('/webhook', ({ rawBody, headers, body }) => handleWebhook(rawBody, headers, body))
+```
+
+Cloning the request preserves the original stream for Elysia's JSON auto-parse while giving the handler a raw string for HMAC verification. This is the standard Elysia pattern — `onRequest` alone cannot inject per-request derived values into route handlers.
+
+### Member Name Resolution Caching
+
+`resolveRoomMemberDisplayName(...)` accepts an optional in-memory `Map<number, string>` cache parameter per call site. The translator initialises one `Map` per translation request and reuses it within that request scope. No process-level TTL cache for v1.
+
+### Rate-Limit Handling
+
+`@chatwork-bot/chatwork` throws `ChatworkRateLimitError` with a `retryAfter` field parsed from `Retry-After` headers. The package does not retry internally. Callers (`translator`, `dataset-runner`) decide retry strategy.
+
+### Schema Validation Library
+
+Use TypeBox (`@sinclair/typebox/value`) for all schema validation within `@chatwork-bot/chatwork`. Consistent with `webhook-logger` and Elysia native type system. Do not add Zod to this package.
+
+### HTTP Mock Strategy for Tests
+
+Use Bun test's `spyOn(globalThis, 'fetch', ...)` to intercept outbound HTTP calls to `api.chatwork.com`. Reject any non-mocked calls to the real API with an explicit error in test setup.
+
+### Webhook Signature Opt-Out Env Var
+
+Env var name: `CHATWORK_SKIP_SIGNATURE_VERIFY` (boolean string, default `"false"`). Only respected in `development` and `local` environments; always ignored in `production`. Validate this var through the `webhook-logger` env schema.
+
+### Neutral DTO Audit Snapshot Type
+
+`audit.rawSourceSnapshot` type is `Record<string, unknown>` in `@chatwork-bot/core`. Core stays Chatwork-free; consumers may cast the snapshot when needed for debug/audit.
+
+### Translator Route DTO Validation
+
+`@chatwork-bot/core` exports both the TypeScript type `TranslationIngressCommand` and a TypeBox schema `TranslationIngressCommandSchema`. `translator` uses the TypeBox schema for Elysia route-level validation, consistent with the current `ChatworkWebhookEventSchema` pattern.
+
+### `listRoomMessages` Scope
+
+Include in v1 public API surface for completeness (including `force` param support). No explicit v1 caller today, but omitting it would require a future PR just to add one function.
+
+### Migration Scope
+
+Only three packages import Chatwork types from `@chatwork-bot/core`: `translator`, `webhook-logger`, and `dataset-runner`. No other consumers. One-pass removal is safe.
+
+### Execution
+
+Implement this refactor inside an isolated git worktree (as required by the plan preconditions).
+
+---
 
 ## Compatibility Requirements
 

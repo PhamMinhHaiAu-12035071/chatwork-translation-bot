@@ -27,11 +27,10 @@ Bun workspaces monorepo. Nine packages:
 
 Shared logic. Contains:
 
-- `src/types/` — external data shapes (webhook events, branded AIProvider type)
-- `src/interfaces/` — behavioral contracts (`ILLMExecutor`, `ISchema`, `IChatworkClient`, `ProviderPlugin`)
+- `src/types/` — external data shapes (neutral `TranslationIngressCommand` + TypeBox schema, branded AIProvider type)
+- `src/interfaces/` — behavioral contracts (`ILLMExecutor`, `ISchema`, `ProviderPlugin`)
 - `src/services/` — provider registry, execution policy
-- `src/utils/` — pure utility functions (`parseCommand`, `stripChatworkMarkup`)
-- `src/chatwork/` — Chatwork REST API client
+- `src/utils/` — pure utility functions (`parseCommand`)
 
 Package exports point to raw TypeScript source (`"main": "./src/index.ts"`).
 No build step needed — Bun resolves TypeScript directly.
@@ -97,13 +96,14 @@ ordered dataset injection for translation testing without polling.
 | `docker-compose.yml`   | Local Docker setup on port 3000           |
 | `.env.example`         | Template for required env vars            |
 
-## Rule: Core vs Provider vs Translator
+## Rule: Core vs Chatwork vs Provider vs Translator
 
-- Types, interfaces, registry, domain logic → `core`
+- Neutral types, interfaces, registry, domain logic → `core`
+- Chatwork-specific API, webhook verification, HTTP client → `chatwork`
 - Translation prompt + schema → `translation-prompt`
 - AI SDK integration per provider → `provider-*`
 - HTTP handling, env loading, bootstrap → `translator`
-- Webhook receiving, forwarding → `webhook-logger`
+- Webhook receiving, signature verification, DTO forwarding → `webhook-logger`
 
 ## tsconfig Hierarchy
 
@@ -113,12 +113,13 @@ Single source of truth in `tsconfig.base.json`. Each package extends it.
 tsconfig.base.json                          (baseUrl: ".")
   ├── tsconfig.root.json                    (root scripts only, excludes packages/)
   ├── packages/core/tsconfig.json           (paths: ~/* → packages/core/src/*)
+  ├── packages/chatwork/tsconfig.json       (paths: ~/* → packages/chatwork/src/*, packages/core/src/*)
   ├── packages/translation-prompt/tsconfig.json
   ├── packages/provider-gemini/tsconfig.json
   ├── packages/provider-openai/tsconfig.json
   ├── packages/provider-cursor/tsconfig.json
-  ├── packages/translator/tsconfig.json     (paths: ~/* → packages/translator/src/*, packages/core/src/*, packages/translation-prompt/src/*)
-  └── packages/webhook-logger/tsconfig.json (paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*)
+  ├── packages/translator/tsconfig.json     (paths: ~/* → packages/translator/src/*, packages/core/src/*, packages/translation-prompt/src/*, packages/chatwork/src/*)
+  └── packages/webhook-logger/tsconfig.json (paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*, packages/chatwork/src/*)
 ```
 
 Cross-package imports (`@chatwork-bot/core`) resolve via Bun workspace symlinks in
