@@ -45,22 +45,35 @@ describe('translateRoutes', () => {
   })
 
   const validPayload = {
-    event: {
-      webhook_setting_id: '12345',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1498028130,
-      webhook_event: {
-        message_id: '789012345',
-        room_id: 567890123,
-        account_id: 123456,
-        body: 'Hello World',
-        send_time: 1498028125,
-        update_time: 0,
+    command: {
+      sourceSystem: 'chatwork',
+      sourceMessageId: '789012345',
+      sourceRoomId: 567890123,
+      senderAccountId: 123456,
+      rawBody: 'Hello World',
+      translatableText: 'Hello World',
+      sendTime: 1498028125,
+      updateTime: 0,
+      audit: {
+        receivedAt: new Date().toISOString(),
+        rawSourceSnapshot: {
+          webhook_setting_id: '12345',
+          webhook_event_type: 'message_created',
+          webhook_event_time: 1498028130,
+          webhook_event: {
+            message_id: '789012345',
+            room_id: 567890123,
+            account_id: 123456,
+            body: 'Hello World',
+            send_time: 1498028125,
+            update_time: 0,
+          },
+        },
       },
     },
   }
 
-  it('returns 200 OK with valid payload', async () => {
+  it('returns 200 OK with valid neutral DTO payload', async () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
@@ -72,7 +85,7 @@ describe('translateRoutes', () => {
     expect(await res.text()).toBe('OK')
   })
 
-  it('POST /internal/translate with missing event returns 422', async () => {
+  it('POST /internal/translate with missing command returns 422', async () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',

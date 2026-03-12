@@ -11,7 +11,7 @@ async function writeJsonAtomically(filepath: string, content: string): Promise<v
 /**
  * Persists a translation record to output/{dateStr}/{messageId}.json.
  * Writes are atomic (temp file + rename) — safe to call concurrently for different message IDs.
- * @param record - The webhook event extended with translation and optional origin/delivery data.
+ * @param record - The neutral ingress command extended with translation and optional origin/delivery data.
  * @param baseDir - Output base directory (defaults to `output/` in cwd). Override in tests.
  */
 export async function writeTranslationOutput(
@@ -22,7 +22,7 @@ export async function writeTranslationOutput(
   const dir = join(baseDir, dateStr)
   await mkdir(dir, { recursive: true })
 
-  const messageId = record.webhook_event.message_id ?? 'unknown'
+  const messageId = record.command.sourceMessageId
   const filepath = join(dir, `${messageId}.json`)
 
   await writeJsonAtomically(filepath, JSON.stringify(record, null, 2))

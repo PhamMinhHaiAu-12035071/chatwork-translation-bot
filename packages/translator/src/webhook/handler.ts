@@ -1,10 +1,5 @@
-import {
-  isChatworkMessageEvent,
-  stripChatworkMarkup,
-  getProviderPlugin,
-  TranslationError,
-} from '@chatwork-bot/core'
-import type { ChatworkWebhookEvent, ProviderCreateContext } from '@chatwork-bot/core'
+import { getProviderPlugin, TranslationError } from '@chatwork-bot/core'
+import type { TranslationIngressCommand, ProviderCreateContext } from '@chatwork-bot/core'
 import { env } from '~/env'
 import { TranslationPipeline } from '~/pipeline/pipeline'
 import { writeTranslationOutput } from '~/utils/output-writer'
@@ -19,17 +14,12 @@ import {
 } from '~/services/translator-observability-runtime'
 import { createPhaseObserver } from '~/services/phase-observer'
 
-export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promise<void> {
-  if (!isChatworkMessageEvent(event)) {
+export async function handleTranslateRequest(command: TranslationIngressCommand): Promise<void> {
+  if (command.translatableText.trim() === '') {
     return
   }
 
-  const { body } = event.webhook_event
-
-  const cleanText = stripChatworkMarkup(body)
-  if (!cleanText) {
-    return
-  }
+  const cleanText = command.translatableText
 
   const plugin = getProviderPlugin(env.AI_PROVIDER)
   const modelId = env.AI_MODEL ?? plugin.manifest.defaultModel
@@ -41,7 +31,7 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
   const executor = plugin.create(ctx)
   const requestId = crypto.randomUUID()
   const origin = await resolveOutputOrigin(
-    event.webhook_event.message_id,
+    command.sourceMessageId,
     process.env['DATASET_INPUT_DIR'] ?? './input',
   )
   const observer = createPhaseObserver({
@@ -50,11 +40,11 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
     ...getTranslatorObservabilityConfig(),
     request: {
       requestId,
-      sourceMessageId: event.webhook_event.message_id,
+      sourceMessageId: command.sourceMessageId,
       originType: origin.type,
       provider: env.AI_PROVIDER,
       model: modelId,
-      roomId: event.webhook_event.room_id,
+      roomId: command.sourceRoomId,
       inputLength: Array.from(cleanText).length,
       ...(origin.datasetFile !== undefined ? { datasetFile: origin.datasetFile } : {}),
       ...(origin.datasetItemId !== undefined ? { datasetItemId: origin.datasetItemId } : {}),
@@ -81,7 +71,7 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
       try {
         await notifyDatasetRunner(
           {
-            sourceMessageId: event.webhook_event.message_id,
+            sourceMessageId: command.sourceMessageId,
             ...delivery,
             ackedAt: new Date().toISOString(),
           },
@@ -136,16 +126,33 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
 
-    const outputRecord = { ...event, translation: result, pipeline: trace, origin }
+    const outputRecord = { command, translation: result, pipeline: trace, origin }
 
     await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
+
+    // Reconstruct a minimal ChatworkMessageEvent-compatible object from command fields
+    // for the chatwork-sender service (which still sends to Chatwork).
+    const rawSnapshotSettingId = command.audit.rawSourceSnapshot['webhook_setting_id']
+    const messageEventForSender = {
+      webhook_setting_id: typeof rawSnapshotSettingId === 'string' ? rawSnapshotSettingId : '',
+      webhook_event_type: 'message_created' as const,
+      webhook_event_time: command.sendTime,
+      webhook_event: {
+        message_id: command.sourceMessageId,
+        room_id: command.sourceRoomId,
+        account_id: command.senderAccountId,
+        body: command.rawBody,
+        send_time: command.sendTime,
+        update_time: command.updateTime,
+      },
+    }
 
     const delivery = await observer.runPhase('delivery', async () => {
       observer.logEvent('info', 'translation_delivery_started', {
         phase: 'delivery',
       })
 
-      const deliveryResult = await sendTranslatedMessage(event, result, {
+      const deliveryResult = await sendTranslatedMessage(messageEventForSender, result, {
         apiToken: env.CHATWORK_API_TOKEN,
         destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
       })
@@ -180,7 +187,7 @@ export async function handleTranslateRequest(event: ChatworkWebhookEvent): Promi
         deliveryStatus: delivery.status,
       })
     } catch (error) {
-      const messageId = event.webhook_event.message_id
+      const messageId = command.sourceMessageId
       console.error(
         JSON.stringify({
           level: 'error',

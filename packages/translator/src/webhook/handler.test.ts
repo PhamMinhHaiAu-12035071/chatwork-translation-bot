@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock 
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
+import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
 import type { handleTranslateRequest as HandleTranslateRequestType } from './handler'
 
@@ -116,15 +116,10 @@ function createMockProvider(id: string, executor: ILLMExecutor) {
 
 // ── Module mocks ───────────────────────────────────────────────────────────────
 
-let isMessageEvent = true
-let strippedText = 'A\n\nB\nC'
-
 const _mockPluginCreate = mock((_ctx: unknown) => createMockExecutor())
 const mockGetProviderPlugin = mock((_id: string) => ({
   ...createMockProvider('openai', createMockExecutor()),
 }))
-const mockStripChatworkMarkup = mock((_text: string) => strippedText)
-const mockIsChatworkMessageEvent = mock((_event: ChatworkWebhookEvent) => isMessageEvent)
 
 const testOutputDir = mkdtempSync(join(tmpdir(), 'handler-test-'))
 process.env['OUTPUT_BASE_DIR'] = testOutputDir
@@ -145,6 +140,37 @@ class MockTranslationError extends Error {
   }
 }
 
+// Canonical command fixture
+function makeCommand(overrides?: Partial<TranslationIngressCommand>): TranslationIngressCommand {
+  return {
+    sourceSystem: 'chatwork',
+    sourceMessageId: '2081046619322847232',
+    sourceRoomId: 424846369,
+    senderAccountId: 8315321,
+    rawBody: 'A\n\nB\nC',
+    translatableText: 'A\n\nB\nC',
+    sendTime: 1772633778,
+    updateTime: 0,
+    audit: {
+      receivedAt: new Date().toISOString(),
+      rawSourceSnapshot: {
+        webhook_setting_id: '35555',
+        webhook_event_type: 'message_created',
+        webhook_event_time: 1772633778,
+        webhook_event: {
+          message_id: '2081046619322847232',
+          room_id: 424846369,
+          account_id: 8315321,
+          body: 'A\n\nB\nC',
+          send_time: 1772633778,
+          update_time: 0,
+        },
+      },
+    },
+    ...overrides,
+  }
+}
+
 describe('handleTranslateRequest', () => {
   let handleTranslateRequest: typeof HandleTranslateRequestType
 
@@ -153,8 +179,6 @@ describe('handleTranslateRequest', () => {
 
     void mock.module('@chatwork-bot/core', () => ({
       ...realCore,
-      isChatworkMessageEvent: mockIsChatworkMessageEvent,
-      stripChatworkMarkup: mockStripChatworkMarkup,
       getProviderPlugin: mockGetProviderPlugin,
       TranslationError: MockTranslationError,
       ChatworkClient: class {
@@ -196,8 +220,6 @@ describe('handleTranslateRequest', () => {
   })
 
   beforeEach(() => {
-    isMessageEvent = true
-    strippedText = 'A\n\nB\nC'
     executeCallCount = 0
     consoleLogLines.length = 0
     mockNotifyDatasetRunner.mockReset()
@@ -220,23 +242,11 @@ describe('handleTranslateRequest', () => {
   })
 
   it('translates message via registry-resolved provider', async () => {
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: 'A\n\nB\nC',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+    const command = makeCommand()
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
     expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
@@ -245,21 +255,9 @@ describe('handleTranslateRequest', () => {
   })
 
   it('writes delivery metadata after destination send completes', async () => {
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: 'A\n\nB\nC',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+    const command = makeCommand()
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     const dateStr = new Date().toISOString().slice(0, 10)
     const filepath = join(testOutputDir, dateStr, '2081046619322847232.json')
@@ -272,21 +270,9 @@ describe('handleTranslateRequest', () => {
   })
 
   it('emits structured lifecycle logs and records completed request in status snapshot', async () => {
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: 'A\n\nB\nC',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+    const command = makeCommand()
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     const jsonLogs = consoleLogLines
       .filter((line) => line.startsWith('{'))
@@ -327,21 +313,9 @@ describe('handleTranslateRequest', () => {
       }),
     )
 
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: 'A\n\nB\nC',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+    const command = makeCommand()
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     const { getTranslatorStatusSnapshot } =
       await import('~/services/translator-observability-runtime')
@@ -377,21 +351,9 @@ describe('handleTranslateRequest', () => {
       } as ILLMExecutor),
     )
 
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: 'A\n\nB\nC',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+    const command = makeCommand()
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     const callbackPayload = mockNotifyDatasetRunner.mock.calls.at(0)?.[0] as
       | { status: string; sourceMessageId: string; errorCode: string; errorMessage: string }
@@ -409,21 +371,9 @@ describe('handleTranslateRequest', () => {
   it('records delivery failures in logs and recent results without throwing', async () => {
     mockSendMessage.mockImplementation(() => Promise.reject(new Error('destination failed')))
 
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: 'A\n\nB\nC',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+    const command = makeCommand()
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     const jsonLogs = consoleLogLines
       .filter((line) => line.startsWith('{'))
@@ -439,44 +389,23 @@ describe('handleTranslateRequest', () => {
     })
   })
 
-  it('skips non-message events', async () => {
-    isMessageEvent = false
-
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'room_updated',
-      webhook_event_time: 1772633778,
-      webhook_event: {},
-    }
+  it('skips when translatableText is empty', async () => {
+    const command = makeCommand({ translatableText: '' })
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
   })
 
-  it('skips when stripped message is empty', async () => {
-    strippedText = ''
-
-    const event: ChatworkWebhookEvent = {
-      webhook_setting_id: '35555',
-      webhook_event_type: 'message_created',
-      webhook_event_time: 1772633778,
-      webhook_event: {
-        message_id: '2081046619322847232',
-        room_id: 424846369,
-        account_id: 8315321,
-        body: '[info]internal[/info]',
-        send_time: 1772633778,
-        update_time: 0,
-      },
-    }
+  it('skips when translatableText is whitespace only', async () => {
+    const command = makeCommand({ translatableText: '   ' })
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
-    await handleTranslateRequest(event)
+    await handleTranslateRequest(command)
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)

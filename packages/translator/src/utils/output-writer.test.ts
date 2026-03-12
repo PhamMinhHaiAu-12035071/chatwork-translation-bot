@@ -7,16 +7,31 @@ import type { OutputRecord } from '~/types/output'
 const testDir = join(import.meta.dir, '__test_output__')
 
 const sampleRecord: OutputRecord = {
-  webhook_setting_id: 'wh_test_123',
-  webhook_event_type: 'message_created',
-  webhook_event_time: 1709545476,
-  webhook_event: {
-    message_id: 'msg_001',
-    room_id: 424846369,
-    account_id: 8315321,
-    body: '[To:123] できれば年内に！\n\n実装してみてください。',
-    send_time: 1709545476,
-    update_time: 0,
+  command: {
+    sourceSystem: 'chatwork',
+    sourceMessageId: 'msg_001',
+    sourceRoomId: 424846369,
+    senderAccountId: 8315321,
+    rawBody: '[To:123] できれば年内に！\n\n実装してみてください。',
+    translatableText: 'できれば年内に！\n\n実装してみてください。',
+    sendTime: 1709545476,
+    updateTime: 0,
+    audit: {
+      receivedAt: '2026-03-04T11:44:36.000Z',
+      rawSourceSnapshot: {
+        webhook_setting_id: 'wh_test_123',
+        webhook_event_type: 'message_created',
+        webhook_event_time: 1709545476,
+        webhook_event: {
+          message_id: 'msg_001',
+          room_id: 424846369,
+          account_id: 8315321,
+          body: '[To:123] できれば年内に！\n\n実装してみてください。',
+          send_time: 1709545476,
+          update_time: 0,
+        },
+      },
+    },
   },
   translation: {
     cleanText: 'できれば年内に！\n\n実装してみてください。',
@@ -28,19 +43,25 @@ const sampleRecord: OutputRecord = {
 }
 
 describe('writeTranslationOutput', () => {
-  it('writes JSON file with full ChatworkWebhookEvent + translation structure', async () => {
+  it('writes JSON file with TranslationIngressCommand + translation structure', async () => {
     await writeTranslationOutput(sampleRecord, testDir)
 
     const filepath = join(testDir, '2026-03-04', 'msg_001.json')
     const file = Bun.file(filepath)
     const content = (await file.json()) as OutputRecord
 
-    // ChatworkWebhookEvent fields preserved
-    expect(content.webhook_setting_id).toBe('wh_test_123')
-    expect(content.webhook_event_type).toBe('message_created')
-    expect(content.webhook_event.room_id).toBe(424846369)
-    expect(content.webhook_event.account_id).toBe(8315321)
-    expect(content.webhook_event.body).toBe('[To:123] できれば年内に！\n\n実装してみてください。')
+    // Command fields preserved
+    expect(content.command.sourceSystem).toBe('chatwork')
+    expect(content.command.sourceMessageId).toBe('msg_001')
+    expect(content.command.sourceRoomId).toBe(424846369)
+    expect(content.command.senderAccountId).toBe(8315321)
+    expect(content.command.rawBody).toBe('[To:123] できれば年内に！\n\n実装してみてください。')
+    expect(content.command.translatableText).toBe('できれば年内に！\n\n実装してみてください。')
+
+    // Audit snapshot preserved (for backward-compat access to raw Chatwork fields)
+    const snapshot = content.command.audit.rawSourceSnapshot
+    expect(snapshot['webhook_setting_id']).toBe('wh_test_123')
+    expect(snapshot['webhook_event_type']).toBe('message_created')
 
     // Translation block
     expect(content.translation.cleanText).toBe('できれば年内に！\n\n実装してみてください。')
@@ -54,7 +75,7 @@ describe('writeTranslationOutput', () => {
     await rm(testDir, { recursive: true, force: true })
   })
 
-  it('uses filename from webhook_event.message_id', async () => {
+  it('uses filename from command.sourceMessageId', async () => {
     await writeTranslationOutput(sampleRecord, testDir)
 
     const filepath = join(testDir, '2026-03-04', 'msg_001.json')

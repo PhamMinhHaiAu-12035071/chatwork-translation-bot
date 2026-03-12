@@ -1,4 +1,4 @@
-import type { ChatworkWebhookEvent, TranslationResult } from '@chatwork-bot/core'
+import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
 import type { PipelineTrace } from '@chatwork-bot/translation-prompt'
 
 export interface OutputOrigin {
@@ -17,7 +17,8 @@ export interface OutputDelivery {
   sentAt: string
 }
 
-export type OutputRecord = ChatworkWebhookEvent & {
+export interface OutputRecord {
+  command: TranslationIngressCommand
   translation: TranslationResult
   pipeline?: PipelineTrace
   origin?: OutputOrigin
