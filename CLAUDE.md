@@ -18,6 +18,8 @@ Includes a local-dev dataset-runner sidecar for automated dataset injection and 
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/translator
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/webhook-logger
+@chatwork-bot/chatwork            ←── anti-corruption layer for Chatwork API
+                                  ←── imported by ── @chatwork-bot/translator
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)

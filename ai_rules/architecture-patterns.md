@@ -51,6 +51,21 @@ All translation calls go through `translateWithPolicy()`:
 - **Backoff**: Exponential (300ms base, factor 2)
 - Non-transient errors (`QUOTA_EXCEEDED`, `INVALID_RESPONSE`) fail immediately
 
+## Webhook Signature Verification
+
+All incoming webhooks from Chatwork are verified with HMAC-SHA256 before forwarding to the translator:
+
+1. Chatwork sends `X-ChatWorkWebhookSignature` header with every request
+2. Webhook-logger reads the raw request body (binary data, not parsed JSON)
+3. Bot computes HMAC-SHA256 of raw body using `CHATWORK_WEBHOOK_SECRET`
+4. Signatures are compared using constant-time comparison (timing-attack safe)
+5. Requests with invalid signatures are rejected with 400
+6. Valid requests are forwarded to translator `/internal/translate`
+
+**Development bypass**: Set `CHATWORK_SKIP_SIGNATURE_VERIFY=true` to disable verification. This flag has no effect in production.
+
+Implementation: `packages/webhook-logger/src/routes/webhook.ts`
+
 ## Chatwork Markup Stripping
 
 `stripChatworkMarkup()` removes these tags from message text before translation:

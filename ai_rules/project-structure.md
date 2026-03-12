@@ -2,7 +2,7 @@
 
 ## Monorepo Layout
 
-Bun workspaces monorepo. Eight packages:
+Bun workspaces monorepo. Nine packages:
 
 ```
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
@@ -12,6 +12,9 @@ Bun workspaces monorepo. Eight packages:
 @chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
 (4-phase pipeline prompts +                          @chatwork-bot/translator
  Zod schemas)
+
+@chatwork-bot/chatwork            ←── imported by ── @chatwork-bot/translator
+(anti-corruption layer)
 
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
@@ -36,6 +39,10 @@ No build step needed — Bun resolves TypeScript directly.
 ### `packages/translation-prompt` (`@chatwork-bot/translation-prompt`)
 
 4-phase translation pipeline prompts and Zod schemas. Contains: `src/sections/` (prompt builders), `src/schemas/` (`AnalysisSchema`, `ReviewSchema`, `TranslationDraftSchema`, `PipelineTraceSchema`). Exports `PromptPair` type. Used by provider-\* AND translator packages.
+
+### `packages/chatwork` (`@chatwork-bot/chatwork`)
+
+Anti-corruption layer for Chatwork REST API. Provides a clean, strongly-typed interface to the Chatwork API (message sending, room listing, etc.). Shields translator and other packages from direct API coupling.
 
 ### `packages/provider-gemini` (`@chatwork-bot/provider-gemini`)
 
