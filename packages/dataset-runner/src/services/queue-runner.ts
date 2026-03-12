@@ -230,6 +230,8 @@ export class QueueRunner {
         this.status.lastResetAt = resetSummary.appliedAt
       }
 
+      let processedFilesCount = 0
+
       for (;;) {
         if (this.shouldStop()) return
 
@@ -239,6 +241,12 @@ export class QueueRunner {
 
         if (files.length === 0) {
           this.status.mode = 'idle'
+
+          if (processedFilesCount > 0) {
+            this.printCompletionSummary()
+            process.exit(0)
+          }
+
           if (await this.sleepOrShutdown(2000)) return
           continue
         }
@@ -465,12 +473,48 @@ export class QueueRunner {
           console.error(
             JSON.stringify({ level: 'info', event: 'file-archived', fileName: file.fileName }),
           )
+          processedFilesCount += 1
         }
       }
     } finally {
       await lockHeartbeat.stop()
       await releaseRunnerLock(lock)
     }
+  }
+
+  private printCompletionSummary(): void {
+    const total = this.status.completedCount + this.status.failedCount
+    console.error(
+      JSON.stringify({
+        level: 'info',
+        service: 'dataset-runner',
+        event: 'dataset_run_complete',
+        total,
+        succeeded: this.status.completedCount,
+        failed: this.status.failedCount,
+        timestamp: new Date().toISOString(),
+      }),
+    )
+
+    const colWidth = 18
+    const valWidth = 10
+    const line = `╠${'═'.repeat(colWidth)}╦${'═'.repeat(valWidth)}╣`
+    const top = `╔${'═'.repeat(colWidth)}╦${'═'.repeat(valWidth)}╗`
+    const bot = `╚${'═'.repeat(colWidth)}╩${'═'.repeat(valWidth)}╝`
+    const row = (label: string, value: string | number): string => {
+      const l = label.padEnd(colWidth - 1)
+      const v = String(value).padEnd(valWidth - 1)
+      return `║ ${l}║ ${v}║`
+    }
+
+    console.error(top)
+    console.error(row('Dataset Run Done', ''))
+    console.error(line)
+    console.error(row('Total processed', total))
+    console.error(row('Succeeded', this.status.completedCount))
+    console.error(row('Failed', this.status.failedCount))
+    console.error(bot)
+    console.error('→ Messages cleaned up. Shutting down...')
   }
 
   shutdown(): void {
