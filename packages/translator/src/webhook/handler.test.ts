@@ -410,4 +410,56 @@ describe('handleTranslateRequest', () => {
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
   })
+
+  it('handles missing webhook_setting_id in rawSourceSnapshot with fallback', async () => {
+    const command = makeCommand({
+      audit: {
+        receivedAt: new Date().toISOString(),
+        rawSourceSnapshot: {
+          // webhook_setting_id intentionally omitted
+          webhook_event_type: 'message_created',
+          webhook_event_time: 1772633778,
+          webhook_event: {
+            message_id: '2081046619322847232',
+            room_id: 424846369,
+            account_id: 8315321,
+            body: 'A\n\nB\nC',
+            send_time: 1772633778,
+            update_time: 0,
+          },
+        },
+      },
+    })
+
+    await handleTranslateRequest(command)
+
+    // Handler should complete successfully with the fallback empty string
+    expect(mockSendMessage.mock.calls.length).toBe(1)
+  })
+
+  it('handles non-string webhook_setting_id in rawSourceSnapshot with fallback', async () => {
+    const command = makeCommand({
+      audit: {
+        receivedAt: new Date().toISOString(),
+        rawSourceSnapshot: {
+          webhook_setting_id: 35555, // number instead of string
+          webhook_event_type: 'message_created',
+          webhook_event_time: 1772633778,
+          webhook_event: {
+            message_id: '2081046619322847232',
+            room_id: 424846369,
+            account_id: 8315321,
+            body: 'A\n\nB\nC',
+            send_time: 1772633778,
+            update_time: 0,
+          },
+        },
+      },
+    })
+
+    await handleTranslateRequest(command)
+
+    // Handler should complete successfully with the fallback empty string
+    expect(mockSendMessage.mock.calls.length).toBe(1)
+  })
 })
