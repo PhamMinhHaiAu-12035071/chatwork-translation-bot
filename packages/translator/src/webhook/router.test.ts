@@ -13,16 +13,6 @@ describe('translateRoutes', () => {
   let app: ReturnType<typeof Elysia.prototype.use>
 
   beforeAll(async () => {
-    const realCore = await import('@chatwork-bot/core')
-
-    void mock.module('@chatwork-bot/core', () => ({
-      ...realCore,
-      ChatworkClient: class {
-        getMembers = mock(() => Promise.resolve([]))
-        sendMessage = mock(() => Promise.resolve({ message_id: 'mock-id' }))
-      },
-    }))
-
     void mock.module('../env', () => ({
       env: {
         AI_PROVIDER: 'openai',
