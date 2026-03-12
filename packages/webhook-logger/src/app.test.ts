@@ -1,10 +1,11 @@
 import { createHmac } from 'node:crypto'
 import { describe, expect, it, mock } from 'bun:test'
 
-const TEST_SECRET = 'test-app-webhook-secret'
+// Use a base64-encoded secret to mirror Chatwork's real token format
+const TEST_SECRET = Buffer.from('test-app-webhook-secret').toString('base64')
 
 function makeSignature(rawBody: string): string {
-  return createHmac('sha256', TEST_SECRET).update(rawBody).digest('base64')
+  return createHmac('sha256', Buffer.from(TEST_SECRET, 'base64')).update(rawBody).digest('base64')
 }
 
 void mock.module('./env', () => ({

@@ -5,11 +5,13 @@ import { verifyWebhookSignature } from './verify-webhook-signature'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SECRET = 'test-secret-key'
+// Chatwork tokens are base64-encoded binary keys — use a realistic base64 test value
+const SECRET = Buffer.from('test-secret-key').toString('base64') // "dGVzdC1zZWNyZXQta2V5"
 const RAW_BODY = '{"webhook_setting_id":"123","webhook_event_type":"message_created"}'
 
+// Mirror the production logic: decode secret from base64 before HMAC
 function makeSignature(body: string, secret: string): string {
-  return createHmac('sha256', secret).update(body).digest('base64')
+  return createHmac('sha256', Buffer.from(secret, 'base64')).update(body).digest('base64')
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

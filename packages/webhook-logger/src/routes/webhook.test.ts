@@ -3,10 +3,11 @@ import { afterEach, beforeAll, describe, expect, it, mock } from 'bun:test'
 import Elysia from 'elysia'
 import type { webhookRoutes as WebhookRoutesType } from './webhook'
 
-const TEST_SECRET = 'test-webhook-secret'
+// Use a base64-encoded secret to mirror Chatwork's real token format
+const TEST_SECRET = Buffer.from('test-webhook-secret').toString('base64')
 
 function makeSignature(rawBody: string, secret = TEST_SECRET): string {
-  return createHmac('sha256', secret).update(rawBody).digest('base64')
+  return createHmac('sha256', Buffer.from(secret, 'base64')).update(rawBody).digest('base64')
 }
 
 // Mock env before importing route

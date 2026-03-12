@@ -23,7 +23,9 @@ export function verifyWebhookSignature(
     return
   }
 
-  const expected = createHmac('sha256', secret).update(rawBody).digest('base64')
+  // Chatwork webhook token is a base64-encoded binary key — decode to raw bytes before use
+  const secretBytes = Buffer.from(secret, 'base64')
+  const expected = createHmac('sha256', secretBytes).update(rawBody).digest('base64')
 
   const expectedBuf = Buffer.from(expected, 'base64')
   const actualBuf = Buffer.from(signature, 'base64')
