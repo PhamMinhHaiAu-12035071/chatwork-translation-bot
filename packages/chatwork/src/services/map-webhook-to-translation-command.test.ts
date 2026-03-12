@@ -82,6 +82,13 @@ describe('mapWebhookToTranslationCommand', () => {
     expect(result.translatableText).toContain('New reply')
   })
 
+  it('strips [qt]...[/qt] blocks from translatableText', () => {
+    const payload = makePayload({ body: '[qt]quoted text[/qt]\nNew reply' })
+    const result = mapWebhookToTranslationCommand(payload, RECEIVED_AT)
+    expect(result.translatableText).not.toContain('[qt]')
+    expect(result.translatableText).toContain('New reply')
+  })
+
   it('maps sendTime from webhook_event.send_time', () => {
     const result = mapWebhookToTranslationCommand(makePayload(), RECEIVED_AT)
     expect(result.sendTime).toBe(1710000000)

@@ -25,15 +25,8 @@ export function verifyWebhookSignature(
 
   const expected = createHmac('sha256', secret).update(rawBody).digest('base64')
 
-  let expectedBuf: Buffer
-  let actualBuf: Buffer
-
-  try {
-    expectedBuf = Buffer.from(expected, 'base64')
-    actualBuf = Buffer.from(signature, 'base64')
-  } catch {
-    throw new ChatworkWebhookSignatureError('Malformed signature encoding')
-  }
+  const expectedBuf = Buffer.from(expected, 'base64')
+  const actualBuf = Buffer.from(signature, 'base64')
 
   if (expectedBuf.length !== actualBuf.length || !timingSafeEqual(expectedBuf, actualBuf)) {
     throw new ChatworkWebhookSignatureError()

@@ -51,7 +51,13 @@ export function normalizeWebhookPayload(rawBody: string): ChatworkWebhookPayload
   const webhookEventTime = toSafeNumber(raw['webhook_event_time'])
 
   if (webhookSettingId === undefined) issues.push('webhook_setting_id is required')
-  if (webhookEventType === undefined) issues.push('webhook_event_type is required')
+  if (webhookEventType === undefined) {
+    issues.push('webhook_event_type is required')
+  } else if (webhookEventType !== 'message_created') {
+    throw new ChatworkWebhookPayloadError(
+      `Unsupported webhook_event_type: "${webhookEventType}"; expected "message_created"`,
+    )
+  }
   if (webhookEventTime === undefined) issues.push('webhook_event_time is required')
 
   const rawEvent = raw['webhook_event']

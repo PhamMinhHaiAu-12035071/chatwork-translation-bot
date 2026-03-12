@@ -62,6 +62,24 @@ describe('normalizeWebhookPayload', () => {
     expect(() => normalizeWebhookPayload(body)).toThrow(/webhook_setting_id/)
   })
 
+  it('throws ChatworkWebhookPayloadError when webhook_event_type is not message_created', () => {
+    const body = JSON.stringify({
+      webhook_setting_id: '123',
+      webhook_event_type: 'member_joined',
+      webhook_event_time: 1710000000,
+      webhook_event: {
+        message_id: '789012345',
+        room_id: 567890123,
+        account_id: 12345,
+        body: 'Hello',
+        send_time: 1710000000,
+        update_time: 0,
+      },
+    })
+    expect(() => normalizeWebhookPayload(body)).toThrow(ChatworkWebhookPayloadError)
+    expect(() => normalizeWebhookPayload(body)).toThrow(/Unsupported webhook_event_type/)
+  })
+
   it('throws ChatworkWebhookPayloadError when webhook_event is missing', () => {
     const body = JSON.stringify({
       webhook_setting_id: '123',

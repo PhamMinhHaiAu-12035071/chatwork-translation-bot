@@ -10,6 +10,7 @@ function stripChatworkMarkup(text: string): string {
     .replace(/\[To:\d+\]/g, '')
     .replace(/\[rp aid=\d+ to=\d+:\d+\]/g, '')
     .replace(/\[quote\][\s\S]*?\[\/quote\]/g, '')
+    .replace(/\[qt\][\s\S]*?\[\/qt\]/g, '')
     .replace(/\[info\][\s\S]*?\[\/info\]/g, '')
     .replace(/\[title\][\s\S]*?\[\/title\]/g, '')
     .replace(/\[code\][\s\S]*?\[\/code\]/g, '')
