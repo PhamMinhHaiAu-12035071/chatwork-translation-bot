@@ -1,0 +1,135 @@
+import { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
+import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const BASE_URL = 'https://api.chatwork.com/v2'
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+function makeHeaders(token: string): Record<string, string> {
+  return {
+    'X-ChatWorkToken': token,
+  }
+}
+
+interface ChatworkErrorBody {
+  errors?: string[]
+}
+
+async function handleErrorResponse(response: Response): Promise<never> {
+  const retryAfterHeader = response.headers.get('Retry-After')
+
+  let errors: string[] = []
+  try {
+    const body = (await response.json()) as ChatworkErrorBody
+    errors = body.errors ?? []
+  } catch {
+    // ignore JSON parse failures
+  }
+
+  if (response.status === 429) {
+    const retryAfter = retryAfterHeader != null ? parseInt(retryAfterHeader, 10) : 0
+    throw new ChatworkRateLimitError(retryAfter, errors)
+  }
+
+  const message =
+    errors.length > 0
+      ? errors.join('; ')
+      : `Chatwork API error: ${response.status.toString()} ${response.statusText}`
+
+  throw new ChatworkApiError(message, response.status, errors)
+}
+
+// ─── API client (internal) ────────────────────────────────────────────────────
+
+export const chatworkApiClient = {
+  async sendRoomMessage(
+    roomId: number,
+    message: string,
+    token: string,
+  ): Promise<ChatworkSendMessageResult> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}/messages`
+    const body = new URLSearchParams({ body: message })
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...makeHeaders(token),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as ChatworkSendMessageResult
+  },
+
+  async deleteRoomMessage(roomId: number, messageId: string, token: string): Promise<void> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}/messages/${messageId}`
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+  },
+
+  async getRoomMembers(roomId: number, token: string): Promise<ChatworkMember[]> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}/members`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as ChatworkMember[]
+  },
+
+  async getRoomMessage(roomId: number, messageId: string, token: string): Promise<ChatworkMessage> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}/messages/${messageId}`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as ChatworkMessage
+  },
+
+  async listRoomMessages(
+    roomId: number,
+    token: string,
+    force?: boolean,
+  ): Promise<ChatworkMessage[]> {
+    const url = new URL(`${BASE_URL}/rooms/${roomId.toString()}/messages`)
+    if (force === true) {
+      url.searchParams.set('force', '1')
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as ChatworkMessage[]
+  },
+}
