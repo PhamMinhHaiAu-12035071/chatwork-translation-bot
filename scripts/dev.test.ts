@@ -208,6 +208,36 @@ exit 22
   }
 }
 
+function getComposeServiceBlock(composeContent: string, serviceName: string): string {
+  const lines = composeContent.split('\n')
+  const servicesIndex = lines.indexOf('services:')
+  if (servicesIndex === -1) {
+    throw new Error('services section not found in docker-compose.dev.yml')
+  }
+
+  const serviceHeader = `  ${serviceName}:`
+  const serviceStart = lines.findIndex(
+    (line, index) => index > servicesIndex && line === serviceHeader,
+  )
+  if (serviceStart === -1) {
+    throw new Error(`service ${serviceName} not found in docker-compose.dev.yml`)
+  }
+
+  const serviceLines = [lines[serviceStart] ?? '']
+  for (let index = serviceStart + 1; index < lines.length; index += 1) {
+    const line = lines[index] ?? ''
+    if (/^[a-zA-Z0-9_-]+:\s*$/.test(line)) {
+      break
+    }
+    if (/^  [^ #][^:]*:\s*$/.test(line)) {
+      break
+    }
+    serviceLines.push(line)
+  }
+
+  return serviceLines.join('\n')
+}
+
 async function runScript(
   workspace: TestWorkspace,
   scriptRelativePath: string,
@@ -338,5 +368,14 @@ describe('scripts/dev.sh orchestration', () => {
     expect(result.exitCode).not.toBe(1)
     expect(result.events).toContain('docker:down')
     expect(result.stderr).toContain('[dev] shutting down stack...')
+  })
+
+  it('keeps TTY enabled for Bun services in docker-compose.dev.yml', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+
+    for (const serviceName of ['translator', 'webhook-logger', 'dataset-runner']) {
+      const serviceBlock = getComposeServiceBlock(composeContent, serviceName)
+      expect(serviceBlock).toContain('tty: true')
+    }
   })
 })
