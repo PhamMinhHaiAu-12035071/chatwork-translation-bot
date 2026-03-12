@@ -1,4 +1,4 @@
-import type { IChatworkClient } from '@chatwork-bot/core'
+import { sendRoomMessage } from '@chatwork-bot/chatwork'
 import { writeAutomationSourceMapEntry } from '~/services/source-map'
 import type { PendingDatasetRecord } from '~/types/dataset'
 
@@ -10,7 +10,7 @@ export async function processDatasetItem(
   record: PendingDatasetRecord,
   config: {
     inputDir: string
-    chatworkClient: IChatworkClient
+    apiToken: string
     defaultOriginalRoomId: number
   },
 ): Promise<ItemProcessResult> {
@@ -29,10 +29,7 @@ export async function processDatasetItem(
   )
 
   try {
-    const source = await config.chatworkClient.sendMessage({
-      roomId,
-      message: record.item.message,
-    })
+    const source = await sendRoomMessage(roomId, record.item.message, config.apiToken)
 
     await writeAutomationSourceMapEntry(config.inputDir, {
       sourceMessageId: source.message_id,

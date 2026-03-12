@@ -1,6 +1,5 @@
 import { appendFile, mkdir, readdir, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { ChatworkClient } from '@chatwork-bot/core'
 import { AckCoordinator } from '~/services/ack-coordinator'
 import { listPendingDatasetFiles, loadDatasetRecords } from '~/services/dataset-loader'
 import { clearDeliveryAck, readDeliveryAck, writeDeliveryAck } from '~/services/ack-store'
@@ -210,7 +209,6 @@ export class QueueRunner {
 
     const lock = await acquireRunnerLock(this.config.inputDir, 30_000)
     const lockHeartbeat = startRunnerLockHeartbeat(lock, 5_000)
-    const client = new ChatworkClient({ apiToken: this.config.apiToken })
 
     try {
       const resetSummary = await applyStartupReset({
@@ -299,7 +297,7 @@ export class QueueRunner {
 
                 const result = await processDatasetItem(record, {
                   inputDir: this.config.inputDir,
-                  chatworkClient: client,
+                  apiToken: this.config.apiToken,
                   defaultOriginalRoomId: this.config.defaultOriginalRoomId,
                 })
 

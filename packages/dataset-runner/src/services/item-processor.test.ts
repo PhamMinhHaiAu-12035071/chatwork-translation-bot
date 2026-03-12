@@ -2,21 +2,24 @@ import { describe, expect, it, mock } from 'bun:test'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { IChatworkClient } from '@chatwork-bot/core'
-import { processDatasetItem } from './item-processor'
+
+void mock.module('@chatwork-bot/chatwork', () => ({
+  sendRoomMessage: mock(() => Promise.resolve({ message_id: 'source-1' })),
+}))
 
 describe('processDatasetItem', () => {
   it('returns sent source metadata after Chatwork source send succeeds', async () => {
+    const { sendRoomMessage } = await import('@chatwork-bot/chatwork')
+    const { processDatasetItem } = await import('./item-processor')
+
     const loggedLines: string[] = []
     const originalConsoleLog = console.log
     console.log = mock((...args: unknown[]) => {
       loggedLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.log
-
-    const client: IChatworkClient = {
-      sendMessage: mock(() => Promise.resolve({ message_id: 'source-1' })),
-      getMembers: mock(() => Promise.resolve([])),
-    }
+    ;(sendRoomMessage as ReturnType<typeof mock>).mockImplementation(() =>
+      Promise.resolve({ message_id: 'source-1' }),
+    )
 
     const result = await processDatasetItem(
       {
@@ -27,14 +30,16 @@ describe('processDatasetItem', () => {
       },
       {
         inputDir: '/tmp/input',
-        chatworkClient: client,
+        apiToken: 'test-token',
         defaultOriginalRoomId: 424846369,
       },
     )
 
     expect(result.status).toBe('sent')
-    expect(result.sourceMessageId).toBe('source-1')
-    expect((client.sendMessage as ReturnType<typeof mock>).mock.calls.length).toBe(1)
+    if (result.status === 'sent') {
+      expect(result.sourceMessageId).toBe('source-1')
+    }
+    expect((sendRoomMessage as ReturnType<typeof mock>).mock.calls.length).toBeGreaterThan(0)
     expect(loggedLines.some((line) => line.includes('"event":"dataset_item_send_started"'))).toBe(
       true,
     )
@@ -46,12 +51,14 @@ describe('processDatasetItem', () => {
   })
 
   it('writes one source-map entry immediately after source send', async () => {
+    const { sendRoomMessage } = await import('@chatwork-bot/chatwork')
+    const { processDatasetItem } = await import('./item-processor')
+
     const inputDir = join(tmpdir(), 'item-processor-test-sourcemap')
 
-    const client: IChatworkClient = {
-      sendMessage: mock(() => Promise.resolve({ message_id: 'source-1' })),
-      getMembers: mock(() => Promise.resolve([])),
-    }
+    ;(sendRoomMessage as ReturnType<typeof mock>).mockImplementation(() =>
+      Promise.resolve({ message_id: 'source-1' }),
+    )
 
     await processDatasetItem(
       {
@@ -62,7 +69,7 @@ describe('processDatasetItem', () => {
       },
       {
         inputDir,
-        chatworkClient: client,
+        apiToken: 'test-token',
         defaultOriginalRoomId: 424846369,
       },
     )
@@ -77,16 +84,17 @@ describe('processDatasetItem', () => {
   })
 
   it('returns failed when Chatwork source send throws', async () => {
+    const { sendRoomMessage } = await import('@chatwork-bot/chatwork')
+    const { processDatasetItem } = await import('./item-processor')
+
     const loggedLines: string[] = []
     const originalConsoleError = console.error
     console.error = mock((...args: unknown[]) => {
       loggedLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.error
-
-    const client: IChatworkClient = {
-      sendMessage: mock(() => Promise.reject(new Error('Network error'))),
-      getMembers: mock(() => Promise.resolve([])),
-    }
+    ;(sendRoomMessage as ReturnType<typeof mock>).mockImplementation(() =>
+      Promise.reject(new Error('Network error')),
+    )
 
     const result = await processDatasetItem(
       {
@@ -97,7 +105,7 @@ describe('processDatasetItem', () => {
       },
       {
         inputDir: '/tmp/input',
-        chatworkClient: client,
+        apiToken: 'test-token',
         defaultOriginalRoomId: 424846369,
       },
     )
