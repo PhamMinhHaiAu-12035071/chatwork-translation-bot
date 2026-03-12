@@ -1,127 +1,101 @@
 import { Elysia } from 'elysia'
-import { Value } from '@sinclair/typebox/value'
-import type { ChatworkWebhookEvent } from '@chatwork-bot/core'
-import { ChatworkWebhookEventSchema } from '@chatwork-bot/core'
+import {
+  verifyWebhookSignature,
+  normalizeWebhookPayload,
+  mapWebhookToTranslationCommand,
+  ChatworkWebhookSignatureError,
+  ChatworkWebhookPayloadError,
+} from '@chatwork-bot/chatwork'
 import { env } from '~/env'
 
-type NormalizationResult =
-  | { ok: true; event: ChatworkWebhookEvent }
-  | { ok: false; event: string[] }
+export const webhookRoutes = new Elysia({ name: 'webhook-logger:webhook' })
+  .derive(async ({ request }) => ({
+    rawBody: await request.clone().text(),
+  }))
+  .post('/webhook', ({ rawBody, headers }) => handleWebhook(rawBody, headers))
+  .post('/', ({ rawBody, headers }) => handleWebhook(rawBody, headers))
 
-function toSafeString(value: unknown): string | undefined {
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : undefined
-  }
-
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value.toString()
-  }
-
-  return undefined
-}
-
-function toSafeNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-  if (typeof value === 'string') {
-    const normalized = value.trim()
-    if (normalized.length === 0) {
-      return undefined
-    }
-
-    const parsed = Number(normalized)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }
-
-  return undefined
-}
-
-function normalizeWebhookPayload(payload: unknown): NormalizationResult {
-  const issues: string[] = []
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    issues.push('payload is not an object')
-    return { ok: false, event: issues }
-  }
-
-  const raw = payload as Record<string, unknown>
-  const webhookEvent = raw['webhook_event']
-  if (!webhookEvent || typeof webhookEvent !== 'object' || Array.isArray(webhookEvent)) {
-    issues.push('webhook_event is missing or invalid')
-  }
-  const rawEvent = (webhookEvent ?? {}) as Record<string, unknown>
-
-  const webhookSettingId = toSafeString(raw['webhook_setting_id'])
-  const webhookEventType = toSafeString(raw['webhook_event_type'])
-  const webhookEventTime = toSafeNumber(raw['webhook_event_time'])
-
-  if (webhookSettingId === undefined) {
-    issues.push('webhook_setting_id is required')
-  }
-  if (webhookEventType === undefined) {
-    issues.push('webhook_event_type is required')
-  }
-  if (webhookEventTime === undefined) {
-    issues.push('webhook_event_time is required')
-  }
-
-  const messageId = toSafeString(rawEvent['message_id'])
-  const roomIdVal = toSafeNumber(rawEvent['room_id'])
-  const accountId = toSafeNumber(rawEvent['account_id'])
-  const sendTime = toSafeNumber(rawEvent['send_time'])
-  const updateTime = toSafeNumber(rawEvent['update_time'])
-  const fromAccountId = toSafeNumber(rawEvent['from_account_id'])
-  const toAccountId = toSafeNumber(rawEvent['to_account_id'])
-
-  const eventFields: ChatworkWebhookEvent['webhook_event'] = {
-    ...(messageId !== undefined ? { message_id: messageId } : {}),
-    ...(roomIdVal !== undefined ? { room_id: roomIdVal } : {}),
-    ...(accountId !== undefined ? { account_id: accountId } : {}),
-    ...(typeof rawEvent['body'] === 'string' ? { body: rawEvent['body'] } : {}),
-    ...(sendTime !== undefined ? { send_time: sendTime } : {}),
-    ...(updateTime !== undefined ? { update_time: updateTime } : {}),
-    ...(fromAccountId !== undefined ? { from_account_id: fromAccountId } : {}),
-    ...(toAccountId !== undefined ? { to_account_id: toAccountId } : {}),
-  }
-
-  const candidate: ChatworkWebhookEvent = {
-    webhook_setting_id: webhookSettingId ?? '',
-    webhook_event_type: webhookEventType ?? '',
-    webhook_event_time: webhookEventTime ?? 0,
-    webhook_event: eventFields,
-  }
-
-  const valid = issues.length === 0 && Value.Check(ChatworkWebhookEventSchema, candidate)
-  if (!valid) {
-    for (const issue of Value.Errors(ChatworkWebhookEventSchema, candidate)) {
-      issues.push(`${issue.path.split('/').join('.')} ${issue.message}`)
-    }
-    return { ok: false, event: issues }
-  }
-
-  return { ok: true, event: candidate }
-}
-
-async function handleWebhook(body: unknown): Promise<Response> {
-  const normalized = normalizeWebhookPayload(body)
-  if (!normalized.ok) {
+async function handleWebhook(
+  rawBody: string,
+  headers: Record<string, string | undefined>,
+): Promise<Response> {
+  // --- Signature verification ---
+  const signature = headers['x-chatworkwebhooksignature']
+  if (!signature) {
     console.error(
       JSON.stringify({
         level: 'error',
         service: 'webhook-logger',
-        event: 'webhook_payload_invalid',
+        event: 'webhook_signature_missing',
         timestamp: new Date().toISOString(),
-        errorCode: 'WEBHOOK_PAYLOAD_INVALID',
-        errorMessage: normalized.event.join('; '),
+        errorCode: 'WEBHOOK_SIGNATURE_MISSING',
+        errorMessage: 'Missing X-ChatWorkWebhookSignature header',
       }),
     )
-    return new Response('Invalid webhook payload', { status: 422 })
+    return new Response('Missing signature header', { status: 422 })
   }
 
-  const event = normalized.event
-  const sourceMessageId = event.webhook_event.message_id
-  const roomId = event.webhook_event.room_id
+  const skipVerify = env.CHATWORK_SKIP_SIGNATURE_VERIFY && env.NODE_ENV !== 'production'
+  if (skipVerify) {
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        service: 'webhook-logger',
+        event: 'webhook_signature_verification_bypassed',
+        timestamp: new Date().toISOString(),
+        message: 'Signature verification bypassed (CHATWORK_SKIP_SIGNATURE_VERIFY=true)',
+      }),
+    )
+  }
+
+  try {
+    verifyWebhookSignature(rawBody, signature, env.CHATWORK_WEBHOOK_SECRET, {
+      skip: skipVerify,
+      env: env.NODE_ENV,
+    })
+  } catch (err: unknown) {
+    if (err instanceof ChatworkWebhookSignatureError) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          service: 'webhook-logger',
+          event: 'webhook_signature_invalid',
+          timestamp: new Date().toISOString(),
+          errorCode: 'WEBHOOK_SIGNATURE_INVALID',
+          errorMessage: err.message,
+        }),
+      )
+      return new Response('Invalid webhook signature', { status: 422 })
+    }
+    throw err
+  }
+
+  // --- Payload normalization ---
+  let payload: ReturnType<typeof normalizeWebhookPayload>
+  try {
+    payload = normalizeWebhookPayload(rawBody)
+  } catch (err: unknown) {
+    if (err instanceof ChatworkWebhookPayloadError) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          service: 'webhook-logger',
+          event: 'webhook_payload_invalid',
+          timestamp: new Date().toISOString(),
+          errorCode: 'WEBHOOK_PAYLOAD_INVALID',
+          errorMessage: err.message,
+        }),
+      )
+      return new Response('Invalid webhook payload', { status: 422 })
+    }
+    throw err
+  }
+
+  // --- Map to neutral DTO ---
+  const command = mapWebhookToTranslationCommand(payload, new Date().toISOString())
+
+  const sourceMessageId = command.sourceMessageId
+  const roomId = command.sourceRoomId
 
   console.log(
     JSON.stringify({
@@ -129,8 +103,8 @@ async function handleWebhook(body: unknown): Promise<Response> {
       service: 'webhook-logger',
       event: 'webhook_received',
       timestamp: new Date().toISOString(),
-      ...(sourceMessageId !== undefined ? { sourceMessageId } : {}),
-      ...(roomId !== undefined ? { roomId } : {}),
+      sourceMessageId,
+      roomId,
     }),
   )
 
@@ -140,17 +114,18 @@ async function handleWebhook(body: unknown): Promise<Response> {
       service: 'webhook-logger',
       event: 'translation_forward_started',
       timestamp: new Date().toISOString(),
-      ...(sourceMessageId !== undefined ? { sourceMessageId } : {}),
-      ...(roomId !== undefined ? { roomId } : {}),
+      sourceMessageId,
+      roomId,
     }),
   )
 
+  // --- Forward neutral DTO to translator ---
   let response: Response
   try {
     response = await fetch(`${env.TRANSLATOR_URL}/internal/translate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ event }),
+      body: JSON.stringify({ command }),
     })
   } catch (err: unknown) {
     console.error(
@@ -159,8 +134,8 @@ async function handleWebhook(body: unknown): Promise<Response> {
         service: 'webhook-logger',
         event: 'translation_forward_failed',
         timestamp: new Date().toISOString(),
-        ...(sourceMessageId !== undefined ? { sourceMessageId } : {}),
-        ...(roomId !== undefined ? { roomId } : {}),
+        sourceMessageId,
+        roomId,
         errorCode: err instanceof Error ? err.name : 'UnknownError',
         errorMessage: err instanceof Error ? err.message : String(err),
       }),
@@ -175,8 +150,8 @@ async function handleWebhook(body: unknown): Promise<Response> {
         service: 'webhook-logger',
         event: 'translation_forward_failed',
         timestamp: new Date().toISOString(),
-        ...(sourceMessageId !== undefined ? { sourceMessageId } : {}),
-        ...(roomId !== undefined ? { roomId } : {}),
+        sourceMessageId,
+        roomId,
         errorCode: 'TRANSLATOR_HTTP',
         errorMessage: `Translator responded with ${String(response.status)}`,
         translatorStatus: response.status,
@@ -191,15 +166,11 @@ async function handleWebhook(body: unknown): Promise<Response> {
       service: 'webhook-logger',
       event: 'translation_forward_completed',
       timestamp: new Date().toISOString(),
-      ...(sourceMessageId !== undefined ? { sourceMessageId } : {}),
-      ...(roomId !== undefined ? { roomId } : {}),
+      sourceMessageId,
+      roomId,
       translatorStatus: response.status,
     }),
   )
 
   return new Response('OK', { status: 200 })
 }
-
-export const webhookRoutes = new Elysia({ name: 'webhook-logger:webhook' })
-  .post('/webhook', ({ body }) => handleWebhook(body))
-  .post('/', ({ body }) => handleWebhook(body))

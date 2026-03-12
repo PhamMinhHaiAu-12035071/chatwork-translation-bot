@@ -1,9 +1,12 @@
 import { z } from 'zod'
+import { strictBooleanFromEnv } from '@chatwork-bot/core'
 
 const envSchema = z.object({
   LOGGER_PORT: z.coerce.number().int().positive().default(3001),
   TRANSLATOR_URL: z.string().pipe(z.url()).default('http://localhost:3000'),
   NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
+  CHATWORK_WEBHOOK_SECRET: z.string().min(1),
+  CHATWORK_SKIP_SIGNATURE_VERIFY: strictBooleanFromEnv(false),
 })
 
 function validateEnv() {
