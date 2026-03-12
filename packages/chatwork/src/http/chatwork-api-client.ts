@@ -1,4 +1,5 @@
 import { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
+import type { IChatworkApiClient } from '~/interfaces/chatwork-api'
 import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ async function handleErrorResponse(response: Response): Promise<never> {
       ? errors.join('; ')
       : `Chatwork API error: ${response.status.toString()} ${response.statusText}`
 
-  throw new ChatworkApiError(message, response.status, errors)
+  throw new ChatworkApiError(message, response.status, response.statusText, errors)
 }
 
 // ─── API client (internal) ────────────────────────────────────────────────────
@@ -132,4 +133,4 @@ export const chatworkApiClient = {
 
     return (await response.json()) as ChatworkMessage[]
   },
-}
+} satisfies IChatworkApiClient

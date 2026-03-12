@@ -15,9 +15,3 @@ export interface IChatworkApiClient {
 
   listRoomMessages(roomId: number, token: string, force?: boolean): Promise<ChatworkMessage[]>
 }
-
-export interface RateLimitInfo {
-  limit: number | null
-  remaining: number | null
-  reset: number | null
-}

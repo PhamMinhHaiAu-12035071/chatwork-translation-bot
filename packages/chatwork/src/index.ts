@@ -2,7 +2,7 @@
 
 // Types
 export type { ChatworkWebhookPayload } from '~/types/webhook'
-export type { ChatworkMember, ChatworkMessage } from '~/types/message'
+export type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
 
 // Errors
 export { ChatworkWebhookSignatureError } from '~/errors/chatwork-webhook-signature-error'

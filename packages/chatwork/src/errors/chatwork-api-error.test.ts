@@ -2,21 +2,24 @@ import { describe, expect, it } from 'bun:test'
 import { ChatworkApiError, ChatworkRateLimitError } from './chatwork-api-error'
 
 describe('ChatworkApiError', () => {
-  it('stores statusCode and errors', () => {
-    const error = new ChatworkApiError('Something went wrong', 400, ['Invalid room id'])
+  it('stores statusCode, statusText, and errors', () => {
+    const error = new ChatworkApiError('Something went wrong', 400, 'Bad Request', [
+      'Invalid room id',
+    ])
     expect(error.statusCode).toBe(400)
+    expect(error.statusText).toBe('Bad Request')
     expect(error.errors).toEqual(['Invalid room id'])
     expect(error.message).toBe('Something went wrong')
     expect(error.name).toBe('ChatworkApiError')
   })
 
   it('defaults errors to empty array', () => {
-    const error = new ChatworkApiError('Not found', 404)
+    const error = new ChatworkApiError('Not found', 404, 'Not Found')
     expect(error.errors).toEqual([])
   })
 
   it('is instanceof Error', () => {
-    const error = new ChatworkApiError('test', 500)
+    const error = new ChatworkApiError('test', 500, 'Internal Server Error')
     expect(error).toBeInstanceOf(Error)
     expect(error).toBeInstanceOf(ChatworkApiError)
   })
