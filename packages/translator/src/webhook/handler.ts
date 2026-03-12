@@ -130,29 +130,12 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
 
     await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
 
-    // Reconstruct a minimal ChatworkMessageEvent-compatible object from command fields
-    // for the chatwork-sender service (which still sends to Chatwork).
-    const rawSnapshotSettingId = command.audit.rawSourceSnapshot['webhook_setting_id']
-    const messageEventForSender = {
-      webhook_setting_id: typeof rawSnapshotSettingId === 'string' ? rawSnapshotSettingId : '',
-      webhook_event_type: 'message_created' as const,
-      webhook_event_time: command.sendTime,
-      webhook_event: {
-        message_id: command.sourceMessageId,
-        room_id: command.sourceRoomId,
-        account_id: command.senderAccountId,
-        body: command.rawBody,
-        send_time: command.sendTime,
-        update_time: command.updateTime,
-      },
-    }
-
     const delivery = await observer.runPhase('delivery', async () => {
       observer.logEvent('info', 'translation_delivery_started', {
         phase: 'delivery',
       })
 
-      const deliveryResult = await sendTranslatedMessage(messageEventForSender, result, {
+      const deliveryResult = await sendTranslatedMessage(command, result, {
         apiToken: env.CHATWORK_API_TOKEN,
         destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
       })

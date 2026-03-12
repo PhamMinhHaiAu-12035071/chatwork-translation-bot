@@ -90,7 +90,13 @@ let executeCallCount = 0
 const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
 const mockNotifyDatasetRunner = mock((_payload: unknown, _config: unknown) => Promise.resolve())
-const mockSendMessage = mock(() => Promise.resolve({ message_id: 'mock-id' }))
+const mockSendRoomMessage = mock((_roomId: number, _message: string, _token: string) =>
+  Promise.resolve({ message_id: 'mock-id' }),
+)
+const mockResolveRoomMemberDisplayName = mock(
+  (_roomId: number, _accountId: number, _token: string, _cache?: Map<number, string>) =>
+    Promise.resolve('Test User'),
+)
 
 function createMockExecutor(): ILLMExecutor {
   return {
@@ -181,10 +187,11 @@ describe('handleTranslateRequest', () => {
       ...realCore,
       getProviderPlugin: mockGetProviderPlugin,
       TranslationError: MockTranslationError,
-      ChatworkClient: class {
-        getMembers = mock(() => Promise.resolve([]))
-        sendMessage = mockSendMessage
-      },
+    }))
+
+    void mock.module('@chatwork-bot/chatwork', () => ({
+      sendRoomMessage: mockSendRoomMessage,
+      resolveRoomMemberDisplayName: mockResolveRoomMemberDisplayName,
     }))
 
     void mock.module('~/services/dataset-runner-callback', () => ({
@@ -224,8 +231,14 @@ describe('handleTranslateRequest', () => {
     consoleLogLines.length = 0
     mockNotifyDatasetRunner.mockReset()
     mockNotifyDatasetRunner.mockImplementation(() => Promise.resolve())
-    mockSendMessage.mockReset()
-    mockSendMessage.mockImplementation(() => Promise.resolve({ message_id: 'mock-id' }))
+    mockSendRoomMessage.mockReset()
+    mockSendRoomMessage.mockImplementation((_roomId, _message, _token) =>
+      Promise.resolve({ message_id: 'mock-id' }),
+    )
+    mockResolveRoomMemberDisplayName.mockReset()
+    mockResolveRoomMemberDisplayName.mockImplementation((_roomId, _accountId, _token, _cache) =>
+      Promise.resolve('Test User'),
+    )
     console.log = mock((...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.log
@@ -369,7 +382,9 @@ describe('handleTranslateRequest', () => {
   })
 
   it('records delivery failures in logs and recent results without throwing', async () => {
-    mockSendMessage.mockImplementation(() => Promise.reject(new Error('destination failed')))
+    mockSendRoomMessage.mockImplementation((_roomId, _message, _token) =>
+      Promise.reject(new Error('destination failed')),
+    )
 
     const command = makeCommand()
 
@@ -411,55 +426,12 @@ describe('handleTranslateRequest', () => {
     expect(executeCallCount).toBe(0)
   })
 
-  it('handles missing webhook_setting_id in rawSourceSnapshot with fallback', async () => {
-    const command = makeCommand({
-      audit: {
-        receivedAt: new Date().toISOString(),
-        rawSourceSnapshot: {
-          // webhook_setting_id intentionally omitted
-          webhook_event_type: 'message_created',
-          webhook_event_time: 1772633778,
-          webhook_event: {
-            message_id: '2081046619322847232',
-            room_id: 424846369,
-            account_id: 8315321,
-            body: 'A\n\nB\nC',
-            send_time: 1772633778,
-            update_time: 0,
-          },
-        },
-      },
-    })
+  it('sends translated message to destination room on success', async () => {
+    const command = makeCommand()
 
     await handleTranslateRequest(command)
 
-    // Handler should complete successfully with the fallback empty string
-    expect(mockSendMessage.mock.calls.length).toBe(1)
-  })
-
-  it('handles non-string webhook_setting_id in rawSourceSnapshot with fallback', async () => {
-    const command = makeCommand({
-      audit: {
-        receivedAt: new Date().toISOString(),
-        rawSourceSnapshot: {
-          webhook_setting_id: 35555, // number instead of string
-          webhook_event_type: 'message_created',
-          webhook_event_time: 1772633778,
-          webhook_event: {
-            message_id: '2081046619322847232',
-            room_id: 424846369,
-            account_id: 8315321,
-            body: 'A\n\nB\nC',
-            send_time: 1772633778,
-            update_time: 0,
-          },
-        },
-      },
-    })
-
-    await handleTranslateRequest(command)
-
-    // Handler should complete successfully with the fallback empty string
-    expect(mockSendMessage.mock.calls.length).toBe(1)
+    expect(mockSendRoomMessage.mock.calls.length).toBe(1)
+    expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(99999)
   })
 })

@@ -1,5 +1,5 @@
-import { ChatworkClient } from '@chatwork-bot/core'
-import type { ChatworkMessageEvent, TranslationResult } from '@chatwork-bot/core'
+import { sendRoomMessage, resolveRoomMemberDisplayName } from '@chatwork-bot/chatwork'
+import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
 import type { OutputDelivery } from '~/types/output'
 
 /**
@@ -8,16 +8,16 @@ import type { OutputDelivery } from '~/types/output'
  * Wraps content in Chatwork [info][title] block with metadata.
  */
 export function buildTranslatedMessage(
-  event: ChatworkMessageEvent,
+  command: TranslationIngressCommand,
   result: TranslationResult,
   senderName: string,
 ): string {
-  const { body, send_time } = event.webhook_event
+  const { rawBody, sendTime } = command
 
-  const timeStr = new Date(send_time * 1000).toISOString().slice(0, 16).replace('T', ' ')
+  const timeStr = new Date(sendTime * 1000).toISOString().slice(0, 16).replace('T', ' ')
   const title = `📨 From: ${senderName} | ${timeStr}`
 
-  const markupTags = (body.match(/\[(?:To|cc):\d+\]/g) ?? []).join('')
+  const markupTags = (rawBody.match(/\[(?:To|cc):\d+\]/g) ?? []).join('')
   const content = markupTags ? `${markupTags}\n${result.translatedText}` : result.translatedText
 
   return `[info][title]${title}[/title]\n${content}[/info]`
@@ -29,18 +29,21 @@ export function buildTranslatedMessage(
  * Returns delivery metadata — never throws; errors are captured in the returned status.
  */
 export async function sendTranslatedMessage(
-  event: ChatworkMessageEvent,
+  command: TranslationIngressCommand,
   result: TranslationResult,
   config: { apiToken: string; destinationRoomId: number },
 ): Promise<OutputDelivery> {
   try {
-    const client = new ChatworkClient({ apiToken: config.apiToken })
-    const members = await client.getMembers(event.webhook_event.room_id)
-    const sender = members.find((m) => m.account_id === event.webhook_event.account_id)
-    const senderName = sender?.name ?? `#${String(event.webhook_event.account_id)}`
+    const cache = new Map<number, string>()
+    const senderName = await resolveRoomMemberDisplayName(
+      command.sourceRoomId,
+      command.senderAccountId,
+      config.apiToken,
+      cache,
+    )
 
-    const message = buildTranslatedMessage(event, result, senderName)
-    const response = await client.sendMessage({ roomId: config.destinationRoomId, message })
+    const message = buildTranslatedMessage(command, result, senderName)
+    const response = await sendRoomMessage(config.destinationRoomId, message, config.apiToken)
 
     return {
       status: 'sent',
