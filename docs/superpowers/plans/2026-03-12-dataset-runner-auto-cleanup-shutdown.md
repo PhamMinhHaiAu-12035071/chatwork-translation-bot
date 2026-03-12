@@ -4,7 +4,7 @@
 
 **Goal:** After each dataset item is processed, automatically delete the source and destination Chatwork messages, then shut down the entire Docker stack when the queue empties.
 
-**Architecture:** Add a new `message-cleaner.ts` service (calls `@chatwork-bot/chatwork`'s `deleteRoomMessage`), wire it into `queue-runner.ts` at three call sites (success path + two hard-stop paths), and add a `processedFilesCount` counter that triggers `process.exit(0)` + a summary table when the queue drains. Docker stack teardown is handled by the existing `--abort-on-container-exit` flag already present in `dev.sh`.
+**Architecture:** Add a new `message-cleaner.ts` service (calls `@chatwork-bot/chatwork`'s `deleteRoomMessage`), wire it into `queue-runner.ts` at three call sites (success path + two hard-stop paths), and add a `processedFilesCount` counter that triggers `process.exit(0)` + a summary table when the queue drains. Docker stack teardown is triggered by `--abort-on-container-exit`, and `dev.sh` must treat the named `docker` command as the success authority when cursor local mode uses `concurrently`.
 
 **Tech Stack:** Bun v1.1+ · TypeScript 5.4+ strict · `@chatwork-bot/chatwork` · `bun:test`
 
@@ -20,7 +20,8 @@
 | `packages/dataset-runner/src/services/message-cleaner.test.ts` | **Create** | Unit tests for `cleanupMessages`                                                    |
 | `packages/dataset-runner/src/services/queue-runner.ts`         | **Modify** | Wire cleanup at success path + 2 hard-stop paths; add auto-shutdown logic + summary |
 
-`scripts/dev-dataset.sh` and `scripts/dev.sh` — **no changes needed** (`--abort-on-container-exit` already present).
+`scripts/dev-dataset.sh` — **no changes needed**.
+`scripts/dev.sh` — **requires orchestration fix** so cursor-mode happy shutdown returns `0` even when `cursor-proxy` is SIGTERM'd intentionally.
 
 ---
 
@@ -678,4 +679,4 @@ All items in `docs/superpowers/specs/2026-03-12-dataset-runner-auto-cleanup-shut
 - `bun run typecheck` passes ✓
 - `bun run lint` passes ✓
 
-> Manual smoke test (not automated): run `bun run dev:dataset` and verify messages are deleted from both rooms and the Docker stack shuts down automatically after all items process.
+> Manual smoke test (not automated): run `bun run dev:dataset` and verify messages are deleted from both rooms, the Docker stack shuts down automatically after all items process, and the CLI returns exit code `0`.

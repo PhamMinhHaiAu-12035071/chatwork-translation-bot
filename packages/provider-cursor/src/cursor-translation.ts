@@ -24,38 +24,39 @@ export class CursorExecutor implements ILLMExecutor {
     schema: ISchema<T>,
     options?: { signal?: AbortSignal },
   ): Promise<T> {
-    const rawText = await withRetry(
+    const json = await withRetry(
       async () => {
+        const rawText = await (async () => {
+          try {
+            const result = await generateText({
+              model: this.provider(this.modelId),
+              system: prompts.system,
+              prompt: prompts.user,
+              ...(options?.signal && { abortSignal: options.signal }),
+            })
+            return result.text
+          } catch (cause) {
+            const isAbort = cause instanceof Error && cause.name === 'AbortError'
+            throw new TranslationError(
+              `Cursor API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+              isAbort ? 'TIMEOUT' : 'API_ERROR',
+              cause,
+            )
+          }
+        })()
+
         try {
-          const result = await generateText({
-            model: this.provider(this.modelId),
-            system: prompts.system,
-            prompt: prompts.user,
-            ...(options?.signal && { abortSignal: options.signal }),
-          })
-          return result.text
+          return extractJsonFromText(rawText)
         } catch (cause) {
-          const isAbort = cause instanceof Error && cause.name === 'AbortError'
           throw new TranslationError(
-            `Cursor API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
-            isAbort ? 'TIMEOUT' : 'API_ERROR',
+            `No JSON in Cursor response: ${cause instanceof Error ? cause.message : String(cause)}`,
+            'API_ERROR',
             cause,
           )
         }
       },
       { ...(options?.signal && { signal: options.signal }), sleepFn: this.sleepFn },
     )
-
-    let json: unknown
-    try {
-      json = extractJsonFromText(rawText)
-    } catch (cause) {
-      throw new TranslationError(
-        `No JSON in Cursor response: ${cause instanceof Error ? cause.message : String(cause)}`,
-        'API_ERROR',
-        cause,
-      )
-    }
 
     try {
       return schema.parse(json)

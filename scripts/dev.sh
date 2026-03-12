@@ -185,7 +185,8 @@ start_proxy_and_docker() {
     --names "cursor-proxy,docker" \
     --prefix-colors "cyan,green" \
     --kill-others \
-    "bun run cursor-proxy" \
+    --success "command-docker" \
+    "node \"$(realpath node_modules/cursor-api-proxy/dist/cli.js)\"" \
     "docker compose -f $COMPOSE_FILE up --remove-orphans --abort-on-container-exit"
 }
 
@@ -245,11 +246,13 @@ if [ "$ACTION" = "up" ]; then
 
   if [ "$AI_PROVIDER" != "cursor" ]; then
     start_docker_only
+    exit $?
   fi
 
   if ! is_local_host "$CURSOR_API_HOST"; then
     echo "[dev] CURSOR_API_URL host '${CURSOR_API_HOST}' is non-local; skip local cursor-proxy startup"
     start_docker_only
+    exit $?
   fi
 
   existing_pid="$(get_listener_pid)"
@@ -257,6 +260,7 @@ if [ "$ACTION" = "up" ]; then
     if probe_proxy_health; then
       echo "[dev] reusing healthy cursor-proxy on ${CURSOR_API_HOST}:${CURSOR_API_PORT} (pid ${existing_pid})"
       start_docker_only
+      exit $?
     fi
 
     echo "[dev] unhealthy listener detected on ${CURSOR_API_HOST}:${CURSOR_API_PORT}; restarting proxy"

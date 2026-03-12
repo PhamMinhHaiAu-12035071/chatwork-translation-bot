@@ -165,6 +165,8 @@ describe('cursorPlugin', () => {
 
   it('throws API_ERROR when response contains no JSON', async () => {
     mockResponseText = 'Sorry, I cannot translate that text.'
+    const originalSleep = Bun.sleep
+    Bun.sleep = mock((_ms: number) => Promise.resolve()) as typeof Bun.sleep
     const { TranslationError } = await import('@chatwork-bot/core')
     const executor = cursorPlugin.create({
       modelId: 'sonnet-4.6',
@@ -175,6 +177,9 @@ describe('cursorPlugin', () => {
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
+    } finally {
+      Bun.sleep = originalSleep
+      mockResponseText = '{"sourceLang": "Japanese", "translated": "Xin chào thế giới"}'
     }
   })
 })
@@ -196,5 +201,27 @@ describe('CursorExecutor retry behavior', () => {
     expect(result.translated).toBe('こんにちは')
     expect(sleepFn).toHaveBeenCalledWith(240_000)
     generateTextMock.mockReset()
+    generateTextMock.mockImplementation(() => Promise.resolve({ text: mockResponseText }))
+  })
+
+  it('retries when the first Cursor response is malformed JSON and the second is valid', async () => {
+    const { CursorExecutor } = await import('./cursor-translation')
+    let callCount = 0
+    generateTextMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve({ text: '{"skopos":{"purpose":"informational"}' })
+      }
+      return Promise.resolve({ text: '{"sourceLang":"ja","translated":"こんにちは"}' })
+    })
+    const sleepFn = mock((_ms: number) => Promise.resolve())
+    const executor = new CursorExecutor('sonnet-4.6', 'http://127.0.0.1:8765/v1', sleepFn)
+    const schema = { parse: (d: unknown) => d as { sourceLang: string; translated: string } }
+    const result = await executor.execute({ system: 'translate', user: 'hello' }, schema)
+    expect(result.translated).toBe('こんにちは')
+    expect(callCount).toBe(2)
+    expect(sleepFn).toHaveBeenCalledWith(240_000)
+    generateTextMock.mockReset()
+    generateTextMock.mockImplementation(() => Promise.resolve({ text: mockResponseText }))
   })
 })

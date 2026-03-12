@@ -27,18 +27,18 @@ This spec adds both steps as automated phases.
 
 ## 2. Requirements
 
-| #   | Requirement                                | Decision                                                             |
-| --- | ------------------------------------------ | -------------------------------------------------------------------- |
-| R1  | Delete source message after each item      | ✅ After each item (not batch)                                       |
-| R2  | Delete destination message after each item | ✅ Both rooms cleaned per item                                       |
-| R3  | Cleanup on failed items too                | ✅ Always attempt cleanup                                            |
-| R4  | Delete error handling                      | Log `warn` + continue (never block pipeline)                         |
-| R5  | Cleanup location                           | `dataset-runner` (has all message IDs post-ACK)                      |
-| R6  | Auto-shutdown trigger                      | When all pending files are archived (queue empty after work)         |
-| R7  | Shutdown mechanism                         | `process.exit(0)` → existing `--abort-on-container-exit` in `dev.sh` |
-| R8  | Feature control                            | Always on — no env var needed                                        |
-| R9  | Completion log                             | Summary table printed to terminal before shutdown                    |
-| R10 | No changes to `dev-dataset.sh`             | `dev.sh` already has `--abort-on-container-exit`                     |
+| #   | Requirement                                | Decision                                                                                                                     |
+| --- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| R1  | Delete source message after each item      | ✅ After each item (not batch)                                                                                               |
+| R2  | Delete destination message after each item | ✅ Both rooms cleaned per item                                                                                               |
+| R3  | Cleanup on failed items too                | ✅ Always attempt cleanup                                                                                                    |
+| R4  | Delete error handling                      | Log `warn` + continue (never block pipeline)                                                                                 |
+| R5  | Cleanup location                           | `dataset-runner` (has all message IDs post-ACK)                                                                              |
+| R6  | Auto-shutdown trigger                      | When all pending files are archived (queue empty after work)                                                                 |
+| R7  | Shutdown mechanism                         | `process.exit(0)` → `docker compose --abort-on-container-exit` → `dev.sh` treats `docker` as CLI success authority           |
+| R8  | Feature control                            | Always on — no env var needed                                                                                                |
+| R9  | Completion log                             | Summary table printed to terminal before shutdown                                                                            |
+| R10 | Script changes                             | `dev-dataset.sh` unchanged; `dev.sh` must short-circuit docker-only branches and use `concurrently --success command-docker` |
 
 ---
 
@@ -191,21 +191,22 @@ if (files.length === 0) {
 
 ---
 
-### 3.3 Auto-Shutdown Flow (no script changes needed)
+### 3.3 Auto-Shutdown Flow (requires `dev.sh` orchestration fix)
 
-`dev.sh` already has `--abort-on-container-exit` in both `start_docker_only` and `start_proxy_and_docker` (lines 189, 193). The chain is:
+`dev.sh` still needs one orchestration detail beyond `--abort-on-container-exit`: in cursor local mode, the wrapper uses `concurrently`, so the CLI must treat the `docker` command as the success authority, launch `cursor-api-proxy` directly with `node` for cleaner shutdown logs, and exit immediately after docker-only branches. The full chain is:
 
 ```
 queue-runner.ts: process.exit(0)
   → dataset-runner container exits
   → docker compose detects exit → stops all containers (--abort-on-container-exit)
   → docker compose up process exits
+  → concurrently exits 0 because named command `docker` exited 0, even if `cursor-proxy` was SIGTERM'd intentionally
   → dev.sh EXIT trap fires: trap_cleanup()
     → docker compose down --remove-orphans
   → Terminal returns to prompt
 ```
 
-No changes to `scripts/dev-dataset.sh` or `scripts/dev.sh` required.
+No changes to `scripts/dev-dataset.sh` are required. `scripts/dev.sh` must keep `docker` as the success authority for cursor local mode.
 
 ---
 

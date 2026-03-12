@@ -86,7 +86,7 @@ exec bunx concurrently \
   --names "cursor-proxy,docker" \
   --prefix-colors "cyan,green" \
   --kill-others \         # <-- thêm: 1 process die → kill hết
-  "bun run cursor-proxy" \
+  "node \"$(realpath node_modules/cursor-api-proxy/dist/cli.js)\"" \
   "docker compose -f docker-compose.dev.yml up --remove-orphans --abort-on-container-exit"
 ```
 
@@ -232,13 +232,13 @@ Ctrl-C                 # Verify docker ps không còn container nào
 
 ## 7. Edge Cases
 
-| Case                                 | Handling                                                               |
-| ------------------------------------ | ---------------------------------------------------------------------- |
-| cursor-proxy khi fail-fast           | `cleanup_local_proxy` trong trap                                       |
-| zrok tunnel bị stale                 | docker compose down dừng container → zrok CLI tự cleanup tunnel        |
-| Artifacts khi dataset-runner exit(1) | `input/state`, `input/failed`, `output` được giữ nguyên để replay      |
-| Ctrl-Z từ user                       | Containers vẫn chạy (không fix hành vi Ctrl-Z) — hướng dẫn dùng Ctrl-C |
-| `exec` trong dev.sh                  | Phải bỏ `exec` để trap hoạt động; thay bằng `wait $!` pattern          |
+| Case                                 | Handling                                                                                                                   |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| cursor-proxy khi fail-fast           | `cleanup_local_proxy` trong trap; happy shutdown có thể còn log `SIGTERM` trung tính nhưng không nên có Bun `error:` noise |
+| zrok tunnel bị stale                 | docker compose down dừng container → zrok CLI tự cleanup tunnel                                                            |
+| Artifacts khi dataset-runner exit(1) | `input/state`, `input/failed`, `output` được giữ nguyên để replay                                                          |
+| Ctrl-Z từ user                       | Containers vẫn chạy (không fix hành vi Ctrl-Z) — hướng dẫn dùng Ctrl-C                                                     |
+| `exec` trong dev.sh                  | Phải bỏ `exec` để trap hoạt động; thay bằng `wait $!` pattern                                                              |
 
 ---
 
