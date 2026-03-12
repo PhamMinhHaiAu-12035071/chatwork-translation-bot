@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { AckCoordinator } from '~/services/ack-coordinator'
 import { listPendingDatasetFiles, loadDatasetRecords } from '~/services/dataset-loader'
 import { clearDeliveryAck, readDeliveryAck, writeDeliveryAck } from '~/services/ack-store'
+import { cleanupMessages } from '~/services/message-cleaner'
 import { processDatasetItem } from '~/services/item-processor'
 import { applyStartupReset } from '~/services/reset-planner'
 import {
@@ -373,6 +374,13 @@ export class QueueRunner {
                 errorMessage: `No internal delivery ACK was received for ${sourceMessageId}`,
               })
               await clearDeliveryAck(this.config.inputDir, sourceMessageId)
+              await cleanupMessages(
+                {
+                  sourceRoomId: record.item.originalRoomId ?? this.config.defaultOriginalRoomId,
+                  sourceMessageId,
+                },
+                this.config.apiToken,
+              )
               process.exit(1)
             }
 
@@ -392,6 +400,17 @@ export class QueueRunner {
                   ack.errorMessage ?? 'Translator reported destination delivery failure',
               })
               await clearDeliveryAck(this.config.inputDir, sourceMessageId)
+              await cleanupMessages(
+                {
+                  sourceRoomId: record.item.originalRoomId ?? this.config.defaultOriginalRoomId,
+                  sourceMessageId,
+                  destRoomId: ack.destinationRoomId,
+                  ...(ack.destinationMessageId !== undefined
+                    ? { destMessageId: ack.destinationMessageId }
+                    : {}),
+                },
+                this.config.apiToken,
+              )
               process.exit(1)
             }
 
@@ -403,6 +422,17 @@ export class QueueRunner {
             })
             workingState = await this.markRecordSucceeded(file.fileName, workingState, record)
             await clearDeliveryAck(this.config.inputDir, sourceMessageId)
+            await cleanupMessages(
+              {
+                sourceRoomId: record.item.originalRoomId ?? this.config.defaultOriginalRoomId,
+                sourceMessageId,
+                destRoomId: ack.destinationRoomId,
+                ...(ack.destinationMessageId !== undefined
+                  ? { destMessageId: ack.destinationMessageId }
+                  : {}),
+              },
+              this.config.apiToken,
+            )
             this.status.updatedAt = new Date().toISOString()
             state = workingState
             if (await this.sleepOrShutdown(this.config.cooldownMs)) return
