@@ -47,6 +47,7 @@
       "name": "@chatwork-bot/dataset-runner",
       "version": "1.0.0",
       "dependencies": {
+        "@chatwork-bot/chatwork": "workspace:*",
         "@chatwork-bot/core": "workspace:*",
         "@elysiajs/swagger": "^1.3.1",
         "elysia": "^1.4.27",
@@ -95,6 +96,7 @@
       "name": "@chatwork-bot/translator",
       "version": "1.0.0",
       "dependencies": {
+        "@chatwork-bot/chatwork": "workspace:*",
         "@chatwork-bot/core": "workspace:*",
         "@chatwork-bot/provider-cursor": "workspace:*",
         "@chatwork-bot/provider-gemini": "workspace:*",
@@ -110,6 +112,7 @@
       "name": "@chatwork-bot/webhook-logger",
       "version": "0.0.1",
       "dependencies": {
+        "@chatwork-bot/chatwork": "workspace:*",
         "@chatwork-bot/core": "workspace:*",
         "@elysiajs/swagger": "^1.3.1",
         "@sinclair/typebox": "^0.34.48",

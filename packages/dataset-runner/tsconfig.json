@@ -5,7 +5,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
-      "~/*": ["packages/dataset-runner/src/*", "packages/core/src/*"]
+      "~/*": ["packages/dataset-runner/src/*", "packages/core/src/*", "packages/chatwork/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

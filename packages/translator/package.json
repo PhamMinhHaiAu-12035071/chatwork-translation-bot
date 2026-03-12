@@ -14,6 +14,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@chatwork-bot/chatwork": "workspace:*",
     "@chatwork-bot/core": "workspace:*",
     "@chatwork-bot/provider-cursor": "workspace:*",
     "@chatwork-bot/provider-gemini": "workspace:*",
