@@ -26,7 +26,10 @@ project, release, sprint, deploy, staging, production, deadline, milestone, revi
 - Katakana loanwords from English: use the original English word, not Vietnamese transliteration.
   プロジェクト → project | リリース → release | ミーティング → meeting | デプロイ → deploy
 - Japanese personal names must stay in original Japanese script. Do not romanize or transliterate names by default.
-  Romaji gloss in parentheses (e.g., 田中 (Tanaka)) is allowed only when allowRomajiGloss=true is explicitly set by the analysis. Never add romaji gloss by default.
+  If allowRomajiGloss=true, add a reader-first romaji gloss inline in parentheses on first mention only, e.g., 田中さん (Tanaka). Keep later mentions in original script unless repeating the gloss is needed to avoid referential confusion.
+  Use plain romaji in the gloss. Do not use Tanaka-san as the default gloss format. Do not turn name glosses into translator notes, endnotes, or glossary-style annotations.
+- For Latin/Vietnamese-readable names that carry a Japanese honorific in the source (e.g., Thanhさん), do not retain the raw honorific if it makes the Vietnamese sentence feel translated or unnatural. Rewrite naturally in Vietnamese while staying gender-neutral unless the source explicitly establishes gender.
+- Company or organization names normally stay in original form. If allowRomajiGloss=true for a company/organization, gloss it once only when it is a main referent and script-only rendering would slow reader comprehension.
 - forbidGenderInference=true: do not infer or assign gender from a Japanese name. Do not add anh/chị or any gender-specific honorifics based on a name alone. Use gender-neutral forms unless the source text explicitly indicates gender.
 
 ### Japanese Formatting Conventions

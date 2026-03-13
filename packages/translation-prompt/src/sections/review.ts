@@ -72,7 +72,11 @@ export function buildReviewPrompts(
   const hintsBlock = buildStructuredHintsBlock(analysis)
 
   const scoringGuidance = `## Scoring Guidance
-Apply preservation rules strictly: any violation of a true preservation flag (preserveUrl, preserveCode, preserveUnits, preserveChatworkMarkup, preserveJapaneseNameScript) is an accuracy error. forbidGenderInference=true means adding gender-specific honorifics from a name alone is an accuracy error. Review Focus items are additional axes to examine.`
+Apply preservation rules strictly: any violation of a true preservation flag (preserveUrl, preserveCode, preserveUnits, preserveChatworkMarkup, preserveJapaneseNameScript) is an accuracy error. forbidGenderInference=true means adding gender-specific honorifics from a name alone is an accuracy error.
+When allowRomajiGloss=true, use a reader-first standard: if a difficult Japanese personal name is left in raw script with no romaji gloss on first mention, that can reduce readerExperience and naturalFlow because Vietnamese readers may not parse the referent quickly.
+Prefer a romaji gloss on first mention over repeated glosses, translator notes, or glossary-style annotations.
+If the draft keeps a raw honorific such as さん on a Latin/Vietnamese-readable name (for example Thanhさん) and that surface form makes the sentence feel translated, treat it as unnatural Vietnamese.
+Review Focus items are additional axes to examine.`
 
   return {
     system: buildReviewSystem(escalated),

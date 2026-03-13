@@ -62,7 +62,7 @@ Output a single JSON object with exactly these fields:
       "preserveUnits": <true if numeric units (px, ms, GB, etc.) must be kept as-is>,
       "preserveChatworkMarkup": <true if Chatwork markup tags must be kept verbatim>,
       "preserveJapaneseNameScript": <true if Japanese proper names must remain in their original script>,
-      "allowRomajiGloss": <default false — set true only if a romaji gloss alongside the original Japanese script would aid comprehension>,
+      "allowRomajiGloss": <default false — set true only when a reader-first inline romaji gloss on first mention would help Vietnamese readers quickly understand a difficult Japanese name; keep false for already-readable Latin/Vietnamese names and when gloss would only make the sentence heavier>,
       "forbidGenderInference": <default true — set false only when the source text unambiguously establishes gender of the named person>
     },
     "reviewFocus": ["<string topics the review step should pay special attention to, derived only from source-text evidence>"]
@@ -100,6 +100,9 @@ Identify preservation-sensitive fragments in the source text:
 - Units: numeric + unit combinations (100ms, 2GB, 768px) must be kept as-is (preserveUnits: true)
 - Chatwork markup: [To:], [info][/info], [code][/code], (bow), etc. must be kept verbatim (preserveChatworkMarkup: true)
 - Japanese names: proper names in kanji/katakana that are names of people or companies (preserveJapaneseNameScript: true)
+- allowRomajiGloss is a reader-first comprehension aid, not blanket romanization. Prefer true for Japanese personal names written in kanji/katakana when first mention would otherwise be hard to read quickly for Vietnamese readers.
+- Keep allowRomajiGloss false for already-readable Latin/Vietnamese names (for example Thanh) and when a gloss would only make the sentence heavier without improving comprehension.
+- For companies/organizations, set allowRomajiGloss true only when the name is a main referent and script-only rendering would noticeably hinder understanding.
 - forbidGenderInference defaults to true for Japanese names unless gender is unambiguously established in the source.
 
 ### reviewFocus

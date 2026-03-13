@@ -71,4 +71,18 @@ describe('buildAnalysisPrompts', () => {
     const prompts = buildAnalysisPrompts('test')
     expect(prompts.system).toContain('phraseType')
   })
+
+  it('system prompt explains allowRomajiGloss as a readability aid for difficult Japanese personal names', () => {
+    const prompts = buildAnalysisPrompts('田中さん')
+    expect(prompts.system).toMatch(
+      /first mention|first-mention|reader-first|reader comprehension.*Japanese personal names/i,
+    )
+  })
+
+  it('system prompt explains allowRomajiGloss should stay false for already-readable Latin or Vietnamese names', () => {
+    const prompts = buildAnalysisPrompts('Thanhさん')
+    expect(prompts.system).toMatch(
+      /already-readable Latin|already-readable Vietnamese|allowRomajiGloss.*stay false|keep.*false.*Latin\/Vietnamese/i,
+    )
+  })
 })

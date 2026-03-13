@@ -20,7 +20,7 @@ export function buildStructuredHintsBlock(analysis: AnalysisResult): string {
 - preserveUnits: ${String(preservationRules.preserveUnits)}
 - preserveChatworkMarkup: ${String(preservationRules.preserveChatworkMarkup)}
 - preserveJapaneseNameScript: ${String(preservationRules.preserveJapaneseNameScript)}
-- allowRomajiGloss: ${String(preservationRules.allowRomajiGloss)}
+- allowRomajiGloss: ${String(preservationRules.allowRomajiGloss)} (reader-first first-mention inline gloss for readability; not blanket romanization)
 - forbidGenderInference: ${String(preservationRules.forbidGenderInference)}
 
 ## Review Focus

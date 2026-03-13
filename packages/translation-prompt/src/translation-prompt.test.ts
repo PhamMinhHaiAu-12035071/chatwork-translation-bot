@@ -153,9 +153,32 @@ describe('Japanese formula and name rules in system prompt', () => {
     expect(result.system).toMatch(/romaji.*gloss|allowRomajiGloss/i)
   })
 
+  it('system prompt defines first-mention inline romaji gloss with parentheses for readability', () => {
+    const result = buildTranslationPrompts('田中さん', fakeAnalysis)
+    expect(result.system).toMatch(
+      /first mention|first occurrence|田中さん \(Tanaka\)|inline.*parentheses/i,
+    )
+  })
+
+  it('system prompt forbids Tanaka-san as the default gloss format', () => {
+    const result = buildTranslationPrompts('田中さん', fakeAnalysis)
+    expect(result.system).toMatch(/do not use.*Tanaka-san|not.*Tanaka-san.*default/i)
+  })
+
+  it('system prompt discourages keeping raw さん on Latin or Vietnamese-readable names', () => {
+    const result = buildTranslationPrompts('Thanhさん', fakeAnalysis)
+    expect(result.system).toMatch(/Thanhさん|Latin|Vietnamese.*readable|do not retain raw.*さん/i)
+  })
+
   it('system prompt forbids gender inference from names', () => {
     const result = buildTranslationPrompts('田中さん', fakeAnalysis)
     expect(result.system).toMatch(/forbid.*gender|gender.*inference|do not.*anh.*chị|no.*gender/i)
+  })
+
+  it('structured hints explain allowRomajiGloss as a first-mention inline readability aid', () => {
+    const result = buildTranslationPrompts('田中さん', fakeAnalysis)
+    expect(result.user).toContain('allowRomajiGloss')
+    expect(result.user).toMatch(/first-mention|inline gloss|readability/i)
   })
 })
 

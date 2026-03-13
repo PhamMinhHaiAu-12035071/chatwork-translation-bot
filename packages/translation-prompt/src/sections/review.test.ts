@@ -117,4 +117,27 @@ describe('buildReviewPrompts', () => {
     const prompts = buildReviewPrompts('test', fakeAnalysis, 'draft', 1)
     expect(prompts.user).toContain('functional_vietnamese')
   })
+
+  it('review prompt treats unreadable Japanese names as a readerExperience and naturalFlow issue when gloss is allowed', () => {
+    const prompts = buildReviewPrompts(
+      '田中さんの件です',
+      fakeAnalysis,
+      'Đó là việc của 田中さん.',
+      1,
+    )
+    expect(prompts.user).toMatch(/allowRomajiGloss|readerExperience|naturalFlow/i)
+    expect(prompts.user).toMatch(/reader-first|hard to read quickly|romaji gloss.*first mention/i)
+  })
+
+  it('review prompt flags raw さん on Latin or Vietnamese-readable names as unnatural Vietnamese', () => {
+    const prompts = buildReviewPrompts(
+      'Thanhさんの件です',
+      fakeAnalysis,
+      'Đó là việc của Thanhさん.',
+      1,
+    )
+    expect(prompts.user).toMatch(
+      /raw honorific.*さん|Latin\/Vietnamese-readable names|unnatural Vietnamese/i,
+    )
+  })
 })
