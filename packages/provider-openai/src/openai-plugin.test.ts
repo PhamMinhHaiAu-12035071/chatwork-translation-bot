@@ -3,12 +3,16 @@ import type { openaiPlugin as openaiPluginType } from './openai-plugin'
 
 let mockOutput: unknown = { sourceLang: 'English', translated: 'Xin chào thế giới' }
 
-const generateTextMock = mock((_config: unknown) =>
-  Promise.resolve({ output: mockOutput }),
-)
+const generateTextMock = mock((_config: unknown) => Promise.resolve({ output: mockOutput }))
 
 const outputObjectMock = mock((config: unknown) => config)
 const openaiMock = mock((_modelId: string) => ({ provider: 'openai', modelId: _modelId }))
+
+function createAbortError(message: string): Error {
+  const error = new Error(message)
+  error.name = 'AbortError'
+  return error
+}
 
 void mock.module('ai', () => ({
   generateText: generateTextMock,
@@ -38,6 +42,10 @@ describe('openaiPlugin', () => {
     expect(openaiPlugin.manifest.supportedModels).toContain('gpt-4o')
   })
 
+  it('uses a 30-minute provider timeout', () => {
+    expect(openaiPlugin.manifest.timeoutMs).toBe(1_800_000)
+  })
+
   it('create returns an executor that calls generateText with prompts', async () => {
     mockOutput = { sourceLang: 'English', translated: 'Xin chào thế giới' }
     const executor = openaiPlugin.create({ modelId: 'gpt-5.4' })
@@ -63,6 +71,29 @@ describe('openaiPlugin', () => {
       expect.unreachable('should have thrown')
     } catch (error) {
       expect(error).toBeInstanceOf(TranslationError)
+    }
+  })
+
+  it('preserves abort reasons coming from the pipeline signal', async () => {
+    const { TranslationError } = await import('@chatwork-bot/core')
+    generateTextMock.mockImplementationOnce(() =>
+      Promise.reject(createAbortError('The operation was aborted.')),
+    )
+
+    const executor = openaiPlugin.create({ modelId: 'gpt-5.4' })
+    const controller = new AbortController()
+    controller.abort(new TranslationError('Translation pipeline timed out after 5ms', 'TIMEOUT'))
+
+    try {
+      await executor.execute(
+        { system: 'sys', user: 'test' },
+        { parse: (d: unknown) => d },
+        { signal: controller.signal },
+      )
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toBeInstanceOf(TranslationError)
+      expect((error as InstanceType<typeof TranslationError>).code).toBe('TIMEOUT')
     }
   })
 })

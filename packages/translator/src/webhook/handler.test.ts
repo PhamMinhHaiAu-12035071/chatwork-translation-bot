@@ -108,13 +108,14 @@ function createMockExecutor(): ILLMExecutor {
   }
 }
 
-function createMockProvider(id: string, executor: ILLMExecutor) {
+function createMockProvider(id: string, executor: ILLMExecutor, timeoutMs = 1_800_000) {
   return {
     manifest: {
       id,
       defaultModel: 'gpt-4o',
       supportedModels: ['gpt-4o'],
       capabilities: { streaming: false },
+      timeoutMs,
     },
     create: () => executor,
   }
@@ -127,6 +128,21 @@ const mockGetProviderPlugin = mock((_id: string) => ({
   ...createMockProvider('openai', createMockExecutor()),
 }))
 
+const mockEnv = {
+  AI_PROVIDER: 'openai',
+  AI_MODEL: 'gpt-4o',
+  CHATWORK_API_TOKEN: 'test-token',
+  CHATWORK_DESTINATION_ROOM_ID: 99999,
+  TRANSLATOR_PHASE_HEARTBEAT_MS: 10,
+  TRANSLATOR_ANALYSIS_BUDGET_MS: 60_000,
+  TRANSLATOR_TRANSLATION_BUDGET_MS: 60_000,
+  TRANSLATOR_REVIEW_BUDGET_MS: 60_000,
+  TRANSLATOR_DELIVERY_BUDGET_MS: 15_000,
+  TRANSLATOR_ACK_CALLBACK_BUDGET_MS: 10_000,
+  TRANSLATOR_PIPELINE_TIMEOUT_MS: 1_800_000,
+  TRANSLATOR_STATUS_HISTORY_LIMIT: 20,
+}
+
 const testOutputDir = mkdtempSync(join(tmpdir(), 'handler-test-'))
 process.env['OUTPUT_BASE_DIR'] = testOutputDir
 
@@ -138,7 +154,8 @@ class MockTranslationError extends Error {
       | 'QUOTA_EXCEEDED'
       | 'INVALID_RESPONSE'
       | 'UNKNOWN'
-      | 'ABORTED',
+      | 'ABORTED'
+      | 'TIMEOUT',
     public override readonly cause?: unknown,
   ) {
     super(message)
@@ -199,19 +216,7 @@ describe('handleTranslateRequest', () => {
     }))
 
     void mock.module('../env', () => ({
-      env: {
-        AI_PROVIDER: 'openai',
-        AI_MODEL: 'gpt-4o',
-        CHATWORK_API_TOKEN: 'test-token',
-        CHATWORK_DESTINATION_ROOM_ID: 99999,
-        TRANSLATOR_PHASE_HEARTBEAT_MS: 10,
-        TRANSLATOR_ANALYSIS_BUDGET_MS: 60_000,
-        TRANSLATOR_TRANSLATION_BUDGET_MS: 60_000,
-        TRANSLATOR_REVIEW_BUDGET_MS: 60_000,
-        TRANSLATOR_DELIVERY_BUDGET_MS: 15_000,
-        TRANSLATOR_ACK_CALLBACK_BUDGET_MS: 10_000,
-        TRANSLATOR_STATUS_HISTORY_LIMIT: 20,
-      },
+      env: mockEnv,
     }))
 
     const mod = await import('./handler')
@@ -229,6 +234,8 @@ describe('handleTranslateRequest', () => {
   beforeEach(() => {
     executeCallCount = 0
     consoleLogLines.length = 0
+    mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS = 1_800_000
+    process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '1800000'
     mockNotifyDatasetRunner.mockReset()
     mockNotifyDatasetRunner.mockImplementation(() => Promise.resolve())
     mockSendRoomMessage.mockReset()
@@ -433,5 +440,69 @@ describe('handleTranslateRequest', () => {
 
     expect(mockSendRoomMessage.mock.calls.length).toBe(1)
     expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(99999)
+  })
+
+  it('uses the env timeout override and logs TIMEOUT context when the pipeline times out', async () => {
+    mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS = 5
+    process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '5'
+    mockGetProviderPlugin.mockImplementation(() =>
+      createMockProvider(
+        'openai',
+        {
+          execute<T>(
+            _prompts: PromptPair,
+            _schema: ISchema<T>,
+            options?: { signal?: AbortSignal },
+          ): Promise<T> {
+            return new Promise<T>((_resolve, reject) => {
+              const signal = options?.signal
+              if (!signal) {
+                reject(new Error('abort signal missing'))
+                return
+              }
+
+              signal.addEventListener('abort', () => {
+                reject(
+                  signal.reason instanceof Error ? signal.reason : new Error(String(signal.reason)),
+                )
+              })
+            })
+          },
+        },
+        50,
+      ),
+    )
+
+    const startedAt = Date.now()
+    await handleTranslateRequest(makeCommand())
+    const elapsedMs = Date.now() - startedAt
+
+    const { getTranslatorStatusSnapshot } =
+      await import('~/services/translator-observability-runtime')
+    const snapshot = getTranslatorStatusSnapshot()
+    expect(snapshot.recentResults[0]).toMatchObject({
+      finalStatus: 'failed',
+      errorCode: 'TIMEOUT',
+    })
+
+    const jsonLogs = consoleLogLines
+      .filter((line) => line.startsWith('{'))
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            event: string
+            errorCode?: string
+            pipelineTimeoutMs?: number
+            pipelineTimeoutSource?: string
+          },
+      )
+    const failedLog = jsonLogs.find((entry) => entry.event === 'translation_request_failed')
+
+    expect(elapsedMs).toBeLessThan(50)
+    expect(failedLog).toMatchObject({
+      errorCode: 'TIMEOUT',
+      pipelineTimeoutMs: 5,
+      pipelineTimeoutSource: 'env',
+    })
   })
 })

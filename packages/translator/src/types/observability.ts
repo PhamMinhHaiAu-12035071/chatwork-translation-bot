@@ -10,6 +10,8 @@ export interface TranslatorRequestContext {
   model: string
   roomId: number
   inputLength: number
+  pipelineTimeoutMs?: number
+  pipelineTimeoutSource?: 'env' | 'provider' | 'default'
   datasetFile?: string
   datasetItemId?: string
   datasetLineNumber?: number

@@ -12,6 +12,10 @@ import {
   getTranslatorStatusStore,
   logTranslatorEvent,
 } from '~/services/translator-observability-runtime'
+import {
+  hasExplicitPipelineTimeoutOverride,
+  resolvePipelineTimeout,
+} from '~/services/pipeline-timeout'
 import { createPhaseObserver } from '~/services/phase-observer'
 
 export async function handleTranslateRequest(command: TranslationIngressCommand): Promise<void> {
@@ -29,6 +33,11 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
     ctx.baseUrl = baseUrl
   }
   const executor = plugin.create(ctx)
+  const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
+    envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,
+    hasEnvOverride: hasExplicitPipelineTimeoutOverride(),
+    providerTimeoutMs: plugin.manifest.timeoutMs,
+  })
   const requestId = crypto.randomUUID()
   const origin = await resolveOutputOrigin(
     command.sourceMessageId,
@@ -46,6 +55,8 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
       model: modelId,
       roomId: command.sourceRoomId,
       inputLength: Array.from(cleanText).length,
+      pipelineTimeoutMs: effectiveTimeoutMs,
+      pipelineTimeoutSource: timeoutSource,
       ...(origin.datasetFile !== undefined ? { datasetFile: origin.datasetFile } : {}),
       ...(origin.datasetItemId !== undefined ? { datasetItemId: origin.datasetItemId } : {}),
       ...(origin.datasetLineNumber !== undefined
@@ -94,8 +105,7 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
   }
 
   try {
-    const timeoutMs = plugin.manifest.timeoutMs
-    const pipeline = new TranslationPipeline(executor, timeoutMs ? { timeoutMs } : {})
+    const pipeline = new TranslationPipeline(executor, { timeoutMs: effectiveTimeoutMs })
     const { result, trace } = await pipeline.run(cleanText, {
       phaseObserver: {
         onPhaseStarted: ({ phase, round }) => {

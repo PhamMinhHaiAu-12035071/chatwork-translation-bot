@@ -21,6 +21,11 @@ export const OPENAI_MODEL_VALUES = [
 ] as const
 export type OpenAIModel = (typeof OPENAI_MODEL_VALUES)[number]
 export const DEFAULT_OPENAI_MODEL: OpenAIModel = 'gpt-5.4'
+const DEFAULT_OPENAI_TIMEOUT_MS = 1_800_000
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === 'AbortError'
+}
 
 class OpenAIExecutor implements ILLMExecutor {
   constructor(private readonly modelId: string = DEFAULT_OPENAI_MODEL) {}
@@ -43,6 +48,14 @@ class OpenAIExecutor implements ILLMExecutor {
       })
       return output as T
     } catch (cause) {
+      if (isAbortError(cause)) {
+        if (options?.signal?.reason instanceof TranslationError) {
+          throw options.signal.reason
+        }
+
+        throw new TranslationError('OpenAI API call aborted', 'ABORTED', cause)
+      }
+
       throw new TranslationError(
         `OpenAI API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
         'API_ERROR',
@@ -58,6 +71,7 @@ export const openaiPlugin: ProviderPlugin = {
     supportedModels: OPENAI_MODEL_VALUES,
     defaultModel: DEFAULT_OPENAI_MODEL,
     capabilities: { streaming: false },
+    timeoutMs: DEFAULT_OPENAI_TIMEOUT_MS,
     requiredEnvKeys: ['OPENAI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {

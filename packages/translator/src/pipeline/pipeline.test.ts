@@ -345,5 +345,35 @@ describe('TranslationPipeline', () => {
         expect((error as InstanceType<typeof TranslationError>).code).toBe('ABORTED')
       }
     })
+
+    it('throws TranslationError with TIMEOUT code when its internal timer aborts a phase', async () => {
+      const executor: ILLMExecutor = {
+        execute<T>(_prompts: PromptPair, _schema: ISchema<T>, options?: { signal?: AbortSignal }) {
+          return new Promise<T>((_resolve, reject) => {
+            const signal = options?.signal
+            if (!signal) {
+              reject(new Error('abort signal missing'))
+              return
+            }
+
+            signal.addEventListener('abort', () => {
+              reject(
+                signal.reason instanceof Error ? signal.reason : new Error(String(signal.reason)),
+              )
+            })
+          })
+        },
+      }
+      const pipeline = new TranslationPipeline(executor)
+
+      try {
+        await pipeline.run('timeout test', { timeoutMs: 5 })
+        expect.unreachable('should have thrown')
+      } catch (error) {
+        const { TranslationError } = await import('@chatwork-bot/core')
+        expect(error).toBeInstanceOf(TranslationError)
+        expect((error as InstanceType<typeof TranslationError>).code).toBe('TIMEOUT')
+      }
+    })
   })
 })

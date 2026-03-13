@@ -11,6 +11,7 @@ import {
   PipelineTraceSchema,
 } from '@chatwork-bot/translation-prompt'
 import type { AnalysisResult, ReviewResult, PipelineTrace } from '@chatwork-bot/translation-prompt'
+import { DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS } from '~/services/pipeline-timeout'
 
 export interface PipelineRunOptions {
   signal?: AbortSignal
@@ -45,7 +46,7 @@ export interface PipelineRunResult {
 const MAX_ROUNDS = 5
 const ESCALATION_ROUND = 3
 const SHORT_TEXT_THRESHOLD = 5 // grapheme count
-const DEFAULT_TIMEOUT_MS = 120_000
+export const DEFAULT_TIMEOUT_MS = DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS
 
 const CJK_HIRAGANA = /[\u3040-\u309F]/
 const CJK_KATAKANA = /[\u30A0-\u30FF]/
@@ -192,17 +193,35 @@ export class TranslationPipeline {
   private buildSignal(options: PipelineRunOptions): AbortSignal {
     const timeoutMs = options.timeoutMs ?? this.opts.timeoutMs ?? DEFAULT_TIMEOUT_MS
     const timeoutController = new AbortController()
-    setTimeout(() => {
-      timeoutController.abort()
+    const timer = setTimeout(() => {
+      timeoutController.abort(
+        new TranslationError(
+          `Translation pipeline timed out after ${timeoutMs.toString()}ms`,
+          'TIMEOUT',
+        ),
+      )
     }, timeoutMs)
+
+    if (typeof timer.unref === 'function') timer.unref()
+    timeoutController.signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+      },
+      { once: true },
+    )
 
     if (options.signal) {
       if (options.signal.aborted) {
-        timeoutController.abort() // propagate immediately if already aborted
+        timeoutController.abort(this.toAbortReason(options.signal.reason))
       } else {
-        options.signal.addEventListener('abort', () => {
-          timeoutController.abort()
-        })
+        options.signal.addEventListener(
+          'abort',
+          () => {
+            timeoutController.abort(this.toAbortReason(options.signal?.reason))
+          },
+          { once: true },
+        )
       }
     }
     return timeoutController.signal
@@ -210,8 +229,16 @@ export class TranslationPipeline {
 
   private checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) {
-      throw new TranslationError('Translation pipeline aborted', 'ABORTED')
+      if (signal.reason instanceof TranslationError) {
+        throw signal.reason
+      }
+      throw new TranslationError('Translation pipeline aborted', 'ABORTED', signal.reason)
     }
+  }
+
+  private toAbortReason(reason: unknown): TranslationError {
+    if (reason instanceof TranslationError) return reason
+    return new TranslationError('Translation pipeline aborted', 'ABORTED', reason)
   }
 
   private async runObservedPhase<T>(

@@ -27,6 +27,19 @@ describe('translator env', () => {
     expect(env.TRANSLATOR_REVIEW_BUDGET_MS).toBe(60_000)
     expect(env.TRANSLATOR_DELIVERY_BUDGET_MS).toBe(15_000)
     expect(env.TRANSLATOR_ACK_CALLBACK_BUDGET_MS).toBe(10_000)
+    expect(env.TRANSLATOR_PIPELINE_TIMEOUT_MS).toBe(1_800_000)
     expect(env.TRANSLATOR_STATUS_HISTORY_LIMIT).toBe(20)
+  })
+
+  it('allows overriding the pipeline timeout', async () => {
+    process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
+    process.env['AI_PROVIDER'] = 'openai'
+    process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '45000'
+
+    const { parseTranslatorEnv } = await import('./env-schema')
+    const env = parseTranslatorEnv(process.env)
+
+    expect(env.TRANSLATOR_PIPELINE_TIMEOUT_MS).toBe(45_000)
   })
 })

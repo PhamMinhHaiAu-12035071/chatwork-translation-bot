@@ -1,21 +1,29 @@
 import { listProviderPlugins } from '@chatwork-bot/core'
+import {
+  DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS,
+  type PipelineTimeoutSource,
+  formatTimeoutSeconds,
+} from '~/services/pipeline-timeout'
 
 interface BannerConfig {
   provider: string
   model: string
   port: number
   nodeEnv: string
+  effectiveTimeoutMs: number
+  timeoutSource: PipelineTimeoutSource
 }
 
 export function logStartupBanner(config: BannerConfig): void {
   const plugins = listProviderPlugins()
-  const defaultTimeoutMs = 10_000
 
   const rows = plugins.map((p) => {
     const isActive = p.manifest.id === config.provider
     const provider = isActive ? `${p.manifest.id} *` : p.manifest.id
     const models = p.manifest.supportedModels.join(', ')
-    const timeout = `${((p.manifest.timeoutMs ?? defaultTimeoutMs) / 1000).toString()}s`
+    const timeout = formatTimeoutSeconds(
+      p.manifest.timeoutMs ?? DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS,
+    )
     return { provider, models, default: p.manifest.defaultModel, timeout }
   })
 
@@ -42,5 +50,8 @@ export function logStartupBanner(config: BannerConfig): void {
   console.log(`[translator] ${bot}`)
   console.log(
     `[translator] * = active provider (AI_PROVIDER=${config.provider}, AI_MODEL=${config.model})`,
+  )
+  console.log(
+    `[translator] * effective pipeline timeout = ${formatTimeoutSeconds(config.effectiveTimeoutMs)} (source=${config.timeoutSource})`,
   )
 }

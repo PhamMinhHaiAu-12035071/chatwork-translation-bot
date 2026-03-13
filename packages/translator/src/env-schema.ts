@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS } from '~/services/pipeline-timeout'
 
 export const translatorEnvSchema = z.object({
   CHATWORK_API_TOKEN: z.string().min(1, 'CHATWORK_API_TOKEN is required'),
@@ -13,6 +14,11 @@ export const translatorEnvSchema = z.object({
   TRANSLATOR_REVIEW_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(15_000),
   TRANSLATOR_ACK_CALLBACK_BUDGET_MS: z.coerce.number().int().positive().default(10_000),
+  TRANSLATOR_PIPELINE_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS),
   TRANSLATOR_STATUS_HISTORY_LIMIT: z.coerce.number().int().positive().default(20),
 })
 

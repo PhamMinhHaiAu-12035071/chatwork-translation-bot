@@ -3,6 +3,10 @@ import { getProviderPlugin } from '@chatwork-bot/core'
 import { registerAllProviders } from '~/bootstrap/register-providers'
 import { runStartupGuards } from '~/bootstrap/startup-guards'
 import { logStartupBanner } from '~/bootstrap/startup-banner'
+import {
+  hasExplicitPipelineTimeoutOverride,
+  resolvePipelineTimeout,
+} from '~/services/pipeline-timeout'
 import { createServer } from './server'
 
 registerAllProviders()
@@ -10,6 +14,11 @@ await runStartupGuards(env)
 
 const activePlugin = getProviderPlugin(env.AI_PROVIDER)
 const activeModel = env.AI_MODEL ?? activePlugin.manifest.defaultModel
+const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
+  envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,
+  hasEnvOverride: hasExplicitPipelineTimeoutOverride(),
+  providerTimeoutMs: activePlugin.manifest.timeoutMs,
+})
 
 const server = createServer()
 
@@ -21,6 +30,8 @@ logStartupBanner({
   model: activeModel,
   port: env.PORT,
   nodeEnv: env.NODE_ENV,
+  effectiveTimeoutMs,
+  timeoutSource,
 })
 console.log(`[translator] Health check: http://localhost:${env.PORT.toString()}/health`)
 console.log(`[translator] Status endpoint: http://localhost:${env.PORT.toString()}/status`)

@@ -21,6 +21,11 @@ export const GEMINI_MODEL_VALUES = [
 ] as const
 export type GeminiModel = (typeof GEMINI_MODEL_VALUES)[number]
 export const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-2.5-pro'
+const DEFAULT_GEMINI_TIMEOUT_MS = 1_800_000
+
+function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === 'AbortError'
+}
 
 class GeminiExecutor implements ILLMExecutor {
   constructor(private readonly modelId: string = DEFAULT_GEMINI_MODEL) {}
@@ -44,6 +49,14 @@ class GeminiExecutor implements ILLMExecutor {
       })
       return output
     } catch (cause) {
+      if (isAbortError(cause)) {
+        if (options?.signal?.reason instanceof TranslationError) {
+          throw options.signal.reason
+        }
+
+        throw new TranslationError('Gemini API call aborted', 'ABORTED', cause)
+      }
+
       throw new TranslationError(
         `Gemini API call failed: ${cause instanceof Error ? cause.message : String(cause)}`,
         'API_ERROR',
@@ -59,6 +72,7 @@ export const geminiPlugin: ProviderPlugin = {
     supportedModels: GEMINI_MODEL_VALUES,
     defaultModel: DEFAULT_GEMINI_MODEL,
     capabilities: { streaming: false },
+    timeoutMs: DEFAULT_GEMINI_TIMEOUT_MS,
     requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {

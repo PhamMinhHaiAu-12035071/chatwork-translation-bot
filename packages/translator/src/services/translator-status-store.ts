@@ -151,6 +151,12 @@ export class TranslatorStatusStore {
       model: request.model,
       roomId: request.roomId,
       inputLength: request.inputLength,
+      ...(request.pipelineTimeoutMs !== undefined
+        ? { pipelineTimeoutMs: request.pipelineTimeoutMs }
+        : {}),
+      ...(request.pipelineTimeoutSource !== undefined
+        ? { pipelineTimeoutSource: request.pipelineTimeoutSource }
+        : {}),
       ...(request.datasetFile !== undefined ? { datasetFile: request.datasetFile } : {}),
       ...(request.datasetItemId !== undefined ? { datasetItemId: request.datasetItemId } : {}),
       ...(request.datasetLineNumber !== undefined
