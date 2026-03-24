@@ -97,3 +97,65 @@ describe('openaiPlugin', () => {
     }
   })
 })
+
+describe('OpenAI resolveThinking', () => {
+  let openaiPlugin: typeof openaiPluginType
+  const schema = { parse: (x: unknown) => x }
+
+  beforeAll(async () => {
+    const mod = await import('./openai-plugin')
+    openaiPlugin = mod.openaiPlugin
+  })
+
+  function getLastCallArg(): Record<string, unknown> {
+    const call = generateTextMock.mock.calls.at(-1)
+    if (!call) throw new Error('generateText was not called')
+    return call[0] as Record<string, unknown>
+  }
+
+  it('adds reasoningEffort for gpt-5.4', async () => {
+    mockOutput = { sourceLang: 'Japanese', translated: 'テスト' }
+    const executor = openaiPlugin.create({ modelId: 'gpt-5.4' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const lastCall = getLastCallArg()
+    expect((lastCall['providerOptions'] as { openai: unknown }).openai).toEqual({
+      reasoningEffort: 'medium',
+    })
+  })
+
+  it('adds reasoningEffort for gpt-5-mini', async () => {
+    mockOutput = { sourceLang: 'Japanese', translated: 'テスト' }
+    const executor = openaiPlugin.create({ modelId: 'gpt-5-mini' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const lastCall = getLastCallArg()
+    expect((lastCall['providerOptions'] as { openai: unknown }).openai).toEqual({
+      reasoningEffort: 'medium',
+    })
+  })
+
+  it('adds reasoningEffort for o4-mini', async () => {
+    mockOutput = { sourceLang: 'Japanese', translated: 'テスト' }
+    const executor = openaiPlugin.create({ modelId: 'o4-mini' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const lastCall = getLastCallArg()
+    expect((lastCall['providerOptions'] as { openai: unknown }).openai).toEqual({
+      reasoningEffort: 'medium',
+    })
+  })
+
+  it('does NOT add providerOptions for gpt-4.1', async () => {
+    mockOutput = { sourceLang: 'Japanese', translated: 'テスト' }
+    const executor = openaiPlugin.create({ modelId: 'gpt-4.1' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const lastCall = getLastCallArg()
+    expect(lastCall['providerOptions']).toBeUndefined()
+  })
+
+  it('does NOT add providerOptions for gpt-4o', async () => {
+    mockOutput = { sourceLang: 'Japanese', translated: 'テスト' }
+    const executor = openaiPlugin.create({ modelId: 'gpt-4o' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const lastCall = getLastCallArg()
+    expect(lastCall['providerOptions']).toBeUndefined()
+  })
+})

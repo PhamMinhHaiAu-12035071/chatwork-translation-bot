@@ -27,8 +27,19 @@ function isAbortError(error: unknown): error is Error {
   return error instanceof Error && error.name === 'AbortError'
 }
 
+// Module-level export — used by index.ts for startup banner (avoids regex duplication)
+export function supportsThinking(modelId: string): boolean {
+  return /^(gpt-5|o1|o3|o4)/.test(modelId)
+}
+
 class OpenAIExecutor implements ILLMExecutor {
   constructor(private readonly modelId: string = DEFAULT_OPENAI_MODEL) {}
+
+  private resolveThinking(modelId: string): Record<string, Record<string, string>> | null {
+    if (!supportsThinking(modelId)) return null
+    const effort = (process.env['OPENAI_REASONING_EFFORT'] ?? 'medium') as 'low' | 'medium' | 'high'
+    return { openai: { reasoningEffort: effort } }
+  }
 
   async execute<T>(
     prompts: PromptPair,
@@ -36,6 +47,7 @@ class OpenAIExecutor implements ILLMExecutor {
     options?: { signal?: AbortSignal },
   ): Promise<T> {
     try {
+      const thinking = this.resolveThinking(this.modelId)
       const { output } = await generateText({
         model: openai(this.modelId),
         system: prompts.system,
@@ -44,6 +56,7 @@ class OpenAIExecutor implements ILLMExecutor {
         output: Output.object({ schema: schema as any }),
         temperature: 0,
         maxOutputTokens: 4000,
+        ...(thinking ? { providerOptions: thinking } : {}),
         ...(options?.signal && { abortSignal: options.signal }),
       })
       return output as T
