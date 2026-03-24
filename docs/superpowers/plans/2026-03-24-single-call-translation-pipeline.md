@@ -328,6 +328,7 @@ rm packages/translation-prompt/src/sections/review.test.ts
 rm packages/translation-prompt/src/sections/hints.ts
 rm packages/translation-prompt/src/schemas/analysis.schema.ts
 rm packages/translation-prompt/src/schemas/analysis.schema.test.ts
+rm packages/translation-prompt/src/schemas/review.schema.test.ts
 rm packages/translation-prompt/src/schemas/pipeline-trace.schema.ts
 ```
 
@@ -705,6 +706,8 @@ bun run typecheck
 ```
 
 Expected: PASS (no excess-property errors on `phaseBudgets`)
+
+> **Note:** If typecheck fails here with errors about `buildAnalysisPrompts` or similar in `pipeline.ts`, that is expected — `pipeline.ts` still imports removed symbols until Task 6. Focus only on `phaseBudgets` type errors. Full typecheck runs after Task 6 (Step 6.5).
 
 - [ ] **Step 5.7: Run tests**
 
@@ -1117,27 +1120,7 @@ Add `thinking` to `col` width calculation and `row()` function.
 
 - [ ] **Step 8.2: Update the caller — `server.ts`**
 
-In `packages/translator/src/server.ts`, find where `logStartupBanner` is called. Before the call, compute `thinking` by attempting to call `resolveThinking` on the active provider's executor. Since `resolveThinking` is private, expose it as a package-level utility function:
-
-Add to `openai-plugin.ts`:
-
-```typescript
-export function supportsThinking(modelId: string): boolean {
-  return /^(gpt-5|o1|o3|o4)/.test(modelId)
-}
-```
-
-Add to `gemini-plugin.ts`:
-
-```typescript
-export function supportsThinking(modelId: string): boolean {
-  return /^gemini-3[.-]/.test(modelId) || /^gemini-2\.5/.test(modelId)
-}
-```
-
-In `register-providers.ts` or the plugin manifest, add a `supportsThinkingFor?(modelId: string): boolean` helper, or detect thinking directly in `server.ts` by importing both helpers conditionally.
-
-> Simplest approach: compute thinking in `server.ts` using a local helper that checks the active provider + model:
+In `packages/translator/src/server.ts`, add a local helper and pass `thinking` to `logStartupBanner`. No provider file changes are needed here — the logic lives entirely in `server.ts`:
 
 ```typescript
 function resolveThinkingSupport(provider: string, modelId: string): boolean {
