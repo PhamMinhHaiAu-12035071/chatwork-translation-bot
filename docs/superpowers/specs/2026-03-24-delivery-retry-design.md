@@ -6,67 +6,123 @@
 
 ## Problem
 
-The delivery phase calls the Chatwork API to post the translated message. On 2026-03-24, a transient TCP connection timeout (5 s) caused delivery to fail silently — the translation was complete but the message was never sent. The system had no retry mechanism.
+The delivery phase calls the Chatwork API to post the translated message. On 2026-03-24, a transient TCP
+connection timeout (5 s) caused delivery to fail silently — the translation was complete but the message was
+never sent. The system had no retry mechanism.
 
-Root cause confirmed: `api.chatwork.com` is reachable from the Docker container (wget/Bun fetch both succeed), but the connection failed transiently at the OS TCP level.
+Root cause confirmed: `api.chatwork.com` is reachable from the Docker container (wget/Bun fetch both
+succeed), but the connection failed transiently at the OS TCP level.
 
 ## Decision
 
-Add retry with exponential backoff inside `sendTranslatedMessage`. Interface is unchanged — the function still never throws and always returns `OutputDelivery`.
+Add retry with exponential backoff inside `sendTranslatedMessage`. Interface is unchanged — the function
+still never throws and always returns `OutputDelivery`.
 
 ## Retry Parameters
 
-| Parameter           | Value                                           |
-| ------------------- | ----------------------------------------------- |
-| Max retries         | 2 (total 3 attempts)                            |
-| Backoff schedule    | 1 s → 2 s (exponential, base 2)                 |
-| Rate limit override | Use `Retry-After` header value (capped at 10 s) |
-| Delay cap           | 10 s                                            |
+| Parameter           | Value                                                      |
+| ------------------- | ---------------------------------------------------------- |
+| Max retries         | 2 (total 3 attempts)                                       |
+| Backoff schedule    | 1 s → 2 s (exponential, base 2)                            |
+| Rate limit override | Use `Retry-After` header value in seconds × 1000, cap 10 s |
+| Delay cap           | 10 000 ms                                                  |
 
 ## Error Classification
+
+`ChatworkRateLimitError` extends `ChatworkApiError`. The `isRetriable` check **must test
+`ChatworkRateLimitError` first** (before `ChatworkApiError`) to avoid the subclass matching the
+non-retriable branch.
 
 **Retriable:**
 
 - `TypeError` — Bun's fetch error for connection failures (DNS, TCP timeout, ECONNREFUSED)
-- `ChatworkRateLimitError` (HTTP 429) — rate limit with `Retry-After` delay
+- `ChatworkRateLimitError` (HTTP 429) — rate limit; delay = `min(error.retryAfter * 1000, 10_000)` ms
 
 **Non-retriable (fail immediately):**
 
-- `ChatworkApiError` with HTTP 4xx except 429 — auth, permission, not found
+- `ChatworkApiError` with any status except 429 — auth, permission, not found, other 4xx/5xx
 - Any other error type
+
+Both classes are imported from `@chatwork-bot/chatwork` (the package root export), **not** from internal
+paths.
 
 ## Code Structure
 
-### `chatwork-sender.ts` — restructure (interface unchanged)
+### `chatwork-sender.ts` — restructure (public interface unchanged)
 
 ```
-isRetriable(error): boolean
-  → true for TypeError | ChatworkRateLimitError
+// sleepFn is injectable for testing (default: (ms) => Bun.sleep(ms))
+const MAX_RETRIES = 2
 
-retryDelayMs(error, attempt): number
-  → ChatworkRateLimitError: min(retryAfter * 1000, 10_000)
-  → TypeError: 1000 * 2^(attempt-1)
+function isRetriable(error: unknown): boolean
+  // MUST check ChatworkRateLimitError before ChatworkApiError (subclass ordering)
+  → true  if error instanceof ChatworkRateLimitError
+  → true  if error instanceof TypeError
+  → false otherwise
 
-deliverMessage(command, result, config): Promise<OutputDelivery>
-  → inner function, can throw
-  → calls resolveRoomMemberDisplayName + sendRoomMessage
+function retryDelayMs(error: unknown, attempt: number): number
+  // attempt is 1-based (attempt 1 → first retry delay)
+  // Only called after isRetriable() returns true; unreachable path throws to satisfy TS strict
+  → if ChatworkRateLimitError: min(error.retryAfter * 1000, 10_000)
+  → if TypeError:              1000 * 2^(attempt - 1)   // 1000 ms, 2000 ms
+  → else: throw new Error('unreachable: retryDelayMs called with non-retriable error')
 
-sendTranslatedMessage(command, result, config): Promise<OutputDelivery>
-  → public function, never throws
-  → retry loop: attempt 1..3
-    → on retriable error and attempt < 3: sleep(retryDelayMs), continue
-    → on non-retriable or final attempt: return { status: 'failed', ... }
+// Inner function — can throw; config type: { apiToken: string; destinationRoomId: number }
+async function deliverMessage(
+  command: TranslationIngressCommand,
+  result: TranslationResult,
+  config: { apiToken: string; destinationRoomId: number },
+): Promise<OutputDelivery>
+  // calls resolveRoomMemberDisplayName then sendRoomMessage
+  // throws on any error (no catch here)
+
+// Public function — never throws; accepts optional sleepFn for testability
+export async function sendTranslatedMessage(
+  command: TranslationIngressCommand,
+  result: TranslationResult,
+  config: { apiToken: string; destinationRoomId: number },
+  sleepFn: (ms: number) => Promise<void> = (ms) => Bun.sleep(ms),
+): Promise<OutputDelivery>
+  for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++):
+    try:
+      return await deliverMessage(command, result, config)
+    catch (error):
+      if (attempt <= MAX_RETRIES && isRetriable(error)):
+        // log translation_delivery_retrying (warn)
+        await sleepFn(retryDelayMs(error, attempt))
+        continue
+      // final attempt or non-retriable: return failed
+      return {
+        status: 'failed',
+        destinationRoomId: config.destinationRoomId,
+        errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
+        errorMessage: error instanceof Error ? error.message : String(error),
+        sentAt: new Date().toISOString(),
+      }
 ```
+
+**Retry scope:** the entire `deliverMessage` call is wrapped — including `resolveRoomMemberDisplayName`.
+A TCP failure during name resolution is retriable under the same conditions as a failure during message
+send.
 
 ### `env-schema.ts` — delivery budget default
 
 `TRANSLATOR_DELIVERY_BUDGET_MS` default: `15_000` → `45_000`
 
-Rationale: worst case is 3 attempts × ~5 s TCP timeout + 1 s + 2 s delay = ~18 s. 45 s gives headroom for `Retry-After` scenarios without triggering spurious heartbeat warnings.
+Worst-case calculation (all 3 attempts hit 5 s TCP timeout + rate-limit delays):
+
+- 3 attempts × 5 s = 15 s
+- delays: 1 s + 2 s = 3 s (TypeError path), or up to 10 s + 10 s = 20 s (rate-limit path)
+- Rate-limit worst case: 15 s + 20 s = 35 s
+
+45 s provides headroom. Note: if name resolution also times out on each attempt, worst case doubles the
+attempt time; 45 s remains adequate for 3 × ~5 s name + ~5 s send attempts with delays.
 
 ## Observability
 
-When a retry is triggered, log to stderr in existing JSON format:
+When a retry is triggered, log to stderr in existing JSON format. `errorCode` reflects the actual error
+class name (e.g., `"TypeError"` or `"ChatworkRateLimitError"`), **not** the fixed string
+`"CHATWORK_API"`:
 
 ```json
 {
@@ -76,33 +132,40 @@ When a retry is triggered, log to stderr in existing JSON format:
   "attempt": 2,
   "maxAttempts": 3,
   "delayMs": 1000,
-  "errorCode": "CHATWORK_API",
+  "errorCode": "TypeError",
   "errorMessage": "Unable to connect..."
 }
 ```
 
-The existing `translation_delivery_failed` event in `handler.ts` is unchanged — it fires after `sendTranslatedMessage` returns `{ status: 'failed' }`.
+The existing `translation_delivery_failed` event in `handler.ts` is unchanged — it fires after
+`sendTranslatedMessage` returns `{ status: 'failed' }`. The `errorCode` in the final `OutputDelivery`
+also uses the actual error class name.
 
 `OutputDelivery` type is unchanged — retry count is not persisted.
 
 ## Test Coverage
 
-New test cases in `chatwork-sender.test.ts`:
+New test cases in `chatwork-sender.test.ts` (inject `sleepFn` mock to capture delay values without
+real sleeps):
 
-1. Retries on TypeError and succeeds on second attempt — returns `sent`
-2. Retries on `ChatworkRateLimitError` with correct delay, succeeds on third attempt
-3. Exhausts all retries on repeated TypeError — returns `failed`
-4. Does NOT retry on `ChatworkApiError` (non-429) — fails immediately
-5. Uses `Retry-After` value for rate limit delay (capped at 10 s)
+1. Retries on `TypeError` and succeeds on second attempt — returns `sent`, `deliverMessage` called twice
+2. Retries on `ChatworkRateLimitError` and succeeds on third attempt — `deliverMessage` called 3 times,
+   `sleepFn` called exactly twice, each with `min(retryAfter * 1000, 10_000)` ms
+3. Exhausts all retries on repeated `TypeError` — returns `{ status: 'failed' }` after 3 attempts
+4. Does NOT retry on `ChatworkApiError` (non-429, e.g. 401) — `deliverMessage` called once, returns
+   `{ status: 'failed' }` immediately
+5. Rate limit delay: `Retry-After: 3` → `sleepFn` called with `3000` ms (uncapped path); `Retry-After:
+15` → `sleepFn` called with `10000` ms (capped path)
 
-Existing tests remain passing — interface unchanged.
+Existing tests remain passing — public interface of `sendTranslatedMessage` is unchanged (the new
+optional `sleepFn` param has a default).
 
 ## Files Changed
 
-| File                                                       | Change                                                          |
-| ---------------------------------------------------------- | --------------------------------------------------------------- |
-| `packages/translator/src/services/chatwork-sender.ts`      | Add retry loop, `isRetriable`, `retryDelayMs`, `deliverMessage` |
-| `packages/translator/src/services/chatwork-sender.test.ts` | Add retry test cases                                            |
-| `packages/translator/src/env-schema.ts`                    | `TRANSLATOR_DELIVERY_BUDGET_MS` default 15 000 → 45 000         |
+| File                                                       | Change                                                                     |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `packages/translator/src/services/chatwork-sender.ts`      | Add retry loop, `isRetriable`, `retryDelayMs`, `deliverMessage`, `sleepFn` |
+| `packages/translator/src/services/chatwork-sender.test.ts` | Add retry test cases (5 new)                                               |
+| `packages/translator/src/env-schema.ts`                    | `TRANSLATOR_DELIVERY_BUDGET_MS` default 15 000 → 45 000                    |
 
 No changes to: `handler.ts`, `chatwork-api-client.ts`, `types/output.ts`, `phase-observer.ts`.
