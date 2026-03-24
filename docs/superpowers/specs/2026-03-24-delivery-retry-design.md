@@ -38,7 +38,9 @@ non-retriable branch.
 - `TypeError` with message matching `/connect|fetch|ECONNREFUSED|timeout/i` — Bun's fetch error for
   connection failures (DNS, TCP timeout, ECONNREFUSED). The message pattern guard is required because
   `TypeError` is also thrown for programming errors (null dereference, wrong type) that must not be
-  retried. A plain `instanceof TypeError` would incorrectly retry logic bugs.
+  retried. A plain `instanceof TypeError` would incorrectly retry logic bugs. The `fetch` term
+  specifically matches Bun's `"fetch failed"` error variant; within `deliverMessage`'s narrow call
+  graph (two Chatwork API client calls), the false-positive risk is negligible.
 - `ChatworkRateLimitError` (HTTP 429) — rate limit; delay = `min(error.retryAfter * 1000, 10_000)` ms
 
 **Non-retriable (fail immediately):**
@@ -79,7 +81,10 @@ async function deliverMessage(
   // calls resolveRoomMemberDisplayName then sendRoomMessage
   // throws on any error (no catch here)
 
-// Public function — never throws; accepts optional sleepFn for testability
+// Public function — never throws; accepts optional sleepFn for testability.
+// sleepFn is a conscious tradeoff: Bun has no clean way to mock Bun.sleep()
+// (no vi.mock/jest.mock equivalent), so parameter injection is the correct
+// approach here despite leaking a test concern into the public signature.
 export async function sendTranslatedMessage(
   command: TranslationIngressCommand,
   result: TranslationResult,
