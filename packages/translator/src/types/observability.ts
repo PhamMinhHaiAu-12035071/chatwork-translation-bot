@@ -1,4 +1,4 @@
-export type TranslatorPhase = 'analysis' | 'translation' | 'review' | 'delivery' | 'ack_callback'
+export type TranslatorPhase = 'translation' | 'delivery' | 'ack_callback'
 
 export type TranslatorFinalStatus = 'completed' | 'failed' | 'aborted'
 

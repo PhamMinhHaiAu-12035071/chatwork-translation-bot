@@ -17,9 +17,7 @@ describe('createPhaseObserver', () => {
       statusStore: store,
       heartbeatMs: 10,
       phaseBudgets: {
-        analysis: 5,
         translation: 5,
-        review: 5,
         delivery: 5,
         ack_callback: 5,
       },
@@ -39,7 +37,7 @@ describe('createPhaseObserver', () => {
 
     observer.markRequestReceived()
 
-    await observer.runPhase('analysis', async () => {
+    await observer.runPhase('translation', async () => {
       await Bun.sleep(25)
     })
 
@@ -60,7 +58,7 @@ describe('createPhaseObserver', () => {
 
     const snapshot = store.getSnapshot()
     expect(snapshot.activeRequests).toHaveLength(0)
-    expect(snapshot.recentResults[0]?.overBudgetPhases).toContain('analysis')
+    expect(snapshot.recentResults[0]?.overBudgetPhases).toContain('translation')
   })
 
   it('marks aborted requests with active phase context', async () => {
@@ -75,9 +73,7 @@ describe('createPhaseObserver', () => {
       statusStore: store,
       heartbeatMs: 10,
       phaseBudgets: {
-        analysis: 5,
         translation: 5,
-        review: 5,
         delivery: 5,
         ack_callback: 5,
       },

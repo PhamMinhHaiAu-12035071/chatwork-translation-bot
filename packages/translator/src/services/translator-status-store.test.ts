@@ -25,7 +25,7 @@ describe('TranslatorStatusStore', () => {
     nowMs += 15_000
     store.startPhase({
       requestId: 'req-1',
-      phase: 'analysis',
+      phase: 'translation',
       phaseBudgetMs: 60_000,
     })
 
@@ -37,7 +37,7 @@ describe('TranslatorStatusStore', () => {
     expect(snapshot.activeRequests[0]).toMatchObject({
       requestId: 'req-1',
       sourceMessageId: 'source-1',
-      phase: 'analysis',
+      phase: 'translation',
       phaseBudgetMs: 60_000,
       datasetItemId: 'vfa-001',
     })

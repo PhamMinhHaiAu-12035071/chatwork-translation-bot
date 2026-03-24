@@ -9,9 +9,7 @@ export const translatorEnvSchema = z.object({
   AI_PROVIDER: z.string().min(1, 'AI_PROVIDER is required'),
   AI_MODEL: z.string().min(1).optional(),
   TRANSLATOR_PHASE_HEARTBEAT_MS: z.coerce.number().int().positive().default(30_000),
-  TRANSLATOR_ANALYSIS_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_TRANSLATION_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
-  TRANSLATOR_REVIEW_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(45_000),
   TRANSLATOR_ACK_CALLBACK_BUDGET_MS: z.coerce.number().int().positive().default(10_000),
   TRANSLATOR_PIPELINE_TIMEOUT_MS: z.coerce

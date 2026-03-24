@@ -36,7 +36,7 @@ export class TranslatorStatusStore {
     this.activeRequests.set(request.requestId, {
       ...request,
       startedAt,
-      phase: 'analysis',
+      phase: 'translation',
       phaseStartedAt: startedAt,
       phaseBudgetMs: 0,
       overBudgetPhases: new Set<TranslatorPhase>(),
