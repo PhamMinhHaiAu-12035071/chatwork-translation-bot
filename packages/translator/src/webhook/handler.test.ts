@@ -206,7 +206,11 @@ describe('handleTranslateRequest', () => {
     await handleTranslateRequest(command)
 
     const dateStr = new Date().toISOString().slice(0, 10)
-    const filepath = join(testOutputDir, dateStr, '2081046619322847232.json')
+    const filepath = join(
+      testOutputDir,
+      dateStr,
+      '2081046619322847232:message_created:1772633778.json',
+    )
     const content = (await Bun.file(filepath).json()) as {
       origin?: { type: string }
       delivery?: { status: string }

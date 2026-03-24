@@ -162,7 +162,7 @@ export function createPhaseObserver(config: {
 
     completeRequest(params: {
       finalPhase: TranslatorPhase
-      deliveryStatus?: 'sent' | 'failed'
+      deliveryStatus?: 'sent' | 'partial' | 'failed'
       ackStatus?: 'sent' | 'failed'
     }): void {
       stopHeartbeat()

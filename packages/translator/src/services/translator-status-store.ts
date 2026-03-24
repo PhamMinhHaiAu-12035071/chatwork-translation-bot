@@ -78,7 +78,7 @@ export class TranslatorStatusStore {
     requestId: string
     finalPhase: TranslatorPhase
     finalStatus?: TranslatorFinalStatus
-    deliveryStatus?: 'sent' | 'failed'
+    deliveryStatus?: 'sent' | 'partial' | 'failed'
     ackStatus?: 'sent' | 'failed'
     errorCode?: string
     errorMessage?: string

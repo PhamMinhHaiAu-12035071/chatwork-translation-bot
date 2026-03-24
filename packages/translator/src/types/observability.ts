@@ -33,7 +33,7 @@ export interface TranslatorLogEntry extends TranslatorRequestContext {
   finalStatus?: TranslatorFinalStatus
   finalPhase?: TranslatorPhase
   totalDurationMs?: number
-  deliveryStatus?: 'sent' | 'failed'
+  deliveryStatus?: 'sent' | 'partial' | 'failed'
   ackStatus?: 'sent' | 'failed'
   errorCode?: string
   errorMessage?: string
@@ -57,7 +57,7 @@ export interface TranslatorRecentResult extends TranslatorRequestContext {
   completedAt: string
   totalDurationMs: number
   overBudgetPhases: TranslatorPhase[]
-  deliveryStatus?: 'sent' | 'failed'
+  deliveryStatus?: 'sent' | 'partial' | 'failed'
   ackStatus?: 'sent' | 'failed'
   errorCode?: string
   errorMessage?: string

@@ -49,7 +49,7 @@ describe('writeTranslationOutput', () => {
   it('writes JSON file with TranslationIngressCommand + translation structure', async () => {
     await writeTranslationOutput(sampleRecord, testDir)
 
-    const filepath = join(testDir, '2026-03-04', 'msg_001.json')
+    const filepath = join(testDir, '2026-03-04', 'msg_001:message_created:1709545476.json')
     const file = Bun.file(filepath)
     const content = (await file.json()) as OutputRecord
 
@@ -78,16 +78,16 @@ describe('writeTranslationOutput', () => {
     await rm(testDir, { recursive: true, force: true })
   })
 
-  it('uses filename from command.sourceMessageId', async () => {
+  it('uses filename from command.sourceEventId', async () => {
     await writeTranslationOutput(sampleRecord, testDir)
 
-    const filepath = join(testDir, '2026-03-04', 'msg_001.json')
+    const filepath = join(testDir, '2026-03-04', 'msg_001:message_created:1709545476.json')
     expect(await Bun.file(filepath).exists()).toBe(true)
 
     await rm(testDir, { recursive: true, force: true })
   })
 
-  it('rewrites an existing output file with delivery metadata', async () => {
+  it('rewrites an existing output file with per-message delivery metadata and partial status', async () => {
     await writeTranslationOutput(sampleRecord, testDir)
 
     await writeTranslationOutput(
@@ -100,22 +100,75 @@ describe('writeTranslationOutput', () => {
           datasetLineNumber: 1,
         },
         delivery: {
-          status: 'sent',
+          status: 'partial',
           destinationRoomId: 55555,
-          destinationMessageId: 'dest-123',
           sentAt: '2026-03-10T12:00:00.000Z',
+          messages: [
+            {
+              kind: 'metadata',
+              status: 'sent',
+              destinationMessageId: 'meta-123',
+            },
+            {
+              kind: 'body',
+              status: 'failed',
+              errorCode: 'ChatworkApiError',
+              errorMessage: 'Bad Gateway',
+            },
+          ],
         },
       },
       testDir,
     )
 
-    const filepath = join(testDir, '2026-03-04', 'msg_001.json')
+    const filepath = join(testDir, '2026-03-04', 'msg_001:message_created:1709545476.json')
     const content = (await Bun.file(filepath).json()) as OutputRecord
 
     expect(content.origin?.type).toBe('automation')
     expect(content.origin?.datasetItemId).toBe('vfa-001')
+    expect(content.delivery?.status).toBe('partial')
+    expect(content.delivery?.messages).toEqual([
+      {
+        kind: 'metadata',
+        status: 'sent',
+        destinationMessageId: 'meta-123',
+      },
+      {
+        kind: 'body',
+        status: 'failed',
+        errorCode: 'ChatworkApiError',
+        errorMessage: 'Bad Gateway',
+      },
+    ])
+
+    await rm(testDir, { recursive: true, force: true })
+  })
+
+  it('normalizes legacy single-message delivery details into a body delivery record', async () => {
+    await writeTranslationOutput(
+      {
+        ...sampleRecord,
+        delivery: {
+          status: 'sent',
+          destinationRoomId: 55555,
+          destinationMessageId: 'dest-123',
+          sentAt: '2026-03-10T12:00:00.000Z',
+        },
+      } as OutputRecord,
+      testDir,
+    )
+
+    const filepath = join(testDir, '2026-03-04', 'msg_001:message_created:1709545476.json')
+    const content = (await Bun.file(filepath).json()) as OutputRecord
+
     expect(content.delivery?.status).toBe('sent')
-    expect(content.delivery?.destinationMessageId).toBe('dest-123')
+    expect(content.delivery?.messages).toEqual([
+      {
+        kind: 'body',
+        status: 'sent',
+        destinationMessageId: 'dest-123',
+      },
+    ])
 
     await rm(testDir, { recursive: true, force: true })
   })

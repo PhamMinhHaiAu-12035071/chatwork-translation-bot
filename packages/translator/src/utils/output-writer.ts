@@ -1,6 +1,6 @@
 import { mkdir, rename } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { OutputRecord } from '~/types/output'
+import type { OutputDelivery, OutputDeliveryMessage, OutputRecord } from '~/types/output'
 
 async function writeJsonAtomically(filepath: string, content: string): Promise<void> {
   const tempPath = `${filepath}.${crypto.randomUUID()}.tmp`
@@ -22,9 +22,35 @@ export async function writeTranslationOutput(
   const dir = join(baseDir, dateStr)
   await mkdir(dir, { recursive: true })
 
-  const messageId = record.command.sourceMessageId
-  const filepath = join(dir, `${messageId}.json`)
+  const filepath = join(dir, `${record.command.sourceEventId}.json`)
+  const normalizedRecord = {
+    ...record,
+    ...(record.delivery !== undefined ? { delivery: normalizeDelivery(record.delivery) } : {}),
+  }
 
-  await writeJsonAtomically(filepath, JSON.stringify(record, null, 2))
+  await writeJsonAtomically(filepath, JSON.stringify(normalizedRecord, null, 2))
   console.log(`[output] Saved: ${filepath}`)
+}
+
+function normalizeDelivery(
+  delivery: OutputDelivery,
+): OutputDelivery & { messages: OutputDeliveryMessage[] } {
+  if (delivery.messages !== undefined) {
+    return delivery as OutputDelivery & { messages: OutputDeliveryMessage[] }
+  }
+
+  return {
+    ...delivery,
+    messages: [
+      {
+        kind: 'body',
+        status: delivery.status === 'sent' ? 'sent' : 'failed',
+        ...(delivery.destinationMessageId !== undefined
+          ? { destinationMessageId: delivery.destinationMessageId }
+          : {}),
+        ...(delivery.errorCode !== undefined ? { errorCode: delivery.errorCode } : {}),
+        ...(delivery.errorMessage !== undefined ? { errorMessage: delivery.errorMessage } : {}),
+      },
+    ],
+  }
 }
