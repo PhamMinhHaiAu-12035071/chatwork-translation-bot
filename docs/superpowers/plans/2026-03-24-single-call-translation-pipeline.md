@@ -8,6 +8,8 @@
 
 **Tech Stack:** Bun v1.1+, TypeScript 5.4+ strict, Zod, `@ai-sdk/openai` v3.x (`generateText` + `Output.object`), `@ai-sdk/google` v3.x, Elysia
 
+> ⚠️ **Work on a feature branch.** The pre-commit hook runs `bun run typecheck` on every commit. Between Task 2 (removing old translation-prompt exports) and Task 6 (rewriting pipeline.ts), the full typecheck will fail because pipeline.ts still imports the removed symbols. To avoid commit failures, execute tasks in this order: **1 → 3 → 4 → 5 → 6 → 2 → 7 → 8 → 9**. Task 6 rewrites pipeline.ts _before_ Task 2 removes the old exports, eliminating the broken window entirely.
+
 ---
 
 ## File Map
@@ -25,9 +27,9 @@
 | `packages/translation-prompt/src/translation-prompt.ts`                | Add `buildSingleCallPrompts`, remove old 3 functions + dead imports                   |
 | `packages/translation-prompt/src/index.ts`                             | Export `buildSingleCallPrompts`; remove old exports                                   |
 | `packages/translation-prompt/src/translation-prompt.test.ts`           | Rewrite to test `buildSingleCallPrompts`                                              |
-| `packages/provider-openai/src/openai-plugin.ts`                        | Add private `resolveThinking()`, inject `providerOptions`                             |
+| `packages/provider-openai/src/openai-plugin.ts`                        | Add private `resolveThinking()`, inject `providerOptions`; export `supportsThinking`  |
 | `packages/provider-openai/src/openai-plugin.test.ts`                   | Add `resolveThinking` unit tests                                                      |
-| `packages/provider-gemini/src/gemini-plugin.ts`                        | Add private `resolveThinking()`, inject `providerOptions`                             |
+| `packages/provider-gemini/src/gemini-plugin.ts`                        | Add private `resolveThinking()`, inject `providerOptions`; export `supportsThinking`  |
 | `packages/provider-gemini/src/gemini-plugin.test.ts`                   | Add `resolveThinking` unit tests                                                      |
 | `packages/translator/src/types/observability.ts`                       | Remove `'analysis'` and `'review'` from `TranslatorPhase`                             |
 | `packages/translator/src/env-schema.ts`                                | Remove `TRANSLATOR_ANALYSIS_BUDGET_MS`, `TRANSLATOR_REVIEW_BUDGET_MS`                 |
@@ -41,7 +43,7 @@
 | `packages/translator/src/env.test.ts`                                  | Remove dead env var assertions                                                        |
 | `packages/translator/src/bootstrap/startup-banner.ts`                  | Add `thinking` column                                                                 |
 | `packages/translator/src/bootstrap/startup-banner.test.ts`             | Update snapshot/assertions for new column                                             |
-| `packages/translator/src/server.ts`                                    | Add inline `resolveThinkingSupport` helper; pass `thinking:` to `logStartupBanner`    |
+| `packages/translator/src/index.ts`                                     | Add `supportsThinking` dispatch + pass `thinking:` to `logStartupBanner`              |
 | `packages/translation-prompt/src/schemas/review.schema.ts`             | Strip `ReviewSchema`/`ReviewResult`; keep `TranslationDraftSchema`/`TranslationDraft` |
 
 ### Deleted
@@ -438,16 +440,23 @@ Expected: FAIL (no `providerOptions` present yet)
 
 - [ ] **Step 3.3: Add `resolveThinking` to `OpenAIExecutor`**
 
-In `packages/provider-openai/src/openai-plugin.ts`, add to the `OpenAIExecutor` class:
+In `packages/provider-openai/src/openai-plugin.ts`, add to the `OpenAIExecutor` class and as a module-level export:
 
 ```typescript
+// Module-level export — used by index.ts for startup banner (avoids regex duplication)
+export function supportsThinking(modelId: string): boolean {
+  return /^(gpt-5|o1|o3|o4)/.test(modelId)
+}
+
+// Inside OpenAIExecutor class:
 private resolveThinking(modelId: string): object | null {
-  if (/^(gpt-5|o1|o3|o4)/.test(modelId)) {
-    return { openai: { reasoningEffort: 'medium' } }
-  }
-  return null
+  if (!supportsThinking(modelId)) return null
+  const effort = (process.env['OPENAI_REASONING_EFFORT'] ?? 'medium') as 'low' | 'medium' | 'high'
+  return { openai: { reasoningEffort: effort } }
 }
 ```
+
+`OPENAI_REASONING_EFFORT` is read directly from `process.env` (not via Zod schema) since it belongs to the provider, not the translator service. Defaults to `'medium'`.
 
 And in `execute()`, spread `providerOptions` when non-null:
 
@@ -554,6 +563,13 @@ describe('Gemini resolveThinking', () => {
     await executor.execute({ system: 's', user: 'u' }, schema as never)
     expect(lastGenerateTextCall.providerOptions).toBeUndefined()
   })
+
+  it('does NOT add providerOptions for gemini-30-flash (not a gemini-3.x)', async () => {
+    // gemini-30-flash: char after "3" is "0", not "." or "-" → should NOT match
+    const executor = geminiPlugin.create({ modelId: 'gemini-30-flash' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    expect(lastGenerateTextCall.providerOptions).toBeUndefined()
+  })
 })
 ```
 
@@ -567,9 +583,15 @@ Expected: FAIL
 
 - [ ] **Step 4.3: Add `resolveThinking` to `GeminiExecutor`**
 
-In `packages/provider-gemini/src/gemini-plugin.ts`, add to the class:
+In `packages/provider-gemini/src/gemini-plugin.ts`, add to the class and as a module-level export:
 
 ```typescript
+// Module-level export — used by index.ts for startup banner (avoids regex duplication)
+export function supportsThinking(modelId: string): boolean {
+  return /^gemini-3[.-]/.test(modelId) || /^gemini-2\.5/.test(modelId)
+}
+
+// Inside GeminiExecutor class:
 private resolveThinking(modelId: string): object | null {
   if (/^gemini-3[.-]/.test(modelId)) {
     return { google: { thinkingConfig: { thinkingLevel: 'medium' } } }
@@ -580,6 +602,8 @@ private resolveThinking(modelId: string): object | null {
   return null
 }
 ```
+
+> Note: `/^gemini-3[.-]/` correctly matches `gemini-3-flash`, `gemini-3.1-flash` but does NOT match `gemini-30-flash` (the char after `3` must be `.` or `-`).
 
 And in `execute()`:
 
@@ -830,13 +854,9 @@ export interface PipelineRunOptions {
   signal?: AbortSignal
   timeoutMs?: number
   phaseObserver?: {
-    onPhaseStarted?: (params: { phase: 'translation'; escalated: false }) => Promise<void> | void
-    onPhaseCompleted?: (params: { phase: 'translation'; escalated: false }) => Promise<void> | void
-    onPhaseFailed?: (params: {
-      phase: 'translation'
-      escalated: false
-      error: unknown
-    }) => Promise<void> | void
+    onPhaseStarted?: (params: { phase: 'translation' }) => Promise<void> | void
+    onPhaseCompleted?: (params: { phase: 'translation' }) => Promise<void> | void
+    onPhaseFailed?: (params: { phase: 'translation'; error: unknown }) => Promise<void> | void
   }
 }
 
@@ -849,13 +869,12 @@ export class TranslationPipeline {
   ) {}
 
   async run(text: string, options: PipelineRunOptions = {}): Promise<TranslationResult> {
-    const startMs = Date.now()
     const signal = this.buildSignal(options)
 
     this.checkAbort(signal)
 
     const phase = 'translation' as const
-    const phaseParams = { phase, escalated: false as const }
+    const phaseParams = { phase }
 
     await options.phaseObserver?.onPhaseStarted?.(phaseParams)
 
@@ -870,7 +889,6 @@ export class TranslationPipeline {
       throw error
     }
 
-    void startMs // durationMs available if needed for future logging
     return {
       cleanText: text,
       translatedText: draft.translated,
@@ -1118,19 +1136,24 @@ return {
 
 Add `thinking` to `col` width calculation and `row()` function.
 
-- [ ] **Step 8.2: Update the caller — `server.ts`**
+- [ ] **Step 8.2: Update the caller — `index.ts`**
 
-In `packages/translator/src/server.ts`, add a local helper and pass `thinking` to `logStartupBanner`. No provider file changes are needed here — the logic lives entirely in `server.ts`:
+`logStartupBanner` is called from `packages/translator/src/index.ts` (not `server.ts`). Import `supportsThinking` from each provider package and pass the result to `logStartupBanner`:
 
 ```typescript
+import { supportsThinking as openaiSupportsThinking } from '@chatwork-bot/provider-openai'
+import { supportsThinking as geminiSupportsThinking } from '@chatwork-bot/provider-gemini'
+
 function resolveThinkingSupport(provider: string, modelId: string): boolean {
-  if (provider === 'openai') return /^(gpt-5|o1|o3|o4)/.test(modelId)
-  if (provider === 'gemini') return /^gemini-3[.-]/.test(modelId) || /^gemini-2\.5/.test(modelId)
+  if (provider === 'openai') return openaiSupportsThinking(modelId)
+  if (provider === 'gemini') return geminiSupportsThinking(modelId)
   return false
 }
 ```
 
-Pass `thinking: resolveThinkingSupport(env.AI_PROVIDER, modelId)` to `logStartupBanner`.
+Then pass `thinking: resolveThinkingSupport(env.AI_PROVIDER, activeModel)` to `logStartupBanner`.
+
+> **Why not a local regex?** The regex for recognizing thinking-capable models lives in each provider package. Duplicating it in `index.ts` means updating 2 places when a new model is added. Importing the provider's `supportsThinking` keeps the logic in one place per provider.
 
 - [ ] **Step 8.3: Update `startup-banner.test.ts`**
 
@@ -1150,11 +1173,11 @@ Expected: PASS
 ```bash
 git add packages/translator/src/bootstrap/startup-banner.ts \
         packages/translator/src/bootstrap/startup-banner.test.ts \
-        packages/translator/src/server.ts
+        packages/translator/src/index.ts
 git commit -m "feat(translator): add thinking column to startup banner"
 ```
 
-> Provider plugin files (`openai-plugin.ts`, `gemini-plugin.ts`) were already committed in Tasks 3 and 4. `resolveThinkingSupport` in `server.ts` is a local helper — no provider file changes needed here.
+> Provider plugin files (`openai-plugin.ts`, `gemini-plugin.ts`) already exported `supportsThinking` and were committed in Tasks 3 and 4. Only `index.ts` changes here (imports + dispatch call).
 
 ---
 
@@ -1180,7 +1203,13 @@ Check that no files import `AnalysisSchema`, `ReviewSchema`, `PipelineTraceSchem
 
 Review `pipeline.test.ts` — confirm the test `calls executor exactly once for any text` PASSES. This is the primary acceptance criterion.
 
-- [ ] **Step 9.4: Final commit if any lint fixes were needed**
+- [ ] **Step 9.4: Run dataset comparison (manual quality gate)**
+
+Run the dataset-runner against a representative sample of the input dataset and compare translations to the pre-refactor baseline. Look for quality regression on keigo-heavy texts and business formulae. If significant regression is found, `git revert` the pipeline commit and investigate prompt changes. This is a manual human review step — there is no automated assertion.
+
+> **On JSON parse failures:** The pipeline uses `generateText + Output.object({ schema })` from AI SDK, which sends requests to OpenAI/Gemini structured output APIs. These APIs guarantee schema-valid JSON — accidental JSON parse failures are extremely rare. No explicit retry is needed at the pipeline level; provider-level retries (e.g., `cursor-plugin`'s retry logic) cover transient failures for providers that need them.
+
+- [ ] **Step 9.5: Final commit if any lint fixes were needed**
 
 ```bash
 git add -A
