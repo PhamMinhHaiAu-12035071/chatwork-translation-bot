@@ -177,7 +177,7 @@ optional `sleepFn` param has a default).
 | File                                                       | Change                                                                     |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `packages/translator/src/services/chatwork-sender.ts`      | Add retry loop, `isRetriable`, `retryDelayMs`, `deliverMessage`, `sleepFn` |
-| `packages/translator/src/services/chatwork-sender.test.ts` | Add retry test cases (5 new)                                               |
+| `packages/translator/src/services/chatwork-sender.test.ts` | Add retry test cases (7 new)                                               |
 | `packages/translator/src/env-schema.ts`                    | `TRANSLATOR_DELIVERY_BUDGET_MS` default 15 000 → 45 000                    |
 
 No changes to: `handler.ts`, `chatwork-api-client.ts`, `types/output.ts`, `phase-observer.ts`.

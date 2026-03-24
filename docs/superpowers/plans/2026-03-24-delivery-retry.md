@@ -15,7 +15,7 @@
 | File                                                       | Action | What changes                                                                                                                                 |
 | ---------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/translator/src/services/chatwork-sender.ts`      | Modify | Add error imports, constants, `isRetriable`, `retryDelayMs`, extract `deliverMessage`, add retry loop + `sleepFn` to `sendTranslatedMessage` |
-| `packages/translator/src/services/chatwork-sender.test.ts` | Modify | Add error class static imports, update `mock.module` factory, update type annotation, add 6 retry test cases                                 |
+| `packages/translator/src/services/chatwork-sender.test.ts` | Modify | Add error class static imports, update `mock.module` factory, update type annotation, add 7 retry test cases                                 |
 | `packages/translator/src/env-schema.ts`                    | Modify | Default `TRANSLATOR_DELIVERY_BUDGET_MS`: `15_000` → `45_000`                                                                                 |
 | `.env`                                                     | Modify | `TRANSLATOR_DELIVERY_BUDGET_MS=15000` → `45000`                                                                                              |
 
