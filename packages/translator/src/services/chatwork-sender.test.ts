@@ -4,6 +4,7 @@ import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import type { OutputDelivery } from '~/types/output'
 
 import { buildTranslatedMessage } from './chatwork-sender'
+import { ChatworkApiError, ChatworkRateLimitError } from '@chatwork-bot/chatwork'
 
 const makeCommand = (
   overrides: Partial<TranslationIngressCommand> = {},
@@ -114,12 +115,15 @@ describe('sendTranslatedMessage', () => {
     command: TranslationIngressCommand,
     result: TranslationResult,
     config: { apiToken: string; destinationRoomId: number },
+    sleepFn?: (ms: number) => Promise<void>,
   ) => Promise<OutputDelivery>
 
   beforeAll(async () => {
     void mock.module('@chatwork-bot/chatwork', () => ({
       sendRoomMessage: mockSendRoomMessage,
       resolveRoomMemberDisplayName: mockResolveRoomMemberDisplayName,
+      ChatworkApiError,
+      ChatworkRateLimitError,
     }))
 
     const mod = await import('./chatwork-sender')
@@ -224,5 +228,108 @@ describe('sendTranslatedMessage', () => {
       destinationRoomId: 55555,
     })
     expect(result.status).toBe('failed')
+  })
+
+  describe('retry behavior', () => {
+    const config = { apiToken: 'test-token', destinationRoomId: 55555 }
+    const makeNoopSleepFn = () => mock((_ms: number) => Promise.resolve())
+
+    it('retries on network TypeError and succeeds on second attempt', async () => {
+      mockResolveRoomMemberDisplayName.mockImplementationOnce(() => {
+        throw new TypeError('Unable to connect. Is the computer able to access the url?')
+      })
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('sent')
+      expect(mockResolveRoomMemberDisplayName.mock.calls.length).toBe(2)
+      expect(sleepFn.mock.calls.length).toBe(1)
+      expect(sleepFn.mock.calls[0]?.[0]).toBe(1000)
+    })
+
+    it('retries on ChatworkRateLimitError and succeeds on third attempt', async () => {
+      mockSendRoomMessage
+        .mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
+        .mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('sent')
+      expect(mockResolveRoomMemberDisplayName.mock.calls.length).toBe(3)
+      expect(sleepFn.mock.calls.length).toBe(2)
+      expect(sleepFn.mock.calls[0]?.[0]).toBe(3000)
+      expect(sleepFn.mock.calls[1]?.[0]).toBe(3000)
+    })
+
+    it('exhausts all retries on repeated network TypeError and returns failed', async () => {
+      mockResolveRoomMemberDisplayName.mockImplementation(() => {
+        throw new TypeError('Unable to connect. Is the computer able to access the url?')
+      })
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('failed')
+      expect(result.errorCode).toBe('TypeError')
+      expect(mockResolveRoomMemberDisplayName.mock.calls.length).toBe(3)
+      expect(sleepFn.mock.calls.length).toBe(2)
+
+      // Reset to default for subsequent tests
+      mockResolveRoomMemberDisplayName.mockImplementation((_roomId, _accountId, _token, _cache) =>
+        Promise.resolve('Nguyen Van A'),
+      )
+    })
+
+    it('does NOT retry on TypeError with non-network message', async () => {
+      mockResolveRoomMemberDisplayName.mockImplementationOnce(() => {
+        throw new TypeError('Cannot read properties of null (reading "length")')
+      })
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('failed')
+      expect(result.errorCode).toBe('TypeError')
+      expect(mockResolveRoomMemberDisplayName.mock.calls.length).toBe(1)
+      expect(sleepFn.mock.calls.length).toBe(0)
+    })
+
+    it('does NOT retry on ChatworkApiError with non-429 status', async () => {
+      mockSendRoomMessage.mockImplementationOnce(() =>
+        Promise.reject(new ChatworkApiError('Unauthorized', 401, 'Unauthorized')),
+      )
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('failed')
+      expect(result.errorCode).toBe('ChatworkApiError')
+      expect(mockSendRoomMessage.mock.calls.length).toBe(1)
+      expect(sleepFn.mock.calls.length).toBe(0)
+    })
+
+    it('uses raw Retry-After delay when under 10 000 ms cap (retryAfter=3 → 3000 ms)', async () => {
+      mockSendRoomMessage.mockImplementationOnce(() =>
+        Promise.reject(new ChatworkRateLimitError(3)),
+      )
+      const sleepFn = makeNoopSleepFn()
+
+      await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(sleepFn.mock.calls[0]?.[0]).toBe(3000)
+    })
+
+    it('caps Retry-After delay at 10 000 ms when retryAfter exceeds cap (retryAfter=15 → 10 000 ms)', async () => {
+      mockSendRoomMessage.mockImplementationOnce(() =>
+        Promise.reject(new ChatworkRateLimitError(15)),
+      )
+      const sleepFn = makeNoopSleepFn()
+
+      await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(sleepFn.mock.calls[0]?.[0]).toBe(10_000)
+    })
   })
 })
