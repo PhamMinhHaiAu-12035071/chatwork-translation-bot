@@ -1,6 +1,7 @@
 import {
   sendRoomMessage,
   resolveRoomMemberDisplayName,
+  ChatworkApiError,
   ChatworkRateLimitError,
 } from '@chatwork-bot/chatwork'
 import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
@@ -12,9 +13,14 @@ const NETWORK_ERROR_PATTERN = /connect|fetch|ECONNREFUSED|timeout/i
 // MUST check ChatworkRateLimitError before ChatworkApiError (subclass ordering):
 // ChatworkRateLimitError extends ChatworkApiError — checking the base class first
 // would match rate-limit errors as non-retriable before the subclass check is reached.
+// Error (not TypeError) is used because Bun throws plain Error for TCP connection
+// failures (e.g. "Unable to connect..."), not TypeError as originally assumed.
+// ChatworkApiError is explicitly excluded before the pattern check so that HTTP
+// errors (auth, 4xx/5xx) are never retried even if their messages match the pattern.
 function isRetriable(error: unknown): boolean {
   if (error instanceof ChatworkRateLimitError) return true
-  if (error instanceof TypeError && NETWORK_ERROR_PATTERN.test(error.message)) return true
+  if (error instanceof ChatworkApiError) return false
+  if (error instanceof Error && NETWORK_ERROR_PATTERN.test(error.message)) return true
   return false
 }
 
@@ -22,7 +28,7 @@ function retryDelayMs(error: unknown, attempt: number): number {
   if (error instanceof ChatworkRateLimitError) {
     return Math.min(error.retryAfter * 1000, 10_000)
   }
-  if (error instanceof TypeError) {
+  if (error instanceof Error) {
     return 1000 * Math.pow(2, attempt - 1)
   }
   throw new Error('unreachable: retryDelayMs called with non-retriable error')

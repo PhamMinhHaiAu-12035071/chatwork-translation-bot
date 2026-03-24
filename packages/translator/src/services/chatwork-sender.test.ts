@@ -248,6 +248,21 @@ describe('sendTranslatedMessage', () => {
       expect(sleepFn.mock.calls[0]?.[0]).toBe(1000)
     })
 
+    it('retries on plain Error with network message and succeeds on second attempt', async () => {
+      // Bun throws plain Error (not TypeError) for TCP connection failures in production
+      mockResolveRoomMemberDisplayName.mockImplementationOnce(() => {
+        throw new Error('Unable to connect. Is the computer able to access the url?')
+      })
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('sent')
+      expect(mockResolveRoomMemberDisplayName.mock.calls.length).toBe(2)
+      expect(sleepFn.mock.calls.length).toBe(1)
+      expect(sleepFn.mock.calls[0]?.[0]).toBe(1000)
+    })
+
     it('retries on ChatworkRateLimitError and succeeds on third attempt', async () => {
       mockSendRoomMessage
         .mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
