@@ -159,27 +159,22 @@ describe('retry behavior', () => {
     expect(sleepFn.mock.calls.length).toBe(0)
   })
 
-  it('caps rate-limit delay at 10 000 ms and uses raw value when under cap', async () => {
-    // Uncapped: retryAfter=3 → 3000 ms
+  it('uses raw Retry-After delay when under 10 000 ms cap (retryAfter=3 → 3000 ms)', async () => {
     mockSendRoomMessage.mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
-    const sleepFnUncapped = makeNoopSleepFn()
-    await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFnUncapped)
-    expect(sleepFnUncapped.mock.calls[0]?.[0]).toBe(3000)
+    const sleepFn = makeNoopSleepFn()
 
-    mockSendRoomMessage.mockClear()
-    mockResolveRoomMemberDisplayName.mockClear()
-    mockResolveRoomMemberDisplayName.mockImplementation((_roomId, _accountId, _token, _cache) =>
-      Promise.resolve('Nguyen Van A'),
-    )
-    mockSendRoomMessage.mockImplementation((_roomId, _message, _token) =>
-      Promise.resolve({ message_id: 'sent-456' }),
-    )
+    await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
 
-    // Capped: retryAfter=15 → 10 000 ms
+    expect(sleepFn.mock.calls[0]?.[0]).toBe(3000)
+  })
+
+  it('caps Retry-After delay at 10 000 ms when retryAfter exceeds cap (retryAfter=15 → 10 000 ms)', async () => {
     mockSendRoomMessage.mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(15)))
-    const sleepFnCapped = makeNoopSleepFn()
-    await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFnCapped)
-    expect(sleepFnCapped.mock.calls[0]?.[0]).toBe(10_000)
+    const sleepFn = makeNoopSleepFn()
+
+    await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+    expect(sleepFn.mock.calls[0]?.[0]).toBe(10_000)
   })
 })
 ```
@@ -310,7 +305,7 @@ export async function sendTranslatedMessage(
             level: 'warn',
             service: 'translator',
             event: 'translation_delivery_retrying',
-            attempt: attempt + 1,
+            attempt: attempt + 1, // next attempt number: attempt=1 failed, retrying as attempt 2
             maxAttempts: MAX_RETRIES + 1,
             delayMs,
             errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
