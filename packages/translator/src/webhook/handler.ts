@@ -106,12 +106,10 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
 
   try {
     const pipeline = new TranslationPipeline(executor, { timeoutMs: effectiveTimeoutMs })
-    const { result, trace } = await pipeline.run(cleanText, {
+    const result = await pipeline.run(cleanText, {
       phaseObserver: {
-        onPhaseStarted: ({ phase, round }) => {
-          observer.markPhaseStarted(phase, {
-            ...(round !== undefined ? { phaseRound: round } : {}),
-          })
+        onPhaseStarted: ({ phase }) => {
+          observer.markPhaseStarted(phase, {})
         },
         onPhaseCompleted: () => {
           observer.markPhaseCompleted()
@@ -119,24 +117,12 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
         onPhaseFailed: ({ error }) => {
           observer.markPhaseFailed(error)
         },
-        onEscalationStarted: ({ round }) => {
-          observer.logEvent('info', 'translation_escalation_started', {
-            phase: 'review',
-            phaseRound: round,
-          })
-        },
-        onEscalationCompleted: ({ round }) => {
-          observer.logEvent('info', 'translation_escalation_completed', {
-            phase: 'review',
-            phaseRound: round,
-          })
-        },
       },
     })
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
 
-    const outputRecord = { command, translation: result, pipeline: trace, origin }
+    const outputRecord = { command, translation: result, origin }
 
     await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
 

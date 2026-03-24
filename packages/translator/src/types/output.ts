@@ -1,5 +1,4 @@
 import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
-import type { PipelineTrace } from '@chatwork-bot/translation-prompt'
 
 export interface OutputOrigin {
   type: 'manual' | 'automation'
@@ -20,7 +19,6 @@ export interface OutputDelivery {
 export interface OutputRecord {
   command: TranslationIngressCommand
   translation: TranslationResult
-  pipeline?: PipelineTrace
   origin?: OutputOrigin
   delivery?: OutputDelivery
 }

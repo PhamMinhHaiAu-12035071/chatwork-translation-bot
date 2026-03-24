@@ -6,85 +6,9 @@ import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
 import type { handleTranslateRequest as HandleTranslateRequestType } from './handler'
 
-// ── Pipeline fixtures (1-pass: analysis + translation + review) ───────────────
+// ── Pipeline fixtures (single executor call) ─────────────────────────────────
 
-const pipelineFixtures: unknown[] = [
-  // Phase 0+1: AnalysisResult
-  {
-    skopos: {
-      purpose: 'informational',
-      audience: 'general',
-      strategy: 'instrumental',
-      register: 'casual',
-    },
-    extratextual: {
-      sender: 'unknown',
-      intention: 'inform',
-      audience: 'colleague',
-      medium: 'chat',
-      temporalContext: 'real-time',
-    },
-    intratextual: {
-      subjectMatter: 'general',
-      contentSummary: 'brief',
-      presuppositions: 'none',
-      textStructure: 'single line',
-      lexisNotes: 'plain',
-      nonVerbalElements: 'none',
-    },
-    crossCutting: {
-      textFunction: 'phatic',
-      registerTone: 'casual',
-      expectedEffect: 'acknowledgment',
-    },
-    structuredHints: {
-      sourceProfile: {
-        language: 'japanese',
-        medium: 'chat',
-        domain: 'general',
-        hasCode: false,
-        hasUrl: false,
-        hasJapaneseName: false,
-        hasSpecialFormatting: false,
-      },
-      intentLabels: { phraseType: 'general_statement', confidence: 'high' },
-      renderingPolicy: {
-        strategy: 'functional_vietnamese',
-        targetStyle: 'natural_office_vi',
-        preserveAmbiguity: false,
-        allowNaturalAdaptation: true,
-        avoidLiteralFormulaTranslation: true,
-      },
-      preservationRules: {
-        preserveUrl: false,
-        preserveCode: false,
-        preserveUnits: false,
-        preserveChatworkMarkup: false,
-        preserveJapaneseNameScript: false,
-        allowRomajiGloss: false,
-        forbidGenderInference: false,
-      },
-      reviewFocus: [],
-    },
-  },
-  // Phase 2: TranslationDraft
-  { sourceLang: 'Japanese', translated: 'Xin chào thế giới' },
-  // Phase 3: ReviewResult (passing)
-  {
-    scores: {
-      naturalFlow: 3,
-      culturalFidelity: 2,
-      readerExperience: 2,
-      semanticAccuracy: 2,
-      targetConventions: 1,
-    },
-    totalScore: 10,
-    passed: true,
-    critique: 'Excellent',
-    refinedTranslation: 'Xin chào thế giới (refined)',
-    personaFeedback: { freshReader: 'OK', linguist: 'OK', editor: 'OK' },
-  },
-]
+const pipelineFixtures: unknown[] = [{ sourceLang: 'Japanese', translated: 'Xin chào thế giới' }]
 
 let executeCallCount = 0
 const consoleLogLines: string[] = []
@@ -134,9 +58,7 @@ const mockEnv = {
   CHATWORK_API_TOKEN: 'test-token',
   CHATWORK_DESTINATION_ROOM_ID: 99999,
   TRANSLATOR_PHASE_HEARTBEAT_MS: 10,
-  TRANSLATOR_ANALYSIS_BUDGET_MS: 60_000,
   TRANSLATOR_TRANSLATION_BUDGET_MS: 60_000,
-  TRANSLATOR_REVIEW_BUDGET_MS: 60_000,
   TRANSLATOR_DELIVERY_BUDGET_MS: 15_000,
   TRANSLATOR_ACK_CALLBACK_BUDGET_MS: 10_000,
   TRANSLATOR_PIPELINE_TIMEOUT_MS: 1_800_000,
@@ -199,6 +121,7 @@ describe('handleTranslateRequest', () => {
 
   beforeAll(async () => {
     const realCore = await import('@chatwork-bot/core')
+    const realChatwork = await import('@chatwork-bot/chatwork')
 
     void mock.module('@chatwork-bot/core', () => ({
       ...realCore,
@@ -207,6 +130,7 @@ describe('handleTranslateRequest', () => {
     }))
 
     void mock.module('@chatwork-bot/chatwork', () => ({
+      ...realChatwork,
       sendRoomMessage: mockSendRoomMessage,
       resolveRoomMemberDisplayName: mockResolveRoomMemberDisplayName,
     }))
@@ -270,8 +194,7 @@ describe('handleTranslateRequest', () => {
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
     expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
-    // Full pipeline runs: analysis + translation + review (at least 3 executor calls)
-    expect(executeCallCount).toBeGreaterThanOrEqual(1)
+    expect(executeCallCount).toBe(1)
   })
 
   it('writes delivery metadata after destination send completes', async () => {
