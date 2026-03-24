@@ -1,11 +1,11 @@
 import {
-  sendRoomMessage,
-  resolveRoomMemberDisplayName,
   ChatworkApiError,
   ChatworkRateLimitError,
+  composeTranslatedMessagePair,
+  sendRoomMessage,
 } from '@chatwork-bot/chatwork'
 import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
-import type { OutputDelivery } from '~/types/output'
+import type { OutputDelivery, OutputDeliveryMessage } from '~/types/output'
 
 const MAX_RETRIES = 2
 // Matches Bun fetch error messages for network/connection failures.
@@ -13,6 +13,14 @@ const MAX_RETRIES = 2
 // "Was there a typo in the url or port?" (contains "typo"),
 // "fetch failed" (contains "fetch"), ECONNREFUSED, timeout.
 const NETWORK_ERROR_PATTERN = /connect|fetch|ECONNREFUSED|timeout|typo/i
+
+interface SendTranslatedMessageConfig {
+  apiToken: string
+  destinationRoomId: number
+  translatedSegments?: string[]
+}
+
+type DeliveryStage = 'metadata' | 'body'
 
 // MUST check ChatworkRateLimitError before ChatworkApiError (subclass ordering):
 // ChatworkRateLimitError extends ChatworkApiError — checking the base class first
@@ -38,70 +46,51 @@ function retryDelayMs(error: unknown, attempt: number): number {
   throw new Error('unreachable: retryDelayMs called with non-retriable error')
 }
 
-/**
- * Builds the translated message string to send to the destination Chatwork room.
- * Preserves [To:xxx] and [cc:xxx] markup tags from the original body.
- * Wraps content in Chatwork [info][title] block with metadata.
- */
-export function buildTranslatedMessage(
-  command: TranslationIngressCommand,
-  result: TranslationResult,
-  senderName: string,
-): string {
-  const { rawBody, sendTime } = command
-
-  const timeStr = new Date(sendTime * 1000).toISOString().slice(0, 16).replace('T', ' ')
-  const title = `📨 From: ${senderName} | ${timeStr}`
-
-  const markupTags = (rawBody.match(/\[(?:To|cc):\d+\]/g) ?? []).join('')
-  const content = markupTags ? `${markupTags}\n${result.translatedText}` : result.translatedText
-
-  return `[info][title]${title}[/title]\n${content}[/info]`
-}
-
-async function deliverMessage(
-  command: TranslationIngressCommand,
-  result: TranslationResult,
-  config: { apiToken: string; destinationRoomId: number },
-): Promise<OutputDelivery> {
-  const cache = new Map<number, string>()
-  const senderName = await resolveRoomMemberDisplayName(
-    command.sourceRoomId,
-    command.senderAccountId,
-    config.apiToken,
-    cache,
-  )
-
-  const message = buildTranslatedMessage(command, result, senderName)
-  const response = await sendRoomMessage(config.destinationRoomId, message, config.apiToken)
+function toDeliveryError(error: unknown): { errorCode: string; errorMessage: string } {
+  if (error instanceof Error) {
+    return {
+      errorCode: error.constructor.name,
+      errorMessage: error.message,
+    }
+  }
 
   return {
-    status: 'sent',
-    destinationRoomId: config.destinationRoomId,
-    destinationMessageId: response.message_id,
-    sentAt: new Date().toISOString(),
+    errorCode: 'UnknownError',
+    errorMessage: String(error),
   }
 }
 
-/**
- * Looks up the sender's name, builds the translated message, and sends it
- * to the configured destination Chatwork room.
- * Retries on transient network errors (TypeError with network message) and
- * rate limit errors (429) with exponential backoff. Max 3 total attempts.
- * Returns delivery metadata — never throws; errors are captured in the returned status.
- *
- * sleepFn is injectable for testing: Bun has no clean way to mock Bun.sleep()
- * without parameter injection.
- */
-export async function sendTranslatedMessage(
+function getTranslatedSegments(
   command: TranslationIngressCommand,
   result: TranslationResult,
-  config: { apiToken: string; destinationRoomId: number },
-  sleepFn: (ms: number) => Promise<void> = (ms) => Bun.sleep(ms),
-): Promise<OutputDelivery> {
+  config: SendTranslatedMessageConfig,
+): string[] {
+  if (config.translatedSegments !== undefined) {
+    return config.translatedSegments
+  }
+
+  if (command.translationInputs.length === 0) {
+    return []
+  }
+
+  return [result.translatedText]
+}
+
+async function sendStageMessage(
+  stage: DeliveryStage,
+  message: string,
+  config: SendTranslatedMessageConfig,
+  sleepFn: (ms: number) => Promise<void>,
+): Promise<OutputDeliveryMessage> {
   for (let attempt = 1; attempt <= MAX_RETRIES + 1; attempt++) {
     try {
-      return await deliverMessage(command, result, config)
+      const response = await sendRoomMessage(config.destinationRoomId, message, config.apiToken)
+
+      return {
+        kind: stage,
+        status: 'sent',
+        destinationMessageId: response.message_id,
+      }
     } catch (error) {
       if (attempt <= MAX_RETRIES && isRetriable(error)) {
         const delayMs = retryDelayMs(error, attempt)
@@ -110,7 +99,8 @@ export async function sendTranslatedMessage(
             level: 'warn',
             service: 'translator',
             event: 'translation_delivery_retrying',
-            attempt: attempt + 1, // next attempt number: attempt=1 failed, retrying as attempt 2
+            stage,
+            attempt: attempt + 1,
             maxAttempts: MAX_RETRIES + 1,
             delayMs,
             errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
@@ -120,15 +110,91 @@ export async function sendTranslatedMessage(
         await sleepFn(delayMs)
         continue
       }
+
+      const { errorCode, errorMessage } = toDeliveryError(error)
       return {
+        kind: stage,
         status: 'failed',
-        destinationRoomId: config.destinationRoomId,
-        errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
-        errorMessage: error instanceof Error ? error.message : String(error),
-        sentAt: new Date().toISOString(),
+        errorCode,
+        errorMessage,
       }
     }
   }
-  // Unreachable: loop always returns inside try or catch
+
   throw new Error('unreachable: retry loop exited without returning')
+}
+
+/**
+ * Sends the translated output to the destination Chatwork room as two messages:
+ * a compact metadata/context message followed by the translated body.
+ * Retries still apply only to transient failures and are scoped per stage so that
+ * a successful metadata send is never repeated if the body stage later retries.
+ *
+ * sleepFn is injectable for testing: Bun has no clean way to mock Bun.sleep()
+ * without parameter injection.
+ */
+export async function sendTranslatedMessage(
+  command: TranslationIngressCommand,
+  result: TranslationResult,
+  config: SendTranslatedMessageConfig,
+  sleepFn: (ms: number) => Promise<void> = (ms) => Bun.sleep(ms),
+): Promise<OutputDelivery> {
+  const sentAt = new Date().toISOString()
+
+  try {
+    const translatedSegments = getTranslatedSegments(command, result, config)
+    const { metadataMessage, bodyMessage } = await composeTranslatedMessagePair(command, {
+      apiToken: config.apiToken,
+      translatedSegments,
+    })
+
+    const metadataDelivery = await sendStageMessage('metadata', metadataMessage, config, sleepFn)
+    if (metadataDelivery.status === 'failed') {
+      return {
+        status: 'failed',
+        destinationRoomId: config.destinationRoomId,
+        messages: [metadataDelivery],
+        ...(metadataDelivery.errorCode !== undefined
+          ? { errorCode: metadataDelivery.errorCode }
+          : {}),
+        ...(metadataDelivery.errorMessage !== undefined
+          ? { errorMessage: metadataDelivery.errorMessage }
+          : {}),
+        sentAt,
+      }
+    }
+
+    const bodyDelivery = await sendStageMessage('body', bodyMessage, config, sleepFn)
+    if (bodyDelivery.status === 'failed') {
+      return {
+        status: 'partial',
+        destinationRoomId: config.destinationRoomId,
+        messages: [metadataDelivery, bodyDelivery],
+        ...(bodyDelivery.errorCode !== undefined ? { errorCode: bodyDelivery.errorCode } : {}),
+        ...(bodyDelivery.errorMessage !== undefined
+          ? { errorMessage: bodyDelivery.errorMessage }
+          : {}),
+        sentAt,
+      }
+    }
+
+    return {
+      status: 'sent',
+      destinationRoomId: config.destinationRoomId,
+      messages: [metadataDelivery, bodyDelivery],
+      ...(bodyDelivery.destinationMessageId !== undefined
+        ? { destinationMessageId: bodyDelivery.destinationMessageId }
+        : {}),
+      sentAt,
+    }
+  } catch (error) {
+    const { errorCode, errorMessage } = toDeliveryError(error)
+    return {
+      status: 'failed',
+      destinationRoomId: config.destinationRoomId,
+      errorCode,
+      errorMessage,
+      sentAt,
+    }
+  }
 }
