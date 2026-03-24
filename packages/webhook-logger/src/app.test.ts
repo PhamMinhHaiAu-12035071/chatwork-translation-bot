@@ -58,6 +58,36 @@ describe('createApp', () => {
     expect(res.status).toBe(200)
   })
 
+  it('POST /webhook accepts message_updated payloads with a valid signature', async () => {
+    const { createApp } = await import('./app')
+    const app = createApp()
+    const rawBody = JSON.stringify({
+      webhook_setting_id: '12345',
+      webhook_event_type: 'message_updated',
+      webhook_event_time: 1498028130,
+      webhook_event: {
+        message_id: '789012345',
+        room_id: 567890123,
+        account_id: 123456,
+        body: 'Hello World',
+        send_time: 1498028125,
+        update_time: 1498028130,
+      },
+    })
+    const sig = makeSignature(rawBody)
+    const res = await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-ChatWorkWebhookSignature': sig,
+        },
+        body: rawBody,
+      }),
+    )
+    expect(res.status).toBe(200)
+  })
+
   it('POST /webhook without signature returns 422', async () => {
     const { createApp } = await import('./app')
     const app = createApp()

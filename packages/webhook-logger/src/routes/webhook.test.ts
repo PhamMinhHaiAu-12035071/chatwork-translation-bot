@@ -10,6 +10,22 @@ function makeSignature(rawBody: string, secret = TEST_SECRET): string {
   return createHmac('sha256', Buffer.from(secret, 'base64')).update(rawBody).digest('base64')
 }
 
+function makeValidEvent(eventType: 'message_created' | 'message_updated' = 'message_created') {
+  return {
+    webhook_setting_id: '12345',
+    webhook_event_type: eventType,
+    webhook_event_time: 1498028130,
+    webhook_event: {
+      message_id: '789012345',
+      room_id: 567890123,
+      account_id: 123456,
+      body: 'Hello World',
+      send_time: 1498028125,
+      update_time: eventType === 'message_updated' ? 1498028130 : 0,
+    },
+  }
+}
+
 // Mock env before importing route
 void mock.module('../env', () => ({
   env: {
@@ -33,19 +49,7 @@ describe('webhookRoutes', () => {
   let webhookRoutes: typeof WebhookRoutesType
   let app: ReturnType<typeof Elysia.prototype.use>
 
-  const validEvent = {
-    webhook_setting_id: '12345',
-    webhook_event_type: 'message_created',
-    webhook_event_time: 1498028130,
-    webhook_event: {
-      message_id: '789012345',
-      room_id: 567890123,
-      account_id: 123456,
-      body: 'Hello World',
-      send_time: 1498028125,
-      update_time: 0,
-    },
-  }
+  const validEvent = makeValidEvent()
 
   beforeAll(async () => {
     const mod = await import('./webhook')
@@ -89,6 +93,37 @@ describe('webhookRoutes', () => {
     expect(command['sourceSystem']).toBe('chatwork')
     expect(command['sourceMessageId']).toBe('789012345')
     expect(command['sourceRoomId']).toBe(567890123)
+    expect(command['sourceEventId']).toBe('789012345:message_created:1498028130')
+    expect(command['sourceEventType']).toBe('message_created')
+    expect(command['translationInputs']).toEqual(['Hello World'])
+  })
+
+  it('POST /webhook accepts message_updated and forwards enriched neutral DTO fields', async () => {
+    const rawBody = JSON.stringify(makeValidEvent('message_updated'))
+    const sig = makeSignature(rawBody)
+
+    const res = await app.handle(
+      new Request('http://localhost/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-ChatWorkWebhookSignature': sig,
+        },
+        body: rawBody,
+      }),
+    )
+
+    expect(res.status).toBe(200)
+
+    const forwardedCalls = mockFetch.mock.calls as unknown as [string, RequestInit][]
+    const forwardedCall = forwardedCalls[0]
+    const forwardedBody = JSON.parse(forwardedCall?.[1].body as string) as {
+      command: Record<string, unknown>
+    }
+
+    expect(forwardedBody.command['sourceEventId']).toBe('789012345:message_updated:1498028130')
+    expect(forwardedBody.command['sourceEventType']).toBe('message_updated')
+    expect(forwardedBody.command['translationInputs']).toEqual(['Hello World'])
   })
 
   it('POST /webhook missing X-ChatWorkWebhookSignature header returns 422', async () => {

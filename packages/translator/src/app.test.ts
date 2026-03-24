@@ -32,8 +32,41 @@ describe('createApp (translator)', () => {
     expect(res.status).toBe(200)
   })
 
-  // NOTE: /internal/translate endpoint is comprehensively tested in router.test.ts
-  // Removed duplicate test to avoid file creation side effects during test runs
+  it('POST /internal/translate accepts the enriched ingress command schema', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const res = await app.handle(
+      new Request('http://localhost/internal/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          command: {
+            sourceSystem: 'chatwork',
+            sourceEventId: '789012345:message_updated:1498028130',
+            sourceEventType: 'message_updated',
+            sourceMessageId: '789012345',
+            sourceRoomId: 567890123,
+            senderAccountId: 123456,
+            rawBody: 'Hello World',
+            translatableText: 'Hello World',
+            translationInputs: ['Hello World'],
+            sendTime: 1498028125,
+            updateTime: 1498028130,
+            audit: {
+              receivedAt: '2026-03-24T00:00:00.000Z',
+              rawSourceSnapshot: {
+                webhook_setting_id: '12345',
+              },
+            },
+          },
+        }),
+      }),
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    expect(res.status).toBe(200)
+  })
 
   it('unknown route returns 404', async () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
