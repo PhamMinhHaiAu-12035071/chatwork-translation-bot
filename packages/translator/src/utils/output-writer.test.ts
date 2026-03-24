@@ -9,11 +9,14 @@ const testDir = join(import.meta.dir, '__test_output__')
 const sampleRecord: OutputRecord = {
   command: {
     sourceSystem: 'chatwork',
+    sourceEventId: 'msg_001:message_created:1709545476',
+    sourceEventType: 'message_created',
     sourceMessageId: 'msg_001',
     sourceRoomId: 424846369,
     senderAccountId: 8315321,
     rawBody: '[To:123] できれば年内に！\n\n実装してみてください。',
     translatableText: 'できれば年内に！\n\n実装してみてください。',
+    translationInputs: ['できれば年内に！', '実装してみてください。'],
     sendTime: 1709545476,
     updateTime: 0,
     audit: {

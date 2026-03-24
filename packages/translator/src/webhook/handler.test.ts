@@ -89,11 +89,14 @@ class MockTranslationError extends Error {
 function makeCommand(overrides?: Partial<TranslationIngressCommand>): TranslationIngressCommand {
   return {
     sourceSystem: 'chatwork',
+    sourceEventId: '2081046619322847232:message_created:1772633778',
+    sourceEventType: 'message_created',
     sourceMessageId: '2081046619322847232',
     sourceRoomId: 424846369,
     senderAccountId: 8315321,
     rawBody: 'A\n\nB\nC',
     translatableText: 'A\n\nB\nC',
+    translationInputs: ['A', 'B', 'C'],
     sendTime: 1772633778,
     updateTime: 0,
     audit: {

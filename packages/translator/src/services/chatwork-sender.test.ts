@@ -10,11 +10,14 @@ const makeCommand = (
   overrides: Partial<TranslationIngressCommand> = {},
 ): TranslationIngressCommand => ({
   sourceSystem: 'chatwork',
+  sourceEventId: 'msg-123:message_created:1772633778',
+  sourceEventType: 'message_created',
   sourceMessageId: 'msg-123',
   sourceRoomId: 98765,
   senderAccountId: 34567,
   rawBody: 'おはようございます',
   translatableText: 'おはようございます',
+  translationInputs: ['おはようございます'],
   sendTime: 1772633778,
   updateTime: 0,
   audit: {

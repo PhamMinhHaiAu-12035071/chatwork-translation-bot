@@ -37,11 +37,14 @@ describe('translateRoutes', () => {
   const validPayload = {
     command: {
       sourceSystem: 'chatwork',
+      sourceEventId: '789012345:message_created:1498028130',
+      sourceEventType: 'message_created',
       sourceMessageId: '789012345',
       sourceRoomId: 567890123,
       senderAccountId: 123456,
       rawBody: 'Hello World',
       translatableText: 'Hello World',
+      translationInputs: ['Hello World'],
       sendTime: 1498028125,
       updateTime: 0,
       audit: {

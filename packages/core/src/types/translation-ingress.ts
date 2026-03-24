@@ -7,11 +7,14 @@ import { Type as t, type Static } from '@sinclair/typebox'
  */
 export const TranslationIngressCommandSchema = t.Object({
   sourceSystem: t.String(),
+  sourceEventId: t.String(),
+  sourceEventType: t.String(),
   sourceMessageId: t.String(),
   sourceRoomId: t.Number(),
   senderAccountId: t.Number(),
   rawBody: t.String(),
   translatableText: t.String(),
+  translationInputs: t.Array(t.String()),
   sendTime: t.Number(),
   updateTime: t.Number(),
   audit: t.Object({

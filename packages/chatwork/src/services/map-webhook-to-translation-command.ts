@@ -29,14 +29,22 @@ export function mapWebhookToTranslationCommand(
   receivedAt: string,
 ): TranslationIngressCommand {
   const event = payload.webhook_event
+  const eventType = payload.webhook_event_type as string
+  const eventTime = String(payload.webhook_event_time)
+
+  // Temporary: stub translationInputs until Task 3 replaces with structured parser
+  const sourceEventId = `${event.message_id}:${eventType}:${eventTime}`
 
   return {
     sourceSystem: 'chatwork',
+    sourceEventId,
+    sourceEventType: eventType,
     sourceMessageId: event.message_id,
     sourceRoomId: event.room_id,
     senderAccountId: event.account_id,
     rawBody: event.body,
     translatableText: stripChatworkMarkup(event.body),
+    translationInputs: [stripChatworkMarkup(event.body)],
     sendTime: event.send_time,
     updateTime: event.update_time,
     audit: {
