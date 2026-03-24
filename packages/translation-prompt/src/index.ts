@@ -2,6 +2,7 @@ export {
   buildAnalysisPrompts,
   buildTranslationPrompts,
   buildReviewPrompts,
+  buildSingleCallPrompts,
   TranslationDraftSchema,
   AnalysisSchema,
   ReviewSchema,

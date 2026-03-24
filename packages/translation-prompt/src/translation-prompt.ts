@@ -2,6 +2,7 @@ import { PERSONA, CORE_DOCTRINE } from '~/sections/core'
 import { JAPANESE_RULES } from '~/sections/language-layers'
 import { HUMANIZER, STRUCTURAL } from '~/sections/humanizer'
 import { CONSTRAINTS } from '~/sections/constraints'
+import { SINGLE_CALL_SYSTEM } from '~/sections/single-call'
 import { buildAnalysisPrompts as _buildAnalysisPrompts } from '~/sections/analysis'
 import { buildReviewPrompts as _buildReviewPrompts } from '~/sections/review'
 import { buildStructuredHintsBlock } from '~/sections/hints'
@@ -99,4 +100,20 @@ export function buildReviewPrompts(
   escalated = false,
 ): PromptPair {
   return _buildReviewPrompts(text, analysis, currentDraft, round, escalated)
+}
+
+/**
+ * Single-call: expert prompt + self-critique gate in one shot.
+ * Replaces the 3-phase buildAnalysisPrompts → buildTranslationPrompts → buildReviewPrompts pipeline.
+ */
+export function buildSingleCallPrompts(text: string): PromptPair {
+  return {
+    system: SINGLE_CALL_SYSTEM,
+    user: `Translate the following text into natural Vietnamese.
+Respond ONLY with valid JSON:
+{"sourceLang": "<full English language name>", "translated": "<Vietnamese translation>"}
+
+Text:
+${text}`,
+  }
 }
