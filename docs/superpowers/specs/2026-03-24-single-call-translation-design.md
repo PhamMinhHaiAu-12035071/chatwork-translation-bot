@@ -171,8 +171,8 @@ await generateText({
 
 ```typescript
 private resolveThinking(modelId: string): object | null {
-  // Gemini 3.x — thinkingLevel
-  if (/^gemini-(3\.)/.test(modelId)) {
+  // Gemini 3.x — thinkingLevel (matches: gemini-3-flash, gemini-3-pro-preview, gemini-3.1-*)
+  if (/^gemini-3[.-]/.test(modelId)) {
     return { google: { thinkingConfig: { thinkingLevel: 'medium' } } }
   }
   // Gemini 2.5.x — thinkingBudget
@@ -193,7 +193,7 @@ Not captured. Thinking tokens are internal-only — they reason without appearin
 
 ### Startup banner
 
-Add `thinking` column to provider table in startup banner to show whether current model supports thinking.
+Add `thinking` column to provider table in startup banner. At startup, call `resolveThinking(activeModelId)` on the active provider executor and display `yes` / `no` based on whether a non-null result is returned. This is model-dependent (not static manifest), so the column reflects the actively configured model.
 
 ---
 
@@ -233,24 +233,56 @@ Remove `onEscalationStarted` and `onEscalationCompleted` callbacks from phaseObs
 
 `TranslatorPhase` type: remove `'analysis'` and `'review'` variants (keep `'translation'`, `'delivery'`, `'ack_callback'`).
 
+### `translator-observability-runtime.ts` — changes required
+
+`phaseBudgets` is typed as `Record<TranslatorPhase, number>`. After removing `'analysis'` and `'review'` from `TranslatorPhase`, the object literal in `translator-observability-runtime.ts` must drop the `analysis` and `review` keys to avoid a TypeScript excess-property / missing-key error:
+
+```typescript
+// Before
+phaseBudgets: {
+  analysis: env.TRANSLATOR_ANALYSIS_BUDGET_MS,
+  translation: env.TRANSLATOR_TRANSLATION_BUDGET_MS,
+  review: env.TRANSLATOR_REVIEW_BUDGET_MS,
+  delivery: env.TRANSLATOR_DELIVERY_BUDGET_MS,
+  ack_callback: env.TRANSLATOR_ACK_CALLBACK_BUDGET_MS,
+}
+
+// After
+phaseBudgets: {
+  translation: env.TRANSLATOR_TRANSLATION_BUDGET_MS,
+  delivery: env.TRANSLATOR_DELIVERY_BUDGET_MS,
+  ack_callback: env.TRANSLATOR_ACK_CALLBACK_BUDGET_MS,
+}
+```
+
+### `env-schema.ts` — dead env vars
+
+Remove `TRANSLATOR_ANALYSIS_BUDGET_MS` and `TRANSLATOR_REVIEW_BUDGET_MS` from the Zod schema (both are consumed only via `phaseBudgets`, which no longer has those keys). Update corresponding defaults in `env.test.ts` and mock objects in `handler.test.ts`.
+
+### `output.ts` — type and import cleanup
+
+Remove the `pipeline?: PipelineTrace` field from the `OutputRecord` type. Also remove the `PipelineTrace` import from `@chatwork-bot/translation-prompt` in `output.ts` — it will be an unused import once the field is gone, causing `typecheck` to fail.
+
 ### `output-writer.ts`
 
-Remove `pipeline` field from output record type. Simplify output JSON schema.
+No type changes needed (it serializes whatever `OutputRecord` shape it receives). Verify no direct reference to `pipeline` field in serialization logic.
 
 ---
 
 ## 8. Tests
 
-| File                         | Action                                                                                 |
-| ---------------------------- | -------------------------------------------------------------------------------------- |
-| `translation-prompt.test.ts` | Rewrite — test `buildSingleCallPrompts` output shape, system prompt contains key rules |
-| `analysis.test.ts`           | Delete                                                                                 |
-| `review.test.ts`             | Delete                                                                                 |
-| `analysis.schema.test.ts`    | Delete                                                                                 |
-| `review.schema.test.ts`      | Delete                                                                                 |
-| `pipeline.test.ts`           | Rewrite — 1 executor mock call, no multi-round mocks                                   |
-| `openai-plugin.test.ts`      | Add tests for `resolveThinking()` — reasoning models get providerOptions               |
-| `gemini-plugin.test.ts`      | Add tests for `resolveThinking()` — 2.5 vs 3.x thinkingConfig                          |
+| File                         | Action                                                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `translation-prompt.test.ts` | Rewrite — test `buildSingleCallPrompts` output shape, system prompt contains key rules                                                    |
+| `analysis.test.ts`           | Delete                                                                                                                                    |
+| `review.test.ts`             | Delete                                                                                                                                    |
+| `analysis.schema.test.ts`    | Delete                                                                                                                                    |
+| `review.schema.test.ts`      | Delete                                                                                                                                    |
+| `pipeline.test.ts`           | Rewrite — 1 executor mock call, no multi-round mocks                                                                                      |
+| `openai-plugin.test.ts`      | Add tests for `resolveThinking()` — reasoning models get providerOptions                                                                  |
+| `gemini-plugin.test.ts`      | Add tests for `resolveThinking()` — 2.5 vs 3.x; `gemini-3-flash` and `gemini-3-pro-preview` get `thinkingLevel`                           |
+| `phase-observer.test.ts`     | Update — remove `analysis` and `review` keys from all `phaseBudgets` literals                                                             |
+| `handler.test.ts`            | Update — remove `{ result, trace }` destructuring; remove `TRANSLATOR_ANALYSIS_BUDGET_MS` and `TRANSLATOR_REVIEW_BUDGET_MS` from mock env |
 
 ---
 
