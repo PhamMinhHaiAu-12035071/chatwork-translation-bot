@@ -104,11 +104,19 @@ describe('mapWebhookToTranslationCommand', () => {
     expect(result.audit.receivedAt).toBe(RECEIVED_AT)
   })
 
-  it('sets audit.rawSourceSnapshot to the full payload cast as a record', () => {
+  it('sets audit.rawSourceSnapshot to decoration snapshot envelope', () => {
     const payload = makePayload()
     const result = mapWebhookToTranslationCommand(payload, RECEIVED_AT)
-    expect(result.audit.rawSourceSnapshot).toBe(payload)
-    expect((result.audit.rawSourceSnapshot as typeof payload).webhook_setting_id).toBe('123')
+    // New structure: decorationSnapshot has webhookPayload and snapshot
+    const snapshot = result.audit.rawSourceSnapshot as unknown as {
+      webhookPayload: typeof payload
+      snapshot: { translationInputs: string[]; renderTemplate: unknown[] }
+    }
+    expect(snapshot.webhookPayload).toBe(payload)
+    expect(snapshot.webhookPayload.webhook_setting_id).toBe('123')
+    expect(snapshot.snapshot).toBeDefined()
+    expect(snapshot.snapshot.translationInputs).toBeDefined()
+    expect(snapshot.snapshot.renderTemplate).toBeDefined()
   })
 
   it('body without any markup has identical rawBody and translatableText', () => {
