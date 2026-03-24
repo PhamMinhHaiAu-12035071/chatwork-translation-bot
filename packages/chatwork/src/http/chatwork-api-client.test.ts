@@ -210,6 +210,34 @@ describe('chatworkApiClient', () => {
     })
   })
 
+  // ─── getRoom ───────────────────────────────────────────────────────────────
+
+  describe('getRoom', () => {
+    it('sends GET to correct room endpoint', async () => {
+      const room = { room_id: ROOM_ID, name: 'Project Alpha' }
+      mockOnce(fetchSpy, makeOkResponse(room))
+
+      const result = await chatworkApiClient.getRoom(ROOM_ID, TOKEN)
+
+      expect(result.room_id).toBe(ROOM_ID)
+      expect(result.name).toBe('Project Alpha')
+      const lastCall = fetchSpy.mock.calls.at(-1)
+      if (!lastCall) throw new Error('Expected fetch to be called')
+      const [url, init] = lastCall as [string, RequestInit]
+      expect(url).toBe(`https://api.chatwork.com/v2/rooms/${ROOM_ID.toString()}`)
+      expect(init.method).toBe('GET')
+      const headers = init.headers as Record<string, string>
+      expect(headers['X-ChatWorkToken']).toBe(TOKEN)
+    })
+
+    it('throws ChatworkApiError on error response', async () => {
+      mockOnce(fetchSpy, makeErrorResponse(404, ['Room not found']))
+
+      const error = await catchError(chatworkApiClient.getRoom(ROOM_ID, TOKEN))
+      expect(error).toBeInstanceOf(ChatworkApiError)
+    })
+  })
+
   // ─── Error parsing ─────────────────────────────────────────────────────────
 
   describe('error response parsing', () => {

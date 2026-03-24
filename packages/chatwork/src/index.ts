@@ -3,6 +3,7 @@
 // Types
 export type { ChatworkWebhookPayload } from '~/types/webhook'
 export type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
+export type { Room } from '~/types/room'
 
 // Errors
 export { ChatworkWebhookSignatureError } from '~/errors/chatwork-webhook-signature-error'
@@ -19,3 +20,5 @@ export { getRoomMembers } from '~/services/get-room-members'
 export { getRoomMessage } from '~/services/get-room-message'
 export { listRoomMessages } from '~/services/list-room-messages'
 export { resolveRoomMemberDisplayName } from '~/services/resolve-room-member-display-name'
+export { getRoom } from '~/services/get-room'
+export { resolveRoomDisplayName } from '~/services/resolve-room-display-name'

@@ -1,6 +1,7 @@
 import { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
 import type { IChatworkApiClient } from '~/interfaces/chatwork-api'
 import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
+import type { Room } from '~/types/room'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -132,5 +133,20 @@ export const chatworkApiClient = {
     }
 
     return (await response.json()) as ChatworkMessage[]
+  },
+
+  async getRoom(roomId: number, token: string): Promise<Room> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as Room
   },
 } satisfies IChatworkApiClient
