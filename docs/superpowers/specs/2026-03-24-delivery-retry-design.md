@@ -35,7 +35,10 @@ non-retriable branch.
 
 **Retriable:**
 
-- `TypeError` — Bun's fetch error for connection failures (DNS, TCP timeout, ECONNREFUSED)
+- `TypeError` with message matching `/connect|fetch|ECONNREFUSED|timeout/i` — Bun's fetch error for
+  connection failures (DNS, TCP timeout, ECONNREFUSED). The message pattern guard is required because
+  `TypeError` is also thrown for programming errors (null dereference, wrong type) that must not be
+  retried. A plain `instanceof TypeError` would incorrectly retry logic bugs.
 - `ChatworkRateLimitError` (HTTP 429) — rate limit; delay = `min(error.retryAfter * 1000, 10_000)` ms
 
 **Non-retriable (fail immediately):**
@@ -57,14 +60,14 @@ const MAX_RETRIES = 2
 function isRetriable(error: unknown): boolean
   // MUST check ChatworkRateLimitError before ChatworkApiError (subclass ordering)
   → true  if error instanceof ChatworkRateLimitError
-  → true  if error instanceof TypeError
+  → true  if error instanceof TypeError && /connect|fetch|ECONNREFUSED|timeout/i.test(error.message)
   → false otherwise
 
 function retryDelayMs(error: unknown, attempt: number): number
   // attempt is 1-based (attempt 1 → first retry delay)
   // Only called after isRetriable() returns true; unreachable path throws to satisfy TS strict
   → if ChatworkRateLimitError: min(error.retryAfter * 1000, 10_000)
-  → if TypeError:              1000 * 2^(attempt - 1)   // 1000 ms, 2000 ms
+  → if TypeError (network):    1000 * 2^(attempt - 1)   // 1000 ms, 2000 ms
   → else: throw new Error('unreachable: retryDelayMs called with non-retriable error')
 
 // Inner function — can throw; config type: { apiToken: string; destinationRoomId: number }
@@ -148,10 +151,14 @@ also uses the actual error class name.
 New test cases in `chatwork-sender.test.ts` (inject `sleepFn` mock to capture delay values without
 real sleeps):
 
-1. Retries on `TypeError` and succeeds on second attempt — returns `sent`, `deliverMessage` called twice
+1. Retries on `TypeError` with network message (e.g. `"Unable to connect"`) and succeeds on second
+   attempt — returns `sent`, `deliverMessage` called twice
 2. Retries on `ChatworkRateLimitError` and succeeds on third attempt — `deliverMessage` called 3 times,
    `sleepFn` called exactly twice, each with `min(retryAfter * 1000, 10_000)` ms
-3. Exhausts all retries on repeated `TypeError` — returns `{ status: 'failed' }` after 3 attempts
+3. Exhausts all retries on repeated `TypeError` (network message) — returns `{ status: 'failed' }` after
+   3 attempts
+   3a. Does NOT retry on `TypeError` with non-network message (e.g. `"Cannot read properties of null"`) —
+   `deliverMessage` called once, returns `{ status: 'failed' }` immediately
 4. Does NOT retry on `ChatworkApiError` (non-429, e.g. 401) — `deliverMessage` called once, returns
    `{ status: 'failed' }` immediately
 5. Rate limit delay: `Retry-After: 3` → `sleepFn` called with `3000` ms (uncapped path); `Retry-After:
