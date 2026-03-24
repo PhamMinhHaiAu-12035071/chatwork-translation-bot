@@ -117,4 +117,79 @@ describe('mapWebhookToTranslationCommand', () => {
     expect(result.rawBody).toBe('Plain message without markup')
     expect(result.translatableText).toBe('Plain message without markup')
   })
+
+  it('maps sourceEventId as message_id:event_type:event_time', () => {
+    const payload = makePayload()
+    const result = mapWebhookToTranslationCommand(payload, RECEIVED_AT)
+    expect(result.sourceEventId).toBe('789012345:message_created:1710000000')
+  })
+
+  it('maps sourceEventType from webhook_event_type', () => {
+    const payload = makePayload()
+    const result = mapWebhookToTranslationCommand(payload, RECEIVED_AT)
+    expect(result.sourceEventType).toBe('message_created')
+  })
+
+  it('generates unique sourceEventId for message_updated vs message_created', () => {
+    const messageId = '789012345'
+    const createdPayload: ChatworkWebhookPayload = {
+      webhook_setting_id: '123',
+      webhook_event_type: 'message_created',
+      webhook_event_time: 1710000000,
+      webhook_event: {
+        message_id: messageId,
+        room_id: 567890123,
+        account_id: 12345,
+        body: 'Original message',
+        send_time: 1710000000,
+        update_time: 0,
+      },
+    }
+
+    const updatedPayload: ChatworkWebhookPayload = {
+      webhook_setting_id: '123',
+      webhook_event_type: 'message_updated',
+      webhook_event_time: 1710000060,
+      webhook_event: {
+        message_id: messageId,
+        room_id: 567890123,
+        account_id: 12345,
+        body: 'Updated message',
+        send_time: 1710000000,
+        update_time: 1710000060,
+      },
+    }
+
+    const createdResult = mapWebhookToTranslationCommand(createdPayload, RECEIVED_AT)
+    const updatedResult = mapWebhookToTranslationCommand(updatedPayload, RECEIVED_AT)
+
+    expect(createdResult.sourceEventId).toBe(`${messageId}:message_created:1710000000`)
+    expect(updatedResult.sourceEventId).toBe(`${messageId}:message_updated:1710000060`)
+    expect(createdResult.sourceEventId).not.toBe(updatedResult.sourceEventId)
+  })
+
+  it('maps sourceEventType as message_updated for updated events', () => {
+    const payload: ChatworkWebhookPayload = {
+      webhook_setting_id: '123',
+      webhook_event_type: 'message_updated',
+      webhook_event_time: 1710000060,
+      webhook_event: {
+        message_id: '789012345',
+        room_id: 567890123,
+        account_id: 12345,
+        body: 'Updated message',
+        send_time: 1710000000,
+        update_time: 1710000060,
+      },
+    }
+    const result = mapWebhookToTranslationCommand(payload, RECEIVED_AT)
+    expect(result.sourceEventType).toBe('message_updated')
+  })
+
+  it('includes translationInputs from stripped text (stub until Task 3)', () => {
+    const payload = makePayload({ body: '[To:99] Hello world' })
+    const result = mapWebhookToTranslationCommand(payload, RECEIVED_AT)
+    expect(result.translationInputs).toHaveLength(1)
+    expect(result.translationInputs[0]).toBe('Hello world')
+  })
 })

@@ -53,9 +53,9 @@ export function normalizeWebhookPayload(rawBody: string): ChatworkWebhookPayload
   if (webhookSettingId === undefined) issues.push('webhook_setting_id is required')
   if (webhookEventType === undefined) {
     issues.push('webhook_event_type is required')
-  } else if (webhookEventType !== 'message_created') {
+  } else if (webhookEventType !== 'message_created' && webhookEventType !== 'message_updated') {
     throw new ChatworkWebhookPayloadError(
-      `Unsupported webhook_event_type: "${webhookEventType}"; expected "message_created"`,
+      `Unsupported webhook_event_type: "${webhookEventType}"; expected "message_created" or "message_updated"`,
     )
   }
   if (webhookEventTime === undefined) issues.push('webhook_event_time is required')
@@ -125,10 +125,15 @@ export function normalizeWebhookPayload(rawBody: string): ChatworkWebhookPayload
     (() => {
       throw new ChatworkWebhookPayloadError('webhook_event.update_time is required')
     })()
+  const resolvedEventType =
+    webhookEventType ??
+    (() => {
+      throw new ChatworkWebhookPayloadError('webhook_event_type is required')
+    })()
 
   const candidate: ChatworkWebhookPayload = {
     webhook_setting_id: resolvedSettingId,
-    webhook_event_type: 'message_created',
+    webhook_event_type: resolvedEventType,
     webhook_event_time: resolvedEventTime,
     webhook_event: {
       message_id: resolvedMessageId,

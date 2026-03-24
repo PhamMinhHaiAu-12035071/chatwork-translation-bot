@@ -172,4 +172,40 @@ describe('normalizeWebhookPayload', () => {
     const result = normalizeWebhookPayload(body)
     expect(result.webhook_event.message_id).toBe('789012345')
   })
+
+  it('normalizes a valid message_updated payload successfully', () => {
+    const body = JSON.stringify({
+      webhook_setting_id: '123',
+      webhook_event_type: 'message_updated',
+      webhook_event_time: 1710000060,
+      webhook_event: {
+        message_id: '789012345',
+        room_id: 567890123,
+        account_id: 12345,
+        body: '[To:99] Hello Updated',
+        send_time: 1710000000,
+        update_time: 1710000060,
+      },
+    })
+    const result = normalizeWebhookPayload(body)
+    expect(result.webhook_event_type).toBe('message_updated')
+    expect(result.webhook_event.update_time).toBe(1710000060)
+  })
+
+  it('throws error for message_created in error message says it must be created or updated', () => {
+    const body = JSON.stringify({
+      webhook_setting_id: '123',
+      webhook_event_type: 'member_joined',
+      webhook_event_time: 1710000000,
+      webhook_event: {
+        message_id: '789012345',
+        room_id: 567890123,
+        account_id: 12345,
+        body: 'Hello',
+        send_time: 1710000000,
+        update_time: 0,
+      },
+    })
+    expect(() => normalizeWebhookPayload(body)).toThrow(/message_created|message_updated/)
+  })
 })

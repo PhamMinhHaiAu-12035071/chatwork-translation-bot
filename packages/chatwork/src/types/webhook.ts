@@ -15,7 +15,7 @@ export const ChatworkWebhookPayloadEventSchema = t.Object({
 
 export const ChatworkWebhookPayloadSchema = t.Object({
   webhook_setting_id: t.String(),
-  webhook_event_type: t.Literal('message_created'),
+  webhook_event_type: t.Union([t.Literal('message_created'), t.Literal('message_updated')]),
   webhook_event_time: t.Number(),
   webhook_event: ChatworkWebhookPayloadEventSchema,
 })
