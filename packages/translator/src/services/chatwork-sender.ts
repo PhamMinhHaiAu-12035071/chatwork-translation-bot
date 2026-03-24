@@ -8,7 +8,11 @@ import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot
 import type { OutputDelivery } from '~/types/output'
 
 const MAX_RETRIES = 2
-const NETWORK_ERROR_PATTERN = /connect|fetch|ECONNREFUSED|timeout/i
+// Matches Bun fetch error messages for network/connection failures.
+// Observed variants: "Unable to connect..." (contains "connect"),
+// "Was there a typo in the url or port?" (contains "typo"),
+// "fetch failed" (contains "fetch"), ECONNREFUSED, timeout.
+const NETWORK_ERROR_PATTERN = /connect|fetch|ECONNREFUSED|timeout|typo/i
 
 // MUST check ChatworkRateLimitError before ChatworkApiError (subclass ordering):
 // ChatworkRateLimitError extends ChatworkApiError — checking the base class first

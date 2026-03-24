@@ -263,6 +263,21 @@ describe('sendTranslatedMessage', () => {
       expect(sleepFn.mock.calls[0]?.[0]).toBe(1000)
     })
 
+    it('retries on Bun "typo in url or port" error variant and succeeds on second attempt', async () => {
+      // Bun's second observed error variant for TCP connection failures
+      mockResolveRoomMemberDisplayName.mockImplementationOnce(() => {
+        throw new Error('Was there a typo in the url or port?')
+      })
+      const sleepFn = makeNoopSleepFn()
+
+      const result = await sendTranslatedMessage(makeCommand(), makeResult(), config, sleepFn)
+
+      expect(result.status).toBe('sent')
+      expect(mockResolveRoomMemberDisplayName.mock.calls.length).toBe(2)
+      expect(sleepFn.mock.calls.length).toBe(1)
+      expect(sleepFn.mock.calls[0]?.[0]).toBe(1000)
+    })
+
     it('retries on ChatworkRateLimitError and succeeds on third attempt', async () => {
       mockSendRoomMessage
         .mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
