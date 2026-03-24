@@ -1,5 +1,5 @@
 import { SINGLE_CALL_SYSTEM } from '~/sections/single-call'
-import { TranslationDraftSchema } from '~/schemas/review.schema'
+import { StructuredTranslationDraftSchema, TranslationDraftSchema } from '~/schemas/review.schema'
 
 /** Prompt input pair for LLM execution. */
 export interface PromptPair {
@@ -8,7 +8,8 @@ export interface PromptPair {
 }
 
 export { TranslationDraftSchema }
-export type { TranslationDraft } from '~/schemas/review.schema'
+export { StructuredTranslationDraftSchema }
+export type { StructuredTranslationDraft, TranslationDraft } from '~/schemas/review.schema'
 
 /**
  * Single-call: expert prompt + self-critique gate in one shot.
@@ -23,5 +24,19 @@ Respond ONLY with valid JSON:
 
 Text:
 ${text}`,
+  }
+}
+
+export function buildStructuredTranslationPrompts(segments: string[]): PromptPair {
+  return {
+    system: SINGLE_CALL_SYSTEM,
+    user: `Translate each source segment into natural Vietnamese.
+Preserve array length and order exactly.
+Do not merge, split, drop, or reorder segments.
+Respond ONLY with valid JSON:
+{"sourceLang": "<full English language name>", "translatedSegments": ["<Vietnamese segment 1>", "<Vietnamese segment 2>"]}
+
+Source segments:
+${JSON.stringify(segments, null, 2)}`,
   }
 }

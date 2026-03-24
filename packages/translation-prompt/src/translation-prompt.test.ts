@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'bun:test'
-import { buildSingleCallPrompts, TranslationDraftSchema } from './translation-prompt'
+import {
+  buildSingleCallPrompts,
+  buildStructuredTranslationPrompts,
+  StructuredTranslationDraftSchema,
+  TranslationDraftSchema,
+} from './translation-prompt'
 
 describe('buildSingleCallPrompts', () => {
   it('returns PromptPair with system and user strings', () => {
@@ -68,6 +73,36 @@ describe('buildSingleCallPrompts', () => {
   })
 })
 
+describe('buildStructuredTranslationPrompts', () => {
+  it('returns PromptPair with system and user strings', () => {
+    const result = buildStructuredTranslationPrompts(['一つ目', '二つ目'])
+    expect(typeof result.system).toBe('string')
+    expect(typeof result.user).toBe('string')
+  })
+
+  it('embeds source segments in user prompt', () => {
+    const segments = ['お世話になっております。', '資料をご確認ください。']
+    const result = buildStructuredTranslationPrompts(segments)
+
+    for (const segment of segments) {
+      expect(result.user).toContain(segment)
+    }
+  })
+
+  it('instructs the model to preserve array length and order', () => {
+    const result = buildStructuredTranslationPrompts(['一つ目', '二つ目'])
+    expect(result.user).toMatch(/preserve.*length.*order|do not merge|do not reorder/i)
+    expect(result.user).toContain('translatedSegments')
+  })
+
+  it('instructs JSON-only output with translatedSegments', () => {
+    const result = buildStructuredTranslationPrompts(['テスト'])
+    expect(result.user).toContain('JSON')
+    expect(result.user).toContain('sourceLang')
+    expect(result.user).toContain('translatedSegments')
+  })
+})
+
 describe('TranslationDraftSchema', () => {
   it('parses valid draft', () => {
     const result = TranslationDraftSchema.parse({ sourceLang: 'Japanese', translated: 'Xin chào' })
@@ -76,5 +111,25 @@ describe('TranslationDraftSchema', () => {
 
   it('rejects empty translated', () => {
     expect(() => TranslationDraftSchema.parse({ sourceLang: 'Japanese', translated: '' })).toThrow()
+  })
+})
+
+describe('StructuredTranslationDraftSchema', () => {
+  it('parses valid structured translation draft', () => {
+    const result = StructuredTranslationDraftSchema.parse({
+      sourceLang: 'Japanese',
+      translatedSegments: ['Xin chào', 'Vui lòng xem tài liệu.'],
+    })
+    expect(result.sourceLang).toBe('Japanese')
+    expect(result.translatedSegments).toEqual(['Xin chào', 'Vui lòng xem tài liệu.'])
+  })
+
+  it('rejects an empty translatedSegments array', () => {
+    expect(() =>
+      StructuredTranslationDraftSchema.parse({
+        sourceLang: 'Japanese',
+        translatedSegments: [],
+      }),
+    ).toThrow()
   })
 })
