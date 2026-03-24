@@ -12,7 +12,7 @@ export const translatorEnvSchema = z.object({
   TRANSLATOR_ANALYSIS_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_TRANSLATION_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_REVIEW_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
-  TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(15_000),
+  TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(45_000),
   TRANSLATOR_ACK_CALLBACK_BUDGET_MS: z.coerce.number().int().positive().default(10_000),
   TRANSLATOR_PIPELINE_TIMEOUT_MS: z.coerce
     .number()
