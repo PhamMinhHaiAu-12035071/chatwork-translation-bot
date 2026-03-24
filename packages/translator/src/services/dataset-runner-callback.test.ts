@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { execFileSync } from 'node:child_process'
+import { buildDatasetRunnerAckPayload } from './dataset-runner-callback-client'
 
 interface CallbackEvalResult {
   callsLength: number
@@ -57,6 +58,42 @@ function runCallbackEval(responseStatus: number): CallbackEvalResult {
 }
 
 describe('notifyDatasetRunner', () => {
+  it('maps partial delivery to a failed dataset-runner ACK payload', () => {
+    const payload = buildDatasetRunnerAckPayload({
+      sourceMessageId: 'source-1',
+      ackedAt: '2026-03-10T12:00:00.000Z',
+      delivery: {
+        status: 'partial',
+        destinationRoomId: 55555,
+        sentAt: '2026-03-10T12:00:00.000Z',
+        errorCode: 'ChatworkApiError',
+        errorMessage: 'Bad Gateway',
+        messages: [
+          {
+            kind: 'metadata',
+            status: 'sent',
+            destinationMessageId: 'meta-123',
+          },
+          {
+            kind: 'body',
+            status: 'failed',
+            errorCode: 'ChatworkApiError',
+            errorMessage: 'Bad Gateway',
+          },
+        ],
+      },
+    })
+
+    expect(payload).toEqual({
+      sourceMessageId: 'source-1',
+      status: 'failed',
+      destinationRoomId: 55555,
+      errorCode: 'PARTIAL_DELIVERY',
+      errorMessage: 'Bad Gateway',
+      ackedAt: '2026-03-10T12:00:00.000Z',
+    })
+  })
+
   it('POSTs one ACK payload to dataset-runner', () => {
     const result = runCallbackEval(202)
 

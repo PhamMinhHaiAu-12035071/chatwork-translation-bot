@@ -117,4 +117,50 @@ describe('createPhaseObserver', () => {
       errorCode: 'ABORTED',
     })
   })
+
+  it('records partial delivery status when a request completes with a body-stage failure', () => {
+    const logs: string[] = []
+    const store = new TranslatorStatusStore({
+      historyLimit: 20,
+      now: () => new Date(),
+    })
+
+    const observer = createPhaseObserver({
+      logger: (entry) => {
+        logs.push(JSON.stringify(entry))
+      },
+      statusStore: store,
+      heartbeatMs: 10,
+      phaseBudgets: {
+        translation: 5,
+        delivery: 5,
+        ack_callback: 5,
+      },
+      request: {
+        requestId: 'req-3',
+        sourceMessageId: 'source-3',
+        originType: 'automation',
+        provider: 'openai',
+        model: 'gpt-5.4',
+        roomId: 424846369,
+        inputLength: 8,
+      },
+    })
+
+    observer.markRequestReceived()
+    observer.completeRequest({
+      finalPhase: 'ack_callback',
+      deliveryStatus: 'partial',
+      ackStatus: 'sent',
+    })
+
+    expect(logs.some((entry) => entry.includes('"deliveryStatus":"partial"'))).toBe(true)
+    expect(store.getSnapshot().recentResults[0]).toMatchObject({
+      requestId: 'req-3',
+      finalStatus: 'completed',
+      finalPhase: 'ack_callback',
+      deliveryStatus: 'partial',
+      ackStatus: 'sent',
+    })
+  })
 })

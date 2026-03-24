@@ -5,7 +5,10 @@ import { TranslationPipeline } from '~/pipeline/pipeline'
 import { writeTranslationOutput } from '~/utils/output-writer'
 import { sendTranslatedMessage } from '~/services/chatwork-sender'
 import { resolveOutputOrigin } from '~/services/output-origin'
-import { notifyDatasetRunner } from '~/services/dataset-runner-callback'
+import {
+  buildDatasetRunnerAckPayload,
+  notifyDatasetRunner,
+} from '~/services/dataset-runner-callback'
 import type { OutputDelivery } from '~/types/output'
 import {
   getTranslatorObservabilityConfig,
@@ -19,7 +22,7 @@ import {
 import { createPhaseObserver } from '~/services/phase-observer'
 
 export async function handleTranslateRequest(command: TranslationIngressCommand): Promise<void> {
-  if (command.translatableText.trim() === '') {
+  if (command.translatableText.trim() === '' && !hasMeaningfulLiteralStructure(command)) {
     return
   }
 
@@ -81,11 +84,11 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
 
       try {
         await notifyDatasetRunner(
-          {
+          buildDatasetRunnerAckPayload({
             sourceMessageId: command.sourceMessageId,
-            ...delivery,
+            delivery,
             ackedAt: new Date().toISOString(),
-          },
+          }),
           { callbackUrl },
         )
         observer.logEvent('info', 'translation_ack_callback_completed', {
@@ -106,19 +109,27 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
 
   try {
     const pipeline = new TranslationPipeline(executor, { timeoutMs: effectiveTimeoutMs })
-    const result = await pipeline.run(cleanText, {
-      phaseObserver: {
-        onPhaseStarted: ({ phase }) => {
-          observer.markPhaseStarted(phase, {})
-        },
-        onPhaseCompleted: () => {
-          observer.markPhaseCompleted()
-        },
-        onPhaseFailed: ({ error }) => {
-          observer.markPhaseFailed(error)
+    const pipelineResult = await pipeline.runStructured(
+      {
+        cleanText,
+        translationInputs: command.translationInputs,
+      },
+      {
+        phaseObserver: {
+          onPhaseStarted: ({ phase }) => {
+            observer.markPhaseStarted(phase, {})
+          },
+          onPhaseCompleted: () => {
+            observer.markPhaseCompleted()
+          },
+          onPhaseFailed: ({ error }) => {
+            observer.markPhaseFailed(error)
+          },
         },
       },
-    })
+    )
+
+    const result = pipelineResult.translation
 
     const outputBaseDir = process.env['OUTPUT_BASE_DIR']
 
@@ -134,6 +145,7 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
       const deliveryResult = await sendTranslatedMessage(command, result, {
         apiToken: env.CHATWORK_API_TOKEN,
         destinationRoomId: env.CHATWORK_DESTINATION_ROOM_ID,
+        translatedSegments: pipelineResult.translatedSegments,
       })
 
       if (deliveryResult.status === 'failed') {
@@ -229,4 +241,36 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
     })
     throw error
   }
+}
+
+interface DecorationSnapshotEnvelope {
+  snapshot?: {
+    renderTemplate?: MessageRenderNodeLike[]
+  }
+}
+
+type MessageRenderNodeLike =
+  | { type: 'literal'; content?: string }
+  | { type: 'translationSlot' }
+  | { type: 'hr' }
+  | { type: 'code'; content?: string }
+  | { type: 'info' | 'title' | 'quote' | 'qt'; children?: MessageRenderNodeLike[] }
+
+function hasMeaningfulLiteralStructure(command: TranslationIngressCommand): boolean {
+  const rawSnapshot = command.audit.rawSourceSnapshot as DecorationSnapshotEnvelope
+  const renderTemplate = rawSnapshot.snapshot?.renderTemplate
+  if (renderTemplate === undefined) return false
+  return renderNodesHaveMeaningfulLiteralStructure(renderTemplate)
+}
+
+function renderNodesHaveMeaningfulLiteralStructure(nodes: MessageRenderNodeLike[]): boolean {
+  return nodes.some((node) => renderNodeHasMeaningfulLiteralStructure(node))
+}
+
+function renderNodeHasMeaningfulLiteralStructure(node: MessageRenderNodeLike): boolean {
+  if (node.type === 'translationSlot') return false
+  if (node.type === 'hr') return true
+  if (node.type === 'literal') return (node.content?.trim().length ?? 0) > 0
+  if (node.type === 'code') return (node.content?.trim().length ?? 0) > 0
+  return renderNodesHaveMeaningfulLiteralStructure(node.children ?? [])
 }

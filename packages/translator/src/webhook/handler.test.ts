@@ -8,18 +8,29 @@ import type { handleTranslateRequest as HandleTranslateRequestType } from './han
 
 // ── Pipeline fixtures (single executor call) ─────────────────────────────────
 
-const pipelineFixtures: unknown[] = [{ sourceLang: 'Japanese', translated: 'Xin chào thế giới' }]
+const pipelineFixtures: unknown[] = [
+  {
+    sourceLang: 'Japanese',
+    translatedSegments: ['A-VI', 'B-VI', 'C-VI'],
+  },
+]
 
 let executeCallCount = 0
 const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
 const mockNotifyDatasetRunner = mock((_payload: unknown, _config: unknown) => Promise.resolve())
+const mockComposeTranslatedMessagePair = mock(
+  (
+    _command: TranslationIngressCommand,
+    _params: { translatedSegments: string[]; apiToken: string },
+  ) =>
+    Promise.resolve({
+      metadataMessage: '[info][title]Translation metadata[/title]Event: created[/info]',
+      bodyMessage: '[info]A-VI\n\nB-VI\nC-VI[/info]',
+    }),
+)
 const mockSendRoomMessage = mock((_roomId: number, _message: string, _token: string) =>
   Promise.resolve({ message_id: 'mock-id' }),
-)
-const mockResolveRoomMemberDisplayName = mock(
-  (_roomId: number, _accountId: number, _token: string, _cache?: Map<number, string>) =>
-    Promise.resolve('Test User'),
 )
 
 function createMockExecutor(): ILLMExecutor {
@@ -134,11 +145,50 @@ describe('handleTranslateRequest', () => {
 
     void mock.module('@chatwork-bot/chatwork', () => ({
       ...realChatwork,
+      composeTranslatedMessagePair: mockComposeTranslatedMessagePair,
       sendRoomMessage: mockSendRoomMessage,
-      resolveRoomMemberDisplayName: mockResolveRoomMemberDisplayName,
     }))
 
     void mock.module('~/services/dataset-runner-callback', () => ({
+      buildDatasetRunnerAckPayload: (params: {
+        sourceMessageId: string
+        delivery: {
+          status: 'sent' | 'partial' | 'failed'
+          destinationRoomId: number
+          destinationMessageId?: string
+          errorCode?: string
+          errorMessage?: string
+        }
+        ackedAt: string
+      }) => {
+        if (params.delivery.status === 'partial') {
+          return {
+            sourceMessageId: params.sourceMessageId,
+            status: 'failed' as const,
+            destinationRoomId: params.delivery.destinationRoomId,
+            errorCode: 'PARTIAL_DELIVERY',
+            errorMessage:
+              params.delivery.errorMessage ?? 'Metadata message sent but body delivery failed',
+            ackedAt: params.ackedAt,
+          }
+        }
+
+        return {
+          sourceMessageId: params.sourceMessageId,
+          status: params.delivery.status,
+          destinationRoomId: params.delivery.destinationRoomId,
+          ...(params.delivery.destinationMessageId !== undefined
+            ? { destinationMessageId: params.delivery.destinationMessageId }
+            : {}),
+          ...(params.delivery.errorCode !== undefined
+            ? { errorCode: params.delivery.errorCode }
+            : {}),
+          ...(params.delivery.errorMessage !== undefined
+            ? { errorMessage: params.delivery.errorMessage }
+            : {}),
+          ackedAt: params.ackedAt,
+        }
+      },
       notifyDatasetRunner: mockNotifyDatasetRunner,
     }))
 
@@ -160,18 +210,29 @@ describe('handleTranslateRequest', () => {
 
   beforeEach(() => {
     executeCallCount = 0
+    pipelineFixtures.splice(0, pipelineFixtures.length, {
+      sourceLang: 'Japanese',
+      translatedSegments: ['A-VI', 'B-VI', 'C-VI'],
+    })
     consoleLogLines.length = 0
     mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS = 1_800_000
     process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '1800000'
     mockNotifyDatasetRunner.mockReset()
     mockNotifyDatasetRunner.mockImplementation(() => Promise.resolve())
+    mockComposeTranslatedMessagePair.mockReset()
+    mockComposeTranslatedMessagePair.mockImplementation(
+      (
+        _command: TranslationIngressCommand,
+        _params: { translatedSegments: string[]; apiToken: string },
+      ) =>
+        Promise.resolve({
+          metadataMessage: '[info][title]Translation metadata[/title]Event: created[/info]',
+          bodyMessage: '[info]A-VI\n\nB-VI\nC-VI[/info]',
+        }),
+    )
     mockSendRoomMessage.mockReset()
     mockSendRoomMessage.mockImplementation((_roomId, _message, _token) =>
       Promise.resolve({ message_id: 'mock-id' }),
-    )
-    mockResolveRoomMemberDisplayName.mockReset()
-    mockResolveRoomMemberDisplayName.mockImplementation((_roomId, _accountId, _token, _cache) =>
-      Promise.resolve('Test User'),
     )
     console.log = mock((...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
@@ -342,7 +403,18 @@ describe('handleTranslateRequest', () => {
   })
 
   it('skips when translatableText is empty', async () => {
-    const command = makeCommand({ translatableText: '' })
+    const command = makeCommand({
+      translatableText: '',
+      translationInputs: [],
+      audit: {
+        receivedAt: new Date().toISOString(),
+        rawSourceSnapshot: {
+          snapshot: {
+            renderTemplate: [],
+          },
+        },
+      },
+    })
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
@@ -353,7 +425,18 @@ describe('handleTranslateRequest', () => {
   })
 
   it('skips when translatableText is whitespace only', async () => {
-    const command = makeCommand({ translatableText: '   ' })
+    const command = makeCommand({
+      translatableText: '   ',
+      translationInputs: [],
+      audit: {
+        receivedAt: new Date().toISOString(),
+        rawSourceSnapshot: {
+          snapshot: {
+            renderTemplate: [],
+          },
+        },
+      },
+    })
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
@@ -363,13 +446,99 @@ describe('handleTranslateRequest', () => {
     expect(executeCallCount).toBe(0)
   })
 
-  it('sends translated message to destination room on success', async () => {
+  it('sends metadata and translated body messages to the destination room on success', async () => {
     const command = makeCommand()
 
     await handleTranslateRequest(command)
 
-    expect(mockSendRoomMessage.mock.calls.length).toBe(1)
+    expect(mockSendRoomMessage.mock.calls.length).toBe(2)
     expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(99999)
+    expect(mockSendRoomMessage.mock.calls[0]?.[1]).toContain('Translation metadata')
+    expect(mockSendRoomMessage.mock.calls[1]?.[1]).toContain('A-VI')
+  })
+
+  it('skips the LLM but still delivers when translationInputs is empty and the body has meaningful literal structure', async () => {
+    mockComposeTranslatedMessagePair.mockImplementationOnce(() =>
+      Promise.resolve({
+        metadataMessage: '[info][title]Translation metadata[/title]Event: created[/info]',
+        bodyMessage: '[code]const x = 1[/code]',
+      }),
+    )
+
+    const command = makeCommand({
+      rawBody: '[code]const x = 1[/code]',
+      translatableText: '',
+      translationInputs: [],
+      audit: {
+        receivedAt: new Date().toISOString(),
+        rawSourceSnapshot: {
+          snapshot: {
+            renderTemplate: [{ type: 'code', content: 'const x = 1' }],
+          },
+        },
+      },
+    })
+
+    await handleTranslateRequest(command)
+
+    expect(executeCallCount).toBe(0)
+    expect(mockSendRoomMessage.mock.calls.length).toBe(2)
+    expect(mockSendRoomMessage.mock.calls[1]?.[1]).toBe('[code]const x = 1[/code]')
+  })
+
+  it('does not start delivery when structured translation validation fails', async () => {
+    pipelineFixtures.splice(0, pipelineFixtures.length, {
+      sourceLang: 'Japanese',
+      translatedSegments: ['only-one-segment'],
+    })
+
+    await handleTranslateRequest(makeCommand())
+
+    expect(mockComposeTranslatedMessagePair.mock.calls.length).toBe(0)
+    expect(mockSendRoomMessage.mock.calls.length).toBe(0)
+
+    const { getTranslatorStatusSnapshot } =
+      await import('~/services/translator-observability-runtime')
+    const snapshot = getTranslatorStatusSnapshot()
+    expect(snapshot.recentResults[0]).toMatchObject({
+      finalStatus: 'failed',
+      errorCode: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('maps partial delivery to a failed dataset-runner ACK for automation events', async () => {
+    const inputDir = mkdtempSync(join(tmpdir(), 'handler-automation-partial-'))
+    process.env['DATASET_INPUT_DIR'] = inputDir
+    const sourceMapPath = join(inputDir, 'state', 'source-map', '2081046619322847232.json')
+    mkdirSync(join(inputDir, 'state', 'source-map'), { recursive: true })
+    await Bun.write(
+      sourceMapPath,
+      JSON.stringify({
+        datasetFile: '001-vfa-thinhntt-2026-03-10.jsonl',
+        datasetItemId: 'vfa-001',
+        datasetLineNumber: 1,
+      }),
+    )
+
+    mockSendRoomMessage
+      .mockImplementationOnce(() => Promise.resolve({ message_id: 'meta-123' }))
+      .mockImplementationOnce(() =>
+        Promise.reject(new Error('destination body failed after metadata')),
+      )
+
+    await handleTranslateRequest(makeCommand())
+
+    const callbackPayload = mockNotifyDatasetRunner.mock.calls.at(0)?.[0] as
+      | { status: string; errorCode?: string; errorMessage?: string }
+      | undefined
+
+    expect(callbackPayload).toMatchObject({
+      status: 'failed',
+      errorCode: 'PARTIAL_DELIVERY',
+      errorMessage: 'destination body failed after metadata',
+    })
+
+    rmSync(inputDir, { recursive: true, force: true })
   })
 
   it('uses the env timeout override and logs TIMEOUT context when the pipeline times out', async () => {

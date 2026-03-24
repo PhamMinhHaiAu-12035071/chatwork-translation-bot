@@ -81,4 +81,38 @@ describe('TranslatorStatusStore', () => {
     expect(snapshot.recentResults).toHaveLength(2)
     expect(snapshot.recentResults.map((item) => item.requestId)).toEqual(['req-3', 'req-2'])
   })
+
+  it('stores partial delivery as a first-class recent result state', () => {
+    const store = new TranslatorStatusStore({
+      historyLimit: 2,
+      now: () => new Date('2026-03-11T00:00:00.000Z'),
+    })
+
+    store.startRequest({
+      requestId: 'req-partial',
+      sourceMessageId: 'req-partial-source',
+      originType: 'automation',
+      provider: 'openai',
+      model: 'gpt-5.4',
+      roomId: 424846369,
+      inputLength: 5,
+      datasetItemId: 'item-001',
+    })
+
+    store.completeRequest({
+      requestId: 'req-partial',
+      finalPhase: 'ack_callback',
+      deliveryStatus: 'partial',
+      ackStatus: 'sent',
+    })
+
+    const snapshot = store.getSnapshot()
+    expect(snapshot.recentResults[0]).toMatchObject({
+      requestId: 'req-partial',
+      finalStatus: 'completed',
+      finalPhase: 'ack_callback',
+      deliveryStatus: 'partial',
+      ackStatus: 'sent',
+    })
+  })
 })

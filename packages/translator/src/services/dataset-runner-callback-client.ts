@@ -1,8 +1,45 @@
 import type { OutputDelivery } from '~/types/output'
 
-export interface DatasetRunnerAckPayload extends OutputDelivery {
+export interface DatasetRunnerAckPayload {
   sourceMessageId: string
+  status: 'sent' | 'failed'
+  destinationRoomId: number
+  destinationMessageId?: string
+  errorCode?: string
+  errorMessage?: string
   ackedAt: string
+}
+
+export function buildDatasetRunnerAckPayload(params: {
+  sourceMessageId: string
+  delivery: OutputDelivery
+  ackedAt: string
+}): DatasetRunnerAckPayload {
+  if (params.delivery.status === 'partial') {
+    return {
+      sourceMessageId: params.sourceMessageId,
+      status: 'failed',
+      destinationRoomId: params.delivery.destinationRoomId,
+      errorCode: 'PARTIAL_DELIVERY',
+      errorMessage:
+        params.delivery.errorMessage ?? 'Metadata message sent but body delivery failed',
+      ackedAt: params.ackedAt,
+    }
+  }
+
+  return {
+    sourceMessageId: params.sourceMessageId,
+    status: params.delivery.status,
+    destinationRoomId: params.delivery.destinationRoomId,
+    ...(params.delivery.destinationMessageId !== undefined
+      ? { destinationMessageId: params.delivery.destinationMessageId }
+      : {}),
+    ...(params.delivery.errorCode !== undefined ? { errorCode: params.delivery.errorCode } : {}),
+    ...(params.delivery.errorMessage !== undefined
+      ? { errorMessage: params.delivery.errorMessage }
+      : {}),
+    ackedAt: params.ackedAt,
+  }
 }
 
 export async function notifyDatasetRunner(
