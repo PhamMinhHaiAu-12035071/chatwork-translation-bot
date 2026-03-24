@@ -2,8 +2,12 @@ import { beforeAll, describe, expect, it, mock } from 'bun:test'
 import type { geminiPlugin as geminiPluginType } from './gemini-plugin'
 
 let mockOutput: unknown = { sourceLang: 'English', translated: 'Xin chào thế giới' }
+let lastGenerateTextCall: Record<string, unknown> = {}
 
-const generateTextMock = mock((_config: unknown) => Promise.resolve({ output: mockOutput }))
+const generateTextMock = mock((config: unknown) => {
+  lastGenerateTextCall = config as Record<string, unknown>
+  return Promise.resolve({ output: mockOutput })
+})
 
 const outputObjectMock = mock((config: unknown) => config)
 const googleMock = mock((_modelId: string) => ({ provider: 'google', modelId: _modelId }))
@@ -95,5 +99,64 @@ describe('geminiPlugin', () => {
       expect(error).toBeInstanceOf(TranslationError)
       expect((error as InstanceType<typeof TranslationError>).code).toBe('TIMEOUT')
     }
+  })
+})
+
+describe('Gemini resolveThinking', () => {
+  let geminiPlugin: typeof geminiPluginType
+
+  beforeAll(async () => {
+    const mod = await import('./gemini-plugin')
+    geminiPlugin = mod.geminiPlugin
+  })
+
+  const schema = { parse: (x: unknown) => x }
+
+  it('adds thinkingBudget for gemini-2.5-pro', async () => {
+    const executor = geminiPlugin.create({ modelId: 'gemini-2.5-pro' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const po = lastGenerateTextCall['providerOptions'] as { google?: { thinkingConfig?: unknown } }
+    expect(po.google?.thinkingConfig).toEqual({ thinkingBudget: 8192 })
+  })
+
+  it('adds thinkingBudget for gemini-2.5-flash', async () => {
+    const executor = geminiPlugin.create({ modelId: 'gemini-2.5-flash' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const po = lastGenerateTextCall['providerOptions'] as { google?: { thinkingConfig?: unknown } }
+    expect(po.google?.thinkingConfig).toEqual({ thinkingBudget: 8192 })
+  })
+
+  it('adds thinkingLevel for gemini-3-flash', async () => {
+    const executor = geminiPlugin.create({ modelId: 'gemini-3-flash' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const po = lastGenerateTextCall['providerOptions'] as { google?: { thinkingConfig?: unknown } }
+    expect(po.google?.thinkingConfig).toEqual({ thinkingLevel: 'medium' })
+  })
+
+  it('adds thinkingLevel for gemini-3-pro-preview', async () => {
+    const executor = geminiPlugin.create({ modelId: 'gemini-3-pro-preview' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const po = lastGenerateTextCall['providerOptions'] as { google?: { thinkingConfig?: unknown } }
+    expect(po.google?.thinkingConfig).toEqual({ thinkingLevel: 'medium' })
+  })
+
+  it('adds thinkingLevel for gemini-3.1-pro-preview', async () => {
+    const executor = geminiPlugin.create({ modelId: 'gemini-3.1-pro-preview' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const po = lastGenerateTextCall['providerOptions'] as { google?: { thinkingConfig?: unknown } }
+    expect(po.google?.thinkingConfig).toEqual({ thinkingLevel: 'medium' })
+  })
+
+  it('does NOT add providerOptions for gemini-2.0-flash', async () => {
+    const executor = geminiPlugin.create({ modelId: 'gemini-2.0-flash' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    expect(lastGenerateTextCall['providerOptions']).toBeUndefined()
+  })
+
+  it('does NOT add providerOptions for gemini-30-flash (not a gemini-3.x)', async () => {
+    // gemini-30-flash: char after "3" is "0", not "." or "-" → should NOT match
+    const executor = geminiPlugin.create({ modelId: 'gemini-30-flash' })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    expect(lastGenerateTextCall['providerOptions']).toBeUndefined()
   })
 })

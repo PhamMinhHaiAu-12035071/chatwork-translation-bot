@@ -27,8 +27,30 @@ function isAbortError(error: unknown): error is Error {
   return error instanceof Error && error.name === 'AbortError'
 }
 
+// Module-level export — used by index.ts for startup banner (avoids regex duplication)
+export function supportsThinking(modelId: string): boolean {
+  return (
+    modelId.startsWith('gemini-3.') ||
+    modelId.startsWith('gemini-3-') ||
+    modelId.startsWith('gemini-2.5')
+  )
+}
+
 class GeminiExecutor implements ILLMExecutor {
   constructor(private readonly modelId: string = DEFAULT_GEMINI_MODEL) {}
+
+  private resolveThinking(
+    modelId: string,
+  ): NonNullable<Parameters<typeof generateText>[0]['providerOptions']> | null {
+    type PO = NonNullable<Parameters<typeof generateText>[0]['providerOptions']>
+    if (modelId.startsWith('gemini-3.') || modelId.startsWith('gemini-3-')) {
+      return { google: { thinkingConfig: { thinkingLevel: 'medium' } } } as PO
+    }
+    if (modelId.startsWith('gemini-2.5')) {
+      return { google: { thinkingConfig: { thinkingBudget: 8192 } } } as PO
+    }
+    return null
+  }
 
   async execute<T>(
     prompts: PromptPair,
@@ -36,6 +58,7 @@ class GeminiExecutor implements ILLMExecutor {
     options?: { signal?: AbortSignal },
   ): Promise<T> {
     const outputSchema = schema as unknown as FlexibleSchema<T>
+    const thinking = this.resolveThinking(this.modelId)
 
     try {
       const { output } = await generateText({
@@ -45,6 +68,7 @@ class GeminiExecutor implements ILLMExecutor {
         output: Output.object({ schema: outputSchema }),
         temperature: 0,
         maxOutputTokens: 4000,
+        ...(thinking ? { providerOptions: thinking } : {}),
         ...(options?.signal && { abortSignal: options.signal }),
       })
       return output
