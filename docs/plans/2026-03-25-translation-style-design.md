@@ -188,6 +188,19 @@ interface TranslationStyleProfile {
 Each prompt builder resolves the active profile and injects an `Active Translation Style` block
 into the system prompt.
 
+Dependency note:
+
+- `@chatwork-bot/translation-prompt` will add a one-way workspace dependency on
+  `@chatwork-bot/core` to consume `TranslationStyle`
+- this does **not** create a circular dependency in the current graph because `core` does not
+  import from `translation-prompt`
+- resulting direction:
+
+```text
+@chatwork-bot/core <- @chatwork-bot/translation-prompt <- @chatwork-bot/translator
+                     @chatwork-bot/translator ----------^
+```
+
 ### `provider-*`
 
 Providers remain unchanged. They still receive the final `PromptPair` and execute it.
@@ -237,6 +250,51 @@ Description: Precision-first technical Vietnamese for engineering and IT/busines
 - If this style conflicts with source meaning, politeness intent, or critical nuance, preserve fidelity.
 ```
 
+## Normative profile content
+
+The following profile content is normative for implementation. The implementation should not invent
+new style semantics beyond these instructions.
+
+### `AUTO_CONTEXT`
+
+- `name`: `Auto-detect Context`
+- `description`: `Adaptive Vietnamese output that chooses the most natural register for the message context.`
+- `systemInstructions`:
+  - Infer whether the message is casual, business, technical, operational, or mixed before writing.
+  - Choose the Vietnamese register that best matches the source context and communicative purpose.
+  - Do not force the output toward casual or formal phrasing unless the source supports it.
+  - If context is ambiguous, prefer the least risky natural rendering that preserves fidelity.
+
+### `NATURAL_CASUAL`
+
+- `name`: `Natural / Casual`
+- `description`: `Conversational Vietnamese that feels natural and light while staying workplace-safe.`
+- `systemInstructions`:
+  - Prefer smooth, conversational Vietnamese over stiff business phrasing.
+  - Keep the tone friendly and natural, but still respectful enough for workplace chat.
+  - Avoid slang, memes, or over-familiar language that would feel unserious or socially risky.
+  - If the source is strongly formal, soften only within safe bounds and preserve intent.
+
+### `PROFESSIONAL_BUSINESS`
+
+- `name`: `Professional / Business`
+- `description`: `Modern professional Vietnamese for clear, polished business communication.`
+- `systemInstructions`:
+  - Prefer clear, polished, contemporary Vietnamese suitable for internal business communication.
+  - Keep the tone respectful and composed without becoming bureaucratic or archaic.
+  - Use concise wording that reads like a competent Vietnamese professional wrote it originally.
+  - This is the safest default when no stronger contextual signal is present.
+
+### `TECHNICAL`
+
+- `name`: `Technical`
+- `description`: `Precision-first Vietnamese for engineering and IT/business communication.`
+- `systemInstructions`:
+  - Prioritize technical precision and terminology consistency over expressive phrasing.
+  - Keep established IT and business terms in English when that is the natural workplace rendering.
+  - Prefer wording that makes actions, states, and constraints operationally clear.
+  - Avoid casual embellishment that could blur technical meaning or implementation detail.
+
 ## Testing
 
 ### `packages/core`
@@ -259,6 +317,8 @@ Description: Precision-first technical Vietnamese for engineering and IT/busines
 - structured prompt includes the active profile block
 - each preset produces the intended name/description/instruction set
 - fidelity-first wording remains present in the prompt policy
+- tests assert deterministic prompt construction, not model-generated prose
+- `AUTO_CONTEXT` is verified by its prompt contract and guardrails, not by brittle output snapshots
 
 ### `packages/translator/src/pipeline`
 
@@ -287,6 +347,8 @@ Operational surfacing:
 - `AUTO_CONTEXT` will naturally produce more output variation than the fixed presets
 - Stronger stylistic instructions can increase the risk of semantic drift if wording is not
   carefully guarded
+- preset quality depends on profile wording quality, so the profile registry must remain explicit
+  and reviewable rather than inferred ad hoc during implementation
 
 ## Acceptance Criteria
 
