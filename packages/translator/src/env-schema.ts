@@ -1,3 +1,4 @@
+import { DEFAULT_TRANSLATION_STYLE, TRANSLATION_STYLE_VALUES } from '@chatwork-bot/core'
 import { z } from 'zod'
 import { DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS } from '~/services/pipeline-timeout'
 
@@ -8,6 +9,7 @@ export const translatorEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
   AI_PROVIDER: z.string().min(1, 'AI_PROVIDER is required'),
   AI_MODEL: z.string().min(1).optional(),
+  AI_TRANSLATION_STYLE: z.enum(TRANSLATION_STYLE_VALUES).default(DEFAULT_TRANSLATION_STYLE),
   TRANSLATOR_PHASE_HEARTBEAT_MS: z.coerce.number().int().positive().default(30_000),
   TRANSLATOR_TRANSLATION_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(45_000),

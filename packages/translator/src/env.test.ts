@@ -40,4 +40,39 @@ describe('translator env', () => {
 
     expect(env.TRANSLATOR_PIPELINE_TIMEOUT_MS).toBe(45_000)
   })
+
+  it('defaults AI_TRANSLATION_STYLE to PROFESSIONAL_BUSINESS', async () => {
+    process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
+    process.env['AI_PROVIDER'] = 'openai'
+
+    const { parseTranslatorEnv } = await import('./env-schema')
+    const env = parseTranslatorEnv(process.env)
+
+    expect(env.AI_TRANSLATION_STYLE).toBe('PROFESSIONAL_BUSINESS')
+  })
+
+  it('accepts a valid AI_TRANSLATION_STYLE override', async () => {
+    process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
+    process.env['AI_PROVIDER'] = 'openai'
+    process.env['AI_TRANSLATION_STYLE'] = 'TECHNICAL'
+
+    const { parseTranslatorEnv } = await import('./env-schema')
+    const env = parseTranslatorEnv(process.env)
+
+    expect(env.AI_TRANSLATION_STYLE).toBe('TECHNICAL')
+  })
+
+  it('rejects invalid AI_TRANSLATION_STYLE values at schema level', async () => {
+    const { translatorEnvSchema } = await import('./env-schema')
+    const result = translatorEnvSchema.safeParse({
+      CHATWORK_API_TOKEN: 'token',
+      CHATWORK_DESTINATION_ROOM_ID: '123',
+      AI_PROVIDER: 'openai',
+      AI_TRANSLATION_STYLE: 'whatever',
+    })
+
+    expect(result.success).toBe(false)
+  })
 })
