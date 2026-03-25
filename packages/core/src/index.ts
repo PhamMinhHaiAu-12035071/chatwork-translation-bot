@@ -7,6 +7,12 @@ export { TranslationIngressCommandSchema } from './types/translation-ingress'
 
 export type { AIProvider } from './types/ai'
 export { toAIProvider } from './types/ai'
+export type { TranslationStyle } from './types/translation-style'
+export {
+  DEFAULT_TRANSLATION_STYLE,
+  isTranslationStyle,
+  TRANSLATION_STYLE_VALUES,
+} from './types/translation-style'
 
 // Interfaces
 export type {
