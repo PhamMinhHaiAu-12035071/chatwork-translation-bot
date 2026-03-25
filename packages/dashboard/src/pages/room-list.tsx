@@ -19,13 +19,13 @@ export function RoomListPage() {
         <>
           <button
             type="button"
-            className="brutal-button theme-button-accent px-5 py-3 font-heading text-sm font-bold"
+            className="brutal-button theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white"
           >
             Create Preview
           </button>
           <button
             type="button"
-            className="brutal-button theme-button-warm px-5 py-3 font-heading text-sm font-bold"
+            className="brutal-button theme-button-warm px-5 py-3 font-heading text-sm font-bold text-white"
           >
             Open Guide
           </button>
@@ -36,6 +36,7 @@ export function RoomListPage() {
         {previewStats.map((item, index) => (
           <BrutalCard
             key={item.label}
+            tilt={index === 0 ? 'left' : index === 2 ? 'right' : 'flat'}
             className={[
               'space-y-3',
               index === 0
@@ -61,18 +62,47 @@ export function RoomListPage() {
               destination room naming, and translation preferences here.
             </p>
           </div>
-          <div className="dashed-panel grid min-h-56 place-items-center p-6 text-center">
-            <div className="space-y-3">
-              <div className="font-heading text-6xl leading-none">+</div>
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">
-                Decorative empty-state illustration only for Phase 2.
+          <div className="dashed-panel space-y-4 p-5">
+            <div className="space-y-1 text-left">
+              <div className="font-heading text-xl font-bold">Future room previews</div>
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                Color blocks stay light, cute, and readable even when the dashboard becomes
+                operational.
               </p>
+            </div>
+
+            <div className="room-stack">
+              <div className="room-card theme-card-lilac">
+                <div>
+                  <div className="room-title">Sakura Desk</div>
+                  <div className="room-meta">Operations handoff</div>
+                </div>
+                <div className="room-status theme-button-sky text-[var(--border)]">Live</div>
+              </div>
+
+              <div className="room-card theme-card-matcha">
+                <div>
+                  <div className="room-title">Gamma Team</div>
+                  <div className="room-meta">Technical setup</div>
+                </div>
+                <div className="room-status theme-button-gold text-[var(--border)]">Setup</div>
+              </div>
+
+              <div className="room-card theme-card-cream">
+                <div>
+                  <div className="room-title">Customer Care</div>
+                  <div className="room-meta">Pilot translation flow</div>
+                </div>
+                <div className="room-status theme-button-pink text-[#fff7ed]">Pilot</div>
+              </div>
             </div>
           </div>
         </BrutalCard>
 
-        <BrutalCard className="theme-card-blush space-y-4">
-          <StickerLabel tone="success">Operator Note</StickerLabel>
+        <BrutalCard className="theme-card-cream space-y-4" tilt="right">
+          <StickerLabel tone="success" tilt="right">
+            Operator Note
+          </StickerLabel>
           <p className="text-sm leading-7 text-[var(--text-secondary)]">
             Manual webhook setup remains part of the user journey, so the dashboard keeps a strong
             guidance surface instead of hiding that operator work.

@@ -16,7 +16,7 @@ export function RoomDetailPage() {
       actions={<StatusPill tone="warning">Draft Only</StatusPill>}
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <BrutalCard className="theme-card-sky space-y-4">
+        <BrutalCard className="theme-card-sky space-y-4" tilt="left">
           <div className="flex flex-wrap items-center gap-3">
             <StickerLabel tone="accent">Room ID</StickerLabel>
             <code className="rounded-full border-[3px] border-[var(--border)] bg-white px-4 py-2 text-sm shadow-[3px_3px_0_var(--border)]">
@@ -35,8 +35,10 @@ export function RoomDetailPage() {
           />
         </BrutalCard>
 
-        <BrutalCard className="theme-card-blush space-y-4">
-          <StickerLabel tone="warning">Create - Activate</StickerLabel>
+        <BrutalCard className="theme-card-peach space-y-4" tilt="right">
+          <StickerLabel tone="warning" tilt="right">
+            Create - Activate
+          </StickerLabel>
           <p className="text-sm leading-7 text-[var(--text-secondary)]">
             The room stays disabled until the operator pastes the Chatwork webhook token back into
             the dashboard.

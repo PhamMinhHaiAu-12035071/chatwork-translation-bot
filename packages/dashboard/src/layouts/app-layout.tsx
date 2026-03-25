@@ -9,7 +9,7 @@ const navItems = [
     to: '/',
     label: 'Dashboard',
     blurb: 'overview + empty state',
-    surfaceClassName: 'theme-card-lilac',
+    surfaceClassName: 'theme-card-matcha',
   },
   {
     to: '/rooms/new',
@@ -21,7 +21,7 @@ const navItems = [
     to: '/guide',
     label: 'Webhook Guide',
     blurb: 'manual setup steps',
-    surfaceClassName: 'theme-card-mint',
+    surfaceClassName: 'theme-card-sky',
   },
 ] as const
 
@@ -35,7 +35,9 @@ export function AppLayout() {
       <div className="relative mx-auto grid min-h-[calc(100vh-2rem)] max-w-7xl gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
           <BrutalCard className="theme-card-lilac space-y-4">
-            <StickerLabel tone="accent">Elegant Brutal</StickerLabel>
+            <StickerLabel tone="accent" tilt="flat">
+              Multi-Room Setup
+            </StickerLabel>
             <div className="space-y-3">
               <h1 className="font-heading text-3xl font-extrabold">Translation Bot</h1>
               <p className="text-sm leading-7 text-[var(--text-secondary)]">
@@ -44,13 +46,15 @@ export function AppLayout() {
             </div>
           </BrutalCard>
 
-          <nav className="space-y-3">
+          <nav className="space-y-5">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to}>
+              <NavLink key={item.to} to={item.to} className="block">
                 {({ isActive }) => (
                   <motion.div
+                    animate={{ x: isActive ? -2 : 0, y: isActive ? -2 : 0 }}
                     whileHover={{ x: -2, y: -2 }}
                     whileTap={{ x: 2, y: 2 }}
+                    transition={{ duration: 0.16, ease: 'easeOut' }}
                     className={[
                       'brutal-surface p-4 transition-colors',
                       item.surfaceClassName,
@@ -73,7 +77,7 @@ export function AppLayout() {
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="relative"
         >
-          <div className="brutal-surface relative min-h-full overflow-hidden p-6 md:p-8">
+          <div className="brutal-surface theme-card-cream relative min-h-full overflow-hidden p-6 md:p-8">
             <Outlet />
           </div>
         </motion.main>

@@ -34,17 +34,29 @@ export function WebhookGuidePage() {
         {steps.map(([index, title, body]) => (
           <BrutalCard
             key={index}
+            tilt={
+              index === '01' || index === '04'
+                ? 'left'
+                : index === '02' || index === '05'
+                  ? 'right'
+                  : index === '03'
+                    ? 'flat'
+                    : 'right'
+            }
             className={[
               'space-y-4',
               index === '01' || index === '04'
-                ? 'theme-card-lilac'
+                ? 'theme-card-matcha'
                 : index === '02' || index === '05'
-                  ? 'theme-card-blush'
-                  : 'theme-card-sky',
+                  ? 'theme-card-cream'
+                  : index === '03'
+                    ? 'theme-card-sky'
+                    : 'theme-card-blush',
             ].join(' ')}
           >
             <StickerLabel
               tone={index === '06' ? 'accent' : 'warning'}
+              tilt={index === '02' || index === '05' || index === '06' ? 'right' : 'left'}
             >{`Step ${index}`}</StickerLabel>
             <div className="space-y-2">
               <h2 className="font-heading text-2xl font-bold">{title}</h2>
