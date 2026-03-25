@@ -15,23 +15,7 @@ export interface MessageDecorationSnapshot {
   renderTemplate: MessageRenderNode[]
 
   // Metadata hints extracted from source-dependent tags
-  metadata: {
-    toAccountIds: number[]
-    ccAccountIds: number[]
-    replyToData:
-      | {
-          replyAccountId: number
-          replyMessageId: string
-          replyRoomId: number
-        }
-      | undefined
-    quoteMetadata:
-      | {
-          quoteSenderAccountId: number
-          quoteTimestamp: number
-        }
-      | undefined
-  }
+  metadata: MessageDecorationContext
 }
 
 export type MessageRenderNode =
@@ -41,10 +25,27 @@ export type MessageRenderNode =
   | { type: 'code'; content: string }
   | { type: 'info'; children: MessageRenderNode[] }
   | { type: 'title'; children: MessageRenderNode[] }
-  | { type: 'quote'; children: MessageRenderNode[] }
-  | { type: 'qt'; children: MessageRenderNode[]; quoteMeta: QuoteMeta | undefined }
+  | { type: 'quote'; children: MessageRenderNode[]; context: MessageDecorationContext }
+  | {
+      type: 'qt'
+      children: MessageRenderNode[]
+      quoteMeta: QuoteMeta
+      context: MessageDecorationContext
+    }
 
 export interface QuoteMeta {
-  senderAccountId: number | undefined
-  timestamp: number | undefined
+  senderAccountId?: number
+  timestamp?: number
+}
+
+export interface ReplyToData {
+  replyAccountId: number
+  replyMessageId: string
+  replyRoomId: number
+}
+
+export interface MessageDecorationContext {
+  toAccountIds: number[]
+  ccAccountIds: number[]
+  replyToData: ReplyToData | undefined
 }

@@ -48,9 +48,7 @@ Edit `.env` with your credentials:
 | `PORT`                              | No       | `3000`        | HTTP server port                                      |
 | `NODE_ENV`                          | No       | `development` | `development` \| `production` \| `test`               |
 | `TRANSLATOR_PHASE_HEARTBEAT_MS`     | No       | `30000`       | Heartbeat interval after a phase crosses budget       |
-| `TRANSLATOR_ANALYSIS_BUDGET_MS`     | No       | `60000`       | Soft observability budget for analysis phase          |
 | `TRANSLATOR_TRANSLATION_BUDGET_MS`  | No       | `60000`       | Soft observability budget for translation phase       |
-| `TRANSLATOR_REVIEW_BUDGET_MS`       | No       | `60000`       | Soft observability budget for each review round       |
 | `TRANSLATOR_DELIVERY_BUDGET_MS`     | No       | `15000`       | Soft observability budget for Chatwork delivery       |
 | `TRANSLATOR_ACK_CALLBACK_BUDGET_MS` | No       | `10000`       | Soft observability budget for dataset ACK callback    |
 | `TRANSLATOR_STATUS_HISTORY_LIMIT`   | No       | `20`          | Number of finished requests kept in `/status`         |

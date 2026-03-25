@@ -1,6 +1,13 @@
 services:
   translator:
     image: oven/bun:1.3-alpine
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    # Disable IPv6 — AAAA lookups for Cloudflare-fronted APIs (OpenAI, etc.)
+    # time out inside Docker Desktop on macOS, causing Bun fetch to fail.
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     command:
       - sh
       - -c
@@ -41,6 +48,11 @@ services:
 
   webhook-logger:
     image: oven/bun:1.3-alpine
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     command:
       - sh
       - -c
@@ -79,6 +91,11 @@ services:
   dataset-runner:
     profiles: ['dataset']
     image: oven/bun:1.3-alpine
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     command:
       - sh
       - -c
@@ -112,45 +129,161 @@ services:
       retries: 3
       start_period: 180s
 
-  # zrok reserved public share — stable HTTPS URL for Chatwork webhook
+  # zrok reserved public share — stable HTTPS URL for Chatwork webhook when available
+  # If the share cannot be attached, keep local dev running without a public tunnel.
   # One-time setup: see docs/operations/zrok.md
   # Pin to a specific version for reproducibility — check https://hub.docker.com/r/openziti/zrok/tags
   zrok:
-    image: openziti/zrok:2.0.0-rc4
+    image: openziti/zrok:1.1.11
+    # Run as root so the entrypoint can write to /etc/hosts
+    # (workaround for Go DNS resolver hang in Docker Desktop on macOS).
+    user: '0:0'
     networks: [chatwork-net]
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       # Bind mount so host user owns the dir — named volumes create root-owned dirs
       - ./.docker/zrok:/home/ziggy/.zrok
     environment:
-      - ZROK_API_ENDPOINT=https://api-v2.zrok.io
       - ZROK_ENABLE_TOKEN=${ZROK_ENABLE_TOKEN}
       - ZROK_UNIQUE_NAME=${ZROK_UNIQUE_NAME}
+      # Keep zrok config at /home/ziggy/.zrok even when running as root
+      - HOME=/home/ziggy
     entrypoint:
       - /bin/sh
       - -c
       - |
-        [ -f /home/ziggy/.zrok/environment.json ] || zrok enable ${ZROK_ENABLE_TOKEN} --headless
-        # Best-effort cleanup for stale share state from previous runs.
-        existing_share_token=$$(zrok list names --namespace-token public --json 2>/dev/null | \
-          grep -A 8 "\"name\": \"${ZROK_UNIQUE_NAME}\"" | \
-          sed -n 's/.*"shareToken": "\(.*\)".*/\1/p' | \
-          head -n 1)
-        if [ -n "$$existing_share_token" ]; then
-          echo "[zrok] unsharing stale token: $$existing_share_token"
-          zrok unshare "$$existing_share_token" >/dev/null 2>&1 || true
+        ready_file=/tmp/zrok-share-ready
+        share_fifo=/tmp/zrok-share.fifo
+        reserved_file=/home/ziggy/.zrok/reserved.json
+        rm -f "$$ready_file" "$$share_fifo"
+        last_share_error_line=
+        [ -f /home/ziggy/.zrok/environment.json ] || zrok enable "${ZROK_ENABLE_TOKEN}" --headless
+        # Pre-resolve OpenZiti controller hostname to /etc/hosts.
+        # Go's built-in DNS resolver can hang inside Docker Desktop on macOS;
+        # pinning the IP here avoids the timeout on `zrok share reserved`.
+        _zt_identity=/home/ziggy/.zrok/identities/environment.json
+        if [ -f "$$_zt_identity" ]; then
+          _zt_host=$$(sed -n 's/.*"ztAPI":"https:\/\/\([^:/]*\).*/\1/p' "$$_zt_identity")
+          if [ -n "$$_zt_host" ]; then
+            _zt_ip=$$(getent hosts "$$_zt_host" 2>/dev/null | awk '{print $$1}')
+            if [ -n "$$_zt_ip" ]; then
+              printf '%s %s\n' "$$_zt_ip" "$$_zt_host" >> /etc/hosts
+              echo "[zrok] pre-resolved $$_zt_host -> $$_zt_ip"
+            fi
+          fi
         fi
-        zrok share public http://webhook-logger:3001 --headless -n public:${ZROK_UNIQUE_NAME} 2>&1 | while IFS= read -r line; do
-          echo "$$line"
-          url=$$(echo "$$line" | grep -o '[a-zA-Z0-9-]*\.shares\.zrok\.io' 2>/dev/null)
-          if [ -n "$$url" ]; then
-            echo ""
-            echo "============================================="
-            echo " WEBHOOK URL : https://$${url}"
-            echo " -> Chatwork : Webhook settings -> URL"
-            echo "============================================="
+        # zrok v1 reserved shares require an alphanumeric unique name and a share token.
+        normalized_unique_name=$$(printf '%s' "${ZROK_UNIQUE_NAME}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+        if [ "$$normalized_unique_name" != "${ZROK_UNIQUE_NAME}" ]; then
+          echo "[zrok] normalized unique name: ${ZROK_UNIQUE_NAME} -> $$normalized_unique_name"
+        fi
+        if [ $${#normalized_unique_name} -gt 32 ]; then
+          truncated_unique_name=$$(printf '%s' "$$normalized_unique_name" | cut -c1-32)
+          echo "[zrok] truncated unique name to v1 limit: $$normalized_unique_name -> $$truncated_unique_name"
+          normalized_unique_name="$$truncated_unique_name"
+        fi
+        if [ -z "$$normalized_unique_name" ] || [ $${#normalized_unique_name} -lt 4 ]; then
+          last_share_error_line='[ERROR]: normalized zrok unique name is too short; set ZROK_UNIQUE_NAME to at least 4 alphanumeric characters'
+          share_status=1
+        else
+          extract_share_token() {
+            sed -n 's/.*"token":"\([^"]*\)".*/\1/p' "$$1" | head -n 1
+          }
+          reserve_share() {
+            reserve_output=$$(zrok reserve public http://webhook-logger:3001 --unique-name "$$normalized_unique_name" --json-output 2>&1)
+            reserve_status=$$?
+            if [ $$reserve_status -eq 0 ]; then
+              printf '%s\n' "$$reserve_output" > "$$reserved_file"
+              share_token=$$(extract_share_token "$$reserved_file")
+              return 0
+            fi
+            if printf '%s\n' "$$reserve_output" | grep -q 'shareConflict'; then
+              # zrok v1 returns the unique name itself as the reserved share token for unique-name reservations.
+              printf '{"token":"%s"}\n' "$$normalized_unique_name" > "$$reserved_file"
+              share_token="$$normalized_unique_name"
+              return 0
+            fi
+            last_share_error_line="$$reserve_output"
+            return 1
+          }
+          stream_reserved_share() {
+            rm -f "$$share_fifo"
+            mkfifo "$$share_fifo"
+            echo "[zrok] starting reserved share bridge for $$normalized_unique_name"
+            zrok share reserved "$$share_token" --headless >"$$share_fifo" 2>&1 &
+            share_pid=$$!
+            last_share_error_line=
+            while IFS= read -r line; do
+              case "$$line" in
+                *"[ERROR]:"*)
+                  last_share_error_line="$$line"
+                  continue
+                  ;;
+              esac
+              echo "$$line"
+              url=$$(echo "$$line" | grep -o 'https://[a-zA-Z0-9-]*\.share[s]*\.zrok\.io' 2>/dev/null)
+              if [ -n "$$url" ]; then
+                touch "$$ready_file"
+                echo ""
+                echo "============================================="
+                echo " WEBHOOK URL : $$url"
+                echo " -> Chatwork : Webhook settings -> URL"
+                echo "============================================="
+                echo ""
+              fi
+            done <"$$share_fifo"
+            wait "$$share_pid"
+            share_status=$$?
+            rm -f "$$share_fifo"
+            return $$share_status
+          }
+          share_token=
+          if [ -f "$$reserved_file" ]; then
+            share_token=$$(extract_share_token "$$reserved_file")
+          fi
+          if [ -z "$$share_token" ]; then
+            echo "[zrok] ensuring reserved share exists: $$normalized_unique_name"
+            if ! reserve_share; then
+              share_status=1
+            fi
+          fi
+          if [ -n "$$share_token" ]; then
+            stream_reserved_share
+            share_status=$$?
+            if [ $$share_status -ne 0 ] && [ -n "$$last_share_error_line" ] && printf '%s\n' "$$last_share_error_line" | grep -q 'getShareDetailNotFound'; then
+              echo "[zrok] reserved share token is stale, recreating reservation for $$normalized_unique_name"
+              rm -f "$$reserved_file"
+              share_token=
+              echo "[zrok] ensuring reserved share exists: $$normalized_unique_name"
+              if reserve_share; then
+                stream_reserved_share
+                share_status=$$?
+              else
+                share_status=1
+              fi
+            fi
+          fi
+        fi
+        echo ""
+        echo "============================================="
+        if [ -f "$$ready_file" ]; then
+          echo " ZROK TUNNEL OFFLINE"
+          echo " local dev will continue without a public tunnel."
+          echo " Fix the zrok share issue, then restart the stack when needed."
+        else
+          if [ -n "$$last_share_error_line" ]; then
+            echo "$$last_share_error_line"
             echo ""
           fi
-        done
+          echo " ZROK SHARE FAILED"
+          echo " local dev will continue without a public tunnel."
+          echo " zrok share reserved exited with status $$share_status."
+        fi
+        echo "============================================="
+        echo ""
+        tail -f /dev/null
     depends_on:
       webhook-logger:
         condition: service_healthy

@@ -26,7 +26,7 @@ ZROK_UNIQUE_NAME=chatwork-webhook   # or any lowercase name you prefer
 sh scripts/dev.sh up
 ```
 
-The zrok container runs `zrok enable` automatically on first start and saves the environment to `.docker/zrok/`.
+The zrok container runs `zrok enable --headless` automatically on first start and saves the environment to `.docker/zrok/`.
 
 ### 3. Reserve your unique name (run once)
 
@@ -34,18 +34,19 @@ After the stack is up, open a second terminal and run:
 
 ```bash
 docker exec chatwork-translation-bot-zrok-1 \
-  zrok create name ${ZROK_UNIQUE_NAME}
+  zrok reserve public http://webhook-logger:3001 \
+    --unique-name ${ZROK_UNIQUE_NAME}
 ```
 
 Or with the CLI directly (if installed):
 
 ```bash
-ZROK_API_ENDPOINT=https://api-v2.zrok.io zrok create name chatwork-webhook
+zrok reserve public http://localhost:3001 --unique-name chatwork-webhook
 ```
 
-This reserves `chatwork-webhook.shares.zrok.io` permanently — it won't be taken by anyone else.
+This reserves `https://chatwork-webhook.share.zrok.io` permanently for the account.
 
-### 4. Restart zrok to use the reserved name
+### 4. Restart zrok to use the reserved share
 
 ```bash
 sh scripts/dev.sh down && sh scripts/dev.sh up
@@ -55,7 +56,7 @@ The log will show:
 
 ```
 =============================================
- WEBHOOK URL : https://chatwork-webhook.shares.zrok.io
+ WEBHOOK URL : https://chatwork-webhook.share.zrok.io
  -> Chatwork : Webhook settings -> URL
 =============================================
 ```
@@ -65,7 +66,7 @@ The log will show:
 In your Chatwork webhook settings, set the webhook URL to:
 
 ```
-https://chatwork-webhook.shares.zrok.io/webhook
+https://chatwork-webhook.share.zrok.io/webhook
 ```
 
 This URL is now **permanent** — no need to update it after restarts.
@@ -78,7 +79,7 @@ This URL is now **permanent** — no need to update it after restarts.
 sh scripts/dev.sh up
 ```
 
-That's it. zrok starts automatically, attaches to the reserved name, and the URL stays the same.
+That's it. zrok starts automatically, attaches to the reserved share, and the URL stays the same.
 
 ---
 
@@ -87,20 +88,32 @@ That's it. zrok starts automatically, attaches to the reserved name, and the URL
 **zrok container exits immediately:**
 Check `docker compose -f docker-compose.dev.yml logs zrok` — likely `ZROK_ENABLE_TOKEN` or `ZROK_UNIQUE_NAME` is missing or invalid.
 
-**`shareConflict` (409) with `name ... already in use`:**
-`docker-compose.dev.yml` now runs `zrok unshare` before opening a new share, so stale share state from previous local runs is auto-cleaned.
-If conflict still appears, the same reserved name is likely active in another environment/machine. Stop that session or change `ZROK_UNIQUE_NAME`.
+**`enableUnauthorized` (401) on `zrok enable`:**
+For the hosted free plan, this usually means the account already has the maximum number of enabled environments.
+Delete an old environment from the zrok web console, then rerun `sh scripts/dev.sh up`.
 
-**URL still random after reserving name:**
-Make sure you ran `zrok create name <name>` with the same name as `ZROK_UNIQUE_NAME` in `.env`.
+**URL still random after reserving the share:**
+Make sure you ran `zrok reserve public ... --unique-name <name>` with the same name as `ZROK_UNIQUE_NAME` in `.env`.
 
-**Environment already exists / 401 error:**
-The enable token is one-time use. If it failed mid-run, go to `api-v2.zrok.io` → Environments, delete the orphaned environment, generate a new token, update `.env`.
-
-**Reset local environment:**
+**Environment already exists / stale local state:**
+Reset the local environment and let the container re-enable:
 
 ```bash
 rm -rf .docker/zrok/
-# Update ZROK_ENABLE_TOKEN in .env with a fresh token
 sh scripts/dev.sh up
 ```
+
+**`context deadline exceeded` on `zrok share reserved` (macOS Docker Desktop):**
+Go's built-in DNS resolver can hang when resolving the OpenZiti controller hostname
+inside Docker Desktop on macOS. The entrypoint script pre-resolves the hostname to
+`/etc/hosts` as a workaround. If the issue reappears after an infrastructure change,
+reset and re-enable:
+
+```bash
+rm -rf .docker/zrok/
+sh scripts/dev.sh up
+```
+
+**Hosted service endpoint mismatch:**
+`openziti/zrok:1.1.11` talks to `https://api-v1.zrok.io` by default.
+If your token belongs to another hosted instance, point the CLI at the matching endpoint before enabling.

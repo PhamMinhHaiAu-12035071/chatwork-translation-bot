@@ -1,4 +1,5 @@
 import type {
+  MessageDecorationContext,
   MessageDecorationSnapshot,
   MessageRenderNode,
   QuoteMeta,
@@ -15,33 +16,40 @@ type TagAttributes =
   | { type: 'qtmeta'; accountId: number | undefined; timestamp: number | undefined }
   | { type: 'other' }
 
+function createDecorationContext(): MessageDecorationContext {
+  return {
+    toAccountIds: [],
+    ccAccountIds: [],
+    replyToData: undefined,
+  }
+}
+
+function normalizeQuoteMeta(attributes: {
+  accountId: number | undefined
+  timestamp: number | undefined
+}): QuoteMeta | undefined {
+  if (attributes.accountId === undefined && attributes.timestamp === undefined) {
+    return undefined
+  }
+
+  return {
+    ...(attributes.accountId !== undefined ? { senderAccountId: attributes.accountId } : {}),
+    ...(attributes.timestamp !== undefined ? { timestamp: attributes.timestamp } : {}),
+  }
+}
+
 export function parseMessageDecoration(body: string): MessageDecorationSnapshot {
   if (!body.trim()) {
     return {
       translationInputs: [],
       translatableText: '',
       renderTemplate: [],
-      metadata: {
-        toAccountIds: [],
-        ccAccountIds: [],
-        replyToData: undefined,
-        quoteMetadata: undefined,
-      },
+      metadata: createDecorationContext(),
     }
   }
 
   const inputs: string[] = []
-  const metadata: {
-    toAccountIds: number[]
-    ccAccountIds: number[]
-    replyToData: { replyAccountId: number; replyRoomId: number; replyMessageId: string } | undefined
-    quoteMetadata: { quoteSenderAccountId: number; quoteTimestamp: number } | undefined
-  } = {
-    toAccountIds: [],
-    ccAccountIds: [],
-    replyToData: undefined,
-    quoteMetadata: undefined,
-  }
+  const metadata = createDecorationContext()
 
   let pos = 0
 
@@ -81,7 +89,7 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
       const m = /^cc:(\d+)$/i.exec(tagContent)
       if (m) attributes = { type: 'cc', accountId: Number(m[1]) }
     } else if (tagName === 'rp') {
-      const m = /aid=(\d+)\s+to=(\d+):([^\s\]]+)/i.exec(tagContent)
+      const m = /aid=(\d+)\s+to=(\d+)(?:[:\-])([^\s\]]+)/i.exec(tagContent)
       if (m?.[3]) {
         attributes = {
           type: 'rp',
@@ -91,7 +99,7 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
         }
       }
     } else if (tagName === 'qtmeta') {
-      const accountMatch = /account_id="?(\d+)"?/i.exec(attrPart)
+      const accountMatch = /(?:account_id|aid)="?(\d+)"?/i.exec(attrPart)
       const timeMatch = /time="?(\d+)"?/i.exec(attrPart)
       attributes = {
         type: 'qtmeta',
@@ -103,7 +111,11 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
     return { name: tagName, isClosing: false, attributes }
   }
 
-  function parseBody(untilTag: string | null = null): MessageRenderNode[] {
+  function parseBody(
+    context: MessageDecorationContext,
+    untilTag: string | null = null,
+    quoteScope?: { quoteMeta: QuoteMeta | undefined },
+  ): MessageRenderNode[] {
     const nodes: MessageRenderNode[] = []
 
     while (pos < body.length) {
@@ -145,58 +157,71 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
             }
           }
           nodes.push({ type: 'code', content: codeContent })
-        } else if (['info', 'title', 'quote', 'qt'].includes(tag.name)) {
-          const children = parseBody(tag.name)
-          if (tag.name === 'qt') {
-            let quoteMeta: QuoteMeta | undefined
-            if (
-              tag.attributes.type === 'qtmeta' &&
-              (tag.attributes.accountId || tag.attributes.timestamp)
-            ) {
-              quoteMeta = {
-                senderAccountId: tag.attributes.accountId,
-                timestamp: tag.attributes.timestamp,
-              }
+        } else if (tag.name === 'info' || tag.name === 'title') {
+          const children = parseBody(context, tag.name)
+          nodes.push({
+            type: tag.name,
+            children,
+          })
+        } else if (tag.name === 'qtmeta') {
+          if (quoteScope && tag.attributes.type === 'qtmeta') {
+            quoteScope.quoteMeta = normalizeQuoteMeta(tag.attributes)
+          }
+          // Real Chatwork does not always send [/qtmeta]. Only consume to
+          // the closing tag when it appears before the parent scope's closer.
+          const closingQtmeta = body.indexOf('[/qtmeta]', pos)
+          if (closingQtmeta !== -1) {
+            const parentCloser = untilTag ? body.indexOf(`[/${untilTag}]`, pos) : -1
+            if (parentCloser === -1 || closingQtmeta < parentCloser) {
+              pos = closingQtmeta + '[/qtmeta]'.length
             }
+          }
+        } else if (tag.name === 'quote') {
+          const quoteContext = createDecorationContext()
+          const children = parseBody(quoteContext, tag.name)
+          nodes.push({
+            type: 'quote',
+            children,
+            context: quoteContext,
+          })
+        } else if (tag.name === 'qt') {
+          const quoteContext = createDecorationContext()
+          const nestedQuoteScope: { quoteMeta: QuoteMeta | undefined } = {
+            quoteMeta: undefined,
+          }
+          const children = parseBody(quoteContext, tag.name, nestedQuoteScope)
+          if (nestedQuoteScope.quoteMeta === undefined) {
             nodes.push({
-              type: 'qt',
+              type: 'quote',
               children,
-              quoteMeta,
+              context: quoteContext,
             })
           } else {
             nodes.push({
-              type: tag.name as 'info' | 'title' | 'quote',
+              type: 'qt',
               children,
+              quoteMeta: nestedQuoteScope.quoteMeta,
+              context: quoteContext,
             })
           }
-        } else if (tag.name === 'qtmeta') {
-          if (tag.attributes.type === 'qtmeta') {
-            if (tag.attributes.accountId || tag.attributes.timestamp) {
-              metadata.quoteMetadata = {
-                quoteSenderAccountId: tag.attributes.accountId ?? 0,
-                quoteTimestamp: tag.attributes.timestamp ?? 0,
-              }
-            }
-          }
-          parseBody('qtmeta')
         } else if (tag.name === 'to') {
           if (tag.attributes.type === 'to') {
-            metadata.toAccountIds.push(tag.attributes.accountId)
+            context.toAccountIds.push(tag.attributes.accountId)
           }
         } else if (tag.name === 'cc') {
           if (tag.attributes.type === 'cc') {
-            metadata.ccAccountIds.push(tag.attributes.accountId)
+            context.ccAccountIds.push(tag.attributes.accountId)
           }
         } else if (tag.name === 'rp') {
           if (tag.attributes.type === 'rp') {
-            metadata.replyToData = {
+            context.replyToData = {
               replyAccountId: tag.attributes.aid,
               replyRoomId: tag.attributes.toRoom,
               replyMessageId: tag.attributes.toMessage,
             }
           }
         } else {
-          const children = parseBody(tag.name)
+          const children = parseBody(context, tag.name)
           nodes.push(...children)
         }
       } else {
@@ -214,7 +239,7 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
     return nodes
   }
 
-  const renderTemplate = parseBody()
+  const renderTemplate = parseBody(metadata)
 
   function extractInputs(nodes: MessageRenderNode[]): void {
     for (const node of nodes) {
@@ -242,11 +267,6 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
     translationInputs: inputs,
     translatableText,
     renderTemplate,
-    metadata: {
-      toAccountIds: metadata.toAccountIds,
-      ccAccountIds: metadata.ccAccountIds,
-      replyToData: metadata.replyToData,
-      quoteMetadata: metadata.quoteMetadata,
-    },
+    metadata,
   }
 }

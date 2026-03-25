@@ -96,16 +96,14 @@ describe('composeTranslatedMessagePair', () => {
     expect(result.metadataMessage).toContain(formatUtc(updateTime))
     expect(result.metadataMessage).toContain('Bob')
     expect(result.metadataMessage).toContain('Carol')
-    expect(result.metadataMessage).toContain('Dana')
-    expect(result.metadataMessage).toContain(formatUtc(quoteTime))
+    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(quoteTime)}`)
 
     expect(result.bodyMessage).toContain('Vui long xem')
     expect(result.bodyMessage).toContain(
-      `[qt]── Dana | ${formatUtc(quoteTime)} ──\nNoi dung da trich[/qt]`,
+      `[qt][qtmeta aid=400 time=${quoteTime.toString()}]Noi dung da trich[/qt]`,
     )
     expect(result.bodyMessage).not.toContain('[To:200]')
     expect(result.bodyMessage).not.toContain('[cc:300]')
-    expect(result.bodyMessage).not.toContain('[qtmeta')
   })
 
   it('preserves portable wrappers and keeps code content byte-for-byte identical', async () => {
@@ -138,7 +136,7 @@ describe('composeTranslatedMessagePair', () => {
     expect(result.bodyMessage).toBe('[quote]Noi dung da trich[/quote]')
   })
 
-  it('omits the qt header line entirely when neither sender nor time is recoverable', async () => {
+  it('downgrades qt without recoverable metadata to a [quote] wrapper', async () => {
     const command = makeCommand('[qt]quoted content[/qt]')
 
     const result = await composeTranslatedMessagePair(command, {
@@ -148,7 +146,93 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.bodyMessage).toBe('[qt]Noi dung da trich[/qt]')
+    expect(result.bodyMessage).toBe('[quote]Noi dung da trich[/quote]')
+  })
+
+  it('renders nested qt recursively and reports quote chain metadata outer to inner', async () => {
+    const outerTime = 1711267800
+    const innerTime = 1711267000
+    const command = makeCommand(
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}]quoted body[/qt][/qt]`,
+    )
+
+    const result = await composeTranslatedMessagePair(command, {
+      translatedSegments: ['Noi dung da trich'],
+      apiToken: 'test-token',
+      memberCache: new Map([
+        [100, 'Alice'],
+        [400, 'Dana'],
+        [500, 'Erin'],
+      ]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(outerTime)}`)
+    expect(result.metadataMessage).toContain(`Quote 2: Erin | ${formatUtc(innerTime)}`)
+    expect(result.bodyMessage).toBe(
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}]Noi dung da trich[/qt][/qt]`,
+    )
+  })
+
+  it('downgrades only the malformed nested qt node while preserving the valid outer quote', async () => {
+    const outerTime = 1711267800
+    const command = makeCommand(
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt]quoted body[/qt][/qt]`,
+    )
+
+    const result = await composeTranslatedMessagePair(command, {
+      translatedSegments: ['Noi dung da trich'],
+      apiToken: 'test-token',
+      memberCache: new Map([
+        [100, 'Alice'],
+        [400, 'Dana'],
+      ]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(outerTime)}`)
+    expect(result.metadataMessage).not.toContain('Quote 2:')
+    expect(result.bodyMessage).toBe(
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][quote]Noi dung da trich[/quote][/qt]`,
+    )
+  })
+
+  it('includes node-local nested quote context in metadata and strips it from the body', async () => {
+    const outerTime = 1711267800
+    const innerTime = 1711267000
+    const command = makeCommand(
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}][To:600][cc:700][rp aid=800 to=999-123]quoted body[/qt][/qt]`,
+    )
+
+    const result = await composeTranslatedMessagePair(command, {
+      translatedSegments: ['Noi dung da trich'],
+      apiToken: 'test-token',
+      memberCache: new Map([
+        [100, 'Alice'],
+        [400, 'Dana'],
+        [500, 'Erin'],
+        [600, 'Gina'],
+        [700, 'Hank'],
+        [800, 'Ivy'],
+      ]),
+      roomCache: new Map([
+        [777, 'JP Project Demo'],
+        [999, 'Nested Room'],
+      ]),
+    })
+
+    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(outerTime)}`)
+    expect(result.metadataMessage).toContain(`Quote 2: Erin | ${formatUtc(innerTime)}`)
+    expect(result.metadataMessage).toContain('To: Gina')
+    expect(result.metadataMessage).toContain('Cc: Hank')
+    expect(result.metadataMessage).toContain('Reply to: Ivy')
+    expect(result.metadataMessage).toContain('Nested Room')
+    expect(result.bodyMessage).toBe(
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}]Noi dung da trich[/qt][/qt]`,
+    )
+    expect(result.bodyMessage).not.toContain('[To:600]')
+    expect(result.bodyMessage).not.toContain('[cc:700]')
+    expect(result.bodyMessage).not.toContain('[rp ')
   })
 
   it('uses fallback account and room names when lookups cannot resolve', async () => {

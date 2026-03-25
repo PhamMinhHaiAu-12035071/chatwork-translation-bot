@@ -144,35 +144,38 @@ exit 2
   writeExecutable(
     join(binDir, 'docker'),
     `#!/bin/sh
-if [ "$1" != "compose" ]; then
-  echo "unexpected docker args: $*" >&2
-  exit 2
-fi
+case "$1" in
+  compose)
+    shift
+    echo "docker:$*" >> "$TEST_EVENT_LOG"
 
-shift
-echo "docker:$*" >> "$TEST_EVENT_LOG"
+    case " $* " in
+      *" up "*)
+        if [ "$TEST_DOCKER_MODE" = "hang" ]; then
+          trap 'echo "docker:up-term" >> "$TEST_EVENT_LOG"; trap - TERM; kill -s TERM "$$"' TERM
+          trap 'echo "docker:up-int" >> "$TEST_EVENT_LOG"; trap - INT; kill -s INT "$$"' INT
 
-case " $* " in
-  *" up "*)
-    if [ "$TEST_DOCKER_MODE" = "hang" ]; then
-      trap 'echo "docker:up-term" >> "$TEST_EVENT_LOG"; trap - TERM; kill -s TERM "$$"' TERM
-      trap 'echo "docker:up-int" >> "$TEST_EVENT_LOG"; trap - INT; kill -s INT "$$"' INT
+          while :; do
+            sleep 1
+          done
+        fi
 
-      while :; do
-        sleep 1
-      done
-    fi
-
-    sleep 0.2
-    echo "docker:up-exit-0" >> "$TEST_EVENT_LOG"
-    exit 0
-    ;;
-  *" down "*)
-    echo "docker:down" >> "$TEST_EVENT_LOG"
-    exit 0
+        sleep 0.2
+        echo "docker:up-exit-0" >> "$TEST_EVENT_LOG"
+        exit 0
+        ;;
+      *" down "*)
+        echo "docker:down" >> "$TEST_EVENT_LOG"
+        exit 0
+        ;;
+      *)
+        echo "unexpected docker compose args: $*" >&2
+        exit 2
+        ;;
+    esac
     ;;
   *)
-    echo "unexpected docker compose args: $*" >&2
+    echo "unexpected docker args: $*" >&2
     exit 2
     ;;
 esac
@@ -377,5 +380,51 @@ describe('scripts/dev.sh orchestration', () => {
       const serviceBlock = getComposeServiceBlock(composeContent, serviceName)
       expect(serviceBlock).toContain('tty: true')
     }
+  })
+
+  it('keeps the zrok container alive after share exits so dev stays up without a tunnel', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const zrokBlock = getComposeServiceBlock(composeContent, 'zrok')
+
+    expect(zrokBlock).toContain('tail -f /dev/null')
+    expect(zrokBlock).toContain('local dev will continue without a public tunnel')
+  })
+
+  it('uses the stable zrok v1 image for the reserved-share dev tunnel', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const zrokBlock = getComposeServiceBlock(composeContent, 'zrok')
+
+    expect(zrokBlock).toContain('image: openziti/zrok:1.1.11')
+    expect(zrokBlock).toContain('dns:')
+    expect(zrokBlock).toContain('- 1.1.1.1')
+    expect(zrokBlock).toContain('- 8.8.8.8')
+    expect(zrokBlock).toContain('zrok enable "${ZROK_ENABLE_TOKEN}" --headless')
+  })
+
+  it('normalizes the zrok unique name, persists the reserved share token, and shares by token', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const zrokBlock = getComposeServiceBlock(composeContent, 'zrok')
+
+    expect(zrokBlock).toContain("tr '[:upper:]' '[:lower:]'")
+    expect(zrokBlock).toContain("tr -cd '[:alnum:]'")
+    expect(zrokBlock).toContain('reserved_file=/home/ziggy/.zrok/reserved.json')
+    expect(zrokBlock).toContain('zrok reserve public http://webhook-logger:3001 --unique-name')
+    expect(zrokBlock).toContain('--json-output 2>&1')
+    expect(zrokBlock).toContain('printf \'%s\\n\' "$$reserve_output" > "$$reserved_file"')
+    expect(zrokBlock).toContain('extract_share_token() {')
+    expect(zrokBlock).toContain('share_token=$$(extract_share_token "$$reserved_file")')
+    expect(zrokBlock).toContain('zrok share reserved "$$share_token" --headless')
+    expect(zrokBlock).not.toContain('zrok share reserved "${ZROK_UNIQUE_NAME}" --headless')
+    expect(zrokBlock).not.toContain('zrok reserve public http://webhook-logger:3001 --headless')
+  })
+
+  it('removes the v2-only retry and name-selection flow from the zrok container', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const zrokBlock = getComposeServiceBlock(composeContent, 'zrok')
+
+    expect(zrokBlock).not.toContain('zrok create name')
+    expect(zrokBlock).not.toContain('max_attempts=')
+    expect(zrokBlock).not.toContain('retrying in')
+    expect(zrokBlock).not.toContain('share public http://webhook-logger:3001 --headless -n public:')
   })
 })

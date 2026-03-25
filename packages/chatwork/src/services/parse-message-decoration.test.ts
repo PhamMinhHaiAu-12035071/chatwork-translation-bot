@@ -37,19 +37,129 @@ describe('parseMessageDecoration', () => {
     )
   })
 
-  it('translates quote body but extracts qtmeta', () => {
+  it('translates quote body but extracts qtmeta (with [/qtmeta] closing)', () => {
     const result = parseMessageDecoration(
       '[qt][qtmeta account_id="12345" time="1710000000"][/qtmeta]quoted body[/qt]',
     )
     expect(result.translationInputs).toContain('quoted body')
-    expect(result.metadata.quoteMetadata?.quoteSenderAccountId).toBe(12345)
-    expect(result.metadata.quoteMetadata?.quoteTimestamp).toBe(1710000000)
+    expect('quoteMetadata' in (result.metadata as unknown as Record<string, unknown>)).toBe(false)
 
     // qtmeta should NOT be in render template (raw qtmeta stripped)
     const hasRawQtmeta = result.renderTemplate.some(
       (n) => n.type === 'qt' && JSON.stringify(n).includes('qtmeta'),
     )
     expect(hasRawQtmeta).toBe(false)
+
+    const qtNode = result.renderTemplate.find((n) => n.type === 'qt') as unknown as
+      | {
+          quoteMeta?: { senderAccountId?: number; timestamp?: number }
+        }
+      | undefined
+    expect(qtNode?.quoteMeta).toEqual({
+      senderAccountId: 12345,
+      timestamp: 1710000000,
+    })
+  })
+
+  it('translates quote body when qtmeta has no closing tag (real Chatwork format)', () => {
+    const result = parseMessageDecoration(
+      '[qt][qtmeta aid=2271723 time=1773448368]quoted body text here[/qt]',
+    )
+    expect(result.translationInputs).toContain('quoted body text here')
+    expect('quoteMetadata' in (result.metadata as unknown as Record<string, unknown>)).toBe(false)
+
+    const qtNode = result.renderTemplate.find((n) => n.type === 'qt') as unknown as
+      | {
+          quoteMeta?: { senderAccountId?: number; timestamp?: number }
+        }
+      | undefined
+    expect(qtNode?.quoteMeta).toEqual({
+      senderAccountId: 2271723,
+      timestamp: 1773448368,
+    })
+  })
+
+  it('translates quote body with reply text after qt block (real Chatwork format)', () => {
+    const result = parseMessageDecoration(
+      '[rp aid=2271723 to=424846369:2088510543039311872]\n[qt][qtmeta aid=2271723 time=1773448368]quoted body[/qt]\nreply text',
+    )
+    expect(result.translationInputs).toContain('quoted body')
+    expect(result.translationInputs).toContain('reply text')
+    expect(result.metadata.replyToData?.replyAccountId).toBe(2271723)
+  })
+
+  it('keeps nested qt metadata on the correct quote nodes', () => {
+    const result = parseMessageDecoration(
+      '[qt][qtmeta aid=400 time=1711267800][qt][qtmeta aid=500 time=1711267000]quoted body[/qt][/qt]',
+    )
+
+    const outerQt = result.renderTemplate[0] as unknown as {
+      type: string
+      quoteMeta?: { senderAccountId?: number; timestamp?: number }
+      children: {
+        type: string
+        quoteMeta?: { senderAccountId?: number; timestamp?: number }
+      }[]
+    }
+
+    expect(result.translationInputs).toEqual(['quoted body'])
+    expect('quoteMetadata' in (result.metadata as unknown as Record<string, unknown>)).toBe(false)
+    expect(outerQt.type).toBe('qt')
+    expect(outerQt.quoteMeta).toEqual({
+      senderAccountId: 400,
+      timestamp: 1711267800,
+    })
+    expect(outerQt.children[0]?.type).toBe('qt')
+    expect(outerQt.children[0]?.quoteMeta).toEqual({
+      senderAccountId: 500,
+      timestamp: 1711267000,
+    })
+  })
+
+  it('attaches nested source-dependent tags to the quote node where they appear', () => {
+    const result = parseMessageDecoration(
+      '[qt][qtmeta aid=400 time=1711267800][qt][qtmeta aid=500 time=1711267000][To:600][cc:700][rp aid=800 to=999-123]quoted body[/qt][/qt]',
+    )
+
+    const outerQt = result.renderTemplate[0] as unknown as {
+      type: string
+      context?: {
+        toAccountIds?: number[]
+        ccAccountIds?: number[]
+        replyToData?: {
+          replyAccountId?: number
+          replyRoomId?: number
+          replyMessageId?: string
+        }
+      }
+      children: {
+        type: string
+        context?: {
+          toAccountIds?: number[]
+          ccAccountIds?: number[]
+          replyToData?: {
+            replyAccountId?: number
+            replyRoomId?: number
+            replyMessageId?: string
+          }
+        }
+      }[]
+    }
+    const innerQt = outerQt.children[0]
+
+    expect(result.metadata.toAccountIds).toEqual([])
+    expect(result.metadata.ccAccountIds).toEqual([])
+    expect(result.metadata.replyToData).toBeUndefined()
+    expect(outerQt.context?.toAccountIds).toEqual([])
+    expect(outerQt.context?.ccAccountIds).toEqual([])
+    expect(outerQt.context?.replyToData).toBeUndefined()
+    expect(innerQt?.context?.toAccountIds).toEqual([600])
+    expect(innerQt?.context?.ccAccountIds).toEqual([700])
+    expect(innerQt?.context?.replyToData).toEqual({
+      replyAccountId: 800,
+      replyRoomId: 999,
+      replyMessageId: '123',
+    })
   })
 
   it('extracts [To:...] into metadata', () => {
@@ -80,6 +190,13 @@ describe('parseMessageDecoration', () => {
     expect(result.translationInputs).toContain('quoted body')
     const hasQuote = result.renderTemplate.some((n) => n.type === 'quote')
     expect(hasQuote).toBe(true)
+  })
+
+  it('downgrades malformed qt without qtmeta to a quote node', () => {
+    const result = parseMessageDecoration('[qt]quoted body[/qt]')
+
+    expect(result.translationInputs).toEqual(['quoted body'])
+    expect(result.renderTemplate[0]?.type).toBe('quote')
   })
 
   it('preserves [hr] self-closing tag', () => {

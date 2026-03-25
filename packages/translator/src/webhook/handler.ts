@@ -23,6 +23,18 @@ import { createPhaseObserver } from '~/services/phase-observer'
 
 export async function handleTranslateRequest(command: TranslationIngressCommand): Promise<void> {
   if (command.translatableText.trim() === '' && !hasMeaningfulLiteralStructure(command)) {
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        service: 'translator',
+        event: 'translation_skipped_empty',
+        timestamp: new Date().toISOString(),
+        sourceMessageId: command.sourceMessageId,
+        sourceEventType: command.sourceEventType,
+        rawBodyLength: command.rawBody.length,
+        rawBodyPreview: command.rawBody.slice(0, 300),
+      }),
+    )
     return
   }
 
