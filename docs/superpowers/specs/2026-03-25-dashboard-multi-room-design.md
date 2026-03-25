@@ -52,7 +52,7 @@ Delivered across 7 incremental phases, each independently shippable and visually
 
 - No auth — dashboard is open access (MVP)
 - KISS / YAGNI — minimum viable features per phase
-- 7 phases — each must be independently shippable and eye-verifiable
+- 7 phases — each must be independently shippable, eye-verifiable, and **user-approved before next phase starts** (Agile human-in-the-loop)
 - Bun v1.1+ runtime — all packages must be Bun-compatible
 - Existing test coverage must not regress; backend refactor requires >95% coverage
 
@@ -471,7 +471,43 @@ This is a **breaking change**. There is no automatic migration from the old .env
 
 ---
 
-## 7 Phases
+## 7 Phases — Agile Delivery
+
+### Delivery Loop (per phase)
+
+Mỗi phase tuân theo quy trình Agile với human-in-the-loop review:
+
+```
+Design (spec section for phase)
+  → Plan (implementation plan for phase)
+    → Execute (code + tests)
+      → Ship (deploy UI / run tests — user can see results)
+        → Human Review (user manually reviews on browser/terminal)
+          → Approve? ──yes──→ Next Phase
+          │
+          └──no──→ Refine (adjust based on feedback) → Re-ship → Re-review
+```
+
+**Rules:**
+
+- Phase N+1 **không được bắt đầu** cho đến khi Phase N được user approve
+- Mỗi phase khi ship phải có output mà user **nhìn thấy bằng mắt** (UI trên browser hoặc test results trên terminal)
+- User có quyền yêu cầu refine không giới hạn số lần trước khi approve
+- Refine loop chỉ áp dụng cho scope của phase hiện tại, không mở rộng scope
+
+### Ship & Review Method (per phase)
+
+| Phase | Ship Method                           | User Reviews By                                                    |
+| ----- | ------------------------------------- | ------------------------------------------------------------------ |
+| 1     | `bun run dev` → open `localhost:5173` | Mở browser, thấy 3 pages với nav hoạt động                         |
+| 2     | `bun run dev` → open `localhost:5173` | Mở browser, xem design match Elegant Brutal + Shantell Sans        |
+| 3     | `bun run dev` → open `localhost:5173` | Mở browser, thao tác form, xem validation, xem webhook guide       |
+| 4     | `bun test` output + coverage report   | Xem terminal: all tests pass, coverage >95%                        |
+| 5     | `bun run dev` + open Network tab      | Mở browser + DevTools, xem API calls success, loading/error states |
+| 6     | Code review (agent + user)            | Đọc code structure, review PR diff                                 |
+| 7     | Full manual workflow                  | Thao tác từ dashboard → Chatwork → xem translation xuất hiện       |
+
+### Phase Deliverables
 
 | Phase | Deliverable                                                                                                                                                           | Success Criteria                                                             |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
