@@ -45,6 +45,7 @@ describe('translator env', () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
     process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
     process.env['AI_PROVIDER'] = 'openai'
+    delete process.env['AI_TRANSLATION_STYLE']
 
     const { parseTranslatorEnv } = await import('./env-schema')
     const env = parseTranslatorEnv(process.env)
