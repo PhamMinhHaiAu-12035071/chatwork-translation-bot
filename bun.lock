@@ -89,6 +89,7 @@
       "name": "@chatwork-bot/translation-prompt",
       "version": "1.0.0",
       "dependencies": {
+        "@chatwork-bot/core": "workspace:*",
         "zod": "^4.3.6",
       },
     },
