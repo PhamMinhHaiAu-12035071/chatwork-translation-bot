@@ -28,6 +28,7 @@ const config: UserConfig = {
       [
         'chatwork',
         'core',
+        'dashboard',
         'translator',
         'webhook-logger',
         'translation-prompt',

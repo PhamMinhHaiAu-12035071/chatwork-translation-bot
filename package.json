@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "sh scripts/dev.sh up",
+    "dev:dashboard": "bun run --cwd packages/dashboard dev",
     "dev:dataset": "sh scripts/dev-dataset.sh",
     "dev:down": "sh scripts/dev.sh down",
     "dev:logs": "sh scripts/dev.sh logs -f",
