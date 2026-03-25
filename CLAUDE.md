@@ -32,13 +32,22 @@ Includes a local-dev dataset-runner sidecar for automated dataset injection and 
 
 Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`, `AI_PROVIDER`
 Provider-specific: Each provider requires specific env keys (see manifest.requiredEnvKeys). Run server to see startup banner for full list.
-Optional: `PORT` (default 3000), `NODE_ENV` (default development), `AI_MODEL` (default per provider)
+Optional: `PORT` (default 3000), `NODE_ENV` (default development), `AI_MODEL` (default per provider), `AI_TRANSLATION_STYLE` (default `PROFESSIONAL_BUSINESS`)
+
+`AI_TRANSLATION_STYLE` valid values:
+
+- `AUTO_CONTEXT`
+- `NATURAL_CASUAL`
+- `PROFESSIONAL_BUSINESS`
+- `TECHNICAL`
+
+Invalid `AI_TRANSLATION_STYLE` values fail startup. Changing the value requires a translator restart to apply.
 
 → Details: `ai_rules/security.md`
 
 ## Startup Banner
 
-When the server starts, it logs a table showing all registered providers, their supported models, default model, and timeout. The active provider is marked with `*`.
+When the server starts, it logs a table showing all registered providers, their supported models, default model, and timeout. The active provider is marked with `*`. The summary lines also print the active `AI_TRANSLATION_STYLE`.
 
 ## AI Rules — Read before working on related tasks
 

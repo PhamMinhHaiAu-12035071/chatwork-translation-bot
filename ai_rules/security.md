@@ -20,14 +20,22 @@
 
 ### Optional
 
-| Variable                         | Default       | Purpose                                                                       |
-| -------------------------------- | ------------- | ----------------------------------------------------------------------------- |
-| `PORT`                           | `3000`        | HTTP server port                                                              |
-| `NODE_ENV`                       | `development` | Runtime environment                                                           |
-| `AI_MODEL`                       | per provider  | Override default model (any string accepted; unsupported models log warning)  |
-| `CHATWORK_SKIP_SIGNATURE_VERIFY` | `false`       | Bypass webhook signature verification (development only, no-op in production) |
-| `ZROK_ENABLE_TOKEN`              | —             | zrok account enable token (Docker dev tunnel only)                            |
-| `ZROK_UNIQUE_NAME`               | —             | Reserved zrok share name (Docker dev tunnel only)                             |
+| Variable                         | Default                 | Purpose                                                                                           |
+| -------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `PORT`                           | `3000`                  | HTTP server port                                                                                  |
+| `NODE_ENV`                       | `development`           | Runtime environment                                                                               |
+| `AI_MODEL`                       | per provider            | Override default model (any string accepted; unsupported models log warning)                      |
+| `AI_TRANSLATION_STYLE`           | `PROFESSIONAL_BUSINESS` | Global translator output-style preset. Invalid values fail startup; restart required after change |
+| `CHATWORK_SKIP_SIGNATURE_VERIFY` | `false`                 | Bypass webhook signature verification (development only, no-op in production)                     |
+| `ZROK_ENABLE_TOKEN`              | —                       | zrok account enable token (Docker dev tunnel only)                                                |
+| `ZROK_UNIQUE_NAME`               | —                       | Reserved zrok share name (Docker dev tunnel only)                                                 |
+
+`AI_TRANSLATION_STYLE` allowed values:
+
+- `AUTO_CONTEXT`
+- `NATURAL_CASUAL`
+- `PROFESSIONAL_BUSINESS`
+- `TECHNICAL`
 
 ### Dataset Automation (Local Dev Only)
 
