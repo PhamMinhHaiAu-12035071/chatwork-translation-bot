@@ -8,6 +8,7 @@ import {
 interface BannerConfig {
   provider: string
   model: string
+  translationStyle: string
   port: number
   nodeEnv: string
   effectiveTimeoutMs: number
@@ -51,6 +52,7 @@ export function logStartupBanner(config: BannerConfig): void {
   console.log(
     `[translator] * = active provider (AI_PROVIDER=${config.provider}, AI_MODEL=${config.model})`,
   )
+  console.log(`[translator] * AI_TRANSLATION_STYLE=${config.translationStyle}`)
   console.log(
     `[translator] * effective pipeline timeout = ${formatTimeoutSeconds(config.effectiveTimeoutMs)} (source=${config.timeoutSource})`,
   )

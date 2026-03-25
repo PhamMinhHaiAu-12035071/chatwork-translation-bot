@@ -32,6 +32,7 @@ describe('logStartupBanner', () => {
     logStartupBanner({
       provider: 'gemini',
       model: 'gemini-2.5-pro',
+      translationStyle: 'TECHNICAL',
       port: 3000,
       nodeEnv: 'development',
       effectiveTimeoutMs: 45_000,
@@ -42,6 +43,7 @@ describe('logStartupBanner', () => {
     expect(output).toContain('gemini')
     expect(output).toContain('gemini-2.5-pro')
     expect(output).toContain('gemini-2.0-flash')
+    expect(output).toContain('AI_TRANSLATION_STYLE=TECHNICAL')
   })
 
   it('marks active provider with asterisk', async () => {
@@ -60,6 +62,7 @@ describe('logStartupBanner', () => {
     logStartupBanner({
       provider: 'gemini',
       model: 'gemini-2.5-pro',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
       port: 3000,
       nodeEnv: 'development',
       effectiveTimeoutMs: 1_800_000,
@@ -87,6 +90,7 @@ describe('logStartupBanner', () => {
     logStartupBanner({
       provider: 'openai',
       model: 'gpt-5.4',
+      translationStyle: 'AUTO_CONTEXT',
       port: 3000,
       nodeEnv: 'development',
       effectiveTimeoutMs: 45_000,

@@ -28,6 +28,7 @@ console.log(`[translator] AI Translation Service started on port ${env.PORT.toSt
 logStartupBanner({
   provider: env.AI_PROVIDER,
   model: activeModel,
+  translationStyle: env.AI_TRANSLATION_STYLE,
   port: env.PORT,
   nodeEnv: env.NODE_ENV,
   effectiveTimeoutMs,

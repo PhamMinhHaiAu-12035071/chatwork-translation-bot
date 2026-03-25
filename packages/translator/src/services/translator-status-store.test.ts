@@ -83,6 +83,7 @@ describe('TranslatorStatusStore', () => {
     expect(snapshot.activeRequests).toHaveLength(0)
     expect(snapshot.recentResults).toHaveLength(2)
     expect(snapshot.recentResults.map((item) => item.requestId)).toEqual(['req-3', 'req-2'])
+    expect(snapshot.recentResults[0]?.translationStyle).toBe('PROFESSIONAL_BUSINESS')
   })
 
   it('stores partial delivery as a first-class recent result state', () => {
@@ -117,6 +118,7 @@ describe('TranslatorStatusStore', () => {
       finalPhase: 'ack_callback',
       deliveryStatus: 'partial',
       ackStatus: 'sent',
+      translationStyle: 'TECHNICAL',
     })
   })
 })
