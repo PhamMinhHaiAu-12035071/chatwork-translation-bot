@@ -11,7 +11,7 @@ export function RoomCreatePage() {
       description="Phase 2 locks the visual rhythm for cards, fields, labels, spacing, and helper callouts. Functional form controls arrive in the next phase."
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.8fr)]">
-        <BrutalCard className="space-y-5">
+        <BrutalCard className="theme-card-lilac space-y-5">
           <StickerLabel tone="accent">Phase 3 Enables Real Inputs</StickerLabel>
           <div className="grid gap-4 md:grid-cols-2">
             <MockField
@@ -40,14 +40,14 @@ export function RoomCreatePage() {
         </BrutalCard>
 
         <div className="space-y-6">
-          <BrutalCard className="space-y-3">
+          <BrutalCard className="theme-card-peach space-y-3">
             <StickerLabel tone="warning">Manual Work</StickerLabel>
             <p className="text-sm leading-7 text-[var(--text-secondary)]">
               Users still need Chatwork room access and webhook setup outside the dashboard.
             </p>
           </BrutalCard>
 
-          <BrutalCard className="space-y-3">
+          <BrutalCard className="theme-card-mint space-y-3">
             <StickerLabel tone="success">Design Goal</StickerLabel>
             <p className="text-sm leading-7 text-[var(--text-secondary)]">
               This page should already feel trustworthy, feminine, and operational even before the

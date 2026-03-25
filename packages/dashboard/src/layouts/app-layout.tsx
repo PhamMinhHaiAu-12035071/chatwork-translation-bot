@@ -5,9 +5,24 @@ import { BrutalCard } from '~/components/ui/brutal-card'
 import { StickerLabel } from '~/components/ui/sticker-label'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', blurb: 'overview + empty state' },
-  { to: '/rooms/new', label: '+ New Room', blurb: 'future creation flow' },
-  { to: '/guide', label: 'Webhook Guide', blurb: 'manual setup steps' },
+  {
+    to: '/',
+    label: 'Dashboard',
+    blurb: 'overview + empty state',
+    surfaceClassName: 'theme-card-lilac',
+  },
+  {
+    to: '/rooms/new',
+    label: '+ New Room',
+    blurb: 'future creation flow',
+    surfaceClassName: 'theme-card-blush',
+  },
+  {
+    to: '/guide',
+    label: 'Webhook Guide',
+    blurb: 'manual setup steps',
+    surfaceClassName: 'theme-card-mint',
+  },
 ] as const
 
 export function AppLayout() {
@@ -19,7 +34,7 @@ export function AppLayout() {
 
       <div className="relative mx-auto grid min-h-[calc(100vh-2rem)] max-w-7xl gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
-          <BrutalCard className="space-y-4">
+          <BrutalCard className="theme-card-lilac space-y-4">
             <StickerLabel tone="accent">Elegant Brutal</StickerLabel>
             <div className="space-y-3">
               <h1 className="font-heading text-3xl font-extrabold">Translation Bot</h1>
@@ -38,7 +53,8 @@ export function AppLayout() {
                     whileTap={{ x: 2, y: 2 }}
                     className={[
                       'brutal-surface p-4 transition-colors',
-                      isActive ? 'bg-white' : 'bg-white/65',
+                      item.surfaceClassName,
+                      isActive ? 'ring-4 ring-white/70' : 'opacity-85',
                     ].join(' ')}
                   >
                     <div className="font-heading text-lg font-bold">{item.label}</div>

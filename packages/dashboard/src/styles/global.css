@@ -1,19 +1,26 @@
 @import 'tailwindcss';
 
 :root {
-  --bg-gradient-start: #fff0e5;
-  --bg-gradient-end: #ffe8f5;
+  --bg-gradient-start: #f6f1ff;
+  --bg-gradient-end: #eaf4ff;
   --border: #1a1a2e;
-  --accent: #d44470;
-  --success: #7ec8a0;
-  --warning: #ffd166;
-  --error: #ff6b8a;
+  --accent: #6e77e5;
+  --success: #8fd7be;
+  --warning: #ffe08a;
+  --error: #ff8fb1;
+  --warm-accent: #f27a54;
   --card-glass: rgba(255, 255, 255, 0.68);
+  --card-lilac: rgba(218, 216, 255, 0.86);
+  --card-blush: rgba(255, 222, 241, 0.86);
+  --card-sky: rgba(204, 239, 255, 0.86);
+  --card-mint: rgba(216, 255, 237, 0.86);
+  --card-butter: rgba(255, 240, 190, 0.86);
+  --card-peach: rgba(255, 226, 212, 0.86);
   --text-primary: #1a1a2e;
   --text-secondary: #636e72;
-  --organic-circle-1: #ffd1dc;
-  --organic-circle-2: #e8deff;
-  --organic-circle-3: #d4f5e9;
+  --organic-circle-1: #d7d1ff;
+  --organic-circle-2: #ffd9ee;
+  --organic-circle-3: #bfeaf6;
 }
 
 html {
@@ -27,8 +34,9 @@ body {
   color: var(--text-primary);
   font-family: 'Kiwi Maru', serif;
   background:
-    radial-gradient(circle at top left, rgba(255, 209, 220, 0.6), transparent 28%),
-    radial-gradient(circle at top right, rgba(232, 222, 255, 0.55), transparent 24%),
+    radial-gradient(circle at top left, rgba(215, 209, 255, 0.72), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 217, 238, 0.72), transparent 25%),
+    radial-gradient(circle at bottom right, rgba(191, 234, 246, 0.62), transparent 26%),
     linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
 }
 
@@ -72,10 +80,10 @@ a {
   background:
     repeating-linear-gradient(
       -45deg,
-      rgba(255, 209, 220, 0.5),
-      rgba(255, 209, 220, 0.5) 10px,
-      rgba(232, 222, 255, 0.5) 10px,
-      rgba(232, 222, 255, 0.5) 20px
+      rgba(215, 209, 255, 0.5),
+      rgba(215, 209, 255, 0.5) 10px,
+      rgba(255, 217, 238, 0.5) 10px,
+      rgba(255, 217, 238, 0.5) 20px
     );
   border-left: 2px solid var(--border);
 }
@@ -83,12 +91,12 @@ a {
 *::-webkit-scrollbar-thumb {
   border: 2px solid var(--border);
   border-radius: 999px;
-  background: linear-gradient(180deg, #ff9fbc, #d44470);
+  background: linear-gradient(180deg, #94a0ff, #6e77e5);
   box-shadow: 3px 3px 0 var(--border);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #ff84aa, #c73b67);
+  background: linear-gradient(180deg, #7c88ff, #5d67dc);
 }
 
 .font-heading {
@@ -107,6 +115,7 @@ a {
   border: 3px solid var(--border);
   border-radius: 14px;
   background: #ffffff;
+  color: var(--text-primary);
   box-shadow: 4px 4px 0 var(--border);
   transition:
     transform 160ms ease,
@@ -144,6 +153,38 @@ a {
   border: 2px dashed rgba(26, 26, 46, 0.45);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.42);
+}
+
+.theme-card-lilac {
+  background: var(--card-lilac);
+}
+
+.theme-card-blush {
+  background: var(--card-blush);
+}
+
+.theme-card-sky {
+  background: var(--card-sky);
+}
+
+.theme-card-mint {
+  background: var(--card-mint);
+}
+
+.theme-card-butter {
+  background: var(--card-butter);
+}
+
+.theme-card-peach {
+  background: var(--card-peach);
+}
+
+.theme-button-accent {
+  background: linear-gradient(180deg, #9aa4ff, var(--accent));
+}
+
+.theme-button-warm {
+  background: linear-gradient(180deg, #ffbc9e, var(--warm-accent));
 }
 
 @keyframes float-orb {

@@ -32,7 +32,17 @@ export function WebhookGuidePage() {
     >
       <div className="grid gap-4 xl:grid-cols-2">
         {steps.map(([index, title, body]) => (
-          <BrutalCard key={index} className="space-y-4">
+          <BrutalCard
+            key={index}
+            className={[
+              'space-y-4',
+              index === '01' || index === '04'
+                ? 'theme-card-lilac'
+                : index === '02' || index === '05'
+                  ? 'theme-card-blush'
+                  : 'theme-card-sky',
+            ].join(' ')}
+          >
             <StickerLabel
               tone={index === '06' ? 'accent' : 'warning'}
             >{`Step ${index}`}</StickerLabel>
