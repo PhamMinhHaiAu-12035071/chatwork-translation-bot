@@ -15,6 +15,7 @@ describe('TranslatorStatusStore', () => {
       originType: 'automation',
       provider: 'cursor',
       model: 'gemini-3.1-pro',
+      translationStyle: 'TECHNICAL',
       roomId: 424846369,
       inputLength: 5,
       datasetFile: '001-vfa-thinhntt-2026-03-10.jsonl',
@@ -40,6 +41,7 @@ describe('TranslatorStatusStore', () => {
       phase: 'translation',
       phaseBudgetMs: 60_000,
       datasetItemId: 'vfa-001',
+      translationStyle: 'TECHNICAL',
     })
     expect(snapshot.activeRequests[0]?.elapsedMs).toBe(27_000)
     expect(snapshot.activeRequests[0]?.phaseElapsedMs).toBe(12_000)
@@ -59,6 +61,7 @@ describe('TranslatorStatusStore', () => {
         originType: 'manual',
         provider: 'cursor',
         model: 'gemini-3.1-pro',
+        translationStyle: 'PROFESSIONAL_BUSINESS',
         roomId: 424846369,
         inputLength: 5,
       })
@@ -94,6 +97,7 @@ describe('TranslatorStatusStore', () => {
       originType: 'automation',
       provider: 'openai',
       model: 'gpt-5.4',
+      translationStyle: 'TECHNICAL',
       roomId: 424846369,
       inputLength: 5,
       datasetItemId: 'item-001',

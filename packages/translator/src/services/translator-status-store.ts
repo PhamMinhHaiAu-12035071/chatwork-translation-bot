@@ -149,6 +149,7 @@ export class TranslatorStatusStore {
       originType: request.originType,
       provider: request.provider,
       model: request.model,
+      translationStyle: request.translationStyle,
       roomId: request.roomId,
       inputLength: request.inputLength,
       ...(request.pipelineTimeoutMs !== undefined

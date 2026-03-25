@@ -66,6 +66,7 @@ const mockGetProviderPlugin = mock((_id: string) => ({
 const mockEnv = {
   AI_PROVIDER: 'openai',
   AI_MODEL: 'gpt-4o',
+  AI_TRANSLATION_STYLE: 'TECHNICAL',
   CHATWORK_API_TOKEN: 'test-token',
   CHATWORK_DESTINATION_ROOM_ID: 99999,
   TRANSLATOR_PHASE_HEARTBEAT_MS: 10,
@@ -294,6 +295,9 @@ describe('handleTranslateRequest', () => {
     expect(jsonLogs.some((entry) => entry.event === 'translation_phase_completed')).toBe(true)
     expect(jsonLogs.some((entry) => entry.event === 'translation_delivery_completed')).toBe(true)
     expect(jsonLogs.some((entry) => entry.event === 'translation_request_completed')).toBe(true)
+    expect(
+      jsonLogs.some((entry) => JSON.stringify(entry).includes('"translationStyle":"TECHNICAL"')),
+    ).toBe(true)
     expect(jsonLogs.some((entry) => JSON.stringify(entry).includes('Xin chào thế giới'))).toBe(
       false,
     )
@@ -307,6 +311,7 @@ describe('handleTranslateRequest', () => {
       finalStatus: 'completed',
       finalPhase: 'delivery',
       deliveryStatus: 'sent',
+      translationStyle: 'TECHNICAL',
     })
   })
 

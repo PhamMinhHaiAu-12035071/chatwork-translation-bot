@@ -53,6 +53,23 @@ describe('TranslationPipeline', () => {
     expect(captured.prompts?.user).toContain('リリース予定について')
   })
 
+  it('passes the selected style into the single-call prompt path', async () => {
+    const captured: { prompts?: PromptPair } = {}
+    const executor: ILLMExecutor = {
+      execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
+        captured.prompts = prompts
+        return Promise.resolve({ sourceLang: 'Japanese', translated: 'Xin chào' } as T)
+      },
+    }
+
+    const pipeline = new TranslationPipeline(executor, {
+      translationStyle: 'TECHNICAL',
+    })
+
+    await pipeline.run('テスト')
+    expect(captured.prompts?.system).toContain('TECHNICAL')
+  })
+
   it('throws TranslationError on abort', async () => {
     const controller = new AbortController()
     controller.abort()
@@ -78,6 +95,21 @@ describe('TranslationPipeline', () => {
     expect(getCallCount()).toBe(0)
     expect(result.translatedSegments).toEqual([])
     expect(result.translation.cleanText).toBe('[code]const x = 1[/code]')
+  })
+
+  it('still skips the LLM for zero-input requests even when a style is configured', async () => {
+    const { executor, getCallCount } = makeExecutor()
+    const pipeline = new TranslationPipeline(executor, {
+      translationStyle: 'TECHNICAL',
+    })
+
+    const result = await pipeline.runStructured({
+      cleanText: '[code]const x = 1[/code]',
+      translationInputs: [],
+    })
+
+    expect(getCallCount()).toBe(0)
+    expect(result.translatedSegments).toEqual([])
   })
 
   it('wraps a single translated segment when there is exactly one translation input', async () => {

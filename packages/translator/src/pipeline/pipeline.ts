@@ -1,7 +1,8 @@
+import { DEFAULT_TRANSLATION_STYLE, TranslationError } from '@chatwork-bot/core'
 import type { ILLMExecutor } from '@chatwork-bot/core'
-import { TranslationError } from '@chatwork-bot/core'
 import type { ISchema, PromptPair } from '@chatwork-bot/core'
 import type { TranslationResult } from '@chatwork-bot/core'
+import type { TranslationStyle } from '@chatwork-bot/core'
 import {
   buildSingleCallPrompts,
   buildStructuredTranslationPrompts,
@@ -35,7 +36,7 @@ export interface PipelineTranslationResult {
 export class TranslationPipeline {
   constructor(
     private readonly executor: ILLMExecutor,
-    private readonly opts: { timeoutMs?: number } = {},
+    private readonly opts: { timeoutMs?: number; translationStyle?: TranslationStyle } = {},
   ) {}
 
   async run(text: string, options: PipelineRunOptions = {}): Promise<TranslationResult> {
@@ -59,7 +60,10 @@ export class TranslationPipeline {
     if (input.translationInputs.length === 1) {
       const [singleInput] = input.translationInputs
       const draft = await this.executeDraft(
-        buildSingleCallPrompts(singleInput ?? input.cleanText),
+        buildSingleCallPrompts(
+          singleInput ?? input.cleanText,
+          this.opts.translationStyle ?? DEFAULT_TRANSLATION_STYLE,
+        ),
         TranslationDraftSchema,
         options,
       )
@@ -75,7 +79,10 @@ export class TranslationPipeline {
     }
 
     const structuredDraft = await this.executeDraft(
-      buildStructuredTranslationPrompts(input.translationInputs),
+      buildStructuredTranslationPrompts(
+        input.translationInputs,
+        this.opts.translationStyle ?? DEFAULT_TRANSLATION_STYLE,
+      ),
       StructuredTranslationDraftSchema,
       options,
     )

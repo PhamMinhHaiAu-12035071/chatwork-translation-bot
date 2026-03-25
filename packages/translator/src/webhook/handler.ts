@@ -42,6 +42,7 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
 
   const plugin = getProviderPlugin(env.AI_PROVIDER)
   const modelId = env.AI_MODEL ?? plugin.manifest.defaultModel
+  const translationStyle = env.AI_TRANSLATION_STYLE
   const ctx: ProviderCreateContext = { modelId }
   const baseUrl = process.env['CURSOR_API_URL']
   if (baseUrl) {
@@ -68,6 +69,7 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
       originType: origin.type,
       provider: env.AI_PROVIDER,
       model: modelId,
+      translationStyle,
       roomId: command.sourceRoomId,
       inputLength: Array.from(cleanText).length,
       pipelineTimeoutMs: effectiveTimeoutMs,
@@ -120,7 +122,10 @@ export async function handleTranslateRequest(command: TranslationIngressCommand)
   }
 
   try {
-    const pipeline = new TranslationPipeline(executor, { timeoutMs: effectiveTimeoutMs })
+    const pipeline = new TranslationPipeline(executor, {
+      timeoutMs: effectiveTimeoutMs,
+      translationStyle,
+    })
     const pipelineResult = await pipeline.runStructured(
       {
         cleanText,

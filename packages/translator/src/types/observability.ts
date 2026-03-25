@@ -1,3 +1,5 @@
+import type { TranslationStyle } from '@chatwork-bot/core'
+
 export type TranslatorPhase = 'translation' | 'delivery' | 'ack_callback'
 
 export type TranslatorFinalStatus = 'completed' | 'failed' | 'aborted'
@@ -8,6 +10,7 @@ export interface TranslatorRequestContext {
   originType: 'manual' | 'automation'
   provider: string
   model: string
+  translationStyle: TranslationStyle
   roomId: number
   inputLength: number
   pipelineTimeoutMs?: number
