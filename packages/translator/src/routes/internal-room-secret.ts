@@ -32,13 +32,13 @@ export function createInternalRoomSecretRoute({
       }
 
       const room = store.getByOriginalRoomId(roomId)
-      if (room === null) {
+      if (room === null || !room.enabled) {
         set.status = 404
         return { error: `No room configured for room_id ${roomId.toString()}` }
       }
 
-      const webhookSecret = await store.decryptWebhookSecret(room.encryptedWebhookSecret)
-      return { webhookSecret }
+      const secret = await store.decryptWebhookSecret(room.encryptedWebhookSecret)
+      return { secret }
     },
   )
 }
