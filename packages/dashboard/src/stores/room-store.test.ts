@@ -9,7 +9,7 @@ import type {
 } from '~/lib/api-types'
 import { useRoomStore } from '~/stores/room-store'
 
-const LIST_ROOMS: RoomConfigPublic[] = [
+const LIST_ROOMS_RAW: [RoomConfigPublic, RoomConfigPublic] = [
   {
     id: 'room-001',
     originalRoomId: 123456789,
@@ -22,7 +22,23 @@ const LIST_ROOMS: RoomConfigPublic[] = [
     createdAt: '2026-03-20T09:00:00Z',
     updatedAt: '2026-03-20T09:00:00Z',
   },
+  {
+    id: 'room-002',
+    originalRoomId: 555001,
+    destinationRoomId: 99002,
+    destinationRoomName: 'Osaka Escalations',
+    aiProvider: 'openai',
+    aiModel: 'gpt-4o-mini',
+    translationStyle: 'AUTO_CONTEXT',
+    enabled: false,
+    createdAt: '2026-03-26T12:00:00Z',
+    updatedAt: '2026-03-26T12:00:00Z',
+  },
 ]
+
+const OLDER_ROOM = LIST_ROOMS_RAW[0]
+const NEWER_ROOM = LIST_ROOMS_RAW[1]
+const ORDERED_ROOMS = [NEWER_ROOM, OLDER_ROOM]
 
 const PROVIDERS: ProviderInfo[] = [
   {
@@ -90,9 +106,19 @@ function resetStoreState() {
   })
 }
 
+function seedOrderedRooms(rooms: RoomConfigPublic[] = ORDERED_ROOMS) {
+  useRoomStore.setState({
+    rooms,
+    providers: PROVIDERS,
+    listState: 'success',
+    listError: null,
+    actionError: null,
+  })
+}
+
 beforeEach(() => {
   listRoomsSpy = spyOn(apiClient, 'listRooms').mockImplementation(() =>
-    Promise.resolve({ success: true, data: LIST_ROOMS }),
+    Promise.resolve({ success: true, data: LIST_ROOMS_RAW }),
   )
   listProvidersSpy = spyOn(apiClient, 'listProviders').mockImplementation(() =>
     Promise.resolve({ success: true, data: PROVIDERS }),
@@ -157,7 +183,7 @@ describe('room store', () => {
 
     const nextState = useRoomStore.getState()
     expect(listRoomsSpy).toHaveBeenCalledTimes(1)
-    expect(nextState.rooms).toEqual(LIST_ROOMS)
+    expect(nextState.rooms).toEqual([LIST_ROOMS_RAW[1], LIST_ROOMS_RAW[0]])
     expect(nextState.listState).toBe('success')
     expect(nextState.listError).toBeNull()
   })
@@ -179,7 +205,15 @@ describe('room store', () => {
     expect(useRoomStore.getState().providers).toEqual(PROVIDERS)
   })
 
-  it('creates, updates, enables, disables, and deletes rooms through async actions', async () => {
+  it('inserts newly created rooms ahead of older rooms', async () => {
+    useRoomStore.setState({
+      rooms: [OLDER_ROOM],
+      providers: PROVIDERS,
+      listState: 'idle',
+      listError: null,
+      actionError: null,
+    })
+
     const created = await useRoomStore.getState().createRoom({
       originalRoomId: 555001,
       destinationRoomName: 'Osaka Escalations',
@@ -191,23 +225,29 @@ describe('room store', () => {
     })
 
     expect(created).toEqual(CREATED_ROOM)
-    expect(useRoomStore.getState().rooms).toEqual([CREATED_ROOM])
+    expect(useRoomStore.getState().rooms).toEqual([CREATED_ROOM, OLDER_ROOM])
+    expect(useRoomStore.getState().listState).toBe('success')
+    expect(useRoomStore.getState().listError).toBeNull()
+  })
+
+  it('keeps the newest room first while updating, enabling, disabling, and deleting rooms', async () => {
+    seedOrderedRooms()
 
     const updated = await useRoomStore.getState().updateRoom(CREATED_ROOM.id, {
       destinationRoomName: 'Osaka Escalations APAC',
       webhookSecret: 'cw-secret-rotated',
     })
     expect(updated).toEqual(UPDATED_ROOM)
-    expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM])
+    expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM, OLDER_ROOM])
 
     await useRoomStore.getState().enableRoom(CREATED_ROOM.id)
-    expect(useRoomStore.getState().rooms).toEqual([ENABLED_ROOM])
+    expect(useRoomStore.getState().rooms).toEqual([ENABLED_ROOM, OLDER_ROOM])
 
     await useRoomStore.getState().disableRoom(CREATED_ROOM.id)
-    expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM])
+    expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM, OLDER_ROOM])
 
     const deleteResult = await useRoomStore.getState().deleteRoom(CREATED_ROOM.id)
     expect(deleteResult).toEqual<DeleteRoomResult>({ outcome: 'deleted' })
-    expect(useRoomStore.getState().rooms).toEqual([])
+    expect(useRoomStore.getState().rooms).toEqual([OLDER_ROOM])
   })
 })

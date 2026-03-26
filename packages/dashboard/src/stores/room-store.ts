@@ -35,10 +35,18 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback
 }
 
+function sortRoomsByCreatedAtDesc(rooms: Room[]): Room[] {
+  return [...rooms].sort((left, right) => {
+    return Date.parse(right.createdAt) - Date.parse(left.createdAt)
+  })
+}
+
 function upsertRoom(rooms: Room[], nextRoom: Room): Room[] {
-  return rooms.some((room) => room.id === nextRoom.id)
+  const nextRooms = rooms.some((room) => room.id === nextRoom.id)
     ? rooms.map((room) => (room.id === nextRoom.id ? nextRoom : room))
     : [...rooms, nextRoom]
+
+  return sortRoomsByCreatedAtDesc(nextRooms)
 }
 
 export const useRoomStore = create<RoomStoreState>()((set) => ({
@@ -54,7 +62,7 @@ export const useRoomStore = create<RoomStoreState>()((set) => ({
     try {
       const response = await apiClient.listRooms()
       set({
-        rooms: response.data ?? [],
+        rooms: sortRoomsByCreatedAtDesc(response.data ?? []),
         listState: 'success',
         listError: null,
       })
@@ -85,7 +93,11 @@ export const useRoomStore = create<RoomStoreState>()((set) => ({
         throw new Error('No data returned from createRoom')
       }
 
-      set((state) => ({ rooms: [...state.rooms, room] }))
+      set((state) => ({
+        rooms: sortRoomsByCreatedAtDesc([...state.rooms, room]),
+        listState: 'success',
+        listError: null,
+      }))
       return room
     } catch (error) {
       set({ actionError: getErrorMessage(error, 'Failed to create room') })

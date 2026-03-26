@@ -64,6 +64,9 @@ describe('RoomCreatePage', () => {
     expect(source).toContain("'error'")
     expect(source).not.toContain("toast('Room created successfully!')")
     expect(source).not.toContain('addRoom')
-    expect(source).toContain('navigate(`/rooms/${result.data.id}`)')
+    expect(source).toMatch(
+      /navigate\(\s*['"`]\/['"`]\s*,[\s\S]*state:\s*\{[\s\S]*spotlightRoomId:\s*result\.data\.id[\s\S]*\}\s*\)/,
+    )
+    expect(source).not.toContain('navigate(`/rooms/${result.data.id}`)')
   })
 })

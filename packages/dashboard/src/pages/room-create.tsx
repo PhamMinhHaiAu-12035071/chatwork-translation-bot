@@ -98,7 +98,11 @@ export function RoomCreatePage() {
     }
 
     toast(getRoomCreatedToastMessage(data.destinationRoomName))
-    void navigate(`/rooms/${result.data.id}`)
+    void navigate('/', {
+      state: {
+        spotlightRoomId: result.data.id,
+      },
+    })
   }
 
   return (

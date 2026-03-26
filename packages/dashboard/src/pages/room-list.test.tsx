@@ -114,4 +114,18 @@ describe('RoomListPage', () => {
     expect(source).toContain('font-ui-body text-xs text-[var(--text-secondary)]')
     expect(source).toContain('font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]')
   })
+
+  it('tracks a transient spotlight for the newly created room and clears it after the timer', async () => {
+    const source = await Bun.file(new URL('./room-list.tsx', import.meta.url)).text()
+
+    expect(source).toMatch(/room\.id\s*===\s*spotlightRoomId/)
+    expect(source).toContain('setSpotlightRoomId(routeState.spotlightRoomId)')
+    expect(source).toMatch(/spotlightRoomId[\s\S]*setTimeout[\s\S]*clearTimeout/)
+    expect(source).toContain('setSpotlightRoomId(null)')
+    expect(source).toContain('replace: true')
+    expect(source).toContain('<StickerLabel tone="warning" tilt="right">')
+    expect(source).toContain('New')
+    expect(source).toContain('backgroundColor')
+    expect(source).toContain('boxShadow')
+  })
 })

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router'
+import { motion, useReducedMotion } from 'framer-motion'
+import { useLocation, useNavigate } from 'react-router'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { DeleteRoomConfirmModal } from '~/components/organisms/delete-room-confirm-modal'
 import { PageShell } from '~/components/layout/page-shell'
@@ -36,6 +36,11 @@ const cardThemeByIndex = [
 ] as const
 
 const tiltByIndex = ['left', 'flat', 'right', 'left', 'flat', 'right'] as const
+const SPOTLIGHT_DURATION_MS = 2400
+
+interface RoomListLocationState {
+  spotlightRoomId?: string
+}
 
 export function getRoomToggleToastMessage(roomName: string, currentlyEnabled: boolean): string {
   return `"${roomName}" is now ${currentlyEnabled ? 'paused' : 'enabled'}`
@@ -53,7 +58,9 @@ export function getDeleteRoomToastMessage(
 }
 
 export function RoomListPage() {
+  const location = useLocation()
   const navigate = useNavigate()
+  const reducedMotion = useReducedMotion()
   const { toast } = useToast()
   const rooms = useRoomStore(selectRooms)
   const listState = useRoomStore(selectListState)
@@ -63,6 +70,7 @@ export function RoomListPage() {
   const disableRoom = useRoomStore(selectDisableRoom)
   const deleteRoom = useRoomStore(selectDeleteRoom)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
+  const [spotlightRoomId, setSpotlightRoomId] = useState<string | null>(null)
   const roomToggleAction = useAsyncAction<undefined>({
     fallbackErrorMessage: 'Toggle failed',
     getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Toggle failed'),
@@ -77,6 +85,30 @@ export function RoomListPage() {
       void fetchRooms()
     }
   }, [fetchRooms, listState])
+
+  useEffect(() => {
+    const routeState = (location.state ?? null) as RoomListLocationState | null
+    if (!routeState?.spotlightRoomId) {
+      return
+    }
+
+    setSpotlightRoomId(routeState.spotlightRoomId)
+    void navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state, navigate])
+
+  useEffect(() => {
+    if (!spotlightRoomId) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSpotlightRoomId(null)
+    }, SPOTLIGHT_DURATION_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [reducedMotion, spotlightRoomId])
 
   const activeCount = rooms.filter((room) => room.enabled).length
   const inactiveCount = rooms.filter((room) => !room.enabled).length
@@ -223,96 +255,141 @@ export function RoomListPage() {
         </BrutalCard>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {rooms.map((room, index) => (
-            <motion.div
-              key={room.id}
-              layout
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.18, delay: index * 0.04 }}
-            >
-              {(() => {
-                const cardTheme =
-                  cardThemeByIndex[index % cardThemeByIndex.length] ?? 'theme-card-lilac'
-                const tilt = tiltByIndex[index % tiltByIndex.length] ?? 'flat'
+          {rooms.map((room, index) =>
+            (() => {
+              const isSpotlighted = room.id === spotlightRoomId
+              const spotlightAnimate = isSpotlighted
+                ? reducedMotion
+                  ? {
+                      backgroundColor: 'rgba(255, 225, 154, 0.92)',
+                      boxShadow: '8px 8px 0 rgba(212, 68, 112, 0.92)',
+                    }
+                  : {
+                      backgroundColor: [
+                        'rgba(255, 225, 154, 0)',
+                        'rgba(255, 225, 154, 0.96)',
+                        'rgba(255, 225, 154, 0.28)',
+                      ],
+                      boxShadow: [
+                        '0px 0px 0 rgba(212, 68, 112, 0)',
+                        '8px 8px 0 rgba(212, 68, 112, 0.96)',
+                        '4px 4px 0 rgba(212, 68, 112, 0.34)',
+                      ],
+                    }
+                : {
+                    backgroundColor: 'rgba(255, 225, 154, 0)',
+                    boxShadow: '0px 0px 0 rgba(212, 68, 112, 0)',
+                  }
 
-                return (
-                  <BrutalCard className={[cardTheme, 'space-y-4'].join(' ')} tilt={tilt}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="font-heading text-lg font-bold leading-tight">
-                          {room.destinationRoomName}
+              return (
+                <motion.div
+                  key={room.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    ...spotlightAnimate,
+                  }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{
+                    duration: reducedMotion ? 0 : isSpotlighted ? 2.2 : 0.18,
+                    delay: index * 0.04,
+                    ease: 'easeOut',
+                  }}
+                  className="rounded-[24px] p-1"
+                >
+                  {(() => {
+                    const cardTheme =
+                      cardThemeByIndex[index % cardThemeByIndex.length] ?? 'theme-card-lilac'
+                    const tilt = tiltByIndex[index % tiltByIndex.length] ?? 'flat'
+                    const spotlightTheme = isSpotlighted
+                      ? 'theme-card-butter border-[var(--pink-accent)] shadow-[8px_8px_0_var(--pink-accent)]'
+                      : cardTheme
+
+                    return (
+                      <BrutalCard className={[spotlightTheme, 'space-y-4'].join(' ')} tilt={tilt}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0 space-y-1">
+                            {isSpotlighted ? (
+                              <StickerLabel tone="warning" tilt="right">
+                                New
+                              </StickerLabel>
+                            ) : null}
+                            <div className="font-heading text-lg font-bold leading-tight">
+                              {room.destinationRoomName}
+                            </div>
+                            <div className="font-ui-body text-xs text-[var(--text-secondary)]">
+                              {`Room ID: ${String(room.originalRoomId)}`}
+                            </div>
+                          </div>
+                          <StatusPill
+                            tone={room.enabled ? 'success' : 'neutral'}
+                            className="min-w-24 justify-center shrink-0"
+                          >
+                            <PixelScatterText
+                              value={room.enabled ? 'Live' : 'Paused'}
+                              reserveText="Paused"
+                            />
+                          </StatusPill>
                         </div>
-                        <div className="font-ui-body text-xs text-[var(--text-secondary)]">
-                          {`Room ID: ${String(room.originalRoomId)}`}
+
+                        <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
+                          <div>
+                            <span className="font-semibold">Provider: </span>
+                            {PROVIDER_LABELS[room.aiProvider]}
+                            {room.aiModel ? ` · ${room.aiModel}` : ' · default model'}
+                          </div>
+                          <div>
+                            <span className="font-semibold">Style: </span>
+                            {TRANSLATION_STYLE_LABELS[room.translationStyle]}
+                          </div>
                         </div>
-                      </div>
-                      <StatusPill
-                        tone={room.enabled ? 'success' : 'neutral'}
-                        className="min-w-24 justify-center shrink-0"
-                      >
-                        <PixelScatterText
-                          value={room.enabled ? 'Live' : 'Paused'}
-                          reserveText="Paused"
-                        />
-                      </StatusPill>
-                    </div>
 
-                    <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
-                      <div>
-                        <span className="font-semibold">Provider: </span>
-                        {PROVIDER_LABELS[room.aiProvider]}
-                        {room.aiModel ? ` · ${room.aiModel}` : ' · default model'}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Style: </span>
-                        {TRANSLATION_STYLE_LABELS[room.translationStyle]}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void navigate(`/rooms/${room.id}`)
-                        }}
-                        className="brutal-button theme-button-sky px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleToggle(room.id, room.destinationRoomName, room.enabled)
-                        }}
-                        className={[
-                          'brutal-button px-4 py-1.5 font-heading text-xs font-bold',
-                          room.enabled
-                            ? 'theme-button-gold text-[var(--border)]'
-                            : 'theme-button-violet text-white',
-                        ].join(' ')}
-                      >
-                        <PixelScatterText
-                          value={room.enabled ? 'Pause' : 'Enable'}
-                          reserveText="Enable"
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedRoom(room)
-                        }}
-                        className="brutal-button theme-button-pink px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </BrutalCard>
-                )
-              })()}
-            </motion.div>
-          ))}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void navigate(`/rooms/${room.id}`)
+                            }}
+                            className="brutal-button theme-button-sky px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleToggle(room.id, room.destinationRoomName, room.enabled)
+                            }}
+                            className={[
+                              'brutal-button px-4 py-1.5 font-heading text-xs font-bold',
+                              room.enabled
+                                ? 'theme-button-gold text-[var(--border)]'
+                                : 'theme-button-violet text-white',
+                            ].join(' ')}
+                          >
+                            <PixelScatterText
+                              value={room.enabled ? 'Pause' : 'Enable'}
+                              reserveText="Enable"
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedRoom(room)
+                            }}
+                            className="brutal-button theme-button-pink px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </BrutalCard>
+                    )
+                  })()}
+                </motion.div>
+              )
+            })(),
+          )}
         </div>
       )}
 
