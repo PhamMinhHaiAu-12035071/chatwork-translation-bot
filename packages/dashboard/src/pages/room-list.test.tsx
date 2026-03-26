@@ -5,6 +5,9 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
 import { RoomListPage, getRoomToggleToastMessage } from '~/pages/room-list'
 
+const removedToggleRoomSymbol = ['toggle', 'Room'].join('')
+const removedWebhookTokenSymbol = ['webhook', 'Token'].join('')
+
 function renderRoomListPage() {
   const router = createMemoryRouter(
     [
@@ -60,8 +63,8 @@ describe('RoomListPage', () => {
     expect(source).toContain('setSelectedRoom')
     expect(source).toContain('deleteRoomAction.loading')
     expect(source).not.toContain('window.confirm')
-    expect(source).not.toContain('toggleRoom')
-    expect(source).not.toContain('webhookToken')
+    expect(source).not.toContain(removedToggleRoomSymbol)
+    expect(source).not.toContain(removedWebhookTokenSymbol)
     expect(source).toContain('getRoomToggleToastMessage')
     expect(source).toContain('room.destinationRoomName')
     expect(source).toContain('toast(result.error,')

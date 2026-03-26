@@ -40,4 +40,16 @@ describe('WebhookStepper', () => {
     expect(source).toContain('transition-colors duration-150')
     expect(source).not.toContain('transition-all duration-150')
   })
+
+  it('uses webhook-secret copy instead of the removed activation-token flow', async () => {
+    const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
+
+    expect(source).toContain("title: 'Save & Copy Secret'")
+    expect(source).toContain('webhook secret only once')
+    expect(source).toContain('Webhook Secret field')
+    expect(source).toContain('enable the room to go live')
+    expect(source).not.toContain('webhook token')
+    expect(source).not.toContain('Activation section')
+    expect(source).not.toContain('Activate Webhook')
+  })
 })

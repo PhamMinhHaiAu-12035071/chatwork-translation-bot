@@ -30,8 +30,8 @@ export function WebhookGuidePage() {
           <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
             <StickerLabel tone="success">One-time setup</StickerLabel>
             <p className="text-sm leading-7 text-[var(--text-secondary)]">
-              Once the webhook token is pasted into the Activation section of a room, no further
-              manual steps are needed. Translation runs automatically.
+              Once the webhook secret is saved in the room configuration and the room is enabled, no
+              further manual steps are needed. Translation runs automatically.
             </p>
           </BrutalCard>
         </div>

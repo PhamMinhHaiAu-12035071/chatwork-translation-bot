@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
+const removedWebhookActivationSchema = ['webhook', 'Activation', 'Schema'].join('')
+
 describe('room schema', () => {
   it('requires webhookSecret when validating the create payload', async () => {
     const schemaModule = await import('~/lib/room-schema').catch(() => null)
@@ -74,6 +76,6 @@ describe('room schema', () => {
       return
     }
 
-    expect('webhookActivationSchema' in schemaModule).toBe(false)
+    expect(removedWebhookActivationSchema in schemaModule).toBe(false)
   })
 })

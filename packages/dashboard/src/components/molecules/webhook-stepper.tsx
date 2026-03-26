@@ -46,14 +46,14 @@ const STEPS: Step[] = [
   },
   {
     number: '05',
-    title: 'Save & Copy Token',
-    body: 'Click Save. Chatwork will display a webhook token only once. Copy it immediately — you will paste it into the dashboard in the next step.',
+    title: 'Save & Copy Secret',
+    body: 'Click Save. Chatwork will display the webhook secret only once. Copy it immediately — you will save it in the dashboard in the next step.',
     action: 'none',
   },
   {
     number: '06',
-    title: 'Activate on Dashboard',
-    body: 'Return to the room detail page. Paste the Chatwork webhook token into the Activation section and click "Activate Webhook". The room will go live.',
+    title: 'Save Secret on Dashboard',
+    body: 'Return to the room form or room detail page. Paste the Chatwork secret into the Webhook Secret field, save the room configuration, then enable the room to go live.',
     action: 'none',
   },
 ]

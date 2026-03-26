@@ -164,12 +164,9 @@ export const useRoomStore = create<RoomStoreState>()((set) => ({
 export const selectRooms = (state: RoomStoreState) => state.rooms
 export const selectRoomById = (id: string) => (state: RoomStoreState) =>
   state.rooms.find((room) => room.id === id)
-export const selectProviders = (state: RoomStoreState) => state.providers
 export const selectListState = (state: RoomStoreState) => state.listState
 export const selectListError = (state: RoomStoreState) => state.listError
-export const selectIsLoading = (state: RoomStoreState) => state.listState === 'loading'
 export const selectFetchRooms = (state: RoomStoreState) => state.fetchRooms
-export const selectFetchProviders = (state: RoomStoreState) => state.fetchProviders
 export const selectCreateRoom = (state: RoomStoreState) => state.createRoom
 export const selectUpdateRoom = (state: RoomStoreState) => state.updateRoom
 export const selectDeleteRoom = (state: RoomStoreState) => state.deleteRoom

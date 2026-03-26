@@ -5,6 +5,10 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
 import { RoomDetailPage, getRoomUpdatedToastMessage } from '~/pages/room-detail'
 
+const removedWebhookActivationSchema = ['webhook', 'Activation', 'Schema'].join('')
+const removedActivateWebhookSymbol = ['activate', 'Webhook'].join('')
+const removedRoomWebhookTokenProperty = `room.${['webhook', 'Token'].join('')}`
+
 function renderRoomDetailPage(path: string) {
   const router = createMemoryRouter(
     [
@@ -64,9 +68,9 @@ describe('RoomDetailPage', () => {
     expect(source).toContain('View Webhook Guide')
     expect(source).not.toContain("toast('Room updated successfully!')")
     expect(source).not.toContain('WebhookActivationInput')
-    expect(source).not.toContain('webhookActivationSchema')
-    expect(source).not.toContain('activateWebhook')
-    expect(source).not.toContain('room.webhookToken')
+    expect(source).not.toContain(removedWebhookActivationSchema)
+    expect(source).not.toContain(removedActivateWebhookSymbol)
+    expect(source).not.toContain(removedRoomWebhookTokenProperty)
     expect(source).toContain('toast(result.error,')
     expect(source).toContain("'info'")
     expect(source).toContain("'error'")

@@ -25,4 +25,13 @@ describe('WebhookGuidePage', () => {
     expect(source).toContain('<WebhookStepper />')
     expect(source).not.toContain('const steps = [')
   })
+
+  it('keeps the supporting rationale cards aligned with the webhook-secret setup flow', async () => {
+    const source = await Bun.file(new URL('./webhook-guide.tsx', import.meta.url)).text()
+
+    expect(source).toContain('webhook secret is saved in the room configuration')
+    expect(source).toContain('room is enabled')
+    expect(source).not.toContain('webhook token')
+    expect(source).not.toContain('Activation section')
+  })
 })
