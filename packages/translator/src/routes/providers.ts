@@ -18,6 +18,6 @@ export const providersRoute = new Elysia({ name: 'translator:providers' }).get(
         defaultModel: plugin.manifest.defaultModel,
       }))
 
-    return { providers }
+    return { success: true, data: providers }
   },
 )

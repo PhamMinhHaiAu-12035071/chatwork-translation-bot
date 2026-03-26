@@ -13,7 +13,7 @@ interface RoomsRoutesOptions {
 export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOptions) {
   return new Elysia({ name: 'translator:rooms' })
     .get('/api/rooms', () => {
-      return { rooms: store.list() }
+      return { success: true, data: store.list() }
     })
     .get('/api/rooms/:id', ({ params, set }) => {
       const room = store.getById(params.id)
@@ -22,7 +22,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
         return { error: 'Room not found' }
       }
 
-      return { room }
+      return { success: true, data: room }
     })
     .post(
       '/api/rooms',
@@ -76,7 +76,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
         const webhookUrl = `${new URL(request.url).origin}/webhook`
 
         set.status = 201
-        return { room: redactRoomConfig(room), webhookUrl }
+        return { success: true, data: redactRoomConfig(room), webhookUrl }
       },
       { body: t.Unknown() },
     )
@@ -91,7 +91,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
 
         try {
           const room = await store.update(params.id, parsed.data)
-          return { room }
+          return { success: true, data: room }
         } catch (error) {
           if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
             set.status = 404
@@ -120,7 +120,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
     .post('/api/rooms/:id/enable', async ({ params, set }) => {
       try {
         const room = await store.setEnabled(params.id, true)
-        return { room }
+        return { success: true, data: room }
       } catch (error) {
         if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
           set.status = 404
@@ -133,7 +133,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
     .post('/api/rooms/:id/disable', async ({ params, set }) => {
       try {
         const room = await store.setEnabled(params.id, false)
-        return { room }
+        return { success: true, data: room }
       } catch (error) {
         if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
           set.status = 404
