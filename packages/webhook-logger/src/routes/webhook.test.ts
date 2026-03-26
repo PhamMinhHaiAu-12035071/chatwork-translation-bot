@@ -208,7 +208,6 @@ describe('webhookRoutes', () => {
 
       expect(res.status).toBe(503)
     })
-
     it('refetches the room secret after the cache entry expires', async () => {
       const originalNow = Date.now
       let now = 1_000_000
