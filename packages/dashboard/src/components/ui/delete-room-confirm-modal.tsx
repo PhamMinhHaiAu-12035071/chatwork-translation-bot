@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import type { Room } from '~/stores/room-store'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { StatusPill } from '~/components/ui/status-pill'
@@ -42,7 +43,7 @@ export function DeleteRoomConfirmModal({
 
   if (!isOpen) return null
 
-  return (
+  const overlay = (
     <div className="delete-modal-overlay" onClick={onCancel}>
       <div
         role="dialog"
@@ -113,4 +114,10 @@ export function DeleteRoomConfirmModal({
       </div>
     </div>
   )
+
+  if (typeof document !== 'undefined') {
+    return createPortal(overlay, document.body)
+  }
+
+  return overlay
 }

@@ -111,6 +111,8 @@ describe('DeleteRoomConfirmModal', () => {
     expect(source).toContain('useEffect')
     expect(source).toContain('Escape')
     expect(source).toContain('useRef')
+    expect(source).toContain('createPortal')
+    expect(source).toContain('document.body')
   })
 
   it('applies the modal visual class hooks for overlay, shell, warning, preview, and actions', () => {
