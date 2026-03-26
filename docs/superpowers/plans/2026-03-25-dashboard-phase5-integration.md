@@ -12,24 +12,43 @@
 
 **Ship & Review:** `bun run dev:dashboard` + start translator on port 3000 → open `localhost:5173` → open DevTools Network tab → verify real API calls, real room data, correct loading/error/success states on all pages
 
+**⚠️ Current codebase state (post-Phase 3):** Phase 3 implementation introduced several components and patterns not in the original plan. Key differences to preserve:
+
+- **Toast system already exists:** `~/components/ui/toast-provider.tsx` provides `useToast()` hook with `toast(message, variant)` API where variant is `'success' | 'info' | 'warning' | 'error'`. Do NOT create a new toast system — reuse the existing one.
+- **Body font:** `'Zen Maru Gothic', sans-serif` (NOT `'Kiwi Maru'`). CSS class: `.font-ui-body`
+- **Metric font:** `'Fredoka', cursive` via `.font-metric` class (used in stats numbers)
+- **BrutalSelect:** Custom dropdown portal with `colorVariant?: 'accent' | 'mint' | 'peach'` prop — NOT a native `<select>`
+- **BrutalInput:** Styling via CSS classes `.brutal-input` / `.brutal-input-error` / `.brutal-input:focus`
+- **StatusPill:** `children: ReactNode` (not string), added `className` prop
+- **BrutalCard:** Added `animated?: boolean` prop
+- **DeleteRoomConfirmModal:** Custom modal via `createPortal` — replaces `window.confirm()`
+- **Animation components:** `PixelScatterText` (scatter text transitions), `SlideStackNumber` (slot-machine number wheel)
+- **Seeded data:** 12 rooms exported as `SEEDED_ROOMS` (not 2 `MOCK_ROOMS`)
+- **zodResolver pattern:** Uses `zodResolver(schema as never) as Resolver<T>` type cast
+- **Toast call pattern:** `toast('message', 'info')` not `toast.success('message')`
+- **Navigate pattern:** `void navigate('/path')` (void prefix for promise)
+
 ---
 
 ## File Map
 
-| File                                                     | Action  | Responsibility                                                                         |
-| -------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------- |
-| `packages/dashboard/vite.config.ts`                      | Modify  | Add `/api` proxy to `localhost:3000`                                                   |
-| `packages/dashboard/src/lib/api-client.ts`               | Replace | Typed fetch wrapper: all CRUD + enable/disable + providers                             |
-| `packages/dashboard/src/lib/api-types.ts`                | Create  | `RoomConfig`, `ProviderInfo`, API response types (FE mirror of backend contract)       |
-| `packages/dashboard/src/stores/room-store.ts`            | Replace | Full Zustand store: rooms, providers, async actions, loading/error flags               |
-| `packages/dashboard/src/hooks/use-toast.ts`              | Create  | Minimal toast hook (slide-in, auto-dismiss, Framer Motion)                             |
-| `packages/dashboard/src/components/ui/toast.tsx`         | Create  | Toast component consuming `use-toast`                                                  |
-| `packages/dashboard/src/components/ui/room-skeleton.tsx` | Create  | Brutal skeleton card for loading state                                                 |
-| `packages/dashboard/src/pages/room-list.tsx`             | Replace | Real room list from API: loading skeleton, empty state, room cards, toggle, delete     |
-| `packages/dashboard/src/pages/room-create.tsx`           | Replace | POST /api/rooms form submit, 409 duplicate handling, success → redirect to Room Detail |
-| `packages/dashboard/src/pages/room-detail.tsx`           | Replace | GET /api/rooms/:id data load, PUT update, webhook activation (token → enable)          |
-| `packages/dashboard/src/lib/api-client.test.ts`          | Create  | Unit tests for API client error handling (bun:test)                                    |
-| `packages/dashboard/src/stores/room-store.test.ts`       | Create  | Unit tests for Zustand store actions (bun:test)                                        |
+| File                                                     | Action  | Responsibility                                                                      |
+| -------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------- |
+| `packages/dashboard/vite.config.ts`                      | Modify  | Add `/api` proxy to `localhost:3000`                                                |
+| `packages/dashboard/src/lib/api-client.ts`               | Replace | Typed fetch wrapper: all CRUD + enable/disable + providers                          |
+| `packages/dashboard/src/lib/api-types.ts`                | Create  | `RoomConfig`, `ProviderInfo`, API response types (FE mirror of backend contract)    |
+| `packages/dashboard/src/stores/room-store.ts`            | Replace | Full Zustand store: rooms, providers, async actions, loading/error flags            |
+| `packages/dashboard/src/components/ui/room-skeleton.tsx` | Create  | Brutal skeleton card for loading state                                              |
+| `packages/dashboard/src/pages/room-list.tsx`             | Modify  | Wire to API, add loading/error states, preserve DeleteRoomConfirmModal + animations |
+| `packages/dashboard/src/pages/room-create.tsx`           | Modify  | Wire onSubmit to POST /api/rooms, 409 handling, preserve BrutalSelect colorVariant  |
+| `packages/dashboard/src/pages/room-detail.tsx`           | Modify  | Wire to GET/PUT API, preserve PixelScatterText + existing form layout               |
+| `packages/dashboard/src/lib/api-client.test.ts`          | Create  | Unit tests for API client error handling (bun:test)                                 |
+| `packages/dashboard/src/stores/room-store.test.ts`       | Create  | Unit tests for Zustand store async actions (bun:test)                               |
+
+**Removed from original plan (already exist from Phase 3):**
+
+- ~~`packages/dashboard/src/hooks/use-toast.ts`~~ — toast system already at `~/components/ui/toast-provider.tsx`
+- ~~`packages/dashboard/src/components/ui/toast.tsx`~~ — `BrutalToast` already exists at `~/components/ui/brutal-toast.tsx`
 
 ---
 
@@ -359,115 +378,9 @@ export const selectListError = (s: RoomStore) => s.listError
 
 ---
 
-## Task 5: Create toast hook and component
+## Task 5: Create brutal skeleton component
 
-**Files:**
-
-- Create: `packages/dashboard/src/hooks/use-toast.ts`
-- Create: `packages/dashboard/src/components/ui/toast.tsx`
-
-- [ ] **Step 1: Create `packages/dashboard/src/hooks/use-toast.ts`**
-
-```typescript
-import { create } from 'zustand'
-
-export type ToastTone = 'success' | 'error' | 'warning' | 'info'
-
-interface Toast {
-  id: string
-  message: string
-  tone: ToastTone
-}
-
-interface ToastStore {
-  toasts: Toast[]
-  addToast(message: string, tone: ToastTone): void
-  removeToast(id: string): void
-}
-
-export const useToastStore = create<ToastStore>()((set) => ({
-  toasts: [],
-  addToast(message, tone) {
-    const id = crypto.randomUUID()
-    set((s) => ({ toasts: [...s.toasts, { id, message, tone }] }))
-    setTimeout(() => {
-      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
-    }, 4000)
-  },
-  removeToast(id) {
-    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
-  },
-}))
-
-export function useToast() {
-  const { addToast } = useToastStore()
-  return {
-    success: (msg: string) => addToast(msg, 'success'),
-    error: (msg: string) => addToast(msg, 'error'),
-    warning: (msg: string) => addToast(msg, 'warning'),
-    info: (msg: string) => addToast(msg, 'info'),
-  }
-}
-```
-
-- [ ] **Step 2: Create `packages/dashboard/src/components/ui/toast.tsx`**
-
-```tsx
-import { AnimatePresence, motion } from 'framer-motion'
-import { useToastStore, type ToastTone } from '~/hooks/use-toast'
-
-const toneClasses: Record<ToastTone, string> = {
-  success: 'theme-card-mint',
-  error: 'theme-card-blush',
-  warning: 'theme-card-butter',
-  info: 'theme-card-sky',
-}
-
-export function ToastContainer() {
-  const { toasts, removeToast } = useToastStore()
-
-  return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, x: 80 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 80 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-            className={[
-              'brutal-surface cursor-pointer px-5 py-3 font-heading text-sm font-bold',
-              toneClasses[toast.tone],
-            ].join(' ')}
-            onClick={() => removeToast(toast.id)}
-          >
-            {toast.message}
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  )
-}
-```
-
-- [ ] **Step 3: Mount `<ToastContainer />` in `packages/dashboard/src/layouts/app-layout.tsx`**
-
-Add the import and render `<ToastContainer />` as a sibling of `<Outlet />` inside the layout's root div:
-
-```tsx
-import { ToastContainer } from '~/components/ui/toast'
-
-// Inside AppLayout return:
-;<>
-  {/* existing layout JSX */}
-  <ToastContainer />
-</>
-```
-
----
-
-## Task 6: Create brutal skeleton component
+> **Note:** Toast system (Task 5 in the original plan) has been **removed** — it already exists from Phase 3 at `~/components/ui/toast-provider.tsx` with `useToast()` hook and `~/components/ui/brutal-toast.tsx`. Use `toast('message', 'variant')` where variant is `'success' | 'info' | 'warning' | 'error'`.
 
 **Files:**
 
@@ -517,226 +430,151 @@ export function RoomSkeletonList({ count = 3 }: { count?: number }) {
 
 ---
 
-## Task 7: Wire Room List page to real API
+## Task 6: Wire Room List page to real API
 
 **Files:**
 
-- Replace: `packages/dashboard/src/pages/room-list.tsx`
+- Modify: `packages/dashboard/src/pages/room-list.tsx`
 
-- [ ] **Step 1: Replace `packages/dashboard/src/pages/room-list.tsx`**
+**Approach:** Preserve the existing Phase 3 UI (card theme cycling, `PixelScatterText`, `SlideStackNumber`, `DeleteRoomConfirmModal`, `motion.div` cards, stats row, `font-ui-body`/`font-metric` classes). Only change what's needed for API integration.
 
-The page fetches rooms on mount via `useRoomStore.fetchRooms()`. It handles four states:
+- [ ] **Step 1: Add imports and fetch on mount**
 
-1. `loading` — show `<RoomSkeletonList />`
-2. `error` — show error card with Retry button
-3. `success` + empty array — show empty state CTA
-4. `success` + rooms — show room cards with enable toggle and delete button
+Add these imports and the `useEffect` fetch call:
 
 ```tsx
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router'
-import { BrutalCard } from '~/components/ui/brutal-card'
-import { PageShell } from '~/components/ui/page-shell'
 import { RoomSkeletonList } from '~/components/ui/room-skeleton'
-import { StatusPill } from '~/components/ui/status-pill'
-import { StickerLabel } from '~/components/ui/sticker-label'
-import { useToast } from '~/hooks/use-toast'
 import { ApiError } from '~/lib/api-client'
-import { selectListError, selectListState, selectRooms, useRoomStore } from '~/stores/room-store'
+import { selectListError, selectListState, useRoomStore } from '~/stores/room-store'
+```
 
-export function RoomListPage() {
-  const navigate = useNavigate()
-  const toast = useToast()
-  const rooms = useRoomStore(selectRooms)
-  const listState = useRoomStore(selectListState)
-  const listError = useRoomStore(selectListError)
-  const { fetchRooms, toggleRoom, deleteRoom } = useRoomStore()
+Add state selectors and fetch effect inside the component:
 
-  useEffect(() => {
-    void fetchRooms()
-  }, [fetchRooms])
+```tsx
+const listState = useRoomStore(selectListState)
+const listError = useRoomStore(selectListError)
+const fetchRooms = useRoomStore((state) => state.fetchRooms)
 
-  async function handleToggle(id: string, currentEnabled: boolean) {
-    try {
-      await toggleRoom(id, !currentEnabled)
-      toast.success(currentEnabled ? 'Room disabled' : 'Room enabled')
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Toggle failed')
-    }
+useEffect(() => {
+  void fetchRooms()
+}, [fetchRooms])
+```
+
+- [ ] **Step 2: Make toggle/delete handlers async with error handling**
+
+Replace the existing `handleToggle` and `handleConfirmDelete` with async versions that call the API:
+
+```tsx
+const handleToggle = async (id: string, roomName: string, currentlyEnabled: boolean) => {
+  try {
+    await toggleRoom(id, !currentlyEnabled)
+    toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
+  } catch (err) {
+    toast(err instanceof ApiError ? err.message : 'Toggle failed', 'error')
   }
+}
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete room "${name}"? This cannot be undone.`)) return
-    try {
-      await deleteRoom(id)
-      toast.success('Room deleted')
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Delete failed')
-    }
+const handleConfirmDelete = async () => {
+  if (!selectedRoom) return
+  try {
+    await deleteRoom(selectedRoom.id)
+    toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
+  } catch (err) {
+    toast(err instanceof ApiError ? err.message : 'Delete failed', 'error')
   }
+  setSelectedRoom(null)
+}
+```
 
-  return (
-    <PageShell
-      eyebrow="Dashboard"
-      title="Translation Rooms"
-      description="Manage your Chatwork translation room configurations."
-      actions={
-        <button
-          type="button"
-          onClick={() => navigate('/rooms/new')}
-          className="brutal-button theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white"
-        >
-          + New Room
-        </button>
-      }
-    >
-      {listState === 'loading' && <RoomSkeletonList count={3} />}
+- [ ] **Step 3: Add loading and error states before the room grid**
 
-      {listState === 'error' && (
-        <BrutalCard className="theme-card-blush space-y-3">
-          <StickerLabel tone="warning">Error</StickerLabel>
-          <p className="text-sm leading-7 text-[var(--text-secondary)]">{listError}</p>
-          <button
-            type="button"
-            onClick={() => fetchRooms()}
-            className="brutal-button theme-button-warm px-4 py-2 font-heading text-sm font-bold text-white"
-          >
-            Retry
-          </button>
-        </BrutalCard>
-      )}
+Insert loading/error states between the stats row and the room grid/empty state:
 
-      {(listState === 'success' || listState === 'idle') && rooms.length === 0 && (
-        <BrutalCard className="theme-card-sky space-y-5">
-          <StatusPill tone="warning">Empty State</StatusPill>
-          <div className="space-y-3">
-            <h2 className="font-heading text-3xl font-bold">Create your first translation room</h2>
-            <p className="max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">
-              Set up a translation room to automatically relay messages from a customer Chatwork
-              room to an internal room your dev team can read.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/rooms/new')}
-            className="brutal-button theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white"
-          >
-            + New Room
-          </button>
-        </BrutalCard>
-      )}
+```tsx
+{
+  listState === 'loading' && <RoomSkeletonList count={3} />
+}
 
-      {listState === 'success' && rooms.length > 0 && (
-        <div className="space-y-4">
-          {rooms.map((room, idx) => (
-            <BrutalCard
-              key={room.id}
-              tilt={idx % 2 === 0 ? 'flat' : 'right'}
-              className="theme-card-cream space-y-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <StickerLabel tone={room.enabled ? 'success' : 'warning'}>
-                      {room.enabled ? 'Active' : 'Inactive'}
-                    </StickerLabel>
-                    <h2
-                      className="cursor-pointer font-heading text-xl font-bold hover:underline"
-                      onClick={() => navigate(`/rooms/${room.id}`)}
-                    >
-                      {room.destinationRoomName}
-                    </h2>
-                  </div>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Room ID: {room.originalRoomId} · Provider: {room.aiProvider}
-                    {room.aiModel ? ` (${room.aiModel})` : ''} · Style: {room.translationStyle}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleToggle(room.id, room.enabled)}
-                    className={[
-                      'brutal-button px-4 py-2 font-heading text-sm font-bold',
-                      room.enabled ? 'theme-button-warm' : 'theme-button-violet',
-                    ].join(' ')}
-                  >
-                    {room.enabled ? 'Disable' : 'Enable'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/rooms/${room.id}`)}
-                    className="brutal-button theme-button-sky px-4 py-2 font-heading text-sm font-bold"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(room.id, room.destinationRoomName)}
-                    className="brutal-button theme-button-pink px-4 py-2 font-heading text-sm font-bold text-white"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </BrutalCard>
-          ))}
-        </div>
-      )}
-    </PageShell>
+{
+  listState === 'error' && (
+    <BrutalCard className="theme-card-blush space-y-3">
+      <StickerLabel tone="warning">Error</StickerLabel>
+      <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">{listError}</p>
+      <button
+        type="button"
+        onClick={() => {
+          void fetchRooms()
+        }}
+        className="brutal-button theme-button-warm px-4 py-2 font-heading text-sm font-bold text-white"
+      >
+        Retry
+      </button>
+    </BrutalCard>
   )
 }
 ```
 
+**Preserve all existing:** card theme cycling (`cardThemeByIndex`), tilt cycling (`tiltByIndex`), `PixelScatterText` for status/toggle buttons, `SlideStackNumber` for stats, `DeleteRoomConfirmModal`, `motion.div` card wrappers, `PROVIDER_LABELS`/`TRANSLATION_STYLE_LABELS` lookups, `font-ui-body`/`font-metric` classes.
+
+- [ ] **Step 4: Update `toggleRoom` store call signature**
+
+The Phase 5 store's `toggleRoom(id, enabled)` takes a boolean (the desired state), while Phase 3 used `toggleRoom(id)` (toggles current). Update the button `onClick` to pass the desired state:
+
+```tsx
+onClick={() => {
+  void handleToggle(room.id, room.destinationRoomName, room.enabled)
+}}
+```
+
 ---
 
-## Task 8: Wire Room Create form to POST /api/rooms
+## Task 7: Wire Room Create form to POST /api/rooms
 
 **Files:**
 
-- Replace: `packages/dashboard/src/pages/room-create.tsx`
+- Modify: `packages/dashboard/src/pages/room-create.tsx`
 
-The Phase 3 form (React Hook Form + Zod) is already wired up visually. This task replaces the `onSubmit` handler to call the real API, handles the 409 duplicate conflict case by showing an inline field error, and on success redirects to the new room's detail page with a toast.
+**Approach:** Preserve the existing Phase 3 form structure: `BrutalSelect` with `colorVariant`, `BrutalInput`, `zodResolver(roomCreateSchema as never) as Resolver<RoomCreateInput>` pattern, `void navigate()`, `PROVIDER_MODELS`/`PROVIDER_LABELS` lookups. Only change the `onSubmit` handler and add `setError` for 409 handling.
 
-- [ ] **Step 1: Replace `packages/dashboard/src/pages/room-create.tsx` `onSubmit` handler**
-
-Locate the existing `onSubmit` function (currently a no-op or console.log stub from Phase 3) and replace it:
+- [ ] **Step 1: Add API imports and wire `createRoom` from store**
 
 ```tsx
-import { useNavigate } from 'react-router'
-import { useToast } from '~/hooks/use-toast'
 import { ApiError } from '~/lib/api-client'
-import { useRoomStore } from '~/stores/room-store'
 
-// Inside RoomCreatePage component:
-const navigate = useNavigate()
-const toast = useToast()
-const { createRoom, fetchProviders, providers } = useRoomStore()
+// Inside RoomCreatePage, replace addRoom with createRoom:
+const createRoom = useRoomStore((state) => state.createRoom)
+```
 
-// Fetch providers for the dropdown on mount
-useEffect(() => {
-  void fetchProviders()
-}, [fetchProviders])
+- [ ] **Step 2: Replace `onSubmit` handler with async API call**
 
+Replace the existing sync `onSubmit` function. Add `setError` to the `useForm` destructuring:
+
+```tsx
 const {
   register,
   handleSubmit,
+  watch,
+  setValue,
   setError,
   formState: { errors, isSubmitting },
-} = useForm<CreateRoomFormValues>({ resolver: zodResolver(createRoomSchema) })
+} = useForm<RoomCreateInput>({
+  resolver: roomCreateResolver,
+  defaultValues: {
+    /* ...existing defaults... */
+  },
+})
 
-async function onSubmit(values: CreateRoomFormValues) {
+const onSubmit = async (data: RoomCreateInput) => {
+  const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
+
   try {
     const room = await createRoom({
-      originalRoomId: Number(values.originalRoomId),
-      destinationRoomName: values.destinationRoomName,
-      aiProvider: values.aiProvider,
-      aiModel: values.aiModel || null,
-      translationStyle: values.translationStyle,
-      aiApiToken: values.aiApiToken,
+      ...data,
+      aiModel: normalizedAiModel,
     })
-    toast.success('Room created! Now set up the webhook to activate translation.')
-    navigate(`/rooms/${room.id}`)
+    toast(getRoomCreatedToastMessage(data.destinationRoomName))
+    void navigate(`/rooms/${room.id}`)
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) {
       setError('originalRoomId', {
@@ -744,293 +582,109 @@ async function onSubmit(values: CreateRoomFormValues) {
       })
       return
     }
-    toast.error(err instanceof ApiError ? err.message : 'Failed to create room')
+    toast(err instanceof ApiError ? err.message : 'Failed to create room', 'error')
   }
 }
 ```
 
-- [ ] **Step 2: Wire providers dropdown to real `providers` state**
-
-Replace the hardcoded `['openai', 'gemini']` array in the AI Provider `<select>` with:
+- [ ] **Step 3: Update form `onSubmit` to handle async**
 
 ```tsx
-<select {...register('aiProvider')} /* existing className */>
-  <option value="">Select provider…</option>
-  {providers.map((p) => (
-    <option key={p.id} value={p.id}>
-      {p.name}
-    </option>
-  ))}
-</select>
-```
-
-- [ ] **Step 3: Wire AI Model dropdown to selected provider's models**
-
-Use `useWatch` from React Hook Form to react to the selected provider and populate models:
-
-```tsx
-import { useWatch } from 'react-hook-form'
-
-const selectedProvider = useWatch({ control, name: 'aiProvider' })
-const providerModels = providers.find((p) => p.id === selectedProvider)?.models ?? []
-const defaultModel = providers.find((p) => p.id === selectedProvider)?.defaultModel
-
-// In AI Model select:
-<select {...register('aiModel')} /* existing className */>
-  <option value="">Default ({defaultModel ?? 'provider default'})</option>
-  {providerModels.map((m) => (
-    <option key={m} value={m}>{m}</option>
-  ))}
-</select>
-```
-
-- [ ] **Step 4: Disable submit button and show spinner during submission**
-
-```tsx
-<button
-  type="submit"
-  disabled={isSubmitting}
-  className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white disabled:opacity-60"
+<form
+  onSubmit={(event) => {
+    void handleSubmit(onSubmit)(event)
+  }}
+  noValidate
 >
-  {isSubmitting ? 'Creating…' : 'Create Room'}
-</button>
 ```
+
+**Preserve all existing:** `BrutalSelect` with `colorVariant` props (`accent`, `mint`, `peach`), `BrutalInput` components, `PROVIDER_MODELS[selectedProvider]` model lookup, `aiProviderField` with `onChange` resetting model, `void navigate()` pattern, `isSubmitting` disabled state on button.
 
 ---
 
-## Task 9: Wire Room Detail page to GET /api/rooms/:id + PUT + activation
+## Task 8: Wire Room Detail page to GET /api/rooms/:id + PUT + activation
 
 **Files:**
 
-- Replace: `packages/dashboard/src/pages/room-detail.tsx`
+- Modify: `packages/dashboard/src/pages/room-detail.tsx`
 
-- [ ] **Step 1: Replace `packages/dashboard/src/pages/room-detail.tsx`**
+**Approach:** Preserve the existing Phase 3 layout: two-column grid with edit form (left) and webhook section (right), `BrutalInput`/`BrutalSelect` with `colorVariant`, `PixelScatterText` for status, `zodResolver(roomEditSchema as never) as Resolver<RoomEditInput>` pattern, `webhookActivationResolver`, `handleCopyUrl`, `void navigate()`, `getRoomUpdatedToastMessage()`. Only change handlers to be async API calls and add loading/error states.
+
+- [ ] **Step 1: Add API imports**
 
 ```tsx
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { BrutalCard } from '~/components/ui/brutal-card'
-import { PageShell } from '~/components/ui/page-shell'
+import { useEffect } from 'react'
 import { RoomSkeletonCard } from '~/components/ui/room-skeleton'
-import { StatusPill } from '~/components/ui/status-pill'
-import { StickerLabel } from '~/components/ui/sticker-label'
-import { useToast } from '~/hooks/use-toast'
 import { ApiError } from '~/lib/api-client'
-import { useRoomStore } from '~/stores/room-store'
-import type { RoomConfig } from '~/lib/api-types'
+```
 
-const activateSchema = z.object({
-  webhookToken: z.string().min(1, 'Webhook token is required'),
-})
+- [ ] **Step 2: Wire room data from API store**
 
-type ActivateFormValues = z.infer<typeof activateSchema>
+Replace the sync store lookup with API-backed loading:
 
-export function RoomDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const toast = useToast()
-  const { activateRoom, updateRoom, fetchRooms, rooms } = useRoomStore()
+```tsx
+const rooms = useRoomStore((state) => state.rooms)
+const fetchRooms = useRoomStore((state) => state.fetchRooms)
+const listState = useRoomStore((state) => state.listState)
 
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [room, setRoom] = useState<RoomConfig | null>(null)
+const room = rooms.find((candidate) => candidate.id === id)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<ActivateFormValues>({
-    resolver: zodResolver(activateSchema),
-  })
-
-  useEffect(() => {
-    if (!id) return
-    // Check store first; if not found, trigger a full fetch
-    const existing = rooms.find((r) => r.id === id)
-    if (existing) {
-      setRoom(existing)
-      setLoading(false)
-      return
-    }
+useEffect(() => {
+  if (!room) {
     void fetchRooms()
-      .then(() => {
-        // After fetch, room should be in store; useEffect will re-run via rooms dependency
-      })
-      .catch((err) => {
-        setLoadError(err instanceof ApiError ? err.message : 'Failed to load room')
-        setLoading(false)
-      })
-  }, [id, rooms, fetchRooms])
-
-  // Sync room from store after fetchRooms completes
-  useEffect(() => {
-    if (!id) return
-    const found = rooms.find((r) => r.id === id)
-    if (found) {
-      setRoom(found)
-      setLoading(false)
-    }
-  }, [rooms, id])
-
-  async function onActivate(values: ActivateFormValues) {
-    if (!id) return
-    try {
-      const updated = await activateRoom(id, values.webhookToken)
-      setRoom(updated)
-      toast.success('Room activated! Translation is now live.')
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Activation failed')
-    }
   }
+}, [room, fetchRooms])
+```
 
-  const webhookUrl = room
-    ? `${window.location.origin}/webhook?room_id=${room.originalRoomId}`
-    : null
+Add a loading state before the "not found" check:
 
-  if (loading) {
-    return (
-      <PageShell eyebrow="Loading…" title="Room Detail">
-        <RoomSkeletonCard />
-      </PageShell>
-    )
-  }
-
-  if (loadError || !room) {
-    return (
-      <PageShell eyebrow="Error" title="Room Not Found">
-        <BrutalCard className="theme-card-blush space-y-3">
-          <p className="text-sm leading-7 text-[var(--text-secondary)]">
-            {loadError ?? 'Room not found.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="brutal-button theme-button-warm px-4 py-2 font-heading text-sm font-bold text-white"
-          >
-            Back to Dashboard
-          </button>
-        </BrutalCard>
-      </PageShell>
-    )
-  }
-
+```tsx
+if (listState === 'loading' && !room) {
   return (
-    <PageShell
-      eyebrow="Room Config"
-      title={room.destinationRoomName}
-      description="Review your room configuration and complete webhook activation to go live."
-      actions={
-        <StatusPill tone={room.enabled ? 'success' : 'warning'}>
-          {room.enabled ? 'Active' : 'Inactive'}
-        </StatusPill>
-      }
-    >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        {/* Config summary */}
-        <BrutalCard className="theme-card-sky space-y-4" tilt="left">
-          <StickerLabel tone="accent">Room Config</StickerLabel>
-          <dl className="space-y-3 text-sm">
-            <div className="flex gap-2">
-              <dt className="font-bold">Original Room ID:</dt>
-              <dd>{room.originalRoomId}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="font-bold">Destination Room ID:</dt>
-              <dd>{room.destinationRoomId}</dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="font-bold">Provider:</dt>
-              <dd>
-                {room.aiProvider}
-                {room.aiModel ? ` / ${room.aiModel}` : ''}
-              </dd>
-            </div>
-            <div className="flex gap-2">
-              <dt className="font-bold">Style:</dt>
-              <dd>{room.translationStyle}</dd>
-            </div>
-          </dl>
-          {webhookUrl && (
-            <div className="space-y-1">
-              <div className="font-heading text-xs font-bold uppercase tracking-wide">
-                Webhook URL
-              </div>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 rounded-lg border-[3px] border-[var(--border)] bg-white px-3 py-2 text-xs shadow-[3px_3px_0_var(--border)] break-all">
-                  {webhookUrl}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(webhookUrl)
-                    toast.success('Copied!')
-                  }}
-                  className="brutal-button theme-button-sky px-3 py-2 font-heading text-xs font-bold"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          )}
-        </BrutalCard>
-
-        {/* Webhook activation */}
-        <BrutalCard className="theme-card-peach space-y-4" tilt="right">
-          <StickerLabel tone="warning" tilt="right">
-            {room.enabled ? 'Activated' : 'Activate Room'}
-          </StickerLabel>
-          {room.enabled ? (
-            <p className="text-sm leading-7 text-[var(--text-secondary)]">
-              Translation is live. Messages in Room {room.originalRoomId} will be translated and
-              posted to the destination room.
-            </p>
-          ) : (
-            <>
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">
-                Paste the Chatwork webhook token to activate translation. Follow the{' '}
-                <a href="/guide" className="font-bold underline">
-                  Webhook Guide
-                </a>{' '}
-                if you haven't set up the webhook yet.
-              </p>
-              <form onSubmit={handleSubmit(onActivate)} className="space-y-3">
-                <div className="space-y-1">
-                  <label className="font-heading text-xs font-bold uppercase tracking-wide">
-                    Webhook Token
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Paste Chatwork webhook token…"
-                    className="w-full rounded-lg border-[3px] border-[var(--border)] bg-white px-4 py-2 text-sm shadow-[3px_3px_0_var(--border)] outline-none focus:shadow-[5px_5px_0_var(--accent)]"
-                    {...register('webhookToken')}
-                  />
-                  {errors.webhookToken && (
-                    <p className="text-xs text-[var(--error)]">{errors.webhookToken.message}</p>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="brutal-button theme-button-violet w-full py-3 font-heading text-sm font-bold text-white disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Activating…' : 'Activate Translation'}
-                </button>
-              </form>
-            </>
-          )}
-        </BrutalCard>
-      </div>
+    <PageShell eyebrow="Loading…" title="Room Detail" description="">
+      <RoomSkeletonCard />
     </PageShell>
   )
 }
 ```
 
+- [ ] **Step 3: Make `onEditSubmit` async**
+
+```tsx
+const onEditSubmit = async (data: RoomEditInput) => {
+  const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
+
+  try {
+    await updateRoom(room.id, {
+      ...data,
+      aiModel: normalizedAiModel,
+    })
+    toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
+  } catch (err) {
+    toast(err instanceof ApiError ? err.message : 'Update failed', 'error')
+  }
+}
+```
+
+- [ ] **Step 4: Make `onActivateSubmit` async**
+
+```tsx
+const onActivateSubmit = async (data: WebhookActivationInput) => {
+  try {
+    await activateWebhook(room.id, data.webhookToken)
+    toast('Webhook activated! Room is now live.')
+    activationForm.reset()
+  } catch (err) {
+    toast(err instanceof ApiError ? err.message : 'Activation failed', 'error')
+  }
+}
+```
+
+**Preserve all existing:** `BrutalInput` for all text/password fields, `BrutalSelect` with `colorVariant` (`accent`, `mint`, `peach`), `PixelScatterText` for status pill, `StickerLabel`, webhook URL with copy button, `handleCopyUrl` with `setCopied` state, edit form + activation form dual-form layout, `font-ui-body` classes, `void navigate('/guide')` pattern.
+
 ---
 
-## Task 10: API client unit tests
+## Task 9: API client unit tests
 
 **Files:**
 
@@ -1124,7 +778,7 @@ describe('apiClient', () => {
 
 ---
 
-## Task 11: Zustand store unit tests
+## Task 10: Zustand store unit tests
 
 **Files:**
 
@@ -1249,7 +903,7 @@ describe('useRoomStore', () => {
 
 ---
 
-## Task 12: Commit and quality gate
+## Task 11: Commit and quality gate
 
 - [ ] **Step 1: Run quality gate**
 
@@ -1274,18 +928,11 @@ git add packages/dashboard/src/stores/room-store.ts packages/dashboard/src/store
 git commit -m "feat(dashboard): wire Zustand store to API with async actions"
 ```
 
-- [ ] **Step 4: Commit toast and skeleton UI**
+- [ ] **Step 4: Commit skeleton component and page integrations**
 
 ```bash
-git add packages/dashboard/src/hooks/ packages/dashboard/src/components/ui/toast.tsx packages/dashboard/src/components/ui/room-skeleton.tsx
-git commit -m "feat(dashboard): add toast hook, ToastContainer, and skeleton components"
-```
-
-- [ ] **Step 5: Commit page integrations**
-
-```bash
-git add packages/dashboard/src/pages/ packages/dashboard/vite.config.ts
-git commit -m "feat(dashboard): integrate room list, create, and detail pages with backend API"
+git add packages/dashboard/src/components/ui/room-skeleton.tsx packages/dashboard/src/pages/ packages/dashboard/vite.config.ts
+git commit -m "feat(dashboard): add skeleton loading states and wire pages to backend API"
 ```
 
 ---
