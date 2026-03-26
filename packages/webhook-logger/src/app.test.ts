@@ -26,7 +26,7 @@ global.fetch = mock((input: FetchInput) => {
 
   if (url === 'http://localhost:3000/internal/room-secret?room_id=567890123') {
     return Promise.resolve(
-      new Response(JSON.stringify({ webhookSecret: TEST_SECRET }), {
+      new Response(JSON.stringify({ secret: TEST_SECRET }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),

@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto'
-import { afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import Elysia from 'elysia'
 import type { webhookRoutes as WebhookRoutesType } from './webhook'
 
@@ -83,7 +83,7 @@ function installDefaultFetch(): void {
     const url = resolveUrl(input)
 
     if (url === roomSecretUrl()) {
-      return Promise.resolve(makeJsonResponse({ webhookSecret: TEST_SECRET }))
+      return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
     }
 
     if (url === `${TRANSLATOR_URL}/internal/translate`) {
@@ -144,12 +144,6 @@ const originalConsoleWarn = console.warn
 describe('webhookRoutes', () => {
   let webhookRoutes: typeof WebhookRoutesType
   let app: ReturnType<typeof Elysia.prototype.use>
-
-  beforeAll(async () => {
-    const mod = await import('./webhook')
-    webhookRoutes = mod.webhookRoutes
-    app = new Elysia().use(webhookRoutes)
-  })
 
   describe('room secret cache', () => {
     it('does not fetch the same room secret again within TTL', async () => {
@@ -226,8 +220,11 @@ describe('webhookRoutes', () => {
     })
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
     installDefaultFetch()
+    const mod = await importWebhookRoutesWithEnv()
+    webhookRoutes = mod.webhookRoutes
+    app = new Elysia().use(webhookRoutes)
   })
 
   afterEach(() => {
@@ -403,7 +400,7 @@ describe('webhookRoutes', () => {
       const url = resolveUrl(input)
 
       if (url === roomSecretUrl()) {
-        return Promise.resolve(makeJsonResponse({ webhookSecret: TEST_SECRET }))
+        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
       }
 
       if (url === `${TRANSLATOR_URL}/internal/translate`) {
@@ -427,7 +424,7 @@ describe('webhookRoutes', () => {
       const url = resolveUrl(input)
 
       if (url === roomSecretUrl()) {
-        return Promise.resolve(makeJsonResponse({ webhookSecret: TEST_SECRET }))
+        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
       }
 
       if (url === `${TRANSLATOR_URL}/internal/translate`) {
@@ -455,7 +452,7 @@ describe('webhookRoutes', () => {
       const url = resolveUrl(input)
 
       if (url === roomSecretUrl()) {
-        return Promise.resolve(makeJsonResponse({ webhookSecret: TEST_SECRET }))
+        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
       }
 
       if (url === `${TRANSLATOR_URL}/internal/translate`) {

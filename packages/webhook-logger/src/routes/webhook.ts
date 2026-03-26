@@ -17,7 +17,36 @@ export const webhookRoutes = new Elysia({ name: 'webhook-logger:webhook' })
 
 class RoomSecretFetchError extends Error {}
 
+const ROOM_SECRET_TTL_MS = 60_000
+
+interface CachedRoomSecret {
+  expiresAt: number
+  secret: string
+}
+
+const roomSecretCache = new Map<number, CachedRoomSecret>()
+
+function getCachedRoomSecret(roomId: number): string | null {
+  const cached = roomSecretCache.get(roomId)
+
+  if (cached === undefined) {
+    return null
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    roomSecretCache.delete(roomId)
+    return null
+  }
+
+  return cached.secret
+}
+
 async function fetchRoomSecret(roomId: number): Promise<string | null> {
+  const cachedSecret = getCachedRoomSecret(roomId)
+  if (cachedSecret !== null) {
+    return cachedSecret
+  }
+
   const url = `${env.TRANSLATOR_INTERNAL_URL}/internal/room-secret?room_id=${roomId.toString()}`
 
   let response: Response
@@ -59,8 +88,13 @@ async function fetchRoomSecret(roomId: number): Promise<string | null> {
     )
   }
 
-  const body = (await response.json()) as { webhookSecret: string }
-  return body.webhookSecret
+  const body = (await response.json()) as { secret: string }
+  roomSecretCache.set(roomId, {
+    secret: body.secret,
+    expiresAt: Date.now() + ROOM_SECRET_TTL_MS,
+  })
+
+  return body.secret
 }
 
 function extractRoomId(rawBody: string): number | null {
