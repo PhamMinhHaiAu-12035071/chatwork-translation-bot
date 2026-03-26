@@ -353,11 +353,12 @@ interface RoomConfig {
 
 ### Typography
 
-| Role              | Font              | Weight  | Size    |
-| ----------------- | ----------------- | ------- | ------- |
-| Headings (h1, h2) | **Shantell Sans** | 800     | 24-32px |
-| Body / UI text    | **Kiwi Maru**     | 400-500 | 14-16px |
-| Accent labels     | **Shantell Sans** | 700     | 10-12px |
+| Role              | Font                | Weight  | Size    |
+| ----------------- | ------------------- | ------- | ------- |
+| Headings (h1, h2) | **Shantell Sans**   | 800     | 24-32px |
+| Body / UI text    | **Zen Maru Gothic** | 400-500 | 14-16px |
+| Metric numbers    | **Fredoka**         | 600-700 | 24-40px |
+| Accent labels     | **Shantell Sans**   | 700     | 10-12px |
 
 ### Interactions (Framer Motion)
 
@@ -575,7 +576,7 @@ All 32 decisions documented in decision log during brainstorming session. Key de
 - **DEC-027** 2-phase flow: create → activate (user-stated)
 - **DEC-029** Breaking change: room-specific env vars removed (user-stated)
 - **DEC-031** Design: Elegant Brutal (glassmorphism + neubrutalism) (user-stated)
-- **DEC-032** Fonts: Shantell Sans + Kiwi Maru (user-stated)
+- **DEC-032** Fonts: Shantell Sans + Zen Maru Gothic + Fredoka (updated from Kiwi Maru during Phase 2)
 
 ---
 
