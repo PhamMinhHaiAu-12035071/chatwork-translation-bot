@@ -12,43 +12,84 @@
 
 **Ship & Review:** `bun run dev:dashboard` + start translator on port 3000 → open `localhost:5173` → open DevTools Network tab → verify real API calls, real room data, correct loading/error/success states on all pages
 
-**⚠️ Current codebase state (post-Phase 3):** Phase 3 implementation introduced several components and patterns not in the original plan. Key differences to preserve:
+---
 
-- **Toast system already exists:** `~/components/ui/toast-provider.tsx` provides `useToast()` hook with `toast(message, variant)` API where variant is `'success' | 'info' | 'warning' | 'error'`. Do NOT create a new toast system — reuse the existing one.
-- **Body font:** `'Zen Maru Gothic', sans-serif` (NOT `'Kiwi Maru'`). CSS class: `.font-ui-body`
-- **Metric font:** `'Fredoka', cursive` via `.font-metric` class (used in stats numbers)
-- **BrutalSelect:** Custom dropdown portal with `colorVariant?: 'accent' | 'mint' | 'peach'` prop — NOT a native `<select>`
-- **BrutalInput:** Styling via CSS classes `.brutal-input` / `.brutal-input-error` / `.brutal-input:focus`
-- **StatusPill:** `children: ReactNode` (not string), added `className` prop
-- **BrutalCard:** Added `animated?: boolean` prop
-- **DeleteRoomConfirmModal:** Custom modal via `createPortal` — replaces `window.confirm()`
-- **Animation components:** `PixelScatterText` (scatter text transitions), `SlideStackNumber` (slot-machine number wheel)
-- **Seeded data:** 12 rooms exported as `SEEDED_ROOMS` (not 2 `MOCK_ROOMS`)
-- **zodResolver pattern:** Uses `zodResolver(schema as never) as Resolver<T>` type cast
-- **Toast call pattern:** `toast('message', 'info')` not `toast.success('message')`
-- **Navigate pattern:** `void navigate('/path')` (void prefix for promise)
+## ⚠️ Backend API Contract (Phase 4 actual — source of truth)
+
+The Phase 4 backend implementation differs from the original spec's 2-phase UX flow. **This plan integrates with the backend as-is.**
+
+### Key differences from original plan:
+
+1. **`webhookSecret` required at room creation** — Backend `POST /api/rooms` requires `webhookSecret` field (the Chatwork webhook token). There is NO separate "activate webhook" step. User must set up their Chatwork webhook FIRST, get the token, then create the room on the dashboard.
+2. **No "activate" endpoint** — Backend only has `POST /api/rooms/:id/enable` and `POST /api/rooms/:id/disable`. No `activateRoom(id, webhookToken)` concept.
+3. **Secrets are redacted** — `GET /api/rooms` and `GET /api/rooms/:id` return `RoomConfigPublic` which omits `encryptedAiApiToken` and `encryptedWebhookSecret`. Frontend never sees decrypted secrets.
+4. **`webhookSecret` can be updated later** — `PUT /api/rooms/:id` accepts optional `webhookSecret` field. Room Detail edit form can update it.
+5. **Naming: `webhookSecret`** not `webhookToken` — Backend uses `webhookSecret` consistently.
+6. **`DELETE` returns 204** — No response body on successful delete.
+7. **`POST /api/rooms` returns `webhookUrl`** — Response includes `{ success, data, webhookUrl }`.
+
+### Backend API endpoints (actual):
+
+| Endpoint                 | Method | Body                                        | Response                                          |
+| ------------------------ | ------ | ------------------------------------------- | ------------------------------------------------- |
+| `/api/rooms`             | GET    | —                                           | `{ success, data: RoomConfigPublic[] }`           |
+| `/api/rooms/:id`         | GET    | —                                           | `{ success, data: RoomConfigPublic }`             |
+| `/api/rooms`             | POST   | `CreateRoomRequest` (incl. `webhookSecret`) | `{ success, data: RoomConfigPublic, webhookUrl }` |
+| `/api/rooms/:id`         | PUT    | `UpdateRoomRequest` (all optional)          | `{ success, data: RoomConfigPublic }`             |
+| `/api/rooms/:id`         | DELETE | —                                           | 204 No Content                                    |
+| `/api/rooms/:id/enable`  | POST   | —                                           | `{ success, data: RoomConfigPublic }`             |
+| `/api/rooms/:id/disable` | POST   | —                                           | `{ success, data: RoomConfigPublic }`             |
+| `/api/providers`         | GET    | —                                           | `{ success, data: ProviderInfo[] }`               |
+
+### UX flow change:
+
+**Old (spec):** Create room → redirect to Room Detail → paste webhook token → activate
+**New (backend reality):** Read Webhook Guide → set up webhook on Chatwork → get secret → Create room (with secret) → room created as `enabled: false` → enable on Room Detail
+
+---
+
+## ⚠️ Current codebase state (post-Phase 3) — preserve these patterns
+
+- **Toast system:** `~/components/ui/toast-provider.tsx` — `useToast()` hook, `toast(message, variant)` API
+- **Fonts:** `.font-ui-body` (Zen Maru Gothic), `.font-metric` (Fredoka)
+- **BrutalSelect:** Custom dropdown portal with `colorVariant?: 'accent' | 'mint' | 'peach'`
+- **BrutalInput:** CSS classes `.brutal-input` / `.brutal-input-error`
+- **StatusPill:** `children: ReactNode`, `className` prop
+- **BrutalCard:** `animated?: boolean` prop
+- **DeleteRoomConfirmModal:** Custom modal via `createPortal`
+- **Animation components:** `PixelScatterText`, `SlideStackNumber`
+- **zodResolver pattern:** `zodResolver(schema as never) as Resolver<T>`
+- **Toast call:** `toast('message', 'info')` not `toast.success('message')`
+- **Navigate:** `void navigate('/path')`
 
 ---
 
 ## File Map
 
-| File                                                     | Action  | Responsibility                                                                      |
-| -------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------- |
-| `packages/dashboard/vite.config.ts`                      | Modify  | Add `/api` proxy to `localhost:3000`                                                |
-| `packages/dashboard/src/lib/api-client.ts`               | Replace | Typed fetch wrapper: all CRUD + enable/disable + providers                          |
-| `packages/dashboard/src/lib/api-types.ts`                | Create  | `RoomConfig`, `ProviderInfo`, API response types (FE mirror of backend contract)    |
-| `packages/dashboard/src/stores/room-store.ts`            | Replace | Full Zustand store: rooms, providers, async actions, loading/error flags            |
-| `packages/dashboard/src/components/ui/room-skeleton.tsx` | Create  | Brutal skeleton card for loading state                                              |
-| `packages/dashboard/src/pages/room-list.tsx`             | Modify  | Wire to API, add loading/error states, preserve DeleteRoomConfirmModal + animations |
-| `packages/dashboard/src/pages/room-create.tsx`           | Modify  | Wire onSubmit to POST /api/rooms, 409 handling, preserve BrutalSelect colorVariant  |
-| `packages/dashboard/src/pages/room-detail.tsx`           | Modify  | Wire to GET/PUT API, preserve PixelScatterText + existing form layout               |
-| `packages/dashboard/src/lib/api-client.test.ts`          | Create  | Unit tests for API client error handling (bun:test)                                 |
-| `packages/dashboard/src/stores/room-store.test.ts`       | Create  | Unit tests for Zustand store async actions (bun:test)                               |
+| File                                                     | Action  | Responsibility                                                                |
+| -------------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
+| `packages/dashboard/vite.config.ts`                      | Modify  | Add `/api` proxy to `localhost:3000`                                          |
+| `packages/dashboard/src/lib/api-types.ts`                | Create  | `RoomConfigPublic`, `ProviderInfo`, API response types (FE mirror of backend) |
+| `packages/dashboard/src/lib/api-client.ts`               | Create  | Typed fetch wrapper: CRUD + enable/disable + providers                        |
+| `packages/dashboard/src/lib/room-schema.ts`              | Modify  | Add `webhookSecret` to create schema, remove `webhookActivationSchema`        |
+| `packages/dashboard/src/stores/room-store.ts`            | Replace | Async Zustand store: rooms, providers, loading/error flags, API actions       |
+| `packages/dashboard/src/components/ui/room-skeleton.tsx` | Create  | Brutal skeleton card for loading state                                        |
+| `packages/dashboard/src/pages/room-list.tsx`             | Modify  | Wire to API, add loading/error states, preserve Phase 3 UI                    |
+| `packages/dashboard/src/pages/room-create.tsx`           | Modify  | Add `webhookSecret` field, wire to `POST /api/rooms`, 409 handling            |
+| `packages/dashboard/src/pages/room-detail.tsx`           | Modify  | Remove activation form, add enable/disable, wire to GET/PUT API               |
+| `packages/dashboard/src/lib/api-client.test.ts`          | Create  | Unit tests for API client (bun:test)                                          |
+| `packages/dashboard/src/stores/room-store.test.ts`       | Create  | Unit tests for Zustand store async actions (bun:test)                         |
 
-**Removed from original plan (already exist from Phase 3):**
+**Removed from Phase 3 code (no longer needed):**
 
-- ~~`packages/dashboard/src/hooks/use-toast.ts`~~ — toast system already at `~/components/ui/toast-provider.tsx`
-- ~~`packages/dashboard/src/components/ui/toast.tsx`~~ — `BrutalToast` already exists at `~/components/ui/brutal-toast.tsx`
+- `webhookActivationSchema` in `room-schema.ts` — no activation flow
+- `activateWebhook` action in `room-store.ts` — replaced by `enableRoom`/`disableRoom`
+- `Room.webhookToken` field — secrets are never returned by backend
+
+**Already exist from Phase 3 (reuse):**
+
+- Toast system (`toast-provider.tsx` + `brutal-toast.tsx`)
+- All UI components (BrutalInput, BrutalSelect, etc.)
 
 ---
 
@@ -85,7 +126,7 @@ export default defineConfig({
 })
 ```
 
-**Why:** The dashboard dev server runs on `localhost:5173` and the translator backend on `localhost:3000`. Without a proxy every `fetch('/api/...')` call would fail with CORS. The proxy rewrites matching requests to the backend transparently. In production this is irrelevant — the translator serves the built SPA as static files from the same origin.
+**Why:** Dashboard dev server on `:5173`, translator on `:3000`. Proxy avoids CORS. In production the translator serves the SPA, so no proxy needed.
 
 ---
 
@@ -97,7 +138,7 @@ export default defineConfig({
 
 - [ ] **Step 1: Create `packages/dashboard/src/lib/api-types.ts`**
 
-These types mirror the backend `RoomConfig` data model and API response envelopes. The FE defines its own types (not imported from translator) to keep the packages decoupled.
+These types mirror the backend `RoomConfigPublic` and request schemas. FE defines its own types (not imported from translator) to keep packages decoupled.
 
 ```typescript
 export type TranslationStyle =
@@ -108,7 +149,8 @@ export type TranslationStyle =
 
 export type AiProvider = 'openai' | 'gemini'
 
-export interface RoomConfig {
+/** Mirrors backend RoomConfigPublic — secrets are redacted (never returned) */
+export interface RoomConfigPublic {
   id: string
   originalRoomId: number
   destinationRoomId: number
@@ -116,7 +158,6 @@ export interface RoomConfig {
   aiProvider: AiProvider
   aiModel: string | null
   translationStyle: TranslationStyle
-  // encryptedAiApiToken is NEVER returned — omitted from API responses
   enabled: boolean
   createdAt: string
   updatedAt: string
@@ -133,7 +174,8 @@ export interface ApiResponse<T> {
   success: boolean
   data?: T
   error?: string
-  warning?: string
+  details?: unknown
+  webhookUrl?: string
 }
 
 export interface CreateRoomInput {
@@ -143,6 +185,7 @@ export interface CreateRoomInput {
   aiModel: string | null
   translationStyle: TranslationStyle
   aiApiToken: string
+  webhookSecret: string
 }
 
 export interface UpdateRoomInput {
@@ -151,12 +194,11 @@ export interface UpdateRoomInput {
   aiModel?: string | null
   translationStyle?: TranslationStyle
   aiApiToken?: string
-}
-
-export interface ActivateRoomInput {
-  webhookToken: string
+  webhookSecret?: string
 }
 ```
+
+**Note:** No `ActivateRoomInput` — backend has no activation endpoint. Only enable/disable.
 
 ---
 
@@ -164,17 +206,16 @@ export interface ActivateRoomInput {
 
 **Files:**
 
-- Replace: `packages/dashboard/src/lib/api-client.ts`
+- Create: `packages/dashboard/src/lib/api-client.ts`
 
-- [ ] **Step 1: Replace `packages/dashboard/src/lib/api-client.ts` with full typed client**
+- [ ] **Step 1: Create `packages/dashboard/src/lib/api-client.ts`**
 
 ```typescript
 import type {
   ApiResponse,
-  ActivateRoomInput,
   CreateRoomInput,
   ProviderInfo,
-  RoomConfig,
+  RoomConfigPublic,
   UpdateRoomInput,
 } from '~/lib/api-types'
 
@@ -197,6 +238,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 
+  // DELETE returns 204 No Content
+  if (res.status === 204) {
+    return { success: true } as ApiResponse<T>
+  }
+
   let json: ApiResponse<T>
   try {
     json = (await res.json()) as ApiResponse<T>
@@ -213,38 +259,32 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const apiClient = {
   // Rooms
-  listRooms(): Promise<ApiResponse<RoomConfig[]>> {
-    return request<RoomConfig[]>('GET', '/rooms')
+  listRooms(): Promise<ApiResponse<RoomConfigPublic[]>> {
+    return request<RoomConfigPublic[]>('GET', '/rooms')
   },
 
-  getRoom(id: string): Promise<ApiResponse<RoomConfig>> {
-    return request<RoomConfig>('GET', `/rooms/${id}`)
+  getRoom(id: string): Promise<ApiResponse<RoomConfigPublic>> {
+    return request<RoomConfigPublic>('GET', `/rooms/${id}`)
   },
 
-  createRoom(input: CreateRoomInput): Promise<ApiResponse<RoomConfig>> {
-    return request<RoomConfig>('POST', '/rooms', input)
+  createRoom(input: CreateRoomInput): Promise<ApiResponse<RoomConfigPublic>> {
+    return request<RoomConfigPublic>('POST', '/rooms', input)
   },
 
-  updateRoom(id: string, input: UpdateRoomInput): Promise<ApiResponse<RoomConfig>> {
-    return request<RoomConfig>('PUT', `/rooms/${id}`, input)
+  updateRoom(id: string, input: UpdateRoomInput): Promise<ApiResponse<RoomConfigPublic>> {
+    return request<RoomConfigPublic>('PUT', `/rooms/${id}`, input)
   },
 
   deleteRoom(id: string): Promise<ApiResponse<void>> {
     return request<void>('DELETE', `/rooms/${id}`)
   },
 
-  enableRoom(id: string): Promise<ApiResponse<RoomConfig>> {
-    return request<RoomConfig>('POST', `/rooms/${id}/enable`)
+  enableRoom(id: string): Promise<ApiResponse<RoomConfigPublic>> {
+    return request<RoomConfigPublic>('POST', `/rooms/${id}/enable`)
   },
 
-  disableRoom(id: string): Promise<ApiResponse<RoomConfig>> {
-    return request<RoomConfig>('POST', `/rooms/${id}/disable`)
-  },
-
-  activateRoom(id: string, input: ActivateRoomInput): Promise<ApiResponse<RoomConfig>> {
-    return request<RoomConfig>('PUT', `/rooms/${id}`, {
-      webhookToken: input.webhookToken,
-    })
+  disableRoom(id: string): Promise<ApiResponse<RoomConfigPublic>> {
+    return request<RoomConfigPublic>('POST', `/rooms/${id}/disable`)
   },
 
   // Providers
@@ -256,9 +296,85 @@ export const apiClient = {
 export { ApiError }
 ```
 
+**Key difference from old plan:** No `activateRoom` method. DELETE handles 204. Types use `RoomConfigPublic` (not `RoomConfig`).
+
 ---
 
-## Task 4: Replace Zustand store with full async state
+## Task 4: Update frontend form schemas
+
+**Files:**
+
+- Modify: `packages/dashboard/src/lib/room-schema.ts`
+
+- [ ] **Step 1: Add `webhookSecret` to create schema, remove activation schema**
+
+```typescript
+import { z } from 'zod'
+
+export const TRANSLATION_STYLES = [
+  'AUTO_CONTEXT',
+  'NATURAL_CASUAL',
+  'PROFESSIONAL_BUSINESS',
+  'TECHNICAL',
+] as const
+
+export const AI_PROVIDERS = ['openai', 'gemini'] as const
+
+export const roomCreateSchema = z.object({
+  originalRoomId: z
+    .number({ required_error: 'Room ID is required' })
+    .int('Room ID must be a whole number')
+    .positive('Room ID must be positive'),
+  destinationRoomName: z
+    .string({ required_error: 'Destination room name is required' })
+    .min(1, 'Destination room name is required')
+    .max(100, 'Max 100 characters'),
+  aiProvider: z.enum(AI_PROVIDERS, { required_error: 'AI Provider is required' }),
+  aiModel: z.string().nullable().optional(),
+  translationStyle: z.enum(TRANSLATION_STYLES, {
+    required_error: 'Translation style is required',
+  }),
+  aiApiToken: z
+    .string({ required_error: 'AI API token is required' })
+    .min(1, 'AI API token is required'),
+  webhookSecret: z
+    .string({ required_error: 'Webhook secret is required' })
+    .min(1, 'Webhook secret is required'),
+})
+
+export type RoomCreateInput = z.infer<typeof roomCreateSchema>
+
+export const roomEditSchema = z.object({
+  originalRoomId: z
+    .number({ required_error: 'Room ID is required' })
+    .int('Room ID must be a whole number')
+    .positive('Room ID must be positive'),
+  destinationRoomName: z
+    .string({ required_error: 'Destination room name is required' })
+    .min(1, 'Destination room name is required')
+    .max(100, 'Max 100 characters'),
+  aiProvider: z.enum(AI_PROVIDERS, { required_error: 'AI Provider is required' }),
+  aiModel: z.string().nullable().optional(),
+  translationStyle: z.enum(TRANSLATION_STYLES, {
+    required_error: 'Translation style is required',
+  }),
+  aiApiToken: z.string().optional().default(''),
+  webhookSecret: z.string().optional().default(''),
+})
+
+export type RoomEditInput = z.infer<typeof roomEditSchema>
+```
+
+**Changes:**
+
+- `roomCreateSchema` adds required `webhookSecret`
+- `roomEditSchema` now separate from create — `aiApiToken` and `webhookSecret` are optional (leave blank = keep existing)
+- `webhookActivationSchema` **removed** — no activation flow
+- `WebhookActivationInput` type **removed**
+
+---
+
+## Task 5: Replace Zustand store with async API state
 
 **Files:**
 
@@ -269,13 +385,18 @@ export { ApiError }
 ```typescript
 import { create } from 'zustand'
 import { apiClient, ApiError } from '~/lib/api-client'
-import type { CreateRoomInput, ProviderInfo, RoomConfig, UpdateRoomInput } from '~/lib/api-types'
+import type {
+  CreateRoomInput,
+  ProviderInfo,
+  RoomConfigPublic,
+  UpdateRoomInput,
+} from '~/lib/api-types'
 
 type LoadState = 'idle' | 'loading' | 'success' | 'error'
 
 interface RoomStore {
   // State
-  rooms: RoomConfig[]
+  rooms: RoomConfigPublic[]
   providers: ProviderInfo[]
   listState: LoadState
   listError: string | null
@@ -284,15 +405,15 @@ interface RoomStore {
   // Actions
   fetchRooms(): Promise<void>
   fetchProviders(): Promise<void>
-  createRoom(input: CreateRoomInput): Promise<RoomConfig>
-  updateRoom(id: string, input: UpdateRoomInput): Promise<RoomConfig>
+  createRoom(input: CreateRoomInput): Promise<RoomConfigPublic>
+  updateRoom(id: string, input: UpdateRoomInput): Promise<RoomConfigPublic>
   deleteRoom(id: string): Promise<void>
-  toggleRoom(id: string, enabled: boolean): Promise<void>
-  activateRoom(id: string, webhookToken: string): Promise<RoomConfig>
+  enableRoom(id: string): Promise<void>
+  disableRoom(id: string): Promise<void>
   clearActionError(): void
 }
 
-export const useRoomStore = create<RoomStore>()((set, get) => ({
+export const useRoomStore = create<RoomStore>()((set) => ({
   rooms: [],
   providers: [],
   listState: 'idle',
@@ -317,7 +438,7 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
       const res = await apiClient.listProviders()
       set({ providers: res.data ?? [] })
     } catch {
-      // Non-fatal: provider list falls back to empty; form shows inline error
+      // Non-fatal: falls back to empty
     }
   },
 
@@ -345,23 +466,22 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
     set((state) => ({ rooms: state.rooms.filter((r) => r.id !== id) }))
   },
 
-  async toggleRoom(id, enabled) {
+  async enableRoom(id) {
     set({ actionError: null })
-    const res = enabled ? await apiClient.enableRoom(id) : await apiClient.disableRoom(id)
+    const res = await apiClient.enableRoom(id)
     if (!res.data) return
     set((state) => ({
       rooms: state.rooms.map((r) => (r.id === id ? res.data! : r)),
     }))
   },
 
-  async activateRoom(id, webhookToken) {
+  async disableRoom(id) {
     set({ actionError: null })
-    const res = await apiClient.activateRoom(id, { webhookToken })
-    if (!res.data) throw new Error('No data returned from activateRoom')
+    const res = await apiClient.disableRoom(id)
+    if (!res.data) return
     set((state) => ({
       rooms: state.rooms.map((r) => (r.id === id ? res.data! : r)),
     }))
-    return res.data
   },
 
   clearActionError() {
@@ -369,18 +489,23 @@ export const useRoomStore = create<RoomStore>()((set, get) => ({
   },
 }))
 
-// Selector helpers — keeps component code clean
+// Selector helpers
 export const selectRooms = (s: RoomStore) => s.rooms
 export const selectProviders = (s: RoomStore) => s.providers
 export const selectListState = (s: RoomStore) => s.listState
 export const selectListError = (s: RoomStore) => s.listError
 ```
 
+**Key differences from old plan:**
+
+- No `activateRoom` — replaced by `enableRoom`/`disableRoom` (separate endpoints)
+- No `toggleRoom(id, enabled)` — use `enableRoom`/`disableRoom` directly
+- Uses `RoomConfigPublic` (no secrets)
+- No `SEEDED_ROOMS` — starts with empty array, fetches from API
+
 ---
 
-## Task 5: Create brutal skeleton component
-
-> **Note:** Toast system (Task 5 in the original plan) has been **removed** — it already exists from Phase 3 at `~/components/ui/toast-provider.tsx` with `useToast()` hook and `~/components/ui/brutal-toast.tsx`. Use `toast('message', 'variant')` where variant is `'success' | 'info' | 'warning' | 'error'`.
+## Task 6: Create brutal skeleton component
 
 **Files:**
 
@@ -419,7 +544,7 @@ export function RoomSkeletonCard() {
 
 export function RoomSkeletonList({ count = 3 }: { count?: number }) {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: count }, (_, i) => (
         <RoomSkeletonCard key={i} />
       ))}
@@ -430,17 +555,15 @@ export function RoomSkeletonList({ count = 3 }: { count?: number }) {
 
 ---
 
-## Task 6: Wire Room List page to real API
+## Task 7: Wire Room List page to real API
 
 **Files:**
 
 - Modify: `packages/dashboard/src/pages/room-list.tsx`
 
-**Approach:** Preserve the existing Phase 3 UI (card theme cycling, `PixelScatterText`, `SlideStackNumber`, `DeleteRoomConfirmModal`, `motion.div` cards, stats row, `font-ui-body`/`font-metric` classes). Only change what's needed for API integration.
+**Approach:** Preserve Phase 3 UI (card theme cycling, `PixelScatterText`, `SlideStackNumber`, `DeleteRoomConfirmModal`, `motion.div`, stats row). Only add API integration.
 
 - [ ] **Step 1: Add imports and fetch on mount**
-
-Add these imports and the `useEffect` fetch call:
 
 ```tsx
 import { useEffect } from 'react'
@@ -449,26 +572,28 @@ import { ApiError } from '~/lib/api-client'
 import { selectListError, selectListState, useRoomStore } from '~/stores/room-store'
 ```
 
-Add state selectors and fetch effect inside the component:
-
 ```tsx
 const listState = useRoomStore(selectListState)
 const listError = useRoomStore(selectListError)
 const fetchRooms = useRoomStore((state) => state.fetchRooms)
+const enableRoom = useRoomStore((state) => state.enableRoom)
+const disableRoom = useRoomStore((state) => state.disableRoom)
 
 useEffect(() => {
   void fetchRooms()
 }, [fetchRooms])
 ```
 
-- [ ] **Step 2: Make toggle/delete handlers async with error handling**
-
-Replace the existing `handleToggle` and `handleConfirmDelete` with async versions that call the API:
+- [ ] **Step 2: Make toggle/delete handlers async**
 
 ```tsx
 const handleToggle = async (id: string, roomName: string, currentlyEnabled: boolean) => {
   try {
-    await toggleRoom(id, !currentlyEnabled)
+    if (currentlyEnabled) {
+      await disableRoom(id)
+    } else {
+      await enableRoom(id)
+    }
     toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
   } catch (err) {
     toast(err instanceof ApiError ? err.message : 'Toggle failed', 'error')
@@ -487,13 +612,11 @@ const handleConfirmDelete = async () => {
 }
 ```
 
-- [ ] **Step 3: Add loading and error states before the room grid**
-
-Insert loading/error states between the stats row and the room grid/empty state:
+- [ ] **Step 3: Add loading and error states**
 
 ```tsx
 {
-  listState === 'loading' && <RoomSkeletonList count={3} />
+  listState === 'loading' && <RoomSkeletonList count={6} />
 }
 
 {
@@ -515,55 +638,41 @@ Insert loading/error states between the stats row and the room grid/empty state:
 }
 ```
 
-**Preserve all existing:** card theme cycling (`cardThemeByIndex`), tilt cycling (`tiltByIndex`), `PixelScatterText` for status/toggle buttons, `SlideStackNumber` for stats, `DeleteRoomConfirmModal`, `motion.div` card wrappers, `PROVIDER_LABELS`/`TRANSLATION_STYLE_LABELS` lookups, `font-ui-body`/`font-metric` classes.
-
-- [ ] **Step 4: Update `toggleRoom` store call signature**
-
-The Phase 5 store's `toggleRoom(id, enabled)` takes a boolean (the desired state), while Phase 3 used `toggleRoom(id)` (toggles current). Update the button `onClick` to pass the desired state:
-
-```tsx
-onClick={() => {
-  void handleToggle(room.id, room.destinationRoomName, room.enabled)
-}}
-```
+**Preserve all existing:** `cardThemeByIndex`, `tiltByIndex`, `PixelScatterText`, `SlideStackNumber`, `DeleteRoomConfirmModal`, `motion.div` cards, `PROVIDER_LABELS`/`TRANSLATION_STYLE_LABELS`, `font-ui-body`/`font-metric`.
 
 ---
 
-## Task 7: Wire Room Create form to POST /api/rooms
+## Task 8: Wire Room Create form to POST /api/rooms
 
 **Files:**
 
 - Modify: `packages/dashboard/src/pages/room-create.tsx`
 
-**Approach:** Preserve the existing Phase 3 form structure: `BrutalSelect` with `colorVariant`, `BrutalInput`, `zodResolver(roomCreateSchema as never) as Resolver<RoomCreateInput>` pattern, `void navigate()`, `PROVIDER_MODELS`/`PROVIDER_LABELS` lookups. Only change the `onSubmit` handler and add `setError` for 409 handling.
+**Approach:** Preserve BrutalSelect/BrutalInput, `colorVariant`, zodResolver pattern. Add `webhookSecret` field, wire to async API, add 409 handling.
 
-- [ ] **Step 1: Add API imports and wire `createRoom` from store**
+- [ ] **Step 1: Add `webhookSecret` BrutalInput to the form**
+
+Add between the AI API Token field and the button row:
+
+```tsx
+<BrutalInput
+  label="Webhook Secret"
+  type="password"
+  hint="The token from Chatwork after saving the webhook. Follow the Webhook Guide first."
+  error={errors.webhookSecret?.message}
+  {...register('webhookSecret')}
+/>
+```
+
+- [ ] **Step 2: Wire to async `createRoom` and add `setError` for 409**
 
 ```tsx
 import { ApiError } from '~/lib/api-client'
 
-// Inside RoomCreatePage, replace addRoom with createRoom:
 const createRoom = useRoomStore((state) => state.createRoom)
-```
 
-- [ ] **Step 2: Replace `onSubmit` handler with async API call**
-
-Replace the existing sync `onSubmit` function. Add `setError` to the `useForm` destructuring:
-
-```tsx
-const {
-  register,
-  handleSubmit,
-  watch,
-  setValue,
-  setError,
-  formState: { errors, isSubmitting },
-} = useForm<RoomCreateInput>({
-  resolver: roomCreateResolver,
-  defaultValues: {
-    /* ...existing defaults... */
-  },
-})
+// Add setError to useForm destructuring
+const { register, handleSubmit, watch, setValue, setError, formState: { errors, isSubmitting } } = useForm<RoomCreateInput>({ ... })
 
 const onSubmit = async (data: RoomCreateInput) => {
   const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
@@ -587,44 +696,47 @@ const onSubmit = async (data: RoomCreateInput) => {
 }
 ```
 
-- [ ] **Step 3: Update form `onSubmit` to handle async**
+- [ ] **Step 3: Update the info card about manual steps**
 
-```tsx
-<form
-  onSubmit={(event) => {
-    void handleSubmit(onSubmit)(event)
-  }}
-  noValidate
->
-```
+The "Manual Step Required" card should mention: "Before creating a room, set up a Chatwork webhook and have the webhook secret ready. Follow the Webhook Guide."
 
-**Preserve all existing:** `BrutalSelect` with `colorVariant` props (`accent`, `mint`, `peach`), `BrutalInput` components, `PROVIDER_MODELS[selectedProvider]` model lookup, `aiProviderField` with `onChange` resetting model, `void navigate()` pattern, `isSubmitting` disabled state on button.
+**Preserve:** BrutalSelect `colorVariant` (accent/mint/peach), `void navigate()`, `isSubmitting` disabled state.
 
 ---
 
-## Task 8: Wire Room Detail page to GET /api/rooms/:id + PUT + activation
+## Task 9: Wire Room Detail page — remove activation, add enable/disable
 
 **Files:**
 
 - Modify: `packages/dashboard/src/pages/room-detail.tsx`
 
-**Approach:** Preserve the existing Phase 3 layout: two-column grid with edit form (left) and webhook section (right), `BrutalInput`/`BrutalSelect` with `colorVariant`, `PixelScatterText` for status, `zodResolver(roomEditSchema as never) as Resolver<RoomEditInput>` pattern, `webhookActivationResolver`, `handleCopyUrl`, `void navigate()`, `getRoomUpdatedToastMessage()`. Only change handlers to be async API calls and add loading/error states.
+**Approach:** Major UX change. Remove the webhook activation form (backend doesn't have this concept). Replace with:
 
-- [ ] **Step 1: Add API imports**
+- Edit form (left column) — same fields + optional `webhookSecret` update
+- Status & controls (right column) — enable/disable toggle, webhook URL display, link to guide
+
+- [ ] **Step 1: Remove activation form imports and state**
+
+Remove:
+
+- `webhookActivationSchema`, `WebhookActivationInput` imports
+- `webhookActivationResolver`
+- `activationForm` useForm instance
+- `activateWebhook` store action
+- `onActivateSubmit` handler
+- The entire activation `<form>` in the right column
+
+- [ ] **Step 2: Add API imports and enable/disable handlers**
 
 ```tsx
 import { useEffect } from 'react'
 import { RoomSkeletonCard } from '~/components/ui/room-skeleton'
 import { ApiError } from '~/lib/api-client'
-```
 
-- [ ] **Step 2: Wire room data from API store**
-
-Replace the sync store lookup with API-backed loading:
-
-```tsx
-const rooms = useRoomStore((state) => state.rooms)
+const enableRoom = useRoomStore((state) => state.enableRoom)
+const disableRoom = useRoomStore((state) => state.disableRoom)
 const fetchRooms = useRoomStore((state) => state.fetchRooms)
+const rooms = useRoomStore((state) => state.rooms)
 const listState = useRoomStore((state) => state.listState)
 
 const room = rooms.find((candidate) => candidate.id === id)
@@ -636,7 +748,7 @@ useEffect(() => {
 }, [room, fetchRooms])
 ```
 
-Add a loading state before the "not found" check:
+- [ ] **Step 3: Add loading state**
 
 ```tsx
 if (listState === 'loading' && !room) {
@@ -648,7 +760,7 @@ if (listState === 'loading' && !room) {
 }
 ```
 
-- [ ] **Step 3: Make `onEditSubmit` async**
+- [ ] **Step 4: Make edit form async**
 
 ```tsx
 const onEditSubmit = async (data: RoomEditInput) => {
@@ -658,6 +770,9 @@ const onEditSubmit = async (data: RoomEditInput) => {
     await updateRoom(room.id, {
       ...data,
       aiModel: normalizedAiModel,
+      // Only send secrets if user typed something (non-empty)
+      aiApiToken: data.aiApiToken || undefined,
+      webhookSecret: data.webhookSecret || undefined,
     })
     toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
   } catch (err) {
@@ -666,25 +781,57 @@ const onEditSubmit = async (data: RoomEditInput) => {
 }
 ```
 
-- [ ] **Step 4: Make `onActivateSubmit` async**
+- [ ] **Step 5: Add `webhookSecret` field to edit form**
+
+Add a `BrutalInput` for webhook secret (password type, optional):
 
 ```tsx
-const onActivateSubmit = async (data: WebhookActivationInput) => {
-  try {
-    await activateWebhook(room.id, data.webhookToken)
-    toast('Webhook activated! Room is now live.')
-    activationForm.reset()
-  } catch (err) {
-    toast(err instanceof ApiError ? err.message : 'Activation failed', 'error')
-  }
-}
+<BrutalInput
+  label="Webhook Secret"
+  type="password"
+  hint="Leave blank to keep existing. Paste new secret to update."
+  error={editForm.formState.errors.webhookSecret?.message}
+  {...editForm.register('webhookSecret')}
+/>
 ```
 
-**Preserve all existing:** `BrutalInput` for all text/password fields, `BrutalSelect` with `colorVariant` (`accent`, `mint`, `peach`), `PixelScatterText` for status pill, `StickerLabel`, webhook URL with copy button, `handleCopyUrl` with `setCopied` state, edit form + activation form dual-form layout, `font-ui-body` classes, `void navigate('/guide')` pattern.
+- [ ] **Step 6: Replace activation form with enable/disable controls**
+
+In the right column, replace the activation form with:
+
+```tsx
+<BrutalCard className="theme-card-cream space-y-4">
+  <StickerLabel tone={room.enabled ? 'success' : 'warning'}>Room Status</StickerLabel>
+  <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
+    {room.enabled
+      ? 'Room is enabled. Translation is active for incoming webhooks.'
+      : 'Room is disabled. Enable to start receiving translations.'}
+  </p>
+  <button
+    type="button"
+    onClick={() => {
+      void (room.enabled ? disableRoom(room.id) : enableRoom(room.id))
+        .then(() => toast(room.enabled ? 'Room disabled' : 'Room enabled!', 'info'))
+        .catch((err) => toast(err instanceof ApiError ? err.message : 'Failed', 'error'))
+    }}
+    className={[
+      'brutal-button w-full py-3 font-heading text-sm font-bold',
+      room.enabled ? 'theme-button-warm text-white' : 'theme-button-violet text-white',
+    ].join(' ')}
+  >
+    <PixelScatterText
+      value={room.enabled ? 'Disable Room' : 'Enable Room'}
+      reserveText="Disable Room"
+    />
+  </button>
+</BrutalCard>
+```
+
+**Preserve:** `BrutalInput`/`BrutalSelect` with `colorVariant`, `PixelScatterText` for status, webhook URL + copy button, `handleCopyUrl`, `void navigate('/guide')`.
 
 ---
 
-## Task 9: API client unit tests
+## Task 10: API client unit tests
 
 **Files:**
 
@@ -695,7 +842,6 @@ const onActivateSubmit = async (data: WebhookActivationInput) => {
 ```typescript
 import { describe, it, expect, mock, beforeEach } from 'bun:test'
 
-// Mock global fetch before importing module under test
 const fetchMock = mock(async (_url: string, _opts?: RequestInit) => {
   return new Response(JSON.stringify({ success: false, error: 'mocked' }), { status: 500 })
 })
@@ -738,47 +884,39 @@ describe('apiClient', () => {
     expect(res.data).toEqual(mockRoom)
   })
 
-  it('throws ApiError with status 0 on non-JSON response', async () => {
-    fetchMock.mockImplementationOnce(
-      async () => new Response('Internal Server Error', { status: 500 }),
-    )
+  it('handles 204 No Content for deleteRoom', async () => {
+    fetchMock.mockImplementationOnce(async () => new Response(null, { status: 204 }))
 
-    let caught: unknown
-    try {
-      await apiClient.listRooms()
-    } catch (err) {
-      caught = err
-    }
-
-    expect(caught).toBeInstanceOf(ApiError)
+    const res = await apiClient.deleteRoom('room-123')
+    expect(res.success).toBe(true)
   })
 
-  it('calls correct URL for listRooms', async () => {
+  it('sends webhookSecret in createRoom body', async () => {
     fetchMock.mockImplementationOnce(
-      async () => new Response(JSON.stringify({ success: true, data: [] }), { status: 200 }),
+      async () =>
+        new Response(JSON.stringify({ success: true, data: { id: 'new' } }), { status: 201 }),
     )
 
-    await apiClient.listRooms()
-    expect(fetchMock).toHaveBeenCalledWith('/api/rooms', expect.any(Object))
-  })
+    await apiClient.createRoom({
+      originalRoomId: 123,
+      destinationRoomName: 'Test',
+      aiProvider: 'openai',
+      aiModel: null,
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-test',
+      webhookSecret: 'secret-123',
+    })
 
-  it('calls correct URL for deleteRoom', async () => {
-    fetchMock.mockImplementationOnce(
-      async () => new Response(JSON.stringify({ success: true }), { status: 200 }),
-    )
-
-    await apiClient.deleteRoom('room-123')
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/rooms/room-123',
-      expect.objectContaining({ method: 'DELETE' }),
-    )
+    const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(opts.body as string) as Record<string, unknown>
+    expect(body.webhookSecret).toBe('secret-123')
   })
 })
 ```
 
 ---
 
-## Task 10: Zustand store unit tests
+## Task 11: Zustand store unit tests
 
 **Files:**
 
@@ -788,13 +926,13 @@ describe('apiClient', () => {
 
 ```typescript
 import { describe, it, expect, mock, beforeEach } from 'bun:test'
-import type { RoomConfig } from '~/lib/api-types'
+import type { RoomConfigPublic } from '~/lib/api-types'
 
-// Mock the api-client module before importing the store
-const mockListRooms = mock(async () => ({ success: true, data: [] as RoomConfig[] }))
-const mockCreateRoom = mock(async () => ({ success: true, data: {} as RoomConfig }))
+const mockListRooms = mock(async () => ({ success: true, data: [] as RoomConfigPublic[] }))
+const mockCreateRoom = mock(async () => ({ success: true, data: {} as RoomConfigPublic }))
 const mockDeleteRoom = mock(async () => ({ success: true }))
-const mockEnableRoom = mock(async () => ({ success: true, data: {} as RoomConfig }))
+const mockEnableRoom = mock(async () => ({ success: true, data: {} as RoomConfigPublic }))
+const mockDisableRoom = mock(async () => ({ success: true, data: {} as RoomConfigPublic }))
 
 mock.module('~/lib/api-client', () => ({
   apiClient: {
@@ -802,10 +940,9 @@ mock.module('~/lib/api-client', () => ({
     createRoom: mockCreateRoom,
     deleteRoom: mockDeleteRoom,
     enableRoom: mockEnableRoom,
-    disableRoom: mock(async () => ({ success: true, data: {} as RoomConfig })),
-    getRoom: mock(async () => ({ success: true, data: {} as RoomConfig })),
-    updateRoom: mock(async () => ({ success: true, data: {} as RoomConfig })),
-    activateRoom: mock(async () => ({ success: true, data: {} as RoomConfig })),
+    disableRoom: mockDisableRoom,
+    getRoom: mock(async () => ({ success: true, data: {} as RoomConfigPublic })),
+    updateRoom: mock(async () => ({ success: true, data: {} as RoomConfigPublic })),
     listProviders: mock(async () => ({ success: true, data: [] })),
   },
   ApiError: class ApiError extends Error {
@@ -820,7 +957,7 @@ mock.module('~/lib/api-client', () => ({
 
 import { useRoomStore } from '~/stores/room-store'
 
-const sampleRoom: RoomConfig = {
+const sampleRoom: RoomConfigPublic = {
   id: 'room-1',
   originalRoomId: 12345,
   destinationRoomId: 67890,
@@ -841,7 +978,7 @@ describe('useRoomStore', () => {
     mockDeleteRoom.mockClear()
   })
 
-  it('fetchRooms sets listState to loading then success', async () => {
+  it('fetchRooms sets listState to success with data', async () => {
     mockListRooms.mockImplementationOnce(async () => ({
       success: true,
       data: [sampleRoom],
@@ -874,7 +1011,6 @@ describe('useRoomStore', () => {
       data: sampleRoom,
     }))
 
-    useRoomStore.setState({ rooms: [] })
     await useRoomStore.getState().createRoom({
       originalRoomId: 12345,
       destinationRoomName: 'Test Room JP',
@@ -882,6 +1018,7 @@ describe('useRoomStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'sk-test',
+      webhookSecret: 'secret-test',
     })
 
     expect(useRoomStore.getState().rooms).toHaveLength(1)
@@ -893,17 +1030,24 @@ describe('useRoomStore', () => {
     expect(useRoomStore.getState().rooms).toHaveLength(0)
   })
 
-  it('clearActionError resets actionError', () => {
-    useRoomStore.setState({ actionError: 'some error' })
-    useRoomStore.getState().clearActionError()
-    expect(useRoomStore.getState().actionError).toBeNull()
+  it('enableRoom updates room enabled state', async () => {
+    const enabledRoom = { ...sampleRoom, enabled: true }
+    mockEnableRoom.mockImplementationOnce(async () => ({
+      success: true,
+      data: enabledRoom,
+    }))
+
+    useRoomStore.setState({ rooms: [sampleRoom] })
+    await useRoomStore.getState().enableRoom('room-1')
+
+    expect(useRoomStore.getState().rooms[0].enabled).toBe(true)
   })
 })
 ```
 
 ---
 
-## Task 11: Commit and quality gate
+## Task 12: Commit and quality gate
 
 - [ ] **Step 1: Run quality gate**
 
@@ -918,21 +1062,21 @@ Expected: All pass with no errors.
 
 ```bash
 git add packages/dashboard/src/lib/api-types.ts packages/dashboard/src/lib/api-client.ts packages/dashboard/src/lib/api-client.test.ts
-git commit -m "feat(dashboard): add typed API client with error handling"
+git commit -m "feat(dashboard): add typed API client matching Phase 4 backend contract"
 ```
 
-- [ ] **Step 3: Commit Zustand store**
+- [ ] **Step 3: Commit schema + store**
 
 ```bash
-git add packages/dashboard/src/stores/room-store.ts packages/dashboard/src/stores/room-store.test.ts
-git commit -m "feat(dashboard): wire Zustand store to API with async actions"
+git add packages/dashboard/src/lib/room-schema.ts packages/dashboard/src/stores/room-store.ts packages/dashboard/src/stores/room-store.test.ts
+git commit -m "feat(dashboard): replace mock store with async API-backed Zustand store"
 ```
 
-- [ ] **Step 4: Commit skeleton component and page integrations**
+- [ ] **Step 4: Commit skeleton + page integrations**
 
 ```bash
 git add packages/dashboard/src/components/ui/room-skeleton.tsx packages/dashboard/src/pages/ packages/dashboard/vite.config.ts
-git commit -m "feat(dashboard): add skeleton loading states and wire pages to backend API"
+git commit -m "feat(dashboard): wire pages to backend API with loading/error states"
 ```
 
 ---
@@ -941,17 +1085,18 @@ git commit -m "feat(dashboard): add skeleton loading states and wire pages to ba
 
 **User action:**
 
-1. Start the translator backend: `bun run dev` (or `bun --hot packages/translator/src/index.ts` for just the backend)
-2. In a separate terminal: `bun run dev:dashboard`
+1. Start the translator backend: `bun run dev` (port 3000)
+2. In a separate terminal: `bun run dev:dashboard` (port 5173)
 3. Open `http://localhost:5173` in a browser
 4. Open DevTools → Network tab
 
 **Success criteria:**
 
-- Room List: Network tab shows `GET /api/rooms` on page load; empty state renders; after creating a room the list shows it
-- Room Create: Form submits `POST /api/rooms`; duplicate `originalRoomId` shows inline field error; success redirects to Room Detail with toast
-- Room Detail: Page loads room data from store/API; webhook URL shown and copyable; activation form submits and room becomes active
-- Toast notifications appear and auto-dismiss for all success/error events
-- Skeleton cards show during loading states
+- Room List: `GET /api/rooms` on load; skeleton during loading; error state with Retry; empty state CTA; room cards with enable/disable + delete
+- Room Create: Form has 7 fields (incl. webhook secret); `POST /api/rooms` on submit; 409 → inline error on originalRoomId; success → redirect to Room Detail
+- Room Detail: Room data from API; edit form with optional webhook secret update; enable/disable button; webhook URL + copy; no activation form
+- Toast notifications for all success/error events
+- Skeleton cards during loading states
+- No `activateWebhook` concept anywhere in FE code
 
 **Await user approval before proceeding to Phase 6.**

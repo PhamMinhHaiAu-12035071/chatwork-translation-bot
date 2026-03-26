@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Wire up the complete end-to-end workflow: dashboard → create room config → setup webhook on Chatwork → activate translation → send message in original room → translation appears in destination room. Includes Docker Compose updates, static file serving, Dockerfile multi-stage build, and a manual E2E test checklist.
+**Goal:** Wire up the complete end-to-end workflow: dashboard → create room config (with webhook secret) → room ready → enable translation → send message in original room → translation appears in destination room. Includes Docker Compose updates, static file serving, Dockerfile multi-stage build, and a manual E2E test checklist.
 
 **Architecture:** The translator serves the dashboard as static files from `packages/dashboard/dist/`. In development, Vite dev proxy forwards `/api/*` to translator. In production, a multi-stage Dockerfile builds the dashboard first, then copies the dist into the translator image. Docker Compose orchestrates translator + webhook-logger with shared `INTERNAL_API_SECRET`. Zrok tunnel exposes the translator, making the dashboard and webhook endpoints accessible externally.
 
@@ -10,7 +10,21 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-25-dashboard-multi-room-design.md`
 
-**Ship & Review:** Full manual workflow — user creates room on dashboard → sets up Chatwork webhook → sends message → translation appears in destination room.
+**Ship & Review:** Full manual workflow — user reads webhook guide → sets up Chatwork webhook → creates room on dashboard (with webhook secret) → enables room → sends message → translation appears in destination room.
+
+---
+
+## ⚠️ UX Flow (post-Phase 5 — no activation step)
+
+The backend requires `webhookSecret` at room creation time. There is NO separate "activate webhook" step. The correct E2E flow is:
+
+1. **Read Webhook Guide** — user learns how to set up a Chatwork webhook
+2. **Set up webhook on Chatwork** — create webhook in Chatwork Admin, get the webhook token (= `webhookSecret`)
+3. **Create room on dashboard** — fill form including `webhookSecret`, `aiApiToken`, etc.
+4. **Room created** — `POST /api/rooms` creates Chatwork destination room, returns `webhookUrl`. Room starts as `enabled: false`
+5. **Enable room** — user clicks enable on Room Detail. `POST /api/rooms/:id/enable`
+6. **Translation active** — messages in original room are translated to destination room
+7. **Disable/Enable** — toggle via separate `POST /api/rooms/:id/enable` and `POST /api/rooms/:id/disable` endpoints
 
 ---
 
@@ -67,8 +81,12 @@ Add to the same file, AFTER all API and internal routes are registered:
 // Append to static.ts
 export const spaCatchAll = new Elysia().get('*', ({ request }) => {
   const url = new URL(request.url)
-  // Don't catch API or internal routes
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/internal/')) {
+  // Don't catch API, internal, or webhook routes
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/internal/') ||
+    url.pathname === '/webhook'
+  ) {
     return new Response('Not found', { status: 404 })
   }
   const indexPath = join(DASHBOARD_DIST, 'index.html')
@@ -186,7 +204,7 @@ INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
 TRANSLATOR_INTERNAL_URL: http://translator:3000
 ```
 
-Remove `CHATWORK_WEBHOOK_SECRET` from webhook-logger if it's still there (now per-room).
+Remove `CHATWORK_WEBHOOK_SECRET` from webhook-logger if it's still there (now per-room, stored encrypted in room config).
 
 - [ ] **Step 4: Add data volume mount for translator**
 
@@ -322,7 +340,23 @@ git commit -m "build(repo): add dashboard build scripts to root package.json"
 - [ ] Navigation works: Room List, Webhook Guide pages
 - [ ] Empty state shows "Create your first translation room" CTA
 
-### 2. Create Room Config
+### 2. Read Webhook Guide
+
+- [ ] Navigate to Webhook Guide page
+- [ ] Step-by-step instructions are clear and complete
+- [ ] Guide explains: go to Chatwork Admin → create webhook → copy token
+
+### 3. Set Up Chatwork Webhook (manual — outside dashboard)
+
+- [ ] Go to Chatwork Admin → Integrations → Webhooks
+- [ ] Create new webhook:
+  - Name: "Translation Bot Test"
+  - URL: will be provided by dashboard after room creation (or use tunnel URL + `/webhook`)
+  - Events: "Message created" + "Message updated"
+  - Room: select original room
+- [ ] Save and copy the webhook token (this is the `webhookSecret`)
+
+### 4. Create Room Config on Dashboard
 
 - [ ] Click "+ New Room"
 - [ ] Fill form:
@@ -332,52 +366,42 @@ git commit -m "build(repo): add dashboard build scripts to root package.json"
   - AI Model: select or leave default
   - Translation Style: select one
   - AI API Token: (valid token for chosen provider)
+  - Webhook Secret: (paste the token copied from step 3)
 - [ ] Submit → success toast → redirect to Room Detail
 - [ ] Verify on Chatwork: destination room was created
-- [ ] Room Detail shows webhook URL and activation section
+- [ ] Room Detail shows room info with `enabled: false` status
 
-### 3. Setup Webhook on Chatwork
+### 5. Enable Translation
 
-- [ ] Copy webhook URL from Room Detail page
-- [ ] Go to Chatwork Admin → Integrations → Webhooks
-- [ ] Create new webhook:
-  - Name: "Translation Bot Test"
-  - URL: paste webhook URL
-  - Events: "Message created" + "Message updated"
-  - Room: select original room
-- [ ] Save and copy the webhook token
-
-### 4. Activate Translation
-
-- [ ] Paste webhook token in dashboard activation field
-- [ ] Submit → room status changes to "Active" (enabled: true)
+- [ ] On Room Detail page, click "Enable" button
+- [ ] Room status changes to `enabled: true` (active)
 - [ ] Room List shows room as active (green status)
 
-### 5. Test Translation
+### 6. Test Translation
 
 - [ ] Send a message in the original Chatwork room
 - [ ] Wait 5-10 seconds
 - [ ] Check destination room → translated message appears
 - [ ] Verify translation matches the selected style
 
-### 6. Disable/Enable Toggle
+### 7. Disable/Enable Toggle
 
-- [ ] Toggle room to disabled on Room List page
+- [ ] Click "Disable" on Room Detail or Room List
 - [ ] Send another message in original room
 - [ ] Verify NO translation appears in destination room
-- [ ] Toggle back to enabled
+- [ ] Click "Enable" again
 - [ ] Send another message → translation resumes
 
-### 7. Edit Room Config
+### 8. Edit Room Config
 
 - [ ] Open Room Detail → edit AI model or translation style
 - [ ] Save changes → success toast
 - [ ] Send message → verify translation uses new settings
 
-### 8. Delete Room
+### 9. Delete Room
 
-- [ ] Click delete on Room List page
-- [ ] Confirm deletion
+- [ ] Click delete on Room List or Room Detail page
+- [ ] Confirm deletion in modal
 - [ ] Room disappears from list
 - [ ] Verify `data/room-configs-archive.json` contains the deleted config
 
@@ -386,24 +410,29 @@ git commit -m "build(repo): add dashboard build scripts to root package.json"
 ### Duplicate Room
 
 - [ ] Try creating a room with the same Original Room ID
-- [ ] Expected: 409 error, form shows "Room already exists"
+- [ ] Expected: 409 error, form shows "Room already exists" or similar error
 
-### Invalid API Token
+### Invalid AI API Token
 
 - [ ] Create room with an invalid AI API token
-- [ ] Activate webhook → send message
+- [ ] Enable room → send message
 - [ ] Translation should fail (check translator logs)
-- [ ] Dashboard should still work (room remains active but translations fail silently)
+- [ ] Dashboard should still work (room remains enabled but translations fail silently)
 
 ### Webhook for Unknown Room
 
 - [ ] Send a webhook request with an unknown room_id
-- [ ] Expected: 200 response, warning in translator logs
+- [ ] Expected: webhook-logger gets 404 from internal-room-secret, logs warning
 
 ### Webhook for Disabled Room
 
-- [ ] Disable a room, then send a webhook
-- [ ] Expected: 200 response, info log "room disabled, skipping"
+- [ ] Disable a room, then send a webhook for that room
+- [ ] Expected: internal-room-secret returns 404 (room not enabled), no translation
+
+### Missing Webhook Secret
+
+- [ ] Try submitting create form without Webhook Secret
+- [ ] Expected: form validation error, submit blocked
 
 ## Cleanup
 
@@ -465,16 +494,17 @@ git commit -m "feat(repo): Phase 7 complete — full workflow integration ready 
 
 1. Start translator + webhook-logger + Zrok tunnel
 2. Open `http://localhost:3000` → dashboard loads
-3. Create a room config → destination room created on Chatwork
-4. Setup webhook on Chatwork → paste token → activate
-5. Send message in original room → translation appears in destination room
+3. Read Webhook Guide → set up Chatwork webhook → get secret token
+4. Create room on dashboard (with webhook secret + AI token)
+5. Enable room on Room Detail
+6. Send message in original room → translation appears in destination room
 
 **Success criteria:**
 
 1. `bun run typecheck && bun test && bun run lint` — all pass
 2. Dashboard served as static files from translator (no separate dev server needed in prod)
 3. Docker multi-stage build works
-4. Full workflow: dashboard create → webhook setup → message → translation
+4. Full workflow: webhook guide → create room (with secret) → enable → message → translation
 5. Enable/disable toggle stops/resumes translation
 6. Delete archives config to backup file
 7. All edge cases in checklist verified
