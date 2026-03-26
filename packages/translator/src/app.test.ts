@@ -6,6 +6,7 @@ import { join } from 'node:path'
 void mock.module('./env', () => ({
   env: {
     CHATWORK_API_TOKEN: 'test-token',
+    CHATWORK_BOT_ACCOUNT_ID: 42,
     INTERNAL_API_SECRET: 'internal-secret',
     PORT: 3000,
     NODE_ENV: 'test',

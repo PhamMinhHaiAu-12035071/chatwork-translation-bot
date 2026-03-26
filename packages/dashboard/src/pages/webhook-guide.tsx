@@ -3,7 +3,15 @@ import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { WebhookStepper } from '~/components/molecules/webhook-stepper'
 
+function getWebhookUrl(): string {
+  const base =
+    typeof window !== 'undefined' ? window.location.origin : 'https://your-server.example.com'
+  return `${base}/webhook`
+}
+
 export function WebhookGuidePage() {
+  const webhookUrl = getWebhookUrl()
+
   return (
     <PageShell
       eyebrow="Manual Guide"
@@ -13,7 +21,7 @@ export function WebhookGuidePage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)]">
         <BrutalCard className="theme-card-cream space-y-5">
           <StickerLabel tone="accent">Step-by-Step</StickerLabel>
-          <WebhookStepper />
+          <WebhookStepper webhookUrl={webhookUrl} />
         </BrutalCard>
 
         <div className="space-y-5">

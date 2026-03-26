@@ -15,6 +15,7 @@ afterEach(() => {
 describe('translator env', () => {
   it('applies observability defaults when optional vars are absent', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
     process.env['INTERNAL_API_SECRET'] = 'internal-secret'
 
@@ -32,6 +33,7 @@ describe('translator env', () => {
 
   it('allows overriding the pipeline timeout', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
     process.env['INTERNAL_API_SECRET'] = 'internal-secret'
     process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '45000'
@@ -44,6 +46,7 @@ describe('translator env', () => {
 
   it('accepts a valid custom room config data directory override', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
     process.env['INTERNAL_API_SECRET'] = 'internal-secret'
     process.env['ROOM_CONFIG_DATA_DIR'] = '/tmp/translator-room-configs'
@@ -58,6 +61,7 @@ describe('translator env', () => {
     const { translatorEnvSchema } = await import('./env-schema')
     const result = translatorEnvSchema.safeParse({
       CHATWORK_API_TOKEN: 'token',
+      CHATWORK_BOT_ACCOUNT_ID: '42',
       ROOM_CONFIG_ENCRYPTION_KEY: 'short-key',
       INTERNAL_API_SECRET: 'internal-secret',
     })
@@ -69,6 +73,7 @@ describe('translator env', () => {
     const { translatorEnvSchema } = await import('./env-schema')
     const result = translatorEnvSchema.safeParse({
       CHATWORK_API_TOKEN: 'token',
+      CHATWORK_BOT_ACCOUNT_ID: '42',
       ROOM_CONFIG_ENCRYPTION_KEY: 'a'.repeat(64),
     })
 

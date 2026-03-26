@@ -113,9 +113,11 @@ exec "${nodeBin}" "${concurrentlyBin}" "$@"
   writeExecutable(
     join(binDir, 'bun'),
     `#!/bin/sh
-	echo "unexpected bun args: $*" >&2
-	exit 2
-	`,
+case "$1 $2" in
+  "run build:dashboard") exit 0 ;;
+  *) echo "unexpected bun args: $*" >&2; exit 2 ;;
+esac
+`,
   )
 
   writeExecutable(

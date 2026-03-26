@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test'
-import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from './message'
+import type {
+  ChatworkMe,
+  ChatworkMember,
+  ChatworkMessage,
+  ChatworkSendMessageResult,
+} from './message'
 
 describe('ChatworkMember type', () => {
   it('accepts a valid member shape', () => {
@@ -33,6 +38,34 @@ describe('ChatworkMessage type', () => {
     }
     expect(message.message_id).toBe('msg-001')
     expect(message.body).toBe('Hello world')
+  })
+})
+
+describe('ChatworkMe type', () => {
+  it('accepts a valid me shape', () => {
+    const me: ChatworkMe = {
+      account_id: 42,
+      room_id: 1,
+      name: 'Bot',
+      chatwork_id: 'bot',
+      organization_id: 1,
+      organization_name: 'Org',
+      department: '',
+      title: '',
+      url: '',
+      introduction: '',
+      mail: '',
+      tel_organization: '',
+      tel_extension: '',
+      tel_mobile: '',
+      skype: '',
+      facebook: '',
+      twitter: '',
+      avatar_image_url: 'https://example.com/avatar.jpg',
+      login_mail: 'bot@example.com',
+    }
+    expect(me.account_id).toBe(42)
+    expect(me.name).toBe('Bot')
   })
 })
 

@@ -145,7 +145,7 @@ services:
       webhook-logger:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://localhost:80/health']
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:80/health']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -183,17 +183,18 @@ services:
         last_share_error_line=
         backend_target="http://gateway:80"
         target_marker="/home/ziggy/.zrok/backend_target"
+        need_re_reserve=false
         # Auto-detect backend target change (e.g. migration from webhook-logger to gateway)
         # and force re-reservation so zrok points to the correct service.
         if [ -f "$$target_marker" ]; then
           old_target=$$(cat "$$target_marker")
           if [ "$$old_target" != "$$backend_target" ]; then
             echo "[zrok] backend target changed: $$old_target -> $$backend_target"
-            if [ -f "$$reserved_file" ]; then
-              echo "[zrok] clearing stale reservation for re-creation"
-              rm -f "$$reserved_file"
-            fi
+            need_re_reserve=true
           fi
+        elif [ -f "$$reserved_file" ]; then
+          echo "[zrok] no target marker — existing reservation may have stale backend"
+          need_re_reserve=true
         fi
         printf '%s' "$$backend_target" > "$$target_marker"
         [ -f /home/ziggy/.zrok/environment.json ] || zrok enable "${ZROK_ENABLE_TOKEN}" --headless
@@ -237,6 +238,19 @@ services:
               return 0
             fi
             if printf '%s\n' "$$reserve_output" | grep -q 'shareConflict'; then
+              if [ "$$need_re_reserve" = true ]; then
+                echo "[zrok] stale server reservation — releasing and retrying"
+                zrok release "$$normalized_unique_name" 2>&1 || true
+                reserve_output=$$(zrok reserve public $$backend_target --unique-name "$$normalized_unique_name" --json-output 2>&1)
+                reserve_status=$$?
+                if [ $$reserve_status -eq 0 ]; then
+                  printf '%s\n' "$$reserve_output" > "$$reserved_file"
+                  share_token=$$(extract_share_token "$$reserved_file")
+                  return 0
+                fi
+                last_share_error_line="$$reserve_output"
+                return 1
+              fi
               # zrok v1 returns the unique name itself as the reserved share token for unique-name reservations.
               printf '{"token":"%s"}\n' "$$normalized_unique_name" > "$$reserved_file"
               share_token="$$normalized_unique_name"
@@ -280,6 +294,14 @@ services:
             rm -f "$$share_fifo"
             return $$share_status
           }
+          if [ "$$need_re_reserve" = true ] && [ -f "$$reserved_file" ]; then
+            old_token=$$(extract_share_token "$$reserved_file")
+            if [ -n "$$old_token" ]; then
+              echo "[zrok] releasing stale reservation: $$old_token"
+              zrok release "$$old_token" 2>&1 || true
+            fi
+            rm -f "$$reserved_file"
+          fi
           share_token=
           if [ -f "$$reserved_file" ]; then
             share_token=$$(extract_share_token "$$reserved_file")

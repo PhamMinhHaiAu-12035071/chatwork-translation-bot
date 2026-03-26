@@ -52,7 +52,13 @@ export function createApp({ store }: AppOptions) {
     .use(providerHealthRoute)
     .use(createStatusRoute(() => getTranslatorStatusSnapshot()))
     .use(providersRoute)
-    .use(createRoomsRoutes({ store, chatworkApiToken: env.CHATWORK_API_TOKEN }))
+    .use(
+      createRoomsRoutes({
+        store,
+        chatworkApiToken: env.CHATWORK_API_TOKEN,
+        chatworkBotAccountId: env.CHATWORK_BOT_ACCOUNT_ID,
+      }),
+    )
     .use(createInternalRoomSecretRoute({ store, internalApiSecret: env.INTERNAL_API_SECRET }))
     .use(translateRoutes)
     .use(staticRoutes)

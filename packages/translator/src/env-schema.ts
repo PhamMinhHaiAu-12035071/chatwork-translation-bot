@@ -3,6 +3,10 @@ import { DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS } from '~/services/pipeline-time
 
 export const translatorEnvSchema = z.object({
   CHATWORK_API_TOKEN: z.string().min(1, 'CHATWORK_API_TOKEN is required'),
+  CHATWORK_BOT_ACCOUNT_ID: z.coerce
+    .number()
+    .int()
+    .positive('CHATWORK_BOT_ACCOUNT_ID must be a positive integer'),
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
   ROOM_CONFIG_ENCRYPTION_KEY: z

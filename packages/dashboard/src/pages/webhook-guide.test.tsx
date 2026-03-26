@@ -22,7 +22,7 @@ describe('WebhookGuidePage', () => {
     expect(source).toContain(
       "import { WebhookStepper } from '~/components/molecules/webhook-stepper'",
     )
-    expect(source).toContain('<WebhookStepper />')
+    expect(source).toContain('<WebhookStepper webhookUrl={webhookUrl} />')
     expect(source).not.toContain('const steps = [')
   })
 
