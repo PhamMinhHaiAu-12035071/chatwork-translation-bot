@@ -6,6 +6,11 @@ let mockOutput: unknown = { sourceLang: 'English', translated: 'Xin chào thế 
 const generateTextMock = mock((_config: unknown) => Promise.resolve({ output: mockOutput }))
 
 const outputObjectMock = mock((config: unknown) => config)
+const scopedOpenaiClientMock = mock((_modelId: string) => ({
+  provider: 'openai',
+  modelId: _modelId,
+}))
+const createOpenAIMock = mock((_options?: unknown) => scopedOpenaiClientMock)
 const openaiMock = mock((_modelId: string) => ({ provider: 'openai', modelId: _modelId }))
 
 function createAbortError(message: string): Error {
@@ -19,7 +24,10 @@ void mock.module('ai', () => ({
   Output: { object: outputObjectMock },
 }))
 
-void mock.module('@ai-sdk/openai', () => ({ openai: openaiMock }))
+void mock.module('@ai-sdk/openai', () => ({
+  createOpenAI: createOpenAIMock,
+  openai: openaiMock,
+}))
 
 describe('openaiPlugin', () => {
   let openaiPlugin: typeof openaiPluginType
@@ -60,6 +68,16 @@ describe('openaiPlugin', () => {
     const schema = { parse: (d: unknown) => d }
     await executor.execute({ system: 'sys', user: 'test' }, schema)
     expect(openaiMock.mock.calls.at(-1)?.[0]).toBe('gpt-4o')
+  })
+
+  it('uses a scoped OpenAI client when apiKey is provided in context', async () => {
+    const executor = openaiPlugin.create({ modelId: 'gpt-5.4', apiKey: 'room-openai-key' })
+    const schema = { parse: (d: unknown) => d }
+
+    await executor.execute({ system: 'sys', user: 'test' }, schema)
+
+    expect(createOpenAIMock).toHaveBeenCalledWith({ apiKey: 'room-openai-key' })
+    expect(scopedOpenaiClientMock).toHaveBeenCalledWith('gpt-5.4')
   })
 
   it('wraps API errors in TranslationError', async () => {

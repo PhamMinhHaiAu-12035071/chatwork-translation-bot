@@ -1,5 +1,5 @@
 import { generateText, Output, type FlexibleSchema } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI, google } from '@ai-sdk/google'
 import type { ILLMExecutor, PromptPair, ISchema } from '@chatwork-bot/core'
 import { TranslationError } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
@@ -37,7 +37,14 @@ export function supportsThinking(modelId: string): boolean {
 }
 
 class GeminiExecutor implements ILLMExecutor {
-  constructor(private readonly modelId: string = DEFAULT_GEMINI_MODEL) {}
+  private readonly provider: ReturnType<typeof createGoogleGenerativeAI>
+
+  constructor(
+    private readonly modelId: string = DEFAULT_GEMINI_MODEL,
+    apiKey?: string,
+  ) {
+    this.provider = apiKey !== undefined ? createGoogleGenerativeAI({ apiKey }) : google
+  }
 
   private resolveThinking(
     modelId: string,
@@ -62,7 +69,7 @@ class GeminiExecutor implements ILLMExecutor {
 
     try {
       const { output } = await generateText({
-        model: google(this.modelId),
+        model: this.provider(this.modelId),
         system: prompts.system,
         prompt: prompts.user,
         output: Output.object({ schema: outputSchema }),
@@ -100,6 +107,6 @@ export const geminiPlugin: ProviderPlugin = {
     requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {
-    return new GeminiExecutor(ctx.modelId)
+    return new GeminiExecutor(ctx.modelId, ctx.apiKey)
   },
 }

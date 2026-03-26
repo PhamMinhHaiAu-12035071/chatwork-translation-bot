@@ -29,4 +29,13 @@ describe('ProviderPlugin contract', () => {
     expect(typeof plugin.create).toBe('function')
     expect(plugin.manifest.capabilities.streaming).toBe(false)
   })
+
+  it('allows an optional per-request apiKey in the provider create context', () => {
+    const ctx: ProviderCreateContext = {
+      modelId: 'model-a',
+      apiKey: 'room-scoped-key',
+    }
+
+    expect(ctx.apiKey).toBe('room-scoped-key')
+  })
 })

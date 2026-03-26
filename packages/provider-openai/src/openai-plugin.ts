@@ -1,5 +1,5 @@
 import { generateText, Output } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI, openai } from '@ai-sdk/openai'
 import type { ILLMExecutor, PromptPair, ISchema } from '@chatwork-bot/core'
 import { TranslationError } from '@chatwork-bot/core'
 import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
@@ -33,7 +33,21 @@ export function supportsThinking(modelId: string): boolean {
 }
 
 class OpenAIExecutor implements ILLMExecutor {
-  constructor(private readonly modelId: string = DEFAULT_OPENAI_MODEL) {}
+  private readonly provider: ReturnType<typeof createOpenAI>
+
+  constructor(
+    private readonly modelId: string = DEFAULT_OPENAI_MODEL,
+    private readonly apiKey?: string,
+    private readonly baseUrl?: string,
+  ) {
+    this.provider =
+      apiKey !== undefined || baseUrl !== undefined
+        ? createOpenAI({
+            ...(apiKey !== undefined ? { apiKey } : {}),
+            ...(baseUrl !== undefined ? { baseURL: baseUrl } : {}),
+          })
+        : openai
+  }
 
   private resolveThinking(modelId: string): Record<string, Record<string, string>> | null {
     if (!supportsThinking(modelId)) return null
@@ -49,7 +63,7 @@ class OpenAIExecutor implements ILLMExecutor {
     try {
       const thinking = this.resolveThinking(this.modelId)
       const { output } = await generateText({
-        model: openai(this.modelId),
+        model: this.provider(this.modelId),
         system: prompts.system,
         prompt: prompts.user,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
@@ -88,6 +102,6 @@ export const openaiPlugin: ProviderPlugin = {
     requiredEnvKeys: ['OPENAI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {
-    return new OpenAIExecutor(ctx.modelId)
+    return new OpenAIExecutor(ctx.modelId, ctx.apiKey, ctx.baseUrl)
   },
 }

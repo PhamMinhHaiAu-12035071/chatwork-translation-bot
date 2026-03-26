@@ -10,6 +10,11 @@ const generateTextMock = mock((config: unknown) => {
 })
 
 const outputObjectMock = mock((config: unknown) => config)
+const scopedGoogleClientMock = mock((_modelId: string) => ({
+  provider: 'google',
+  modelId: _modelId,
+}))
+const createGoogleGenerativeAIMock = mock((_options?: unknown) => scopedGoogleClientMock)
 const googleMock = mock((_modelId: string) => ({ provider: 'google', modelId: _modelId }))
 
 function createAbortError(message: string): Error {
@@ -23,7 +28,10 @@ void mock.module('ai', () => ({
   Output: { object: outputObjectMock },
 }))
 
-void mock.module('@ai-sdk/google', () => ({ google: googleMock }))
+void mock.module('@ai-sdk/google', () => ({
+  createGoogleGenerativeAI: createGoogleGenerativeAIMock,
+  google: googleMock,
+}))
 
 describe('geminiPlugin', () => {
   let geminiPlugin: typeof geminiPluginType
@@ -64,6 +72,19 @@ describe('geminiPlugin', () => {
     const schema = { parse: (d: unknown) => d }
     await executor.execute({ system: 'sys', user: 'test' }, schema)
     expect(googleMock.mock.calls.at(-1)?.[0]).toBe('gemini-2.0-flash')
+  })
+
+  it('uses a scoped Google client when apiKey is provided in context', async () => {
+    const executor = geminiPlugin.create({
+      modelId: 'gemini-2.5-pro',
+      apiKey: 'room-gemini-key',
+    })
+    const schema = { parse: (d: unknown) => d }
+
+    await executor.execute({ system: 'sys', user: 'test' }, schema)
+
+    expect(createGoogleGenerativeAIMock).toHaveBeenCalledWith({ apiKey: 'room-gemini-key' })
+    expect(scopedGoogleClientMock).toHaveBeenCalledWith('gemini-2.5-pro')
   })
 
   it('wraps API errors in TranslationError', async () => {

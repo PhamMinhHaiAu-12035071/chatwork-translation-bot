@@ -2,6 +2,7 @@ import type { ILLMExecutor } from './llm-executor'
 
 export interface ProviderCreateContext {
   modelId: string
+  apiKey?: string
   baseUrl?: string
 }
 
