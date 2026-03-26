@@ -7,6 +7,11 @@ import type { translateRoutes as TranslateRoutesType } from './router'
 
 const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
 process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
+const mockHandleTranslateRequest = mock((_command: unknown) => Promise.resolve())
+
+void mock.module('./handler', () => ({
+  handleTranslateRequest: mockHandleTranslateRequest,
+}))
 
 describe('translateRoutes', () => {
   let translateRoutes: typeof TranslateRoutesType

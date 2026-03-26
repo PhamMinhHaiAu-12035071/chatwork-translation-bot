@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
-import type { handleTranslateRequest as HandleTranslateRequestType } from './handler'
+import type { RoomConfigStore } from '~/services/room-config-store'
 
 // ── Pipeline fixtures (single executor call) ─────────────────────────────────
 
@@ -18,6 +18,8 @@ const pipelineFixtures: unknown[] = [
 let executeCallCount = 0
 const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
+const ROOM_CONFIG_KEY_HEX = 'a'.repeat(64)
+const DEFAULT_DESTINATION_ROOM_ID = 45678
 const mockNotifyDatasetRunner = mock((_payload: unknown, _config: unknown) => Promise.resolve())
 const mockComposeTranslatedMessagePair = mock(
   (
@@ -52,7 +54,10 @@ function createMockProvider(id: string, executor: ILLMExecutor, timeoutMs = 1_80
       capabilities: { streaming: false },
       timeoutMs,
     },
-    create: () => executor,
+    create: (ctx: unknown) => {
+      _mockPluginCreate(ctx)
+      return executor
+    },
   }
 }
 
@@ -132,7 +137,14 @@ function makeCommand(overrides?: Partial<TranslationIngressCommand>): Translatio
 }
 
 describe('handleTranslateRequest', () => {
-  let handleTranslateRequest: typeof HandleTranslateRequestType
+  let createHandleTranslateRequest: (deps: {
+    store: RoomConfigStore
+    chatworkApiToken: string
+  }) => (command: TranslationIngressCommand) => Promise<void>
+  let handleTranslateRequest: (command: TranslationIngressCommand) => Promise<void>
+  let store: RoomConfigStore
+  let storeDataDir: string
+  let enabledRoomId: string
 
   beforeAll(async () => {
     const realCore = await import('@chatwork-bot/core')
@@ -198,7 +210,7 @@ describe('handleTranslateRequest', () => {
     }))
 
     const mod = await import('./handler')
-    handleTranslateRequest = mod.handleTranslateRequest
+    createHandleTranslateRequest = mod.createHandleTranslateRequest
   })
 
   afterAll(() => {
@@ -220,6 +232,8 @@ describe('handleTranslateRequest', () => {
     process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '1800000'
     mockNotifyDatasetRunner.mockReset()
     mockNotifyDatasetRunner.mockImplementation(() => Promise.resolve())
+    _mockPluginCreate.mockReset()
+    _mockPluginCreate.mockImplementation((_ctx: unknown) => createMockExecutor())
     mockComposeTranslatedMessagePair.mockReset()
     mockComposeTranslatedMessagePair.mockImplementation(
       (
@@ -248,6 +262,36 @@ describe('handleTranslateRequest', () => {
       await import('~/services/translator-observability-runtime')
     resetTranslatorObservabilityForTest()
     delete process.env['DATASET_INPUT_DIR']
+    rmSync(storeDataDir, { recursive: true, force: true })
+  })
+
+  beforeEach(async () => {
+    const { RoomConfigStore } = await import('~/services/room-config-store')
+
+    storeDataDir = mkdtempSync(join(tmpdir(), 'room-config-store-'))
+    store = new RoomConfigStore({
+      dataDir: storeDataDir,
+      encryptionKeyHex: ROOM_CONFIG_KEY_HEX,
+    })
+    await store.init()
+
+    const room = await store.create({
+      originalRoomId: 424846369,
+      destinationRoomId: DEFAULT_DESTINATION_ROOM_ID,
+      destinationRoomName: 'Translated Output',
+      aiProvider: 'openai',
+      aiModel: 'gpt-4o',
+      translationStyle: 'TECHNICAL',
+      aiApiToken: 'room-openai-token',
+      webhookSecret: 'room-webhook-secret',
+    })
+    enabledRoomId = room.id
+    await store.setEnabled(room.id, true)
+
+    handleTranslateRequest = createHandleTranslateRequest({
+      store,
+      chatworkApiToken: mockEnv.CHATWORK_API_TOKEN,
+    })
   })
 
   it('translates message via registry-resolved provider', async () => {
@@ -259,7 +303,59 @@ describe('handleTranslateRequest', () => {
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
     expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
+    expect(_mockPluginCreate.mock.calls.at(-1)?.[0]).toMatchObject({
+      modelId: 'gpt-4o',
+      apiKey: 'room-openai-token',
+    })
     expect(executeCallCount).toBe(1)
+  })
+
+  it('skips when source room has no config', async () => {
+    const getStart = mockGetProviderPlugin.mock.calls.length
+
+    await handleTranslateRequest(makeCommand({ sourceRoomId: 9999 }))
+
+    expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
+    expect(executeCallCount).toBe(0)
+    expect(
+      consoleLogLines.some((line) => line.includes('translation_skipped_no_room_config')),
+    ).toBe(true)
+  })
+
+  it('skips when room is disabled', async () => {
+    await store.setEnabled(enabledRoomId, false)
+
+    const getStart = mockGetProviderPlugin.mock.calls.length
+
+    await handleTranslateRequest(makeCommand())
+
+    expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
+    expect(executeCallCount).toBe(0)
+    expect(consoleLogLines.some((line) => line.includes('translation_skipped_room_disabled'))).toBe(
+      true,
+    )
+  })
+
+  it('uses the room provider, model, token, and destination instead of global env config', async () => {
+    await store.update(enabledRoomId, {
+      aiProvider: 'gemini',
+      aiModel: 'gemini-2.5-pro',
+      aiApiToken: 'room-gemini-token',
+      translationStyle: 'AUTO_CONTEXT',
+    })
+
+    mockGetProviderPlugin.mockImplementation((id: string) =>
+      createMockProvider(id, createMockExecutor()),
+    )
+
+    await handleTranslateRequest(makeCommand())
+
+    expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('gemini')
+    expect(_mockPluginCreate.mock.calls.at(-1)?.[0]).toMatchObject({
+      modelId: 'gemini-2.5-pro',
+      apiKey: 'room-gemini-token',
+    })
+    expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(DEFAULT_DESTINATION_ROOM_ID)
   })
 
   it('writes delivery metadata after destination send completes', async () => {
@@ -457,7 +553,7 @@ describe('handleTranslateRequest', () => {
     await handleTranslateRequest(command)
 
     expect(mockSendRoomMessage.mock.calls.length).toBe(2)
-    expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(99999)
+    expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(DEFAULT_DESTINATION_ROOM_ID)
     expect(mockSendRoomMessage.mock.calls[0]?.[1]).toContain('Translation metadata')
     expect(mockSendRoomMessage.mock.calls[1]?.[1]).toContain('A-VI')
   })
