@@ -203,6 +203,38 @@ describe('POST /api/rooms', () => {
     expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
   })
 
+  it('returns 502 and does not persist room config when Chatwork room creation fails', async () => {
+    mockCreateChatworkRoom.mockImplementationOnce(() => Promise.reject(new Error('chatwork boom')))
+
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(VALID_BODY),
+      }),
+    )
+
+    expect(response.status).toBe(502)
+
+    const listResponse = await app.handle(new Request('http://localhost/api/rooms'))
+    const listBody = (await listResponse.json()) as {
+      success?: boolean
+      data?: unknown[]
+    }
+
+    expect(listBody.success).toBe(true)
+    expect(listBody.data).toEqual([])
+
+    const persisted = (await Bun.file(join(tmpDir, 'room-configs.json')).json()) as {
+      rooms?: unknown[]
+      version?: number
+    }
+
+    expect(persisted.version).toBe(1)
+    expect(persisted.rooms).toEqual([])
+  })
+
   it('returns 400 on invalid body', async () => {
     const app = await buildApp(tmpDir)
     const response = await app.handle(
