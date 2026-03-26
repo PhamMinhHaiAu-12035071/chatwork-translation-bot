@@ -15,7 +15,7 @@ export const BrutalInput = forwardRef<HTMLInputElement, BrutalInputProps>(
       <div className="space-y-1.5">
         <label
           htmlFor={inputId}
-          className="block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]"
+          className="font-ui-body block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]"
         >
           {label}
         </label>
@@ -23,11 +23,10 @@ export const BrutalInput = forwardRef<HTMLInputElement, BrutalInputProps>(
           ref={ref}
           id={inputId}
           className={[
-            'w-full rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5',
-            'text-sm text-[var(--text-primary)] shadow-[3px_3px_0_var(--border)]',
-            'placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-1',
-            'transition-shadow duration-150',
-            error ? 'border-[var(--error)] shadow-[3px_3px_0_var(--error)]' : '',
+            'brutal-input w-full px-4 py-2.5',
+            'font-ui-body text-sm text-[var(--text-primary)]',
+            'placeholder:text-[var(--text-secondary)]',
+            error ? 'brutal-input-error' : '',
             className ?? '',
           ]
             .filter(Boolean)
@@ -35,9 +34,11 @@ export const BrutalInput = forwardRef<HTMLInputElement, BrutalInputProps>(
           {...rest}
         />
         {hint && !error ? (
-          <p className="text-xs leading-5 text-[var(--text-secondary)]">{hint}</p>
+          <p className="font-ui-body text-xs leading-5 text-[var(--text-secondary)]">{hint}</p>
         ) : null}
-        {error ? <p className="text-xs leading-5 text-[var(--error)]">{error}</p> : null}
+        {error ? (
+          <p className="font-ui-body text-xs leading-5 text-[var(--error)]">{error}</p>
+        ) : null}
       </div>
     )
   },

@@ -16,7 +16,8 @@ describe('BrutalInput', () => {
     expect(html).toContain('AI API Token')
     expect(html).toContain('Stored in memory only.')
     expect(html).toContain('type="password"')
-    expect(html).toContain('shadow-[3px_3px_0_var(--border)]')
+    expect(html).toContain('brutal-input')
+    expect(html).toContain('font-ui-body')
   })
 
   it('switches to the error treatment when an error message is provided', () => {
@@ -28,7 +29,7 @@ describe('BrutalInput', () => {
     )
 
     expect(html).toContain('Room ID is required')
-    expect(html).toContain('border-[var(--error)]')
+    expect(html).toContain('brutal-input-error')
     expect(html).not.toContain('text-[var(--text-secondary)]">Room ID is required')
   })
 })

@@ -37,6 +37,7 @@ describe('dashboard visual shells', () => {
   it('keeps the matcha milk backdrop with brighter candy accents after wiring live data', async () => {
     const html = renderWithRoute('/', '/', createElement(RoomListPage))
     const css = await Bun.file(new URL('./styles/global.css', import.meta.url)).text()
+    const dashboardHtml = await Bun.file(new URL('../index.html', import.meta.url)).text()
 
     expect(html).toContain('theme-card-mint')
     expect(html).toContain('theme-card-butter')
@@ -49,11 +50,26 @@ describe('dashboard visual shells', () => {
     expect(css).toContain('--organic-circle-1: #dde9be;')
     expect(css).toContain('--organic-circle-2: #f3d5b1;')
     expect(css).toContain('--organic-circle-3: #e7e0c9;')
+    expect(dashboardHtml).toContain('family=Shantell+Sans')
+    expect(dashboardHtml).toContain('family=Fredoka')
+    expect(dashboardHtml).toContain('family=Zen+Maru+Gothic')
+    expect(css).toContain("font-family: 'Zen Maru Gothic', sans-serif;")
     expect(css).toContain('linear-gradient(180deg, #79a766 0%, #5c8b52 100%)')
     expect(css).toContain('linear-gradient(180deg, #8c93f5 0%, #6e77e5 100%)')
     expect(css).toContain('linear-gradient(180deg, #f07ca6 0%, #d44470 100%)')
     expect(css).toContain('linear-gradient(180deg, #ff9a72 0%, #f27a54 100%)')
     expect(css).toContain('linear-gradient(180deg, #8ed2f7 0%, #61b7e8 100%)')
+  })
+
+  it('formalizes distinct display, metric, and body typography roles', async () => {
+    const css = await Bun.file(new URL('./styles/global.css', import.meta.url)).text()
+
+    expect(css).toContain('.font-heading {')
+    expect(css).toContain("font-family: 'Shantell Sans', cursive;")
+    expect(css).toContain('.font-metric {')
+    expect(css).toContain("font-family: 'Fredoka', cursive;")
+    expect(css).toContain('.font-ui-body {')
+    expect(css).toContain("font-family: 'Zen Maru Gothic', sans-serif;")
   })
 
   it('uses a peach-milk candy scrollbar that harmonizes with the warm page chrome', async () => {
@@ -97,7 +113,8 @@ describe('dashboard visual shells', () => {
     expect(pageShellSource).toContain('{eyebrow}')
     expect(layoutSource).toContain('<StickerLabel tone="accent" tilt="flat">')
     expect(layoutSource).toContain('Multi-Room Setup')
-    expect(layoutSource).toContain('animate={{ x: isActive ? -2 : 0, y: isActive ? -2 : 0 }}')
+    expect(layoutSource).toContain('layoutId="nav-indicator"')
+    expect(layoutSource).toContain('shadow-[5px_5px_0_var(--accent)]')
     expect(layoutSource).toContain('whileHover={{ x: -2, y: -2 }}')
     expect(layoutSource).not.toContain('rotate: item.tilt')
     expect(layoutSource).not.toContain('tilt: -0.9')

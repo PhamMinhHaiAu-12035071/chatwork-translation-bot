@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 
-export type ToastVariant = 'success' | 'error'
+export type ToastVariant = 'success' | 'info' | 'warning' | 'error'
 
 export interface ToastItem {
   id: string
@@ -15,11 +15,15 @@ interface BrutalToastProps {
 
 const variantStyles: Record<ToastVariant, string> = {
   success: 'bg-[var(--success)] text-[var(--border)] border-[var(--border)]',
+  info: 'bg-[#ede9fe] text-[#5b4fc4] border-[#5b4fc4]',
+  warning: 'bg-[#fef3cd] text-[#856404] border-[#856404]',
   error: 'bg-[#fde8ee] text-[var(--error)] border-[var(--error)]',
 }
 
 const variantIcon: Record<ToastVariant, string> = {
   success: 'OK',
+  info: 'i',
+  warning: '!',
   error: 'X',
 }
 

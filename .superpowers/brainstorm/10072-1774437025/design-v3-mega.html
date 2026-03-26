@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kawaii Neubrutalism 3D — 10 Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Baloo+2:wght@400;500;600;700;800&family=Comfortaa:wght@400;500;600;700&family=Righteous&family=Lilita+One&family=Grandstander:wght@400;500;600;700;800;900&family=Chewy&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=Fredoka:wght@400;500;600;700&family=Pacifico&family=Rubik+Bubbles&family=Bungee&family=Zen+Maru+Gothic:wght@400;500;700;900&family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #FFFAF5;
+    font-family: 'Outfit', sans-serif;
+    color: #1a1a1a;
+    padding: 24px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    letter-spacing: -1.5px;
+    margin-bottom: 6px;
+    color: #1a1a1a;
+  }
+  h1 span { color: #FF6B35; }
+
+  .subtitle { color: #666; font-size: 15px; margin-bottom: 32px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .option {
+    border: 3.5px solid #1a1a1a;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 7px 7px 0 #1a1a1a;
+    cursor: pointer;
+    transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .option:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 10px 10px 0 #1a1a1a;
+  }
+  .option:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 #1a1a1a;
+  }
+  .option.selected {
+    outline: 4px solid #FF6B35;
+    outline-offset: 4px;
+  }
+  .option.selected::after {
+    content: 'SELECTED';
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #FF6B35;
+    color: #fff;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 2px solid #1a1a1a;
+    z-index: 10;
+  }
+
+  .mockup { padding: 18px; min-height: 300px; }
+  .info { padding: 16px 18px; border-top: 3px solid #1a1a1a; background: #fff; }
+  .info h3 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .info p { font-size: 12.5px; color: #444; line-height: 1.5; }
+  .info .fonts { font-size: 11px; color: #888; margin-top: 6px; }
+  .colors { display: flex; gap: 5px; margin-top: 8px; }
+  .colors span { width: 24px; height: 24px; border: 2px solid #1a1a1a; border-radius: 6px; display: inline-block; }
+
+  .pill { display: inline-block; border: 2.5px solid #1a1a1a; border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: 11px; box-shadow: 2px 2px 0 #1a1a1a; }
+  .tag { display: inline-block; border: 2px solid #1a1a1a; border-radius: 8px; padding: 3px 10px; font-weight: 700; font-size: 9px; }
+
+  /* Candy Scrollbar */
+  ::-webkit-scrollbar { width: 16px; }
+  ::-webkit-scrollbar-track {
+    background: repeating-linear-gradient(45deg, #FFE8D6, #FFE8D6 8px, #fff 8px, #fff 16px);
+    border: 3px solid #1a1a1a;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #FF8FAB 0%, #FF6B9D 50%, #FF8FAB 100%);
+    border: 3px solid #1a1a1a;
+    border-radius: 10px;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.4);
+    background-size: 100% 200%;
+    animation: candy-scroll 2s ease-in-out infinite;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #FF6B9D 0%, #E84D7A 50%, #FF6B9D 100%);
+  }
+  @keyframes candy-scroll {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 0% 100%; }
+  }
+
+  .note {
+    max-width: 1200px;
+    margin: 32px auto 0;
+    padding: 16px 20px;
+    background: #FFE156;
+    border: 3px solid #1a1a1a;
+    border-radius: 14px;
+    box-shadow: 4px 4px 0 #1a1a1a;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+</style>
+<script>
+function sel(el) {
+  document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  const choice = el.dataset.choice;
+  // Record event
+  if (window.__recordEvent) window.__recordEvent('click', choice, el.querySelector('h3')?.textContent || choice);
+}
+</script>
+</head>
+<body>
+
+<h1>Kawaii Neubrutalism 3D<span>.</span></h1>
+<p class="subtitle">10 Design Directions — Click chon cai ban thich nhat. Candy scrollbar dang hoat dong!</p>
+
+<div class="grid">
+
+  <!-- ========== 1. VIBRANT GRID ========== -->
+  <div class="option" data-choice="1" onclick="sel(this)">
+    <div class="mockup" style="background:#FFFAF0; font-family:'Outfit',sans-serif;">
+      <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:20px; margin-bottom:12px;">ChatFlow<span style="color:#FF6B35">.</span></div>
+      <div style="display:flex; gap:6px; margin-bottom:14px;">
+        <span class="pill" style="background:#FF6B35; color:#fff;">Rooms</span>
+        <span class="pill" style="background:transparent;">Guide</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="background:#FFE156; border:3px solid #1a1a1a; border-radius:14px; padding:12px; box-shadow:4px 4px 0 #1a1a1a;">
+          <div style="font-weight:800; font-size:12px;">Alpha</div>
+          <div style="font-size:9px; color:#555; margin:4px 0;"><span class="tag" style="background:#1a1a1a; color:#FFE156;">Gemini</span></div>
+        </div>
+        <div style="background:#FF8FAB; border:3px solid #1a1a1a; border-radius:14px; padding:12px; box-shadow:4px 4px 0 #1a1a1a;">
+          <div style="font-weight:800; font-size:12px;">Beta</div>
+          <div style="font-size:9px; margin:4px 0;"><span class="tag" style="background:#1a1a1a; color:#FF8FAB;">OpenAI</span></div>
+        </div>
+        <div style="background:#6FEDD6; border:3px solid #1a1a1a; border-radius:14px; padding:12px; box-shadow:4px 4px 0 #1a1a1a;">
+          <div style="font-weight:800; font-size:12px;">Gamma</div>
+          <div style="font-size:9px; margin:4px 0;"><span class="tag" style="background:#1a1a1a; color:#6FEDD6;">Gemini</span></div>
+        </div>
+        <div style="background:#C4B5FD; border:3px solid #1a1a1a; border-radius:14px; padding:12px; box-shadow:4px 4px 0 #1a1a1a;">
+          <div style="font-weight:800; font-size:12px;">Delta</div>
+          <div style="font-size:9px; margin:4px 0;"><span class="tag" style="background:#1a1a1a; color:#C4B5FD;">OpenAI</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>1. Vibrant Grid — Bloom Style</h3>
+      <p>Grid 2x2, moi room 1 mau rieng. Orange accent. Clean, organized, bold.</p>
+      <div class="fonts">Syne 800 + Outfit 700</div>
+      <div class="colors">
+        <span style="background:#FFE156"></span><span style="background:#FF8FAB"></span>
+        <span style="background:#6FEDD6"></span><span style="background:#C4B5FD"></span>
+        <span style="background:#FF6B35"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 2. EMBER WARM ========== -->
+  <div class="option" data-choice="2" onclick="sel(this)">
+    <div class="mockup" style="background:#FFF0E5; font-family:'Outfit',sans-serif;">
+      <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:20px; margin-bottom:4px;"><span style="color:#E84D1A">Chat</span>Flow</div>
+      <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:26px; color:#E84D1A; margin-bottom:12px;">Active Rooms</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="background:#FFE8D6; border:3.5px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:800; font-size:14px;">Alpha Project</div><div style="font-size:9px; color:#666;">JP → VN • Gemini</div></div>
+          <span class="pill" style="background:#4ADE80; font-size:10px;">Active</span>
+        </div>
+        <div style="background:#FFD6E8; border:3.5px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:800; font-size:14px;">Beta Client</div><div style="font-size:9px; color:#666;">JP → VN • GPT-5</div></div>
+          <span class="pill" style="background:#4ADE80; font-size:10px;">Active</span>
+        </div>
+        <div style="background:#D6E8FF; border:3.5px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; display:flex; justify-content:space-between; align-items:center;">
+          <div><div style="font-weight:800; font-size:14px;">Gamma Team</div><div style="font-size:9px; color:#666;">JP → VN • Gemini</div></div>
+          <span class="pill" style="background:#FFA500; font-size:10px;">Setup</span>
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>2. Ember Warm — Stacked Expression</h3>
+      <p>Warm peach bg, stacked cards, XL typography. Deep Orange accent. Am ap nhung manh me.</p>
+      <div class="fonts">Syne 800 (XL) + Outfit 700</div>
+      <div class="colors">
+        <span style="background:#E84D1A"></span><span style="background:#FFE8D6"></span>
+        <span style="background:#FFD6E8"></span><span style="background:#D6E8FF"></span>
+        <span style="background:#4ADE80"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 3. SAKURA MOCHI ========== -->
+  <div class="option" data-choice="3" onclick="sel(this)">
+    <div class="mockup" style="background:#FFF5F5; font-family:'Zen Maru Gothic',sans-serif;">
+      <div style="font-family:'Mochiy Pop One',sans-serif; font-size:22px; color:#D14D72; margin-bottom:4px;">ChatFlow</div>
+      <div style="font-size:10px; color:#999; margin-bottom:14px; font-weight:500;">翻訳ダッシュボード</div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="background:linear-gradient(135deg, #FFCCD5, #FFB3C1); border:3px solid #D14D72; border-radius:20px; padding:14px; box-shadow:5px 5px 0 #D14D72;">
+          <div style="font-weight:700; font-size:14px; color:#6B0F2A;">Alpha Project</div>
+          <div style="font-size:9px; color:#8B3A5A; margin-top:3px;">Gemini 2.5 Pro • Business</div>
+          <div style="display:flex; gap:4px; margin-top:8px;">
+            <span style="background:#FFF0F3; border:2px solid #D14D72; border-radius:999px; padding:3px 10px; font-size:9px; font-weight:700; color:#D14D72;">Active</span>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg, #E8D5FF, #D5B8FF); border:3px solid #7B2D8E; border-radius:20px; padding:14px; box-shadow:5px 5px 0 #7B2D8E;">
+          <div style="font-weight:700; font-size:14px; color:#3D1152;">Beta Client</div>
+          <div style="font-size:9px; color:#5E3A73; margin-top:3px;">GPT-5.4 • Casual</div>
+          <div style="display:flex; gap:4px; margin-top:8px;">
+            <span style="background:#F3EAFF; border:2px solid #7B2D8E; border-radius:999px; padding:3px 10px; font-size:9px; font-weight:700; color:#7B2D8E;">Active</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px; background:#D14D72; color:#fff; border:3px solid #6B0F2A; border-radius:16px; padding:11px; text-align:center; font-weight:700; font-size:13px; box-shadow:4px 4px 0 #6B0F2A;">+ 新しいルーム</div>
+    </div>
+    <div class="info">
+      <h3>3. Sakura Mochi — Japanese Authentic</h3>
+      <p>Full Japanese aesthetic. Cherry blossom gradients + plum borders. Mochiy Pop One heading. Mon-chromatic per card. Bilingual labels.</p>
+      <div class="fonts">Mochiy Pop One + Zen Maru Gothic 700</div>
+      <div class="colors">
+        <span style="background:#D14D72"></span><span style="background:#FFCCD5"></span>
+        <span style="background:#7B2D8E"></span><span style="background:#E8D5FF"></span>
+        <span style="background:#FFF5F5"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 4. CANDY CRUSH POP ========== -->
+  <div class="option" data-choice="4" onclick="sel(this)">
+    <div class="mockup" style="background:#FFF8E7; font-family:'Fredoka',sans-serif;">
+      <div style="font-family:'Lilita One',sans-serif; font-size:24px; color:#1a1a1a; margin-bottom:12px;">
+        <span style="color:#FF6B35; text-shadow:2px 2px 0 #C44D1A;">Chat</span><span style="text-shadow:2px 2px 0 #ccc;">Flow</span>
+      </div>
+      <!-- 3-Layer Candy Button Nav -->
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <div style="position:relative; display:inline-block;">
+          <div style="position:absolute; top:4px; left:0; right:0; background:#C44D1A; border-radius:12px; height:100%; border:2.5px solid #1a1a1a;"></div>
+          <div style="position:relative; background:linear-gradient(180deg, #FF9A5C 0%, #FF6B35 60%); border:2.5px solid #1a1a1a; border-radius:12px; padding:8px 16px; font-weight:700; font-size:11px; color:#fff; box-shadow:inset 0 2px 0 rgba(255,255,255,0.35);">Rooms</div>
+        </div>
+        <div style="background:#fff; border:2.5px solid #1a1a1a; border-radius:12px; padding:8px 16px; font-weight:600; font-size:11px; box-shadow:3px 3px 0 #1a1a1a;">Guide</div>
+      </div>
+      <!-- Candy Cards -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="position:relative;">
+          <div style="position:absolute; top:5px; left:0; right:0; background:#B8860B; border-radius:16px; height:calc(100% - 2px); border:3px solid #1a1a1a;"></div>
+          <div style="position:relative; background:linear-gradient(180deg, #FFE88A 0%, #FFD23F 40%, #F0C030 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:inset 0 3px 0 rgba(255,255,255,0.4);">
+            <div style="font-weight:700; font-size:13px;">Alpha</div>
+            <div style="font-size:9px; color:#8B7000; margin:3px 0 6px;">Gemini Pro</div>
+            <span class="tag" style="background:#4ADE80; border-color:#1a1a1a; color:#1a1a1a;">Active</span>
+          </div>
+        </div>
+        <div style="position:relative;">
+          <div style="position:absolute; top:5px; left:0; right:0; background:#B03060; border-radius:16px; height:calc(100% - 2px); border:3px solid #1a1a1a;"></div>
+          <div style="position:relative; background:linear-gradient(180deg, #FFB0C8 0%, #FF8FAB 40%, #FF7098 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:inset 0 3px 0 rgba(255,255,255,0.4);">
+            <div style="font-weight:700; font-size:13px;">Beta</div>
+            <div style="font-size:9px; color:#801040; margin:3px 0 6px;">GPT-5</div>
+            <span class="tag" style="background:#4ADE80; border-color:#1a1a1a; color:#1a1a1a;">Active</span>
+          </div>
+        </div>
+        <div style="position:relative;">
+          <div style="position:absolute; top:5px; left:0; right:0; background:#0D7D5F; border-radius:16px; height:calc(100% - 2px); border:3px solid #1a1a1a;"></div>
+          <div style="position:relative; background:linear-gradient(180deg, #98F5E0 0%, #6FEDD6 40%, #50DFC0 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:inset 0 3px 0 rgba(255,255,255,0.4);">
+            <div style="font-weight:700; font-size:13px;">Gamma</div>
+            <div style="font-size:9px; color:#0A5E47; margin:3px 0 6px;">Gemini Flash</div>
+            <span class="tag" style="background:#FFA500; border-color:#1a1a1a; color:#1a1a1a;">Setup</span>
+          </div>
+        </div>
+        <div style="position:relative;">
+          <div style="position:absolute; top:5px; left:0; right:0; background:#5B3E9E; border-radius:16px; height:calc(100% - 2px); border:3px solid #1a1a1a;"></div>
+          <div style="position:relative; background:linear-gradient(180deg, #D8CCFF 0%, #C4B5FD 40%, #B09EF0 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:inset 0 3px 0 rgba(255,255,255,0.4);">
+            <div style="font-weight:700; font-size:13px;">Delta</div>
+            <div style="font-size:9px; color:#3E2878; margin:3px 0 6px;">OpenAI</div>
+            <span class="tag" style="background:#4ADE80; border-color:#1a1a1a; color:#1a1a1a;">Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>4. Candy Crush Pop — 3-Layer 3D</h3>
+      <p>Full candy crush aesthetic! 3-layer buttons (shadow+body+gloss), gradient cards, text shadow. Lilita One heading. Tham khao tu reference project.</p>
+      <div class="fonts">Lilita One + Fredoka 700</div>
+      <div class="colors">
+        <span style="background:#FFD23F"></span><span style="background:#FF8FAB"></span>
+        <span style="background:#6FEDD6"></span><span style="background:#C4B5FD"></span>
+        <span style="background:#FF6B35"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 5. BUBBLEGUM STICKER ========== -->
+  <div class="option" data-choice="5" onclick="sel(this)">
+    <div class="mockup" style="background:#F0FFF4; font-family:'Grandstander',sans-serif;">
+      <div style="font-family:'Chewy',sans-serif; font-size:26px; color:#1a1a1a; margin-bottom:14px; letter-spacing:1px;">
+        ChatFlow<span style="color:#10B981">~</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="background:#FECDD3; border:3.5px solid #1a1a1a; border-radius:22px; padding:16px; box-shadow:6px 6px 0 #1a1a1a; transform:rotate(-0.5deg);">
+          <div style="font-family:'Chewy',sans-serif; font-size:16px; letter-spacing:0.5px;">Alpha Project</div>
+          <div style="font-size:10px; color:#666; margin:4px 0 8px;">Gemini 2.5 Pro • Professional</div>
+          <div style="display:flex; gap:6px;">
+            <span style="background:#86EFAC; border:2.5px solid #1a1a1a; border-radius:999px; padding:4px 14px; font-size:10px; font-weight:700; box-shadow:2px 2px 0 #1a1a1a;">Active</span>
+            <span style="background:#FDE68A; border:2.5px solid #1a1a1a; border-radius:999px; padding:4px 14px; font-size:10px; font-weight:700; box-shadow:2px 2px 0 #1a1a1a;">JP→VN</span>
+          </div>
+        </div>
+        <div style="background:#C7D2FE; border:3.5px solid #1a1a1a; border-radius:22px; padding:16px; box-shadow:6px 6px 0 #1a1a1a; transform:rotate(0.3deg);">
+          <div style="font-family:'Chewy',sans-serif; font-size:16px; letter-spacing:0.5px;">Beta Client</div>
+          <div style="font-size:10px; color:#666; margin:4px 0 8px;">GPT-5.4 • Natural Casual</div>
+          <div style="display:flex; gap:6px;">
+            <span style="background:#86EFAC; border:2.5px solid #1a1a1a; border-radius:999px; padding:4px 14px; font-size:10px; font-weight:700; box-shadow:2px 2px 0 #1a1a1a;">Active</span>
+            <span style="background:#FDE68A; border:2.5px solid #1a1a1a; border-radius:999px; padding:4px 14px; font-size:10px; font-weight:700; box-shadow:2px 2px 0 #1a1a1a;">JP→VN</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px; background:#10B981; color:#fff; border:3.5px solid #1a1a1a; border-radius:18px; padding:12px; text-align:center; font-family:'Chewy',sans-serif; font-size:15px; box-shadow:5px 5px 0 #1a1a1a; letter-spacing:1px;">+ New Room!</div>
+    </div>
+    <div class="info">
+      <h3>5. Bubblegum Sticker — Scrapbook</h3>
+      <p>Cards xoay nhe (rotate), pill badges noi, mint green bg. Chewy font handwritten vui nhon. Cam giac dan sticker scrapbook.</p>
+      <div class="fonts">Chewy + Grandstander 700</div>
+      <div class="colors">
+        <span style="background:#FECDD3"></span><span style="background:#C7D2FE"></span>
+        <span style="background:#86EFAC"></span><span style="background:#FDE68A"></span>
+        <span style="background:#10B981"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 6. RETRO GEOMETRIC ========== -->
+  <div class="option" data-choice="6" onclick="sel(this)">
+    <div class="mockup" style="background:#FFFBEB; font-family:'Comfortaa',sans-serif;">
+      <div style="font-family:'Righteous',sans-serif; font-size:24px; color:#1a1a1a; margin-bottom:14px;">
+        Chat<span style="color:#8B5CF6;">Flow</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div style="background:#FEF08A; border:4px solid #1a1a1a; border-radius:8px; padding:14px; box-shadow:6px 6px 0 #1a1a1a;">
+          <div style="font-family:'Righteous',sans-serif; font-size:14px;">Alpha</div>
+          <div style="font-size:9px; color:#666; margin:4px 0 8px;">Gemini • Pro</div>
+          <div style="width:100%; height:4px; background:#1a1a1a; border-radius:2px;"><div style="width:80%; height:100%; background:#4ADE80; border-radius:2px;"></div></div>
+        </div>
+        <div style="background:#FCA5A5; border:4px solid #1a1a1a; border-radius:8px; padding:14px; box-shadow:6px 6px 0 #1a1a1a;">
+          <div style="font-family:'Righteous',sans-serif; font-size:14px;">Beta</div>
+          <div style="font-size:9px; color:#666; margin:4px 0 8px;">GPT-5 • Casual</div>
+          <div style="width:100%; height:4px; background:#1a1a1a; border-radius:2px;"><div style="width:60%; height:100%; background:#FBBF24; border-radius:2px;"></div></div>
+        </div>
+        <div style="background:#A5B4FC; border:4px solid #1a1a1a; border-radius:8px; padding:14px; box-shadow:6px 6px 0 #1a1a1a;">
+          <div style="font-family:'Righteous',sans-serif; font-size:14px;">Gamma</div>
+          <div style="font-size:9px; color:#666; margin:4px 0 8px;">Gemini • Tech</div>
+          <div style="width:100%; height:4px; background:#1a1a1a; border-radius:2px;"><div style="width:100%; height:100%; background:#4ADE80; border-radius:2px;"></div></div>
+        </div>
+        <div style="background:#86EFAC; border:4px solid #1a1a1a; border-radius:8px; padding:14px; box-shadow:6px 6px 0 #1a1a1a;">
+          <div style="font-family:'Righteous',sans-serif; font-size:14px;">Delta</div>
+          <div style="font-size:9px; color:#666; margin:4px 0 8px;">OpenAI • Auto</div>
+          <div style="width:100%; height:4px; background:#1a1a1a; border-radius:2px;"><div style="width:40%; height:100%; background:#EF4444; border-radius:2px;"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:12px; background:#8B5CF6; color:#fff; border:4px solid #1a1a1a; border-radius:8px; padding:12px; text-align:center; font-family:'Righteous',sans-serif; font-size:14px; box-shadow:5px 5px 0 #1a1a1a;">+ New Room</div>
+    </div>
+    <div class="info">
+      <h3>6. Retro Geometric — Bauhaus Kawaii</h3>
+      <p>Smaller border-radius (8px), thicker borders (4px). Progress bars cho status. Righteous font retro. Vang + Tim + Do + Xanh primary.</p>
+      <div class="fonts">Righteous + Comfortaa 600</div>
+      <div class="colors">
+        <span style="background:#FEF08A"></span><span style="background:#FCA5A5"></span>
+        <span style="background:#A5B4FC"></span><span style="background:#86EFAC"></span>
+        <span style="background:#8B5CF6"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 7. ROUNDED CLOUD ========== -->
+  <div class="option" data-choice="7" onclick="sel(this)">
+    <div class="mockup" style="background:#F8FAFC; font-family:'Baloo 2',sans-serif;">
+      <div style="font-weight:800; font-size:24px; color:#1a1a1a; margin-bottom:14px;">
+        Chat<span style="color:#EC4899;">Flow</span> <span style="font-size:14px; color:#EC4899;">♡</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="background:#FDF2F8; border:3px solid #EC4899; border-radius:24px; padding:16px; box-shadow:4px 4px 0 #EC4899;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:15px; color:#831843;">Alpha Project</div>
+              <div style="font-size:10px; color:#9D174D;">Gemini 2.5 Pro</div>
+            </div>
+            <div style="background:#EC4899; color:#fff; border:2px solid #831843; border-radius:999px; padding:6px 14px; font-weight:700; font-size:10px; box-shadow:2px 2px 0 #831843;">Active</div>
+          </div>
+        </div>
+        <div style="background:#EFF6FF; border:3px solid #3B82F6; border-radius:24px; padding:16px; box-shadow:4px 4px 0 #3B82F6;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:15px; color:#1E3A5F;">Beta Client</div>
+              <div style="font-size:10px; color:#2563EB;">GPT-5.4</div>
+            </div>
+            <div style="background:#3B82F6; color:#fff; border:2px solid #1E3A5F; border-radius:999px; padding:6px 14px; font-weight:700; font-size:10px; box-shadow:2px 2px 0 #1E3A5F;">Active</div>
+          </div>
+        </div>
+        <div style="background:#ECFDF5; border:3px solid #10B981; border-radius:24px; padding:16px; box-shadow:4px 4px 0 #10B981;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:15px; color:#064E3B;">Gamma Team</div>
+              <div style="font-size:10px; color:#059669;">Gemini 3.1</div>
+            </div>
+            <div style="background:#FBBF24; color:#1a1a1a; border:2px solid #92400E; border-radius:999px; padding:6px 14px; font-weight:700; font-size:10px; box-shadow:2px 2px 0 #92400E;">Setup</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>7. Rounded Cloud — Mono-Color Borders</h3>
+      <p>Moi card border mau khac (pink/blue/green). Super round 24px. Baloo 2 font mem mai. Color-matched shadows. Nhẹ nhàng, thân thiện.</p>
+      <div class="fonts">Baloo 2 800 (rounded, friendly)</div>
+      <div class="colors">
+        <span style="background:#EC4899"></span><span style="background:#3B82F6"></span>
+        <span style="background:#10B981"></span><span style="background:#FBBF24"></span>
+        <span style="background:#F8FAFC"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 8. BENTO BOX ========== -->
+  <div class="option" data-choice="8" onclick="sel(this)">
+    <div class="mockup" style="background:#FAF5FF; font-family:'M PLUS Rounded 1c',sans-serif;">
+      <div style="font-family:'Dela Gothic One',sans-serif; font-size:18px; color:#1a1a1a; margin-bottom:14px;">ChatFlow</div>
+      <!-- Bento grid -->
+      <div style="display:grid; grid-template-columns:2fr 1fr; grid-template-rows:auto auto; gap:8px;">
+        <!-- Big hero card -->
+        <div style="background:#E9D5FF; border:3px solid #1a1a1a; border-radius:16px; padding:16px; box-shadow:5px 5px 0 #1a1a1a; grid-row:span 2;">
+          <div style="font-family:'Dela Gothic One',sans-serif; font-size:16px; margin-bottom:6px;">Alpha</div>
+          <div style="font-weight:700; font-size:10px; color:#6B21A8; margin-bottom:6px;">Gemini 2.5 Pro</div>
+          <div style="font-weight:700; font-size:10px; color:#6B21A8; margin-bottom:10px;">Professional Business</div>
+          <div style="display:flex; gap:4px; flex-wrap:wrap;">
+            <span class="tag" style="background:#A855F7; color:#fff; border-color:#6B21A8;">Active</span>
+            <span class="tag" style="background:#FDE68A; border-color:#1a1a1a;">JP→VN</span>
+          </div>
+        </div>
+        <!-- Small cards -->
+        <div style="background:#FECDD3; border:3px solid #1a1a1a; border-radius:16px; padding:12px; box-shadow:4px 4px 0 #1a1a1a;">
+          <div style="font-family:'Dela Gothic One',sans-serif; font-size:12px;">Beta</div>
+          <div style="font-size:8px; color:#666; margin-top:2px;">GPT-5</div>
+        </div>
+        <div style="background:#BBF7D0; border:3px solid #1a1a1a; border-radius:16px; padding:12px; box-shadow:4px 4px 0 #1a1a1a;">
+          <div style="font-family:'Dela Gothic One',sans-serif; font-size:12px;">Gamma</div>
+          <div style="font-size:8px; color:#666; margin-top:2px;">Gemini</div>
+        </div>
+      </div>
+      <div style="margin-top:10px; background:#1a1a1a; color:#FAF5FF; border:3px solid #1a1a1a; border-radius:14px; padding:11px; text-align:center; font-family:'Dela Gothic One',sans-serif; font-size:12px; box-shadow:4px 4px 0 #7C3AED;">+ New</div>
+    </div>
+    <div class="info">
+      <h3>8. Bento Box — Asymmetric Grid</h3>
+      <p>Bento-style layout (1 card lon + nhieu card nho). Dela Gothic One — bold, dam, doc dao. Asymmetric nhung can doi. Japanese typography manh me.</p>
+      <div class="fonts">Dela Gothic One + M PLUS Rounded 1c</div>
+      <div class="colors">
+        <span style="background:#E9D5FF"></span><span style="background:#FECDD3"></span>
+        <span style="background:#BBF7D0"></span><span style="background:#FDE68A"></span>
+        <span style="background:#A855F7"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 9. NEON OUTLINE ========== -->
+  <div class="option" data-choice="9" onclick="sel(this)">
+    <div class="mockup" style="background:#0F172A; font-family:'Outfit',sans-serif;">
+      <div style="font-family:'Bungee',sans-serif; font-size:18px; color:#fff; margin-bottom:14px;">
+        CHAT<span style="color:#F472B6;">FLOW</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="background:transparent; border:2.5px solid #F472B6; border-radius:16px; padding:14px; box-shadow:0 0 12px rgba(244,114,182,0.3), 4px 4px 0 #F472B6;">
+          <div style="font-weight:800; font-size:14px; color:#fff;">Alpha Project</div>
+          <div style="font-size:9px; color:#F9A8D4; margin:3px 0 8px;">Gemini 2.5 Pro • Business</div>
+          <span style="background:#F472B6; color:#0F172A; border:2px solid #F472B6; border-radius:8px; padding:3px 10px; font-size:9px; font-weight:800;">ACTIVE</span>
+        </div>
+        <div style="background:transparent; border:2.5px solid #38BDF8; border-radius:16px; padding:14px; box-shadow:0 0 12px rgba(56,189,248,0.3), 4px 4px 0 #38BDF8;">
+          <div style="font-weight:800; font-size:14px; color:#fff;">Beta Client</div>
+          <div style="font-size:9px; color:#7DD3FC; margin:3px 0 8px;">GPT-5.4 • Casual</div>
+          <span style="background:#38BDF8; color:#0F172A; border:2px solid #38BDF8; border-radius:8px; padding:3px 10px; font-size:9px; font-weight:800;">ACTIVE</span>
+        </div>
+        <div style="background:transparent; border:2.5px solid #4ADE80; border-radius:16px; padding:14px; box-shadow:0 0 12px rgba(74,222,128,0.3), 4px 4px 0 #4ADE80;">
+          <div style="font-weight:800; font-size:14px; color:#fff;">Gamma Team</div>
+          <div style="font-size:9px; color:#86EFAC; margin:3px 0 8px;">Gemini 3.1 • Technical</div>
+          <span style="background:#FBBF24; color:#0F172A; border:2px solid #FBBF24; border-radius:8px; padding:3px 10px; font-size:9px; font-weight:800;">SETUP</span>
+        </div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>9. Neon Outline — Cyberpunk Kawaii</h3>
+      <p>Dark bg + neon colored borders + glow effect. Bungee font dam uppercase. Moi card border mau neon khac. Offset shadow + glow hybrid. 2030 futuristic.</p>
+      <div class="fonts">Bungee + Outfit 800</div>
+      <div class="colors">
+        <span style="background:#0F172A"></span><span style="background:#F472B6"></span>
+        <span style="background:#38BDF8"></span><span style="background:#4ADE80"></span>
+        <span style="background:#FBBF24"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 10. TOTORO GARDEN ========== -->
+  <div class="option" data-choice="10" onclick="sel(this)">
+    <div class="mockup" style="background:#F0FDF4; font-family:'Zen Maru Gothic',sans-serif; position:relative; overflow:hidden;">
+      <!-- Subtle organic bg -->
+      <div style="position:absolute; top:-10px; right:-10px; width:80px; height:80px; background:#BBF7D0; border-radius:50%; opacity:0.4;"></div>
+      <div style="position:absolute; bottom:-5px; left:-5px; width:60px; height:60px; background:#FDE68A; border-radius:50%; opacity:0.3;"></div>
+
+      <div style="position:relative; z-index:1;">
+        <div style="font-family:'Mochiy Pop One',sans-serif; font-size:20px; color:#166534; margin-bottom:4px;">ChatFlow</div>
+        <div style="font-size:10px; color:#4ADE80; font-weight:700; margin-bottom:14px;">森の翻訳 • Forest of Translation</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="background:rgba(255,255,255,0.8); border:3px solid #166534; border-radius:20px; padding:14px; box-shadow:5px 5px 0 #15803D; backdrop-filter:blur(4px);">
+            <div style="font-family:'Mochiy Pop One',sans-serif; font-size:14px; color:#166534;">Alpha Project</div>
+            <div style="font-weight:500; font-size:10px; color:#4D7C0F; margin:4px 0 8px;">Gemini 2.5 Pro • Business</div>
+            <div style="display:flex; gap:6px;">
+              <span style="background:#86EFAC; border:2.5px solid #166534; border-radius:999px; padding:4px 12px; font-size:9px; font-weight:700; color:#166534;">Active</span>
+              <span style="background:#FDE68A; border:2.5px solid #92400E; border-radius:999px; padding:4px 12px; font-size:9px; font-weight:700; color:#92400E;">Gemini</span>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.8); border:3px solid #9333EA; border-radius:20px; padding:14px; box-shadow:5px 5px 0 #7E22CE; backdrop-filter:blur(4px);">
+            <div style="font-family:'Mochiy Pop One',sans-serif; font-size:14px; color:#581C87;">Beta Client</div>
+            <div style="font-weight:500; font-size:10px; color:#7C3AED; margin:4px 0 8px;">GPT-5.4 • Natural Casual</div>
+            <div style="display:flex; gap:6px;">
+              <span style="background:#D8B4FE; border:2.5px solid #581C87; border-radius:999px; padding:4px 12px; font-size:9px; font-weight:700; color:#581C87;">Active</span>
+              <span style="background:#FCA5A5; border:2.5px solid #991B1B; border-radius:999px; padding:4px 12px; font-size:9px; font-weight:700; color:#991B1B;">OpenAI</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px; background:#166534; color:#F0FDF4; border:3px solid #052E16; border-radius:16px; padding:11px; text-align:center; font-family:'Mochiy Pop One',sans-serif; font-size:13px; box-shadow:4px 4px 0 #052E16;">+ 新しいルーム</div>
+      </div>
+    </div>
+    <div class="info">
+      <h3>10. Totoro Garden — Ghibli Nature</h3>
+      <p>Forest green + organic circles bg + frosted glass cards. Mochiy Pop One heading (kawaii JP). Mon-chromatic borders per card (green/purple). Nature-inspired, dreamy.</p>
+      <div class="fonts">Mochiy Pop One + Zen Maru Gothic 700</div>
+      <div class="colors">
+        <span style="background:#166534"></span><span style="background:#86EFAC"></span>
+        <span style="background:#9333EA"></span><span style="background:#D8B4FE"></span>
+        <span style="background:#F0FDF4"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="note">
+  <strong>Luu y:</strong> Tat ca 10 options deu co Neubrutalism core (thick borders + hard shadows). Candy scrollbar dang hoat dong — scroll de cam nhan! Ban co the chon 1 option hoac MIX elements tu nhieu options (vd: layout cua #1 + font cua #8 + candy buttons cua #4 + color scheme cua #3). Click de chon, hoac tra loi trong terminal.
+</div>
+
+</body>
+</html>

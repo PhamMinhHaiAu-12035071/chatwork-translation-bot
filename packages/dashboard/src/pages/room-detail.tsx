@@ -7,6 +7,7 @@ import { BrutalCard } from '~/components/ui/brutal-card'
 import { BrutalInput } from '~/components/ui/brutal-input'
 import { BrutalSelect } from '~/components/ui/brutal-select'
 import { PageShell } from '~/components/ui/page-shell'
+import { PixelScatterText } from '~/components/ui/pixel-scatter-text'
 import { StatusPill } from '~/components/ui/status-pill'
 import { StickerLabel } from '~/components/ui/sticker-label'
 import { useToast } from '~/components/ui/toast-provider'
@@ -40,6 +41,10 @@ function generateWebhookUrl(roomId: string): string {
     typeof window !== 'undefined' ? window.location.origin : 'https://your-server.example.com'
 
   return `${base}/api/webhook?room_id=${roomId}`
+}
+
+export function getRoomUpdatedToastMessage(roomName: string): string {
+  return `"${roomName}" was updated successfully`
 }
 
 export function RoomDetailPage() {
@@ -86,7 +91,7 @@ export function RoomDetailPage() {
     return (
       <PageShell eyebrow="Not Found" title="Room not found" description="">
         <BrutalCard className="theme-card-peach space-y-4">
-          <p className="text-sm text-[var(--text-secondary)]">
+          <p className="font-ui-body text-sm text-[var(--text-secondary)]">
             No room with ID <code>{id}</code> was found.
           </p>
           <button
@@ -143,7 +148,7 @@ export function RoomDetailPage() {
       ...data,
       aiModel: normalizedAiModel,
     })
-    toast('Room updated successfully!')
+    toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
   }
 
   const onActivateSubmit = (data: WebhookActivationInput) => {
@@ -159,7 +164,7 @@ export function RoomDetailPage() {
       description="Edit room configuration or complete webhook activation to go live."
       actions={
         <StatusPill tone={room.enabled ? 'success' : 'warning'}>
-          {room.enabled ? 'Live' : 'Inactive'}
+          <PixelScatterText value={room.enabled ? 'Live' : 'Inactive'} reserveText="Inactive" />
         </StatusPill>
       }
     >
@@ -173,17 +178,21 @@ export function RoomDetailPage() {
           <BrutalCard className="theme-card-sky space-y-5" tilt="left">
             <div className="flex flex-wrap items-center gap-3">
               <StickerLabel tone="accent">Room Config</StickerLabel>
-              <code className="rounded-full border-[3px] border-[var(--border)] bg-white px-4 py-2 text-sm shadow-[3px_3px_0_var(--border)]">
+              <span className="inline-flex items-center gap-1.5 rounded-full border-[3px] border-[var(--border)] bg-[var(--warning)] px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)] shadow-[3px_3px_0_var(--border)]">
+                <span className="opacity-60">#</span>
                 {room.id}
-              </code>
+              </span>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
               <BrutalInput
                 label="Original Room ID"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 error={editForm.formState.errors.originalRoomId?.message}
-                {...editForm.register('originalRoomId', { valueAsNumber: true })}
+                {...editForm.register('originalRoomId', {
+                  setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
+                })}
               />
               <BrutalInput
                 label="Destination Room Name"
@@ -194,18 +203,21 @@ export function RoomDetailPage() {
               <BrutalSelect
                 label="AI Provider"
                 options={providerOptions}
+                colorVariant="accent"
                 error={editForm.formState.errors.aiProvider?.message}
                 {...aiProviderField}
               />
               <BrutalSelect
                 label="AI Model"
                 options={modelOptions}
+                colorVariant="mint"
                 error={editForm.formState.errors.aiModel?.message}
                 {...editForm.register('aiModel')}
               />
               <BrutalSelect
                 label="Translation Style"
                 options={styleOptions}
+                colorVariant="peach"
                 error={editForm.formState.errors.translationStyle?.message}
                 {...editForm.register('translationStyle')}
               />
@@ -220,12 +232,6 @@ export function RoomDetailPage() {
 
             <div className="flex flex-wrap gap-3 pt-2">
               <button
-                type="submit"
-                className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white"
-              >
-                Save Changes
-              </button>
-              <button
                 type="button"
                 onClick={() => {
                   void navigate('/')
@@ -234,6 +240,12 @@ export function RoomDetailPage() {
               >
                 ← Back
               </button>
+              <button
+                type="submit"
+                className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white"
+              >
+                Save Changes
+              </button>
             </div>
           </BrutalCard>
         </form>
@@ -241,15 +253,21 @@ export function RoomDetailPage() {
         <div className="space-y-5">
           <BrutalCard className="theme-card-peach space-y-4" tilt="right">
             <StickerLabel tone={room.webhookToken ? 'success' : 'warning'} tilt="right">
-              {room.webhookToken ? 'Webhook Active' : 'Webhook Activation'}
+              <PixelScatterText
+                value={room.webhookToken ? 'Webhook Active' : 'Webhook Activation'}
+                reserveText="Webhook Activation"
+              />
             </StickerLabel>
 
-            <div className="space-y-1.5">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+            <div className="space-y-2">
+              <div className="font-ui-body text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                 Webhook URL
               </div>
-              <div className="flex items-center gap-2 rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5 shadow-[3px_3px_0_var(--border)]">
-                <code className="flex-1 truncate text-xs text-[var(--text-primary)]">
+              <div className="brutal-input flex items-center gap-3 px-4 py-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+                  🔗
+                </span>
+                <code className="flex-1 truncate font-['Shantell_Sans',cursive] text-xs font-medium text-[var(--text-primary)]">
                   {webhookUrl}
                 </code>
                 <button
@@ -258,8 +276,8 @@ export function RoomDetailPage() {
                     void handleCopyUrl()
                   }}
                   className={[
-                    'brutal-button shrink-0 px-3 py-1 font-heading text-xs font-bold',
-                    copied ? 'theme-button-gold' : 'theme-button-sky text-[var(--border)]',
+                    'brutal-button shrink-0 min-w-[80px] px-4 py-1.5 text-center font-heading text-xs font-bold',
+                    copied ? 'theme-button-matcha text-white' : 'theme-button-violet text-white',
                   ].join(' ')}
                 >
                   {copied ? 'Copied!' : 'Copy'}
@@ -267,7 +285,7 @@ export function RoomDetailPage() {
               </div>
             </div>
 
-            <p className="text-sm leading-7 text-[var(--text-secondary)]">
+            <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
               {room.webhookToken
                 ? 'Webhook token is configured. Room is active.'
                 : 'Paste the Chatwork webhook token below to activate translation.'}

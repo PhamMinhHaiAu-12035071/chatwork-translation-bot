@@ -5,6 +5,7 @@ interface BrutalCardProps {
   children: ReactNode
   className?: string
   tilt?: 'left' | 'right' | 'flat'
+  animated?: boolean
 }
 
 const rotateByTilt: Record<NonNullable<BrutalCardProps['tilt']>, number> = {
@@ -13,18 +14,30 @@ const rotateByTilt: Record<NonNullable<BrutalCardProps['tilt']>, number> = {
   flat: 0,
 }
 
-export function BrutalCard({ children, className, tilt = 'flat' }: BrutalCardProps) {
+export function BrutalCard({
+  children,
+  className,
+  tilt = 'flat',
+  animated = true,
+}: BrutalCardProps) {
   const rotate = rotateByTilt[tilt]
+  const sharedProps = {
+    style: {
+      transformOrigin: rotate < 0 ? 'top left' : rotate > 0 ? 'top right' : 'center top',
+    },
+    className: ['brutal-surface p-5 md:p-6', className ?? ''].join(' ').trim(),
+  }
+
+  if (!animated) {
+    return <section {...sharedProps}>{children}</section>
+  }
 
   return (
     <motion.section
       initial={{ opacity: 0, y: 16, rotate }}
       animate={{ opacity: 1, y: 0, rotate }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
-      style={{
-        transformOrigin: rotate < 0 ? 'top left' : rotate > 0 ? 'top right' : 'center top',
-      }}
-      className={['brutal-surface p-5 md:p-6', className ?? ''].join(' ').trim()}
+      {...sharedProps}
     >
       {children}
     </motion.section>

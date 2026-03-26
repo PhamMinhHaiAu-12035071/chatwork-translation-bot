@@ -23,6 +23,10 @@ const cardThemeByIndex = [
 
 const tiltByIndex = ['left', 'flat', 'right', 'left', 'flat', 'right'] as const
 
+export function getRoomToggleToastMessage(roomName: string, currentlyEnabled: boolean): string {
+  return `"${roomName}" is now ${currentlyEnabled ? 'paused' : 'enabled'}`
+}
+
 export function RoomListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -34,15 +38,15 @@ export function RoomListPage() {
   const activeCount = rooms.filter((room) => room.enabled).length
   const pendingWebhook = rooms.filter((room) => !room.webhookToken).length
 
-  const handleToggle = (id: string, currentlyEnabled: boolean) => {
+  const handleToggle = (id: string, roomName: string, currentlyEnabled: boolean) => {
     toggleRoom(id)
-    toast(currentlyEnabled ? 'Room disabled' : 'Room enabled')
+    toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
   }
 
   const handleConfirmDelete = () => {
     if (!selectedRoom) return
     deleteRoom(selectedRoom.id)
-    toast(`Room "${selectedRoom.destinationRoomName}" deleted`)
+    toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
     setSelectedRoom(null)
   }
 
@@ -197,7 +201,7 @@ export function RoomListPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          handleToggle(room.id, room.enabled)
+                          handleToggle(room.id, room.destinationRoomName, room.enabled)
                         }}
                         className={[
                           'brutal-button px-4 py-1.5 font-heading text-xs font-bold',

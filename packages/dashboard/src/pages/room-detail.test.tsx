@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/ui/toast-provider'
-import { RoomDetailPage } from '~/pages/room-detail'
+import { RoomDetailPage, getRoomUpdatedToastMessage } from '~/pages/room-detail'
 
 function renderRoomDetailPage(path: string) {
   const router = createMemoryRouter(
@@ -20,6 +20,12 @@ function renderRoomDetailPage(path: string) {
 }
 
 describe('RoomDetailPage', () => {
+  it('builds update success toasts with the room name', () => {
+    expect(getRoomUpdatedToastMessage('Sakura Desk JP')).toBe(
+      '"Sakura Desk JP" was updated successfully',
+    )
+  })
+
   it('renders the live room detail surface for a seeded room', () => {
     const html = renderRoomDetailPage('/rooms/room-001')
 
@@ -48,5 +54,17 @@ describe('RoomDetailPage', () => {
     expect(source).toContain('generateWebhookUrl')
     expect(source).toContain('onEditSubmit')
     expect(source).toContain('onActivateSubmit')
+    expect(source).toContain('getRoomUpdatedToastMessage')
+    expect(source).toContain('data.destinationRoomName')
+    expect(source).not.toContain("toast('Room updated successfully!')")
+    expect(source).toContain("'info'")
+  })
+
+  it('applies the approved pixel-scatter text treatment to the detail status surfaces', async () => {
+    const source = await Bun.file(new URL('./room-detail.tsx', import.meta.url)).text()
+
+    expect(source).toContain('PixelScatterText')
+    expect(source).toContain('reserveText="Inactive"')
+    expect(source).toContain('reserveText="Webhook Activation"')
   })
 })

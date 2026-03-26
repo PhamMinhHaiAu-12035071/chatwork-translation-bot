@@ -1,0 +1,288 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Syne:wght@400;500;600;700;800&display=swap');
+</style>
+
+<h2>Kawaii Neubrutalism 3D v2 — BOLD Edition</h2>
+<p class="subtitle">Dot pha, sang tao, thu hut. Inspired by Ember + Bloom.de. Click chon direction ban thich.</p>
+
+<div class="cards">
+  <!-- Option A: Vibrant Multi-Color Cards -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#FFFAF0; padding:16px; border-radius:4px; font-family:'Outfit',sans-serif; min-height:340px;">
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:#1a1a1a; letter-spacing:-0.5px;">
+            ChatFlow<span style="color:#FF6B35;">.</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="width:36px;height:36px;background:#FF6B35;border:3px solid #1a1a1a;border-radius:50%;box-shadow:2px 2px 0 #1a1a1a;"></div>
+          </div>
+        </div>
+
+        <!-- Nav pills -->
+        <div style="display:flex; gap:8px; margin-bottom:18px;">
+          <div style="background:#FF6B35; color:#fff; border:3px solid #1a1a1a; border-radius:999px; padding:8px 18px; font-weight:700; font-size:12px; box-shadow:3px 3px 0 #1a1a1a;">Rooms</div>
+          <div style="background:transparent; border:3px solid #1a1a1a; border-radius:999px; padding:8px 18px; font-weight:600; font-size:12px;">Guide</div>
+          <div style="background:transparent; border:3px solid #1a1a1a; border-radius:999px; padding:8px 18px; font-weight:600; font-size:12px;">Settings</div>
+        </div>
+
+        <!-- Room Cards Grid - Each different color -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <!-- Card 1 - Yellow -->
+          <div style="background:#FFE156; border:3px solid #1a1a1a; border-radius:14px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; position:relative;">
+            <div style="position:absolute;top:10px;right:10px;background:#4ADE80;border:2px solid #1a1a1a;border-radius:50%;width:10px;height:10px;"></div>
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a; margin-bottom:6px;">Alpha Project</div>
+            <div style="font-size:10px; color:#555; margin-bottom:8px;">Room #424846</div>
+            <div style="display:flex; gap:4px;">
+              <span style="background:#1a1a1a;color:#FFE156;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">Gemini</span>
+              <span style="background:#1a1a1a;color:#FFE156;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">Pro</span>
+            </div>
+          </div>
+          <!-- Card 2 - Coral/Pink -->
+          <div style="background:#FF8FAB; border:3px solid #1a1a1a; border-radius:14px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; position:relative;">
+            <div style="position:absolute;top:10px;right:10px;background:#4ADE80;border:2px solid #1a1a1a;border-radius:50%;width:10px;height:10px;"></div>
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a; margin-bottom:6px;">Beta Client</div>
+            <div style="font-size:10px; color:#333; margin-bottom:8px;">Room #551234</div>
+            <div style="display:flex; gap:4px;">
+              <span style="background:#1a1a1a;color:#FF8FAB;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">OpenAI</span>
+              <span style="background:#1a1a1a;color:#FF8FAB;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">Casual</span>
+            </div>
+          </div>
+          <!-- Card 3 - Mint -->
+          <div style="background:#6FEDD6; border:3px solid #1a1a1a; border-radius:14px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; position:relative;">
+            <div style="position:absolute;top:10px;right:10px;background:#FFA500;border:2px solid #1a1a1a;border-radius:50%;width:10px;height:10px;"></div>
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a; margin-bottom:6px;">Gamma Team</div>
+            <div style="font-size:10px; color:#333; margin-bottom:8px;">Room #789012</div>
+            <div style="display:flex; gap:4px;">
+              <span style="background:#1a1a1a;color:#6FEDD6;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">Gemini</span>
+              <span style="background:#1a1a1a;color:#6FEDD6;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">Tech</span>
+            </div>
+          </div>
+          <!-- Card 4 - Lavender -->
+          <div style="background:#C4B5FD; border:3px solid #1a1a1a; border-radius:14px; padding:14px; box-shadow:5px 5px 0 #1a1a1a; position:relative;">
+            <div style="position:absolute;top:10px;right:10px;background:#EF4444;border:2px solid #1a1a1a;border-radius:50%;width:10px;height:10px;"></div>
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a; margin-bottom:6px;">Delta Corp</div>
+            <div style="font-size:10px; color:#333; margin-bottom:8px;">Room #345678</div>
+            <div style="display:flex; gap:4px;">
+              <span style="background:#1a1a1a;color:#C4B5FD;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">OpenAI</span>
+              <span style="background:#1a1a1a;color:#C4B5FD;border-radius:6px;padding:3px 8px;font-size:9px;font-weight:700;">Auto</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAB Button -->
+        <div style="text-align:right; margin-top:12px;">
+          <span style="display:inline-block; background:#FF6B35; color:#fff; border:3px solid #1a1a1a; border-radius:14px; padding:10px 20px; font-weight:800; font-size:13px; box-shadow:4px 4px 0 #1a1a1a;">+ New Room</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Vibrant Color-Coded Cards</h3>
+      <p><strong>Bloom.de inspired:</strong> Moi room = 1 mau vibrant rieng (Yellow, Coral, Mint, Lavender). Bold black borders 3px + hard shadow. Orange coral accent (#FF6B35). Syne 800 heading. Outfit body. Moi card la 1 cá tính.</p>
+      <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <span style="display:inline-block;width:28px;height:28px;background:#FFE156;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FF8FAB;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#6FEDD6;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#C4B5FD;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FF6B35;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#87CEEB;border:2px solid #1a1a1a;border-radius:6px;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Ember-Style Warm + Expressive Typography -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#FFF0E5; padding:16px; border-radius:4px; font-family:'Outfit',sans-serif; min-height:340px;">
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:#1a1a1a; letter-spacing:-1px;">
+            <span style="color:#E84D1A;">Chat</span>Flow
+          </div>
+          <div style="display:flex; gap:6px;">
+            <div style="width:34px;height:34px;background:#E84D1A;border:3px solid #1a1a1a;border-radius:12px;box-shadow:2px 2px 0 #1a1a1a;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;">+</div>
+          </div>
+        </div>
+
+        <!-- Section Title -->
+        <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:28px; color:#E84D1A; letter-spacing:-1px; margin-bottom:4px;">Active Rooms</div>
+        <div style="font-size:11px; color:#888; margin-bottom:14px; font-weight:500;">4 rooms translating</div>
+
+        <!-- Stacked cards like Ember -->
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="background:#FFE8D6; border:3.5px solid #1a1a1a; border-radius:18px; padding:16px; box-shadow:6px 6px 0 #1a1a1a; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:16px; color:#1a1a1a; letter-spacing:-0.3px;">Alpha Project</div>
+              <div style="font-size:10px; color:#666; margin-top:2px;">JP → VN • Gemini 2.5 Pro</div>
+            </div>
+            <div style="background:#4ADE80; border:3px solid #1a1a1a; border-radius:10px; padding:6px 14px; font-weight:700; font-size:11px; box-shadow:3px 3px 0 #1a1a1a;">Active</div>
+          </div>
+          <div style="background:#FFD6E8; border:3.5px solid #1a1a1a; border-radius:18px; padding:16px; box-shadow:6px 6px 0 #1a1a1a; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:16px; color:#1a1a1a; letter-spacing:-0.3px;">Beta Client</div>
+              <div style="font-size:10px; color:#666; margin-top:2px;">JP → VN • GPT-5.4</div>
+            </div>
+            <div style="background:#4ADE80; border:3px solid #1a1a1a; border-radius:10px; padding:6px 14px; font-weight:700; font-size:11px; box-shadow:3px 3px 0 #1a1a1a;">Active</div>
+          </div>
+          <div style="background:#D6E8FF; border:3.5px solid #1a1a1a; border-radius:18px; padding:16px; box-shadow:6px 6px 0 #1a1a1a; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:16px; color:#1a1a1a; letter-spacing:-0.3px;">Gamma Team</div>
+              <div style="font-size:10px; color:#666; margin-top:2px;">JP → VN • Gemini 3.1</div>
+            </div>
+            <div style="background:#FFA500; border:3px solid #1a1a1a; border-radius:10px; padding:6px 14px; font-weight:700; font-size:11px; box-shadow:3px 3px 0 #1a1a1a;">Setup</div>
+          </div>
+        </div>
+
+        <!-- Bottom CTA -->
+        <div style="margin-top:14px; background:#E84D1A; color:#fff; border:3.5px solid #1a1a1a; border-radius:14px; padding:14px; text-align:center; font-weight:800; font-size:14px; box-shadow:5px 5px 0 #1a1a1a; letter-spacing:0.5px;">
+          + Create New Translation Room
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Ember Warm Expression</h3>
+      <p><strong>Ember inspired:</strong> Warm peach bg (#FFF0E5) + Deep Orange accent (#E84D1A). Stacked cards, moi card 1 pastel rieng. Typography dam, Syne 800 headings cuc lon. Thick 3.5px borders + 6px shadows. Cam giac am ap nhung manh me.</p>
+      <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <span style="display:inline-block;width:28px;height:28px;background:#E84D1A;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FFE8D6;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FFD6E8;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#D6E8FF;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#4ADE80;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FFF0E5;border:2px solid #1a1a1a;border-radius:6px;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Maximum Impact - Dark + Neon + 3D Candy -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#1a1a2e; padding:16px; border-radius:4px; font-family:'Outfit',sans-serif; min-height:340px;">
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:#fff; letter-spacing:-0.5px;">
+            Chat<span style="color:#FF6B9D;">Flow</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="width:36px;height:36px;background:#FF6B9D;border:3px solid #fff;border-radius:12px;box-shadow:3px 3px 0 rgba(255,107,157,0.4);"></div>
+          </div>
+        </div>
+
+        <!-- Hero text -->
+        <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:24px; color:#fff; letter-spacing:-1px; margin-bottom:4px; line-height:1.1;">
+          Your Rooms<span style="color:#FF6B9D;">.</span>
+        </div>
+        <div style="font-size:11px; color:#888; margin-bottom:14px;">4 active translations</div>
+
+        <!-- Cards with glow effects -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div style="background:linear-gradient(135deg, #FFE156 0%, #FFD23F 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 rgba(255,225,86,0.3), inset 0 2px 0 rgba(255,255,255,0.3);">
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a;">Alpha</div>
+            <div style="font-size:9px; color:#555; margin:4px 0 8px;">Gemini • Pro</div>
+            <div style="background:#1a1a1a;color:#FFE156;border-radius:8px;padding:4px 10px;font-size:9px;font-weight:700;display:inline-block;">Active</div>
+          </div>
+          <div style="background:linear-gradient(135deg, #FF8FAB 0%, #FF6B9D 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 rgba(255,107,157,0.3), inset 0 2px 0 rgba(255,255,255,0.3);">
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a;">Beta</div>
+            <div style="font-size:9px; color:#333; margin:4px 0 8px;">GPT-5 • Casual</div>
+            <div style="background:#1a1a1a;color:#FF8FAB;border-radius:8px;padding:4px 10px;font-size:9px;font-weight:700;display:inline-block;">Active</div>
+          </div>
+          <div style="background:linear-gradient(135deg, #6FEDD6 0%, #4ADE80 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 rgba(111,237,214,0.3), inset 0 2px 0 rgba(255,255,255,0.3);">
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a;">Gamma</div>
+            <div style="font-size:9px; color:#333; margin:4px 0 8px;">Gemini • Tech</div>
+            <div style="background:#1a1a1a;color:#6FEDD6;border-radius:8px;padding:4px 10px;font-size:9px;font-weight:700;display:inline-block;">Active</div>
+          </div>
+          <div style="background:linear-gradient(135deg, #C4B5FD 0%, #A78BFA 100%); border:3px solid #1a1a1a; border-radius:16px; padding:14px; box-shadow:5px 5px 0 rgba(167,139,250,0.3), inset 0 2px 0 rgba(255,255,255,0.3);">
+            <div style="font-weight:800; font-size:13px; color:#1a1a1a;">Delta</div>
+            <div style="font-size:9px; color:#333; margin:4px 0 8px;">OpenAI • Auto</div>
+            <div style="background:#1a1a1a;color:#C4B5FD;border-radius:8px;padding:4px 10px;font-size:9px;font-weight:700;display:inline-block;">Setup</div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div style="margin-top:12px; background:linear-gradient(135deg, #FF6B9D, #FF8FAB); color:#fff; border:3px solid #fff; border-radius:14px; padding:12px; text-align:center; font-weight:800; font-size:13px; box-shadow:4px 4px 0 rgba(255,107,157,0.4), inset 0 2px 0 rgba(255,255,255,0.2);">
+          + New Room
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Dark Candy Glass</h3>
+      <p><strong>2026-2030 vision:</strong> Dark bg (#1a1a2e) + Vibrant candy cards voi subtle gradient + glow shadows + inset glass highlight. Pink accent (#FF6B9D). Cards sang ruc tren nen toi. Tuong lai, bold, premium. Kieu gaming dashboard meets kawaii.</p>
+      <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+        <span style="display:inline-block;width:28px;height:28px;background:#1a1a2e;border:2px solid #fff;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FF6B9D;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FFE156;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#6FEDD6;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#C4B5FD;border:2px solid #1a1a1a;border-radius:6px;"></span>
+        <span style="display:inline-block;width:28px;height:28px;background:#FF8FAB;border:2px solid #1a1a1a;border-radius:6px;"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>So sanh chi tiet</h3>
+  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+    <thead>
+      <tr style="border-bottom:2px solid #333;">
+        <th style="text-align:left; padding:8px;">Trait</th>
+        <th style="text-align:center; padding:8px;">A. Vibrant Cards</th>
+        <th style="text-align:center; padding:8px;">B. Ember Warm</th>
+        <th style="text-align:center; padding:8px;">C. Dark Candy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Inspiration</td>
+        <td style="text-align:center;">Bloom.de grid</td>
+        <td style="text-align:center;">Ember stacked</td>
+        <td style="text-align:center;">Gaming + Kawaii</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Background</td>
+        <td style="text-align:center;">#FFFAF0 Cream</td>
+        <td style="text-align:center;">#FFF0E5 Peach</td>
+        <td style="text-align:center;">#1a1a2e Dark</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Accent</td>
+        <td style="text-align:center;">#FF6B35 Orange</td>
+        <td style="text-align:center;">#E84D1A Deep Orange</td>
+        <td style="text-align:center;">#FF6B9D Hot Pink</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Cards</td>
+        <td style="text-align:center;">Grid 2x2, moi card 1 mau</td>
+        <td style="text-align:center;">Stacked list, subtle pastels</td>
+        <td style="text-align:center;">Grid + gradient + glow</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Typography</td>
+        <td style="text-align:center;">Syne 800 + Outfit</td>
+        <td style="text-align:center;">Syne 800 XL + Outfit</td>
+        <td style="text-align:center;">Syne 800 + Outfit</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Borders</td>
+        <td style="text-align:center;">3px + 5px shadow</td>
+        <td style="text-align:center;">3.5px + 6px shadow</td>
+        <td style="text-align:center;">3px + glow shadow</td>
+      </tr>
+      <tr style="border-bottom:1px solid #ddd;">
+        <td style="padding:8px;">Feel</td>
+        <td style="text-align:center;">Playful, organized</td>
+        <td style="text-align:center;">Warm, expressive</td>
+        <td style="text-align:center;">Premium, futuristic</td>
+      </tr>
+      <tr>
+        <td style="padding:8px;">Kawaii level</td>
+        <td style="text-align:center;">Medium-High</td>
+        <td style="text-align:center;">High (warm)</td>
+        <td style="text-align:center;">Medium (cool kawaii)</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section" style="margin-top:16px; padding:16px; background:#fff3cd; border:2px solid #333; border-radius:8px;">
+  <p style="margin:0; font-size:13px;"><strong>Note:</strong> Tat ca 3 options deu co: Thick black borders (Neubrutalism core), Hard offset shadows (3D), Moi room card = 1 mau rieng (Bloom.de style), Bold 800-weight headings, Bouncy hover/press animations (Framer Motion). Co the MIX elements giua cac options.</p>
+</div>

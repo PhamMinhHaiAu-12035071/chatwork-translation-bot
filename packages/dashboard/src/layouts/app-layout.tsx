@@ -40,7 +40,7 @@ export function AppLayout() {
             </StickerLabel>
             <div className="space-y-3">
               <h1 className="font-heading text-3xl font-extrabold">Translation Bot</h1>
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">
+              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
                 Multi-room dashboard shell for setup, guidance, and future activation flows.
               </p>
             </div>
@@ -50,20 +50,38 @@ export function AppLayout() {
             {navItems.map((item) => (
               <NavLink key={item.to} to={item.to} className="block">
                 {({ isActive }) => (
-                  <motion.div
-                    animate={{ x: isActive ? -2 : 0, y: isActive ? -2 : 0 }}
-                    whileHover={{ x: -2, y: -2 }}
-                    whileTap={{ x: 2, y: 2 }}
-                    transition={{ duration: 0.16, ease: 'easeOut' }}
-                    className={[
-                      'brutal-surface p-4 transition-colors',
-                      item.surfaceClassName,
-                      isActive ? 'ring-4 ring-white/70' : 'opacity-85',
-                    ].join(' ')}
-                  >
-                    <div className="font-heading text-lg font-bold">{item.label}</div>
-                    <div className="mt-1 text-sm text-[var(--text-secondary)]">{item.blurb}</div>
-                  </motion.div>
+                  <div className="relative">
+                    {isActive ? (
+                      <motion.div
+                        className="absolute -left-4 top-1/2 h-[70%] w-[5px] rounded-full bg-[var(--accent)]"
+                        layoutId="nav-indicator"
+                        style={{ y: '-50%' }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                      />
+                    ) : null}
+                    <motion.div
+                      animate={{
+                        x: isActive ? 4 : 0,
+                        y: isActive ? -3 : 0,
+                        scale: isActive ? 1.02 : 1,
+                      }}
+                      whileHover={{ x: -2, y: -2 }}
+                      whileTap={{ x: 2, y: 2 }}
+                      transition={{ duration: 0.16, ease: 'easeOut' }}
+                      className={[
+                        'brutal-surface p-4 transition-[opacity,box-shadow]',
+                        item.surfaceClassName,
+                        isActive
+                          ? 'shadow-[5px_5px_0_var(--accent)] border-[var(--accent)]'
+                          : 'opacity-65 hover:opacity-90',
+                      ].join(' ')}
+                    >
+                      <div className="font-heading text-lg font-bold">{item.label}</div>
+                      <div className="font-ui-body mt-1 text-sm text-[var(--text-secondary)]">
+                        {item.blurb}
+                      </div>
+                    </motion.div>
+                  </div>
                 )}
               </NavLink>
             ))}

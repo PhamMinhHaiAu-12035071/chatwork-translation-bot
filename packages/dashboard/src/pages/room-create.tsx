@@ -25,6 +25,10 @@ const styleOptions = TRANSLATION_STYLES.map((style) => ({
 
 const roomCreateResolver = zodResolver(roomCreateSchema as never) as Resolver<RoomCreateInput>
 
+export function getRoomCreatedToastMessage(roomName: string): string {
+  return `"${roomName}" was created successfully`
+}
+
 export function RoomCreatePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -70,7 +74,7 @@ export function RoomCreatePage() {
       aiModel: normalizedAiModel,
     })
 
-    toast('Room created successfully!')
+    toast(getRoomCreatedToastMessage(data.destinationRoomName))
     void navigate(`/rooms/${newId}`)
   }
 
@@ -92,10 +96,13 @@ export function RoomCreatePage() {
             <div className="grid gap-5 md:grid-cols-2">
               <BrutalInput
                 label="Original Room ID"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 hint="The numeric ID of the source Chatwork room."
                 error={errors.originalRoomId?.message}
-                {...register('originalRoomId', { valueAsNumber: true })}
+                {...register('originalRoomId', {
+                  setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
+                })}
               />
               <BrutalInput
                 label="Destination Room Name"
@@ -107,6 +114,7 @@ export function RoomCreatePage() {
               <BrutalSelect
                 label="AI Provider"
                 options={providerOptions}
+                colorVariant="accent"
                 hint="Choose which AI service handles translations."
                 error={errors.aiProvider?.message}
                 {...aiProviderField}
@@ -114,6 +122,7 @@ export function RoomCreatePage() {
               <BrutalSelect
                 label="AI Model"
                 options={modelOptions}
+                colorVariant="mint"
                 hint="Leave blank to use the provider default."
                 error={errors.aiModel?.message}
                 {...register('aiModel')}
@@ -121,6 +130,7 @@ export function RoomCreatePage() {
               <BrutalSelect
                 label="Translation Style"
                 options={styleOptions}
+                colorVariant="peach"
                 hint="Controls the tone and formality of output."
                 error={errors.translationStyle?.message}
                 {...register('translationStyle')}
@@ -136,13 +146,6 @@ export function RoomCreatePage() {
 
             <div className="flex flex-wrap gap-3 pt-2">
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSubmitting ? 'Creating…' : 'Create Room'}
-              </button>
-              <button
                 type="button"
                 onClick={() => {
                   void navigate('/')
@@ -151,13 +154,20 @@ export function RoomCreatePage() {
               >
                 Cancel
               </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? 'Creating…' : 'Create Room'}
+              </button>
             </div>
           </BrutalCard>
 
           <div className="space-y-6">
             <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
               <StickerLabel tone="warning">Manual Step Required</StickerLabel>
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">
+              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
                 After creating the room you will need to configure a Chatwork webhook and paste the
                 token into the dashboard to go live.
               </p>
@@ -176,7 +186,7 @@ export function RoomCreatePage() {
               <StickerLabel tone="success" tilt="right">
                 Tip
               </StickerLabel>
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">
+              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
                 The AI API token is kept in browser memory only. No data leaves your browser until
                 the API integration is wired up in Phase 5.
               </p>

@@ -19,7 +19,7 @@ export function PageShell({ eyebrow, title, description, actions, children }: Pa
           </StickerLabel>
           <div className="space-y-2">
             <h1 className="font-heading text-3xl font-extrabold md:text-5xl">{title}</h1>
-            <p className="max-w-2xl text-sm leading-7 text-[var(--text-secondary)] md:text-base">
+            <p className="font-ui-body max-w-2xl text-sm leading-7 text-[var(--text-secondary)] md:text-base">
               {description}
             </p>
           </div>

@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/ui/toast-provider'
-import { RoomCreatePage } from '~/pages/room-create'
+import { RoomCreatePage, getRoomCreatedToastMessage } from '~/pages/room-create'
 
 function renderRoomCreatePage() {
   const router = createMemoryRouter(
@@ -20,6 +20,12 @@ function renderRoomCreatePage() {
 }
 
 describe('RoomCreatePage', () => {
+  it('builds create success toasts with the room name', () => {
+    expect(getRoomCreatedToastMessage('Sakura Desk JP')).toBe(
+      '"Sakura Desk JP" was created successfully',
+    )
+  })
+
   it('renders the real room configuration form', () => {
     const html = renderRoomCreatePage()
 
@@ -42,7 +48,9 @@ describe('RoomCreatePage', () => {
     expect(source).toContain('useForm<RoomCreateInput>')
     expect(source).toContain('const roomCreateResolver = zodResolver(roomCreateSchema as never)')
     expect(source).toContain('const addRoom = useRoomStore')
-    expect(source).toContain("toast('Room created successfully!')")
+    expect(source).toContain('getRoomCreatedToastMessage')
+    expect(source).toContain('data.destinationRoomName')
+    expect(source).not.toContain("toast('Room created successfully!')")
     expect(source).toContain('navigate(`/rooms/${newId}`)')
   })
 })

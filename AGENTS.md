@@ -57,3 +57,12 @@ When you encounter these **keywords** in code or task description, read the link
 ### Architecture & Security
 
 - Webhook, routing, env, or secrets → `ai_rules/architecture-patterns.md` + `ai_rules/security.md`
+
+## Learned User Preferences
+
+- For dashboard modals over scrollable pages, opening the dialog must not change viewport scroll: programmatic focus inside fixed overlays should use `focus({ preventScroll: true })`, and background scroll should be locked while the modal is open. When locking body scroll (`overflow: hidden`), also apply `padding-right` equal to the scrollbar width (`window.innerWidth - document.documentElement.clientWidth`) to prevent layout shift from the scrollbar disappearing.
+
+## Learned Workspace Facts
+
+- `packages/dashboard` is the React SPA (Vite, Tailwind) for multi-room room management; UI work for that product lives there alongside the webhook bot packages.
+- The dashboard uses a neubrutalism design language; shared visual primitives (`.brutal-button`, `.brutal-input`, `.brutal-input-error`) are defined as CSS classes in `packages/dashboard/src/styles/global.css` rather than inline Tailwind utilities.

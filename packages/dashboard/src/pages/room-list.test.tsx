@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/ui/toast-provider'
-import { RoomListPage } from '~/pages/room-list'
+import { RoomListPage, getRoomToggleToastMessage } from '~/pages/room-list'
 
 function renderRoomListPage() {
   const router = createMemoryRouter(
@@ -20,6 +20,13 @@ function renderRoomListPage() {
 }
 
 describe('RoomListPage', () => {
+  it('builds toggle toasts with the room name and resulting status', () => {
+    expect(getRoomToggleToastMessage('Sakura Desk JP', false)).toBe(
+      '"Sakura Desk JP" is now enabled',
+    )
+    expect(getRoomToggleToastMessage('Sakura Desk JP', true)).toBe('"Sakura Desk JP" is now paused')
+  })
+
   it('renders seeded room data and live dashboard actions', () => {
     const html = renderRoomListPage()
     const roomIdOccurrences = html.match(/Room ID:/g) ?? []
@@ -51,7 +58,11 @@ describe('RoomListPage', () => {
     expect(source).toContain('selectedRoom')
     expect(source).toContain('setSelectedRoom')
     expect(source).not.toContain('window.confirm')
-    expect(source).toContain("toast(currentlyEnabled ? 'Room disabled' : 'Room enabled')")
+    expect(source).toContain('getRoomToggleToastMessage')
+    expect(source).toContain('room.destinationRoomName')
+    expect(source).not.toContain("toast(currentlyEnabled ? 'Room disabled' : 'Room enabled')")
+    expect(source).toContain("'info'")
+    expect(source).toContain("'warning'")
   })
 
   it('keeps a stable room-card header footprint when the status label changes', async () => {

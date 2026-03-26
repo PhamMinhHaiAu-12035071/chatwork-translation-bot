@@ -26,4 +26,17 @@ describe('WebhookStepper', () => {
     expect(source).toContain("'Copy URL'")
     expect(source).toContain("'Copied!'")
   })
+
+  it('opts the step card out of nested entrance motion so fast navigation does not stack animations', async () => {
+    const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
+
+    expect(source).toContain('animated={false}')
+  })
+
+  it('limits pill transitions to colors so rapid step changes do not replay unrelated animations', async () => {
+    const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
+
+    expect(source).toContain('transition-colors duration-150')
+    expect(source).not.toContain('transition-all duration-150')
+  })
 })
