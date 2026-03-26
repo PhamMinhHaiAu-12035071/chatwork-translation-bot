@@ -24,7 +24,10 @@ export function DeleteRoomConfirmModal({
   useEffect(() => {
     if (!isOpen) return
 
-    cancelRef.current?.focus()
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    cancelRef.current?.focus({ preventScroll: true })
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel()
@@ -33,6 +36,7 @@ export function DeleteRoomConfirmModal({
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
     }
   }, [isOpen, onCancel])
 
