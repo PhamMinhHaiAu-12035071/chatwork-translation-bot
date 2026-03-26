@@ -64,10 +64,12 @@ describe('createApp (translator)', () => {
     expect(res.status).toBe(200)
 
     const body = (await res.json()) as {
-      rooms: { id: string; destinationRoomName: string }[]
+      success?: boolean
+      data?: { id: string; destinationRoomName: string }[]
     }
-    expect(body.rooms).toHaveLength(1)
-    expect(body.rooms[0]).toMatchObject({
+    expect(body.success).toBe(true)
+    expect(body.data).toHaveLength(1)
+    expect(body.data?.[0]).toMatchObject({
       id: roomId,
       destinationRoomName: 'Output Room',
     })
@@ -88,8 +90,8 @@ describe('createApp (translator)', () => {
     )
 
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { webhookSecret: string }
-    expect(body.webhookSecret).toBe('room-secret')
+    const body = (await res.json()) as { secret: string }
+    expect(body.secret).toBe('room-secret')
   })
 
   it('unknown route returns 404', async () => {

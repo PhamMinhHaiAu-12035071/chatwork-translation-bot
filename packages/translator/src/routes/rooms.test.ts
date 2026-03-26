@@ -33,7 +33,11 @@ const VALID_BODY = {
   webhookSecret: 'webhook-secret-abc',
 }
 
-async function createRoomForTest(app: Elysia): Promise<{ id: string }> {
+interface AppHandle {
+  handle(request: Request): Promise<Response>
+}
+
+async function createRoomForTest(app: AppHandle): Promise<{ id: string }> {
   const createRes = await app.handle(
     new Request('http://localhost/api/rooms', {
       method: 'POST',
@@ -140,6 +144,13 @@ describe('GET /api/rooms/:id', () => {
     expect(body.success).toBe(true)
     expect(body.data).toMatchObject({ id: room.id })
   })
+
+  it('returns 404 when the room does not exist', async () => {
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(new Request('http://localhost/api/rooms/non-existent-id'))
+
+    expect(response.status).toBe(404)
+  })
 })
 
 describe('POST /api/rooms', () => {
@@ -201,6 +212,42 @@ describe('POST /api/rooms', () => {
 
     expect(response.status).toBe(409)
     expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
+  })
+
+  it('warns when destinationRoomName matches an existing room', async () => {
+    const warnLines: string[] = []
+    const originalWarn = console.warn
+    console.warn = mock((line: string) => {
+      warnLines.push(line)
+    }) as typeof console.warn
+
+    try {
+      const app = await buildApp(tmpDir)
+
+      await app.handle(
+        new Request('http://localhost/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(VALID_BODY),
+        }),
+      )
+
+      const response = await app.handle(
+        new Request('http://localhost/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...VALID_BODY,
+            originalRoomId: 1002,
+          }),
+        }),
+      )
+
+      expect(response.status).toBe(201)
+      expect(warnLines.some((line) => line.includes('duplicate_destination_room_name'))).toBe(true)
+    } finally {
+      console.warn = originalWarn
+    }
   })
 
   it('returns 502 and does not persist room config when Chatwork room creation fails', async () => {
@@ -295,6 +342,21 @@ describe('PUT /api/rooms/:id', () => {
 
     expect(response.status).toBe(404)
   })
+
+  it('returns 400 for an invalid update body', async () => {
+    const app = await buildApp(tmpDir)
+    const room = await createRoomForTest(app)
+
+    const response = await app.handle(
+      new Request(`http://localhost/api/rooms/${room.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ translationStyle: 'NOT_A_STYLE' }),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+  })
 })
 
 describe('DELETE /api/rooms/:id', () => {
@@ -326,6 +388,15 @@ describe('DELETE /api/rooms/:id', () => {
 
     expect(body.success).toBe(true)
     expect(body.data).toEqual([])
+  })
+
+  it('returns 404 when deleting an unknown room', async () => {
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms/non-existent-id', { method: 'DELETE' }),
+    )
+
+    expect(response.status).toBe(404)
   })
 })
 
@@ -380,5 +451,23 @@ describe('POST /api/rooms/:id/enable and /disable', () => {
 
     expect(body.success).toBe(true)
     expect(body.data?.enabled).toBe(false)
+  })
+
+  it('returns 404 when enabling an unknown room', async () => {
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms/non-existent-id/enable', { method: 'POST' }),
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404 when disabling an unknown room', async () => {
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms/non-existent-id/disable', { method: 'POST' }),
+    )
+
+    expect(response.status).toBe(404)
   })
 })

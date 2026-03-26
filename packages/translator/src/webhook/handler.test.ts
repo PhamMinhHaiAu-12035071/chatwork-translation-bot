@@ -215,7 +215,9 @@ describe('handleTranslateRequest', () => {
       env: mockEnv,
     }))
 
-    const mod = await import(`./handler?${crypto.randomUUID()}`)
+    const mod = (await import(`./handler?${crypto.randomUUID()}`)) as {
+      createHandleTranslateRequest: typeof createHandleTranslateRequest
+    }
     createHandleTranslateRequest = mod.createHandleTranslateRequest
   })
 

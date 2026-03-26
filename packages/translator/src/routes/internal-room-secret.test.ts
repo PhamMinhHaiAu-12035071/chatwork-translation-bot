@@ -109,4 +109,15 @@ describe('GET /internal/room-secret', () => {
 
     expect(response.status).toBe(400)
   })
+
+  it('returns 400 when room_id query param is not a number', async () => {
+    const app = await buildApp(tmpDir, true)
+    const response = await app.handle(
+      new Request('http://localhost/internal/room-secret?room_id=abc', {
+        headers: { 'x-internal-secret': INTERNAL_SECRET },
+      }),
+    )
+
+    expect(response.status).toBe(400)
+  })
 })

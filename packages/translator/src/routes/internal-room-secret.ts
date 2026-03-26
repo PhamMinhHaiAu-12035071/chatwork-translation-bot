@@ -32,7 +32,7 @@ export function createInternalRoomSecretRoute({
       }
 
       const room = store.getByOriginalRoomId(roomId)
-      if (room === null || !room.enabled) {
+      if (!room?.enabled) {
         set.status = 404
         return { error: `No room configured for room_id ${roomId.toString()}` }
       }

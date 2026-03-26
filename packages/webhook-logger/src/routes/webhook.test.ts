@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto'
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import Elysia from 'elysia'
 import type { webhookRoutes as WebhookRoutesType } from './webhook'
 
@@ -94,41 +94,24 @@ function installDefaultFetch(): void {
   })
 }
 
-async function importWebhookRoutesWithEnv(
-  overrides: Partial<{
-    LOGGER_PORT: number
-    TRANSLATOR_URL: string
-    TRANSLATOR_INTERNAL_URL: string
-    NODE_ENV: 'development' | 'production' | 'test' | 'local'
-    INTERNAL_API_SECRET: string
-    CHATWORK_SKIP_SIGNATURE_VERIFY: boolean
-  }> = {},
-) {
-  void mock.module('../env', () => ({
-    env: {
-      LOGGER_PORT: 3001,
-      TRANSLATOR_URL,
-      TRANSLATOR_INTERNAL_URL: TRANSLATOR_URL,
-      NODE_ENV: 'test',
-      INTERNAL_API_SECRET,
-      CHATWORK_SKIP_SIGNATURE_VERIFY: false,
-      ...overrides,
-    },
-  }))
-
-  const moduleUnknown: unknown = await import(`./webhook?${crypto.randomUUID()}`)
-  return moduleUnknown as { webhookRoutes: typeof WebhookRoutesType }
+const mockEnv: {
+  LOGGER_PORT: number
+  TRANSLATOR_URL: string
+  TRANSLATOR_INTERNAL_URL: string
+  NODE_ENV: 'development' | 'production' | 'test' | 'local'
+  INTERNAL_API_SECRET: string
+  CHATWORK_SKIP_SIGNATURE_VERIFY: boolean
+} = {
+  LOGGER_PORT: 3001,
+  TRANSLATOR_URL,
+  TRANSLATOR_INTERNAL_URL: TRANSLATOR_URL,
+  NODE_ENV: 'test',
+  INTERNAL_API_SECRET,
+  CHATWORK_SKIP_SIGNATURE_VERIFY: false,
 }
 
 void mock.module('../env', () => ({
-  env: {
-    LOGGER_PORT: 3001,
-    TRANSLATOR_URL,
-    TRANSLATOR_INTERNAL_URL: TRANSLATOR_URL,
-    NODE_ENV: 'test',
-    INTERNAL_API_SECRET,
-    CHATWORK_SKIP_SIGNATURE_VERIFY: false,
-  },
+  env: mockEnv,
 }))
 
 const mockFetch = mock((_input: FetchInput, _init?: RequestInit) =>
@@ -140,10 +123,17 @@ const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
 const originalConsoleError = console.error
 const originalConsoleWarn = console.warn
+let webhookRoutes: typeof WebhookRoutesType
+let app: ReturnType<typeof Elysia.prototype.use>
+let resetRoomSecretCacheForTest: () => void
 
 describe('webhookRoutes', () => {
-  let webhookRoutes: typeof WebhookRoutesType
-  let app: ReturnType<typeof Elysia.prototype.use>
+  beforeAll(async () => {
+    const mod = await import('./webhook')
+    webhookRoutes = mod.webhookRoutes
+    resetRoomSecretCacheForTest = mod.resetRoomSecretCacheForTest
+    app = new Elysia().use(webhookRoutes)
+  })
 
   describe('room secret cache', () => {
     it('does not fetch the same room secret again within TTL', async () => {
@@ -218,13 +208,42 @@ describe('webhookRoutes', () => {
 
       expect(res.status).toBe(503)
     })
+
+    it('refetches the room secret after the cache entry expires', async () => {
+      const originalNow = Date.now
+      let now = 1_000_000
+      Date.now = () => now
+
+      try {
+        const rawBody = JSON.stringify(makeValidEvent())
+        const sig = makeSignature(rawBody)
+
+        const firstRes = await app.handle(makeRequest(rawBody, sig))
+        expect(firstRes.status).toBe(200)
+
+        now += 60_001
+
+        const secondRes = await app.handle(makeRequest(rawBody, sig))
+        expect(secondRes.status).toBe(200)
+
+        const secretFetchCalls = mockFetch.mock.calls.filter(
+          (call) => resolveUrl(call[0]) === roomSecretUrl(),
+        )
+        expect(secretFetchCalls).toHaveLength(2)
+      } finally {
+        Date.now = originalNow
+      }
+    })
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     installDefaultFetch()
-    const mod = await importWebhookRoutesWithEnv()
-    webhookRoutes = mod.webhookRoutes
-    app = new Elysia().use(webhookRoutes)
+    resetRoomSecretCacheForTest()
+    mockEnv.NODE_ENV = 'test'
+    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = false
+    mockEnv.TRANSLATOR_URL = TRANSLATOR_URL
+    mockEnv.TRANSLATOR_INTERNAL_URL = TRANSLATOR_URL
+    mockEnv.INTERNAL_API_SECRET = INTERNAL_API_SECRET
   })
 
   afterEach(() => {
@@ -233,6 +252,7 @@ describe('webhookRoutes', () => {
     console.warn = originalConsoleWarn
     consoleLogLines.length = 0
     mockFetch.mockReset()
+    resetRoomSecretCacheForTest()
   })
 
   it('POST /webhook fetches the per-room secret before forwarding the neutral DTO', async () => {
@@ -376,6 +396,30 @@ describe('webhookRoutes', () => {
     expect(mockFetch.mock.calls).toHaveLength(0)
   })
 
+  it('POST /webhook fetches the room secret when room_id is only present in webhook_setting', async () => {
+    const rawBody = JSON.stringify({
+      webhook_setting: {
+        room_id: ROOM_ID,
+      },
+      webhook_event_type: 'message_created',
+      webhook_event_time: 1498028130,
+      webhook_event: {
+        message_id: '789012345',
+        account_id: 123456,
+        body: 'Hello World',
+        send_time: 1498028125,
+        update_time: 0,
+      },
+    })
+    const sig = makeSignature(rawBody)
+
+    const res = await app.handle(makeRequest(rawBody, sig))
+
+    expect(res.status).toBe(422)
+    expect(resolveUrl(getFetchCall(0)[0])).toBe(roomSecretUrl())
+    expect(mockFetch.mock.calls).toHaveLength(1)
+  })
+
   it('POST /webhook logs completion when secret fetch and forward both succeed', async () => {
     console.log = mock((...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
@@ -478,11 +522,15 @@ describe('webhookRoutes', () => {
 describe('webhookRoutes – CHATWORK_SKIP_SIGNATURE_VERIFY', () => {
   beforeEach(() => {
     installDefaultFetch()
+    resetRoomSecretCacheForTest()
+    mockEnv.NODE_ENV = 'test'
+    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = false
   })
 
   afterEach(() => {
     console.warn = originalConsoleWarn
     mockFetch.mockReset()
+    resetRoomSecretCacheForTest()
   })
 
   it('bypasses verification in development when CHATWORK_SKIP_SIGNATURE_VERIFY=true and logs warning', async () => {
@@ -491,28 +539,22 @@ describe('webhookRoutes – CHATWORK_SKIP_SIGNATURE_VERIFY', () => {
       warnLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.warn
 
-    const { webhookRoutes: devRoutes } = await importWebhookRoutesWithEnv({
-      NODE_ENV: 'development',
-      CHATWORK_SKIP_SIGNATURE_VERIFY: true,
-    })
-    const devApp = new Elysia().use(devRoutes)
+    mockEnv.NODE_ENV = 'development'
+    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = true
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const res = await devApp.handle(makeRequest(rawBody, 'wrong-sig'))
+    const res = await app.handle(makeRequest(rawBody, 'wrong-sig'))
 
     expect(res.status).toBe(200)
     expect(warnLines.some((line) => line.includes('verification'))).toBe(true)
   })
 
   it('does NOT bypass verification in production even when CHATWORK_SKIP_SIGNATURE_VERIFY=true', async () => {
-    const { webhookRoutes: prodRoutes } = await importWebhookRoutesWithEnv({
-      NODE_ENV: 'production',
-      CHATWORK_SKIP_SIGNATURE_VERIFY: true,
-    })
-    const prodApp = new Elysia().use(prodRoutes)
+    mockEnv.NODE_ENV = 'production'
+    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = true
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const res = await prodApp.handle(makeRequest(rawBody, 'wrong-sig'))
+    const res = await app.handle(makeRequest(rawBody, 'wrong-sig'))
 
     expect(res.status).toBe(422)
   })

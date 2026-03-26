@@ -26,6 +26,10 @@ interface CachedRoomSecret {
 
 const roomSecretCache = new Map<number, CachedRoomSecret>()
 
+export function resetRoomSecretCacheForTest(): void {
+  roomSecretCache.clear()
+}
+
 function getCachedRoomSecret(roomId: number): string | null {
   const cached = roomSecretCache.get(roomId)
 
