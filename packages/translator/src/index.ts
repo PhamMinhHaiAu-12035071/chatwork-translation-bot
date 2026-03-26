@@ -1,44 +1,52 @@
 import { env } from './env'
-import { getProviderPlugin } from '@chatwork-bot/core'
 import { registerAllProviders } from '~/bootstrap/register-providers'
 import { runStartupGuards } from '~/bootstrap/startup-guards'
 import { logStartupBanner } from '~/bootstrap/startup-banner'
 import {
+  DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS,
   hasExplicitPipelineTimeoutOverride,
   resolvePipelineTimeout,
 } from '~/services/pipeline-timeout'
+import { RoomConfigStore } from '~/services/room-config-store'
+import { initTranslateHandler } from '~/webhook/handler'
 import { createServer } from './server'
 
 registerAllProviders()
-await runStartupGuards(env)
+await runStartupGuards()
 
-const activePlugin = getProviderPlugin(env.AI_PROVIDER)
-const activeModel = env.AI_MODEL ?? activePlugin.manifest.defaultModel
+const store = new RoomConfigStore({
+  dataDir: env.ROOM_CONFIG_DATA_DIR,
+  encryptionKeyHex: env.ROOM_CONFIG_ENCRYPTION_KEY,
+})
+await store.init()
+
+initTranslateHandler({
+  store,
+  chatworkApiToken: env.CHATWORK_API_TOKEN,
+})
+
 const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
   envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,
   hasEnvOverride: hasExplicitPipelineTimeoutOverride(),
-  providerTimeoutMs: activePlugin.manifest.timeoutMs,
+  providerTimeoutMs: DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS,
 })
 
-const server = createServer()
+const server = createServer({ store })
 
 server.listen(env.PORT)
 
 console.log(`[translator] AI Translation Service started on port ${env.PORT.toString()}`)
 logStartupBanner({
-  provider: env.AI_PROVIDER,
-  model: activeModel,
-  translationStyle: env.AI_TRANSLATION_STYLE,
   port: env.PORT,
   nodeEnv: env.NODE_ENV,
   effectiveTimeoutMs,
   timeoutSource,
+  roomCount: store.list().length,
 })
 console.log(`[translator] Health check: http://localhost:${env.PORT.toString()}/health`)
 console.log(`[translator] Status endpoint: http://localhost:${env.PORT.toString()}/status`)
-console.log(
-  `[translator] Internal endpoint: http://localhost:${env.PORT.toString()}/internal/translate`,
-)
+console.log(`[translator] Room config API: http://localhost:${env.PORT.toString()}/api/rooms`)
+console.log(`[translator] Providers API: http://localhost:${env.PORT.toString()}/api/providers`)
 if (env.NODE_ENV === 'development') {
   console.log(`[translator] Swagger UI: http://localhost:${env.PORT.toString()}/docs`)
 }

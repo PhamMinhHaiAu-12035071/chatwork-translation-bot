@@ -49,7 +49,7 @@ describe('runStartupGuards', () => {
     _plugins = []
   })
 
-  it('passes without error when gemini provider is registered', async () => {
+  it('passes without error when at least one provider is registered', async () => {
     _plugins.push({
       manifest: {
         id: 'gemini',
@@ -62,24 +62,23 @@ describe('runStartupGuards', () => {
     })
 
     const { runStartupGuards } = await import('./startup-guards')
-    const fakeEnv = { AI_PROVIDER: 'gemini' }
-    await runStartupGuards(fakeEnv as never)
+    await runStartupGuards()
   })
 
-  it('throws ProviderRegistryBootError when provider not registered', async () => {
+  it('throws when no providers are registered', async () => {
     // _plugins is empty after beforeEach reset
     const { runStartupGuards } = await import('./startup-guards')
-    const fakeEnv = { AI_PROVIDER: 'gemini' }
 
     try {
-      await runStartupGuards(fakeEnv as never)
+      await runStartupGuards()
       expect.unreachable('should have thrown')
     } catch (error) {
-      expect(error).toBeInstanceOf(ProviderRegistryBootError)
+      expect(error).toBeInstanceOf(Error)
+      expect((error as Error).message).toContain('No providers registered')
     }
   })
 
-  it('checks cursor proxy reachability when provider is cursor', async () => {
+  it('checks cursor proxy reachability when cursor provider is registered', async () => {
     _plugins.push({
       manifest: {
         id: 'cursor',
@@ -94,8 +93,7 @@ describe('runStartupGuards', () => {
     mockFetch.mockImplementation(() => Promise.resolve({ ok: true }))
 
     const { runStartupGuards } = await import('./startup-guards')
-    const fakeEnv = { AI_PROVIDER: 'cursor', CURSOR_API_URL: 'http://localhost:8765/v1' }
-    await runStartupGuards(fakeEnv as never)
+    await runStartupGuards()
     expect(mockFetch).toHaveBeenCalledWith('http://localhost:8765/v1/models')
   })
 
@@ -122,14 +120,13 @@ describe('runStartupGuards', () => {
 
     try {
       const { runStartupGuards } = await import('./startup-guards')
-      const fakeEnv = { AI_PROVIDER: 'cursor' }
       // Should NOT throw — just warn so translator starts even if proxy isn't ready yet
-      await runStartupGuards(fakeEnv as never)
+      await runStartupGuards()
 
       expect(warnSpy).toHaveBeenCalled()
       const msg = warnSpy.mock.calls[0]?.[0] ?? ''
       expect(msg).toContain('Cursor proxy not reachable at http://cursor-proxy:8765/v1')
-      expect(msg).toContain('bun run dev')
+      expect(msg).toContain('Per-room configs using cursor provider will fail at runtime')
     } finally {
       if (previousCursorApiUrl === undefined) {
         delete process.env['CURSOR_API_URL']
@@ -137,57 +134,5 @@ describe('runStartupGuards', () => {
         process.env['CURSOR_API_URL'] = previousCursorApiUrl
       }
     }
-  })
-
-  it('throws when required env key is missing for active provider', async () => {
-    // Use a unique key that definitely won't be set in any test environment
-    const uniqueRequiredKey = '__TEST_REQUIRED_KEY_THAT_WILL_NEVER_EXIST_IN_ENV__'
-    _plugins.push({
-      manifest: {
-        id: 'gemini',
-        supportedModels: ['gemini-2.5-pro'],
-        defaultModel: 'gemini-2.5-pro',
-        capabilities: { streaming: false },
-        requiredEnvKeys: [uniqueRequiredKey],
-      },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
-    })
-
-    const { runStartupGuards } = await import('./startup-guards')
-    const fakeEnv = { AI_PROVIDER: 'gemini' }
-
-    try {
-      await runStartupGuards(fakeEnv as never)
-      expect.unreachable('should have thrown')
-    } catch (error) {
-      expect(error).toBeInstanceOf(ProviderRegistryBootError)
-      expect((error as Error).message).toContain(uniqueRequiredKey)
-    }
-  })
-
-  it('logs warning when AI_MODEL is not in supportedModels (escape hatch)', async () => {
-    _plugins.push({
-      manifest: {
-        id: 'gemini',
-        supportedModels: ['gemini-2.5-pro'],
-        defaultModel: 'gemini-2.5-pro',
-        capabilities: { streaming: false },
-        requiredEnvKeys: [],
-      },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
-    })
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const warnSpy = mock((_msg: string) => {})
-    console.warn = warnSpy
-
-    const { runStartupGuards } = await import('./startup-guards')
-    const fakeEnv = { AI_PROVIDER: 'gemini', AI_MODEL: 'custom-model-xyz' }
-    await runStartupGuards(fakeEnv as never)
-
-    expect(warnSpy).toHaveBeenCalled()
-    const msg = warnSpy.mock.calls[0]?.[0] ?? ''
-    expect(msg).toContain('custom-model-xyz')
-    expect(msg).toContain('gemini-2.5-pro')
   })
 })

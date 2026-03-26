@@ -30,23 +30,21 @@ describe('logStartupBanner', () => {
 
     const { logStartupBanner } = await import('./startup-banner')
     logStartupBanner({
-      provider: 'gemini',
-      model: 'gemini-2.5-pro',
-      translationStyle: 'TECHNICAL',
       port: 3000,
       nodeEnv: 'development',
       effectiveTimeoutMs: 45_000,
       timeoutSource: 'env',
+      roomCount: 3,
     })
 
     const output = logSpy.mock.calls.map((c) => c[0]).join('\n')
     expect(output).toContain('gemini')
     expect(output).toContain('gemini-2.5-pro')
     expect(output).toContain('gemini-2.0-flash')
-    expect(output).toContain('AI_TRANSLATION_STYLE=TECHNICAL')
+    expect(output).toContain('configured per-room (3 rooms loaded)')
   })
 
-  it('marks active provider with asterisk', async () => {
+  it('does not mark an active provider because provider selection is per-room', async () => {
     registerProviderPlugin({
       manifest: {
         id: 'gemini',
@@ -60,17 +58,16 @@ describe('logStartupBanner', () => {
 
     const { logStartupBanner } = await import('./startup-banner')
     logStartupBanner({
-      provider: 'gemini',
-      model: 'gemini-2.5-pro',
-      translationStyle: 'PROFESSIONAL_BUSINESS',
       port: 3000,
       nodeEnv: 'development',
       effectiveTimeoutMs: 1_800_000,
       timeoutSource: 'provider',
+      roomCount: 1,
     })
 
     const output = logSpy.mock.calls.map((c) => c[0]).join('\n')
-    expect(output).toContain('*')
+    expect(output).not.toContain('active provider')
+    expect(output).toContain('configured per-room (1 rooms loaded)')
   })
 
   it('logs the active effective timeout and its source', async () => {
@@ -88,13 +85,11 @@ describe('logStartupBanner', () => {
 
     const { logStartupBanner } = await import('./startup-banner')
     logStartupBanner({
-      provider: 'openai',
-      model: 'gpt-5.4',
-      translationStyle: 'AUTO_CONTEXT',
       port: 3000,
       nodeEnv: 'development',
       effectiveTimeoutMs: 45_000,
       timeoutSource: 'env',
+      roomCount: 2,
     })
 
     const output = logSpy.mock.calls.map((c) => c[0]).join('\n')

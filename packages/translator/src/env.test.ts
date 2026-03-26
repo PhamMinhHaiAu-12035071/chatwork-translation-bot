@@ -15,12 +15,13 @@ afterEach(() => {
 describe('translator env', () => {
   it('applies observability defaults when optional vars are absent', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
-    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
-    process.env['AI_PROVIDER'] = 'cursor'
+    process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
+    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
 
     const { parseTranslatorEnv } = await import('./env-schema')
     const env = parseTranslatorEnv(process.env)
 
+    expect(env.ROOM_CONFIG_DATA_DIR).toBe('./data')
     expect(env.TRANSLATOR_PHASE_HEARTBEAT_MS).toBe(30_000)
     expect(env.TRANSLATOR_TRANSLATION_BUDGET_MS).toBe(60_000)
     expect(env.TRANSLATOR_DELIVERY_BUDGET_MS).toBe(45_000)
@@ -31,8 +32,8 @@ describe('translator env', () => {
 
   it('allows overriding the pipeline timeout', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
-    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
-    process.env['AI_PROVIDER'] = 'openai'
+    process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
+    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
     process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '45000'
 
     const { parseTranslatorEnv } = await import('./env-schema')
@@ -41,37 +42,34 @@ describe('translator env', () => {
     expect(env.TRANSLATOR_PIPELINE_TIMEOUT_MS).toBe(45_000)
   })
 
-  it('defaults AI_TRANSLATION_STYLE to PROFESSIONAL_BUSINESS', async () => {
+  it('accepts a valid custom room config data directory override', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
-    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
-    process.env['AI_PROVIDER'] = 'openai'
-    delete process.env['AI_TRANSLATION_STYLE']
+    process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
+    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
+    process.env['ROOM_CONFIG_DATA_DIR'] = '/tmp/translator-room-configs'
 
     const { parseTranslatorEnv } = await import('./env-schema')
     const env = parseTranslatorEnv(process.env)
 
-    expect(env.AI_TRANSLATION_STYLE).toBe('PROFESSIONAL_BUSINESS')
+    expect(env.ROOM_CONFIG_DATA_DIR).toBe('/tmp/translator-room-configs')
   })
 
-  it('accepts a valid AI_TRANSLATION_STYLE override', async () => {
-    process.env['CHATWORK_API_TOKEN'] = 'token'
-    process.env['CHATWORK_DESTINATION_ROOM_ID'] = '123'
-    process.env['AI_PROVIDER'] = 'openai'
-    process.env['AI_TRANSLATION_STYLE'] = 'TECHNICAL'
-
-    const { parseTranslatorEnv } = await import('./env-schema')
-    const env = parseTranslatorEnv(process.env)
-
-    expect(env.AI_TRANSLATION_STYLE).toBe('TECHNICAL')
-  })
-
-  it('rejects invalid AI_TRANSLATION_STYLE values at schema level', async () => {
+  it('rejects invalid ROOM_CONFIG_ENCRYPTION_KEY values at schema level', async () => {
     const { translatorEnvSchema } = await import('./env-schema')
     const result = translatorEnvSchema.safeParse({
       CHATWORK_API_TOKEN: 'token',
-      CHATWORK_DESTINATION_ROOM_ID: '123',
-      AI_PROVIDER: 'openai',
-      AI_TRANSLATION_STYLE: 'whatever',
+      ROOM_CONFIG_ENCRYPTION_KEY: 'short-key',
+      INTERNAL_API_SECRET: 'internal-secret',
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects missing INTERNAL_API_SECRET values at schema level', async () => {
+    const { translatorEnvSchema } = await import('./env-schema')
+    const result = translatorEnvSchema.safeParse({
+      CHATWORK_API_TOKEN: 'token',
+      ROOM_CONFIG_ENCRYPTION_KEY: 'a'.repeat(64),
     })
 
     expect(result.success).toBe(false)

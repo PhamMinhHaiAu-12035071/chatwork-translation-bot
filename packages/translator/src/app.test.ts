@@ -1,77 +1,99 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 void mock.module('./env', () => ({
   env: {
     CHATWORK_API_TOKEN: 'test-token',
+    INTERNAL_API_SECRET: 'internal-secret',
     PORT: 3000,
     NODE_ENV: 'test',
-    AI_PROVIDER: 'openai',
-    AI_MODEL: 'gpt-4o',
   },
 }))
 
-// Import after mocks are set up
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-const { createApp } = require('./app')
-
 describe('createApp (translator)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-  const app = createApp()
+  const roomConfigKeyHex = 'a'.repeat(64)
+  let dataDir: string
+  let roomId: string
+  let app: { handle(request: Request): Promise<Response> }
+
+  beforeAll(async () => {
+    const { RoomConfigStore } = await import('~/services/room-config-store')
+    const { createApp } = await import('./app')
+
+    dataDir = mkdtempSync(join(tmpdir(), 'translator-app-test-'))
+    const store = new RoomConfigStore({
+      dataDir,
+      encryptionKeyHex: roomConfigKeyHex,
+    })
+    await store.init()
+
+    const room = await store.create({
+      originalRoomId: 567890123,
+      destinationRoomId: 678901234,
+      destinationRoomName: 'Output Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-4o',
+      translationStyle: 'TECHNICAL',
+      aiApiToken: 'room-openai-token',
+      webhookSecret: 'room-secret',
+    })
+    roomId = room.id
+    await store.setEnabled(room.id, true)
+
+    app = createApp({ store })
+  })
+
+  afterAll(() => {
+    rmSync(dataDir, { recursive: true, force: true })
+  })
 
   it('GET /health returns 200', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const res = await app.handle(new Request('http://localhost/health'))
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(res.status).toBe(200)
   })
 
   it('GET /status returns 200', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     const res = await app.handle(new Request('http://localhost/status'))
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(res.status).toBe(200)
   })
 
-  it('POST /internal/translate accepts the enriched ingress command schema', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+  it('GET /api/rooms returns the seeded room list', async () => {
+    const res = await app.handle(new Request('http://localhost/api/rooms'))
+    expect(res.status).toBe(200)
+
+    const body = (await res.json()) as {
+      rooms: { id: string; destinationRoomName: string }[]
+    }
+    expect(body.rooms).toHaveLength(1)
+    expect(body.rooms[0]).toMatchObject({
+      id: roomId,
+      destinationRoomName: 'Output Room',
+    })
+  })
+
+  it('GET /api/providers returns 200', async () => {
+    const res = await app.handle(new Request('http://localhost/api/providers'))
+    expect(res.status).toBe(200)
+  })
+
+  it('GET /internal/room-secret returns 200 with valid internal auth', async () => {
     const res = await app.handle(
-      new Request('http://localhost/internal/translate', {
-        method: 'POST',
+      new Request('http://localhost/internal/room-secret?room_id=567890123', {
         headers: {
-          'Content-Type': 'application/json',
+          'X-Internal-Secret': 'internal-secret',
         },
-        body: JSON.stringify({
-          command: {
-            sourceSystem: 'chatwork',
-            sourceEventId: '789012345:message_updated:1498028130',
-            sourceEventType: 'message_updated',
-            sourceMessageId: '789012345',
-            sourceRoomId: 567890123,
-            senderAccountId: 123456,
-            rawBody: 'Hello World',
-            translatableText: 'Hello World',
-            translationInputs: ['Hello World'],
-            sendTime: 1498028125,
-            updateTime: 1498028130,
-            audit: {
-              receivedAt: '2026-03-24T00:00:00.000Z',
-              rawSourceSnapshot: {
-                webhook_setting_id: '12345',
-              },
-            },
-          },
-        }),
       }),
     )
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(res.status).toBe(200)
+    const body = (await res.json()) as { webhookSecret: string }
+    expect(body.webhookSecret).toBe('room-secret')
   })
 
   it('unknown route returns 404', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const res = await app.handle(new Request('http://localhost/unknown'))
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(res.status).toBe(404)
   })
 })

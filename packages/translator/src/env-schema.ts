@@ -1,15 +1,15 @@
-import { DEFAULT_TRANSLATION_STYLE, TRANSLATION_STYLE_VALUES } from '@chatwork-bot/core'
 import { z } from 'zod'
 import { DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS } from '~/services/pipeline-timeout'
 
 export const translatorEnvSchema = z.object({
   CHATWORK_API_TOKEN: z.string().min(1, 'CHATWORK_API_TOKEN is required'),
-  CHATWORK_DESTINATION_ROOM_ID: z.coerce.number().int().positive(),
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test', 'local']).default('development'),
-  AI_PROVIDER: z.string().min(1, 'AI_PROVIDER is required'),
-  AI_MODEL: z.string().min(1).optional(),
-  AI_TRANSLATION_STYLE: z.enum(TRANSLATION_STYLE_VALUES).default(DEFAULT_TRANSLATION_STYLE),
+  ROOM_CONFIG_ENCRYPTION_KEY: z
+    .string()
+    .length(64, 'ROOM_CONFIG_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)'),
+  INTERNAL_API_SECRET: z.string().min(1, 'INTERNAL_API_SECRET is required'),
+  ROOM_CONFIG_DATA_DIR: z.string().default('./data'),
   TRANSLATOR_PHASE_HEARTBEAT_MS: z.coerce.number().int().positive().default(30_000),
   TRANSLATOR_TRANSLATION_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(45_000),

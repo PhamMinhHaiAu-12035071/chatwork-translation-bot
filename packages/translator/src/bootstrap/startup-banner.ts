@@ -6,21 +6,18 @@ import {
 } from '~/services/pipeline-timeout'
 
 interface BannerConfig {
-  provider: string
-  model: string
-  translationStyle: string
   port: number
   nodeEnv: string
   effectiveTimeoutMs: number
   timeoutSource: PipelineTimeoutSource
+  roomCount: number
 }
 
 export function logStartupBanner(config: BannerConfig): void {
   const plugins = listProviderPlugins()
 
   const rows = plugins.map((p) => {
-    const isActive = p.manifest.id === config.provider
-    const provider = isActive ? `${p.manifest.id} *` : p.manifest.id
+    const provider = p.manifest.id
     const models = p.manifest.supportedModels.join(', ')
     const timeout = formatTimeoutSeconds(
       p.manifest.timeoutMs ?? DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS,
@@ -50,9 +47,8 @@ export function logStartupBanner(config: BannerConfig): void {
   }
   console.log(`[translator] ${bot}`)
   console.log(
-    `[translator] * = active provider (AI_PROVIDER=${config.provider}, AI_MODEL=${config.model})`,
+    `[translator] * AI provider/model/style configured per-room (${config.roomCount.toString()} rooms loaded)`,
   )
-  console.log(`[translator] * AI_TRANSLATION_STYLE=${config.translationStyle}`)
   console.log(
     `[translator] * effective pipeline timeout = ${formatTimeoutSeconds(config.effectiveTimeoutMs)} (source=${config.timeoutSource})`,
   )
