@@ -60,6 +60,29 @@ describe('chatworkApiClient', () => {
     fetchSpy.mockRestore()
   })
 
+  // ─── getMe ───────────────────────────────────────────────────────────────
+
+  describe('getMe', () => {
+    it('sends GET to /me with correct header', async () => {
+      mockOnce(fetchSpy, makeOkResponse({ account_id: 42, name: 'Bot' }))
+
+      const result = await chatworkApiClient.getMe(TOKEN)
+
+      expect(result.account_id).toBe(42)
+      const [url, init] = fetchSpy.mock.calls.at(-1) as [string, RequestInit]
+      expect(url).toBe('https://api.chatwork.com/v2/me')
+      expect(init.method).toBe('GET')
+      expect((init.headers as Record<string, string>)['X-ChatWorkToken']).toBe(TOKEN)
+    })
+
+    it('throws ChatworkApiError on error response', async () => {
+      mockOnce(fetchSpy, makeErrorResponse(401, ['Unauthorized']))
+
+      const error = await catchError(chatworkApiClient.getMe(TOKEN))
+      expect(error).toBeInstanceOf(ChatworkApiError)
+    })
+  })
+
   // ─── sendRoomMessage ───────────────────────────────────────────────────────
 
   describe('sendRoomMessage', () => {
@@ -117,6 +140,28 @@ describe('chatworkApiClient', () => {
       const error = await catchError(
         chatworkApiClient.deleteRoomMessage(ROOM_ID, MESSAGE_ID, TOKEN),
       )
+      expect(error).toBeInstanceOf(ChatworkApiError)
+    })
+  })
+
+  // ─── deleteRoom ────────────────────────────────────────────────────────────
+
+  describe('deleteRoom', () => {
+    it('sends DELETE to the correct room endpoint', async () => {
+      mockOnce(fetchSpy, new Response(null, { status: 204 }))
+
+      await chatworkApiClient.deleteRoom(ROOM_ID, TOKEN)
+
+      const [url, init] = fetchSpy.mock.calls.at(-1) as [string, RequestInit]
+      expect(url).toBe(`https://api.chatwork.com/v2/rooms/${ROOM_ID.toString()}`)
+      expect(init.method).toBe('DELETE')
+      expect((init.headers as Record<string, string>)['X-ChatWorkToken']).toBe(TOKEN)
+    })
+
+    it('throws ChatworkApiError on error response', async () => {
+      mockOnce(fetchSpy, makeErrorResponse(403, ['Forbidden']))
+
+      const error = await catchError(chatworkApiClient.deleteRoom(ROOM_ID, TOKEN))
       expect(error).toBeInstanceOf(ChatworkApiError)
     })
   })

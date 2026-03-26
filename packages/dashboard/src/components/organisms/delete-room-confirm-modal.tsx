@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Room } from '~/stores/room-store'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
@@ -21,6 +21,11 @@ export function DeleteRoomConfirmModal({
   onConfirm,
 }: DeleteRoomConfirmModalProps) {
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const [confirmEveryone, setConfirmEveryone] = useState(false)
+  const [confirmContentLoss, setConfirmContentLoss] = useState(false)
+  const [confirmIrreversible, setConfirmIrreversible] = useState(false)
+
+  const allConfirmed = confirmEveryone && confirmContentLoss && confirmIrreversible
 
   useEffect(() => {
     if (!isOpen) return
@@ -48,6 +53,14 @@ export function DeleteRoomConfirmModal({
     }
   }, [isOpen, onCancel])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    setConfirmEveryone(false)
+    setConfirmContentLoss(false)
+    setConfirmIrreversible(false)
+  }, [isOpen, room.id])
+
   if (!isOpen) return null
 
   const overlay = (
@@ -74,8 +87,61 @@ export function DeleteRoomConfirmModal({
           id="delete-modal-description"
           className="delete-modal-warning font-ui-body mt-2 text-sm leading-relaxed"
         >
-          This removes the room from your dashboard immediately. This action cannot be undone.
+          Please check the followings prior to deleting group chats.
         </p>
+
+        <div className="delete-modal-checklist mt-4 space-y-3">
+          <label className="delete-modal-checkitem">
+            <input
+              type="checkbox"
+              checked={confirmEveryone}
+              onChange={(event) => {
+                setConfirmEveryone(event.currentTarget.checked)
+              }}
+              className="delete-modal-checkbox"
+            />
+            <span className="font-ui-body text-sm leading-relaxed">
+              This will not only delete from your list, but will be applied for everyone else
+              participating in the group chat.
+            </span>
+          </label>
+
+          <label className="delete-modal-checkitem">
+            <input
+              type="checkbox"
+              checked={confirmContentLoss}
+              onChange={(event) => {
+                setConfirmContentLoss(event.currentTarget.checked)
+              }}
+              className="delete-modal-checkbox"
+            />
+            <span className="font-ui-body text-sm leading-relaxed">
+              All messages, tasks, files, and bookmarks will be deleted.
+            </span>
+          </label>
+
+          <label className="delete-modal-checkitem">
+            <input
+              type="checkbox"
+              checked={confirmIrreversible}
+              onChange={(event) => {
+                setConfirmIrreversible(event.currentTarget.checked)
+              }}
+              className="delete-modal-checkbox"
+            />
+            <span className="font-ui-body text-sm leading-relaxed">
+              All deleted data will never be restored.
+            </span>
+          </label>
+        </div>
+
+        <div className="delete-modal-warning-panel mt-4">
+          <div className="font-heading text-sm font-bold">Manual Cleanup Still Needed</div>
+          <p className="font-ui-body mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+            Source-room webhook cleanup is still manual in Chatwork Admin. Deleting this destination
+            room does not remove the webhook from the source room.
+          </p>
+        </div>
 
         <div className="delete-modal-preview mt-4">
           <div className="flex items-start justify-between gap-2">
@@ -112,10 +178,10 @@ export function DeleteRoomConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={isDeleting || !allConfirmed}
             className="brutal-button delete-modal-confirm px-5 py-2.5 font-heading text-sm font-bold text-white"
           >
-            {isDeleting ? 'Deleting\u2026' : 'Confirm Delete'}
+            {isDeleting ? 'Deleting\u2026' : 'Delete (I have confirmed)'}
           </button>
         </div>
       </div>

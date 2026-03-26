@@ -78,12 +78,19 @@ describe('apiClient', () => {
     expect(response.data).toEqual(room)
   })
 
-  it('handles 204 No Content for deleteRoom', async () => {
-    mockOnce(fetchSpy, new Response(null, { status: 204 }))
+  it('returns the delete outcome envelope for deleteRoom', async () => {
+    mockOnce(
+      fetchSpy,
+      new Response(JSON.stringify({ success: true, data: { outcome: 'deleted' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
 
     const response = await apiClient.deleteRoom('room-001')
 
     expect(response.success).toBe(true)
+    expect(response.data).toEqual({ outcome: 'deleted' })
   })
 
   it('sends webhookSecret in createRoom requests', async () => {

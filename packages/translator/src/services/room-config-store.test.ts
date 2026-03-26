@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { RoomConfigStore, RoomConfigStoreError } from './room-config-store'
@@ -198,6 +198,10 @@ describe('RoomConfigStore', () => {
     const found = store.getById(created.id)
     expect(found).toBeNull()
     expect(store.list()).toHaveLength(0)
+
+    const archivePath = join(tmpDir, 'room-configs-archive.json')
+    const archiveError = await catchError(access(archivePath))
+    expect(archiveError).toBeInstanceOf(Error)
   })
 
   it('decryptApiToken() returns the original plaintext token', async () => {

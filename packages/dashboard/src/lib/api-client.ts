@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   CreateRoomInput,
+  DeleteRoomResult,
   ProviderInfo,
   RoomConfigPublic,
   UpdateRoomInput,
@@ -64,8 +65,8 @@ export const apiClient = {
     return request<RoomConfigPublic>('PUT', `/rooms/${id}`, input)
   },
 
-  deleteRoom(id: string): Promise<ApiResponse<null>> {
-    return request<null>('DELETE', `/rooms/${id}`)
+  deleteRoom(id: string): Promise<ApiResponse<DeleteRoomResult>> {
+    return request<DeleteRoomResult>('DELETE', `/rooms/${id}`)
   },
 
   enableRoom(id: string): Promise<ApiResponse<RoomConfigPublic>> {

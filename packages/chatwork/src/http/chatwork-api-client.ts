@@ -1,6 +1,11 @@
 import { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
 import type { IChatworkApiClient } from '~/interfaces/chatwork-api'
-import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
+import type {
+  ChatworkMe,
+  ChatworkMember,
+  ChatworkMessage,
+  ChatworkSendMessageResult,
+} from '~/types/message'
 import type { CreateRoomParams, CreateRoomResult, Room } from '~/types/room'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -46,6 +51,21 @@ async function handleErrorResponse(response: Response): Promise<never> {
 // ─── API client (internal) ────────────────────────────────────────────────────
 
 export const chatworkApiClient = {
+  async getMe(token: string): Promise<ChatworkMe> {
+    const url = `${BASE_URL}/me`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as ChatworkMe
+  },
+
   async sendRoomMessage(
     roomId: number,
     message: string,
@@ -72,6 +92,19 @@ export const chatworkApiClient = {
 
   async deleteRoomMessage(roomId: number, messageId: string, token: string): Promise<void> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}/messages/${messageId}`
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: makeHeaders(token),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+  },
+
+  async deleteRoom(roomId: number, token: string): Promise<void> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}`
 
     const response = await fetch(url, {
       method: 'DELETE',

@@ -44,6 +44,10 @@ export interface CreateRoomInput {
   webhookSecret: string
 }
 
+export interface DeleteRoomResult {
+  outcome: 'deleted' | 'already_deleted'
+}
+
 export interface UpdateRoomInput {
   destinationRoomName?: string
   aiProvider?: AiProvider

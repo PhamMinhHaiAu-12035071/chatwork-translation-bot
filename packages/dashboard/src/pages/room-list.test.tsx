@@ -3,7 +3,11 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
-import { RoomListPage, getRoomToggleToastMessage } from '~/pages/room-list'
+import {
+  RoomListPage,
+  getDeleteRoomToastMessage,
+  getRoomToggleToastMessage,
+} from '~/pages/room-list'
 
 const removedToggleRoomSymbol = ['toggle', 'Room'].join('')
 const removedWebhookTokenSymbol = ['webhook', 'Token'].join('')
@@ -28,6 +32,15 @@ describe('RoomListPage', () => {
       '"Sakura Desk JP" is now enabled',
     )
     expect(getRoomToggleToastMessage('Sakura Desk JP', true)).toBe('"Sakura Desk JP" is now paused')
+  })
+
+  it('builds delete toasts with different messages for deleted and already-deleted outcomes', () => {
+    expect(getDeleteRoomToastMessage('Sakura Desk JP', 'deleted')).toBe(
+      'Room "Sakura Desk JP" deleted from Chatwork and dashboard',
+    )
+    expect(getDeleteRoomToastMessage('Sakura Desk JP', 'already_deleted')).toBe(
+      'Room "Sakura Desk JP" was already gone on Chatwork. Dashboard cleanup is complete',
+    )
   })
 
   it('renders the dashboard shell, stats, and loading placeholders before hydration', () => {
@@ -55,7 +68,7 @@ describe('RoomListPage', () => {
     expect(source).toContain('selectDisableRoom')
     expect(source).toContain('selectDeleteRoom')
     expect(source).not.toContain('useRoomStore((state) => state.')
-    expect(source).toContain('useAsyncAction<undefined>')
+    expect(source).toContain('useAsyncAction<DeleteRoomResult>')
     expect(source).toContain('RoomSkeletonList')
     expect(source).toContain('ApiError')
     expect(source).toContain('DeleteRoomConfirmModal')
@@ -66,7 +79,9 @@ describe('RoomListPage', () => {
     expect(source).not.toContain(removedToggleRoomSymbol)
     expect(source).not.toContain(removedWebhookTokenSymbol)
     expect(source).toContain('getRoomToggleToastMessage')
+    expect(source).toContain('getDeleteRoomToastMessage')
     expect(source).toContain('room.destinationRoomName')
+    expect(source).toContain('result.data.outcome')
     expect(source).toContain('toast(result.error,')
     expect(source).toContain('Retry')
     expect(source).toContain("'info'")

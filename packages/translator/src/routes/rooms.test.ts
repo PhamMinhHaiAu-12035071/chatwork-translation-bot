@@ -6,19 +6,26 @@ import { Elysia } from 'elysia'
 import { RoomConfigStore } from '~/services/room-config-store'
 
 const mockCreateChatworkRoom = mock(() => Promise.resolve({ room_id: 99001 }))
+const mockDeleteChatworkRoom = mock(() => Promise.resolve())
 
 void mock.module('@chatwork-bot/chatwork', () => ({
   createRoom: mockCreateChatworkRoom,
+  deleteRoom: mockDeleteChatworkRoom,
 }))
 
 const KEY_HEX = 'a'.repeat(64)
 const API_TOKEN = 'test-chatwork-token'
+const BOT_ACCOUNT_ID = 42
 
 async function buildApp(dataDir: string) {
   const store = new RoomConfigStore({ dataDir, encryptionKeyHex: KEY_HEX })
   await store.init()
   const { createRoomsRoutes } = await import('./rooms')
-  const routes = createRoomsRoutes({ store, chatworkApiToken: API_TOKEN })
+  const routes = createRoomsRoutes({
+    store,
+    chatworkApiToken: API_TOKEN,
+    chatworkBotAccountId: BOT_ACCOUNT_ID,
+  })
 
   return new Elysia().use(routes)
 }
@@ -63,6 +70,8 @@ async function createRoomForTest(app: AppHandle): Promise<{ id: string }> {
 afterEach(() => {
   mockCreateChatworkRoom.mockClear()
   mockCreateChatworkRoom.mockImplementation(() => Promise.resolve({ room_id: 99001 }))
+  mockDeleteChatworkRoom.mockClear()
+  mockDeleteChatworkRoom.mockImplementation(() => Promise.resolve())
 })
 
 describe('GET /api/rooms', () => {
@@ -189,6 +198,10 @@ describe('POST /api/rooms', () => {
     expect(body).toHaveProperty('webhookUrl')
     expect(body.webhookUrl).toBe('http://localhost/webhook')
     expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
+    expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
+      { name: 'Translation Output', members_admin_ids: BOT_ACCOUNT_ID.toString() },
+      API_TOKEN,
+    )
   })
 
   it('uses X-Forwarded-* headers for webhook URL when behind a proxy', async () => {
@@ -390,7 +403,7 @@ describe('DELETE /api/rooms/:id', () => {
     await rm(tmpDir, { recursive: true, force: true })
   })
 
-  it('deletes a room', async () => {
+  it('deletes a room on Chatwork and returns deleted outcome', async () => {
     const app = await buildApp(tmpDir)
     const room = await createRoomForTest(app)
 
@@ -398,7 +411,17 @@ describe('DELETE /api/rooms/:id', () => {
       new Request(`http://localhost/api/rooms/${room.id}`, { method: 'DELETE' }),
     )
 
-    expect(deleteRes.status).toBe(204)
+    expect(deleteRes.status).toBe(200)
+
+    const deleteBody = (await deleteRes.json()) as {
+      success?: boolean
+      data?: { outcome?: string }
+    }
+
+    expect(deleteBody.success).toBe(true)
+    expect(deleteBody.data?.outcome).toBe('deleted')
+    expect(mockDeleteChatworkRoom).toHaveBeenCalledTimes(1)
+    expect(mockDeleteChatworkRoom).toHaveBeenCalledWith(99001, API_TOKEN)
 
     const listRes = await app.handle(new Request('http://localhost/api/rooms'))
     const body = (await listRes.json()) as {
@@ -410,6 +433,63 @@ describe('DELETE /api/rooms/:id', () => {
     expect(body.data).toEqual([])
   })
 
+  it('treats a Chatwork 404 as already deleted and still removes the local config', async () => {
+    mockDeleteChatworkRoom.mockImplementationOnce(() =>
+      Promise.reject(Object.assign(new Error('Room not found'), { statusCode: 404 })),
+    )
+
+    const app = await buildApp(tmpDir)
+    const room = await createRoomForTest(app)
+
+    const deleteRes = await app.handle(
+      new Request(`http://localhost/api/rooms/${room.id}`, { method: 'DELETE' }),
+    )
+
+    expect(deleteRes.status).toBe(200)
+
+    const deleteBody = (await deleteRes.json()) as {
+      success?: boolean
+      data?: { outcome?: string }
+    }
+
+    expect(deleteBody.success).toBe(true)
+    expect(deleteBody.data?.outcome).toBe('already_deleted')
+
+    const listRes = await app.handle(new Request('http://localhost/api/rooms'))
+    const body = (await listRes.json()) as {
+      success?: boolean
+      data?: unknown[]
+    }
+
+    expect(body.success).toBe(true)
+    expect(body.data).toEqual([])
+  })
+
+  it('returns 502 and preserves the local config when Chatwork delete fails', async () => {
+    mockDeleteChatworkRoom.mockImplementationOnce(() =>
+      Promise.reject(Object.assign(new Error('Forbidden'), { statusCode: 403 })),
+    )
+
+    const app = await buildApp(tmpDir)
+    const room = await createRoomForTest(app)
+
+    const deleteRes = await app.handle(
+      new Request(`http://localhost/api/rooms/${room.id}`, { method: 'DELETE' }),
+    )
+
+    expect(deleteRes.status).toBe(502)
+
+    const listRes = await app.handle(new Request('http://localhost/api/rooms'))
+    const body = (await listRes.json()) as {
+      success?: boolean
+      data?: { id: string }[]
+    }
+
+    expect(body.success).toBe(true)
+    expect(body.data).toHaveLength(1)
+    expect(body.data?.[0]?.id).toBe(room.id)
+  })
+
   it('returns 404 when deleting an unknown room', async () => {
     const app = await buildApp(tmpDir)
     const response = await app.handle(
@@ -417,6 +497,7 @@ describe('DELETE /api/rooms/:id', () => {
     )
 
     expect(response.status).toBe(404)
+    expect(mockDeleteChatworkRoom).toHaveBeenCalledTimes(0)
   })
 })
 

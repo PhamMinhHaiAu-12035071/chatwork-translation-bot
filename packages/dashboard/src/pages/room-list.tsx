@@ -11,6 +11,7 @@ import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
+import type { DeleteRoomResult } from '~/lib/api-types'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import {
@@ -40,6 +41,17 @@ export function getRoomToggleToastMessage(roomName: string, currentlyEnabled: bo
   return `"${roomName}" is now ${currentlyEnabled ? 'paused' : 'enabled'}`
 }
 
+export function getDeleteRoomToastMessage(
+  roomName: string,
+  outcome: DeleteRoomResult['outcome'],
+): string {
+  if (outcome === 'already_deleted') {
+    return `Room "${roomName}" was already gone on Chatwork. Dashboard cleanup is complete`
+  }
+
+  return `Room "${roomName}" deleted from Chatwork and dashboard`
+}
+
 export function RoomListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -55,7 +67,7 @@ export function RoomListPage() {
     fallbackErrorMessage: 'Toggle failed',
     getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Toggle failed'),
   })
-  const deleteRoomAction = useAsyncAction<undefined>({
+  const deleteRoomAction = useAsyncAction<DeleteRoomResult>({
     fallbackErrorMessage: 'Delete failed',
     getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Delete failed'),
   })
@@ -90,10 +102,10 @@ export function RoomListPage() {
 
   const handleConfirmDelete = async () => {
     if (!selectedRoom) return
+    const room = selectedRoom
 
     const result = await deleteRoomAction.execute(async () => {
-      await deleteRoom(selectedRoom.id)
-      return undefined
+      return deleteRoom(room.id)
     })
 
     if (!result.ok) {
@@ -102,7 +114,7 @@ export function RoomListPage() {
       return
     }
 
-    toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
+    toast(getDeleteRoomToastMessage(room.destinationRoomName, result.data.outcome), 'warning')
     setSelectedRoom(null)
   }
 

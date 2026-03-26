@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { ApiError, apiClient } from '~/lib/api-client'
 import type {
   CreateRoomInput,
+  DeleteRoomResult,
   ProviderInfo,
   RoomConfigPublic,
   UpdateRoomInput,
@@ -107,7 +108,7 @@ beforeEach(() => {
       }),
   )
   deleteRoomSpy = spyOn(apiClient, 'deleteRoom').mockImplementation((_id: string) =>
-    Promise.resolve({ success: true, data: null }),
+    Promise.resolve({ success: true, data: { outcome: 'deleted' } }),
   )
   enableRoomSpy = spyOn(apiClient, 'enableRoom').mockImplementation((_id: string) =>
     Promise.resolve({ success: true, data: ENABLED_ROOM }),
@@ -205,7 +206,8 @@ describe('room store', () => {
     await useRoomStore.getState().disableRoom(CREATED_ROOM.id)
     expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM])
 
-    await useRoomStore.getState().deleteRoom(CREATED_ROOM.id)
+    const deleteResult = await useRoomStore.getState().deleteRoom(CREATED_ROOM.id)
+    expect(deleteResult).toEqual<DeleteRoomResult>({ outcome: 'deleted' })
     expect(useRoomStore.getState().rooms).toEqual([])
   })
 })

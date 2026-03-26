@@ -1,9 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { decrypt, encrypt } from '~/utils/encryption'
-import { ArchiveFileSchema, RoomConfigFileSchema, redactRoomConfig } from '~/types/room-config'
+import { RoomConfigFileSchema, redactRoomConfig } from '~/types/room-config'
 import type {
-  ArchiveFile,
   CreateRoomRequest,
   RoomConfig,
   RoomConfigFile,
@@ -36,7 +35,6 @@ function isEnoentError(error: unknown): error is NodeJS.ErrnoException {
 
 export class RoomConfigStore {
   private readonly configPath: string
-  private readonly archivePath: string
   private readonly encryptionKeyHex: string
   private roomsByOriginalId = new Map<number, RoomConfig>()
   private roomsById = new Map<string, RoomConfig>()
@@ -45,7 +43,6 @@ export class RoomConfigStore {
 
   constructor(options: RoomConfigStoreOptions) {
     this.configPath = join(options.dataDir, 'room-configs.json')
-    this.archivePath = join(options.dataDir, 'room-configs-archive.json')
     this.encryptionKeyHex = options.encryptionKeyHex
   }
 
@@ -171,17 +168,6 @@ export class RoomConfigStore {
       if (existing === undefined) {
         throw new RoomConfigStoreError(`Room ${id} not found`, 'NOT_FOUND')
       }
-
-      let archiveData: ArchiveFile
-      try {
-        const raw = await readFile(this.archivePath, 'utf-8')
-        archiveData = ArchiveFileSchema.parse(JSON.parse(raw))
-      } catch {
-        archiveData = { archived: [] }
-      }
-
-      archiveData.archived.push({ ...existing, archivedAt: new Date().toISOString() })
-      await this.writeAtomic(this.archivePath, JSON.stringify(archiveData, null, 2))
 
       const rooms = this.allRooms().filter((room) => room.id !== id)
       await this.writeConfig({ version: 1, rooms })

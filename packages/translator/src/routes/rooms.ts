@@ -1,4 +1,7 @@
-import { createRoom as createChatworkRoom } from '@chatwork-bot/chatwork'
+import {
+  createRoom as createChatworkRoom,
+  deleteRoom as deleteChatworkRoom,
+} from '@chatwork-bot/chatwork'
 import { Elysia, t } from 'elysia'
 import { RoomConfigStoreError } from '~/services/room-config-store'
 import { redactRoomConfig } from '~/types/room-config'
@@ -8,6 +11,7 @@ import type { RoomConfigStore } from '~/services/room-config-store'
 interface RoomsRoutesOptions {
   store: RoomConfigStore
   chatworkApiToken: string
+  chatworkBotAccountId: number
 }
 
 function resolvePublicOrigin(request: Request): string {
@@ -24,7 +28,20 @@ function errorResponse(status: number, error: string, details?: unknown) {
   }
 }
 
-export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOptions) {
+function hasStatusCode(error: unknown, statusCode: number): boolean {
+  return (
+    error instanceof Error &&
+    'statusCode' in error &&
+    typeof error.statusCode === 'number' &&
+    error.statusCode === statusCode
+  )
+}
+
+export function createRoomsRoutes({
+  store,
+  chatworkApiToken,
+  chatworkBotAccountId,
+}: RoomsRoutesOptions) {
   return new Elysia({ name: 'translator:rooms' })
     .get('/api/rooms', () => {
       return { success: true, data: store.list() }
@@ -78,7 +95,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
           const created = await createChatworkRoom(
             {
               name: data.destinationRoomName,
-              members_admin_ids: '0',
+              members_admin_ids: chatworkBotAccountId.toString(),
             },
             chatworkApiToken,
           )
@@ -127,19 +144,60 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
       { body: t.Unknown() },
     )
     .delete('/api/rooms/:id', async ({ params, set }) => {
+      const room = store.getById(params.id)
+      if (room === null) {
+        const response = errorResponse(404, 'Room not found')
+        set.status = response.status
+        return response.body
+      }
+
+      let outcome: 'deleted' | 'already_deleted' = 'deleted'
+
       try {
-        await store.delete(params.id)
-        set.status = 204
-        return undefined
+        await deleteChatworkRoom(room.destinationRoomId, chatworkApiToken)
       } catch (error) {
-        if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
-          const response = errorResponse(404, 'Room not found')
+        if (hasStatusCode(error, 404)) {
+          outcome = 'already_deleted'
+        } else {
+          const response = errorResponse(
+            502,
+            'Failed to delete destination room on Chatwork',
+            error instanceof Error ? error.message : String(error),
+          )
           set.status = response.status
           return response.body
         }
-
-        throw error
       }
+
+      try {
+        await store.delete(params.id)
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            service: 'translator',
+            event: 'room_delete_local_cleanup_failed',
+            roomId: params.id,
+            destinationRoomId: room.destinationRoomId,
+            outcome,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        )
+
+        if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
+          return { success: true, data: { outcome } }
+        }
+
+        const response = errorResponse(
+          500,
+          'Chatwork room was deleted, but local room cleanup failed',
+          error instanceof Error ? error.message : String(error),
+        )
+        set.status = response.status
+        return response.body
+      }
+
+      return { success: true, data: { outcome } }
     })
     .post('/api/rooms/:id/enable', async ({ params, set }) => {
       try {
