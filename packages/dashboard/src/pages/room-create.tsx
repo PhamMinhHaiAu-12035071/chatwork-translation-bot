@@ -8,6 +8,7 @@ import { BrutalSelect } from '~/components/ui/brutal-select'
 import { PageShell } from '~/components/ui/page-shell'
 import { StickerLabel } from '~/components/ui/sticker-label'
 import { useToast } from '~/components/ui/toast-provider'
+import { ApiError } from '~/lib/api-client'
 import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomCreateSchema } from '~/lib/room-schema'
 import type { RoomCreateInput } from '~/lib/room-schema'
@@ -32,13 +33,14 @@ export function getRoomCreatedToastMessage(roomName: string): string {
 export function RoomCreatePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const addRoom = useRoomStore((state) => state.addRoom)
+  const createRoom = useRoomStore((state) => state.createRoom)
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<RoomCreateInput>({
     resolver: roomCreateResolver,
@@ -48,6 +50,7 @@ export function RoomCreatePage() {
       aiModel: '',
       destinationRoomName: '',
       aiApiToken: '',
+      webhookSecret: '',
     },
   })
 
@@ -66,23 +69,34 @@ export function RoomCreatePage() {
     },
   })
 
-  const onSubmit = (data: RoomCreateInput) => {
+  const onSubmit = async (data: RoomCreateInput) => {
     const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
 
-    const newId = addRoom({
-      ...data,
-      aiModel: normalizedAiModel,
-    })
+    try {
+      const room = await createRoom({
+        ...data,
+        aiModel: normalizedAiModel,
+      })
 
-    toast(getRoomCreatedToastMessage(data.destinationRoomName))
-    void navigate(`/rooms/${newId}`)
+      toast(getRoomCreatedToastMessage(data.destinationRoomName))
+      void navigate(`/rooms/${room.id}`)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setError('originalRoomId', {
+          message: 'A room config for this Chatwork room already exists.',
+        })
+        return
+      }
+
+      toast(error instanceof ApiError ? error.message : 'Failed to create room', 'error')
+    }
   }
 
   return (
     <PageShell
       eyebrow="New Room"
       title="Set up a translation room"
-      description="Configure the Chatwork source room, AI provider, and translation preferences. Webhook activation happens after saving."
+      description="Configure the Chatwork source room, AI provider, translation preferences, and webhook secret before saving."
     >
       <form
         onSubmit={(event) => {
@@ -138,9 +152,16 @@ export function RoomCreatePage() {
               <BrutalInput
                 label="AI API Token"
                 type="password"
-                hint="Your provider API key. Stored in memory only."
+                hint="Your provider API key for the selected translation service."
                 error={errors.aiApiToken?.message}
                 {...register('aiApiToken')}
+              />
+              <BrutalInput
+                label="Webhook Secret"
+                type="password"
+                hint="The token from Chatwork after saving the webhook. Follow the Webhook Guide first."
+                error={errors.webhookSecret?.message}
+                {...register('webhookSecret')}
               />
             </div>
 
@@ -168,8 +189,8 @@ export function RoomCreatePage() {
             <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
               <StickerLabel tone="warning">Manual Step Required</StickerLabel>
               <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                After creating the room you will need to configure a Chatwork webhook and paste the
-                token into the dashboard to go live.
+                Before creating a room, set up a Chatwork webhook and have the webhook secret ready.
+                Follow the Webhook Guide.
               </p>
               <button
                 type="button"
@@ -187,8 +208,8 @@ export function RoomCreatePage() {
                 Tip
               </StickerLabel>
               <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                The AI API token is kept in browser memory only. No data leaves your browser until
-                the API integration is wired up in Phase 5.
+                Secrets are only sent when you save this form, and the dashboard will not show them
+                again after the room is created.
               </p>
             </BrutalCard>
           </div>

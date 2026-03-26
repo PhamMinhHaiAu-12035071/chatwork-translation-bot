@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
@@ -8,17 +8,14 @@ import { BrutalInput } from '~/components/ui/brutal-input'
 import { BrutalSelect } from '~/components/ui/brutal-select'
 import { PageShell } from '~/components/ui/page-shell'
 import { PixelScatterText } from '~/components/ui/pixel-scatter-text'
+import { RoomSkeletonCard } from '~/components/ui/room-skeleton'
 import { StatusPill } from '~/components/ui/status-pill'
 import { StickerLabel } from '~/components/ui/sticker-label'
 import { useToast } from '~/components/ui/toast-provider'
+import { ApiError } from '~/lib/api-client'
 import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
-import {
-  AI_PROVIDERS,
-  TRANSLATION_STYLES,
-  roomEditSchema,
-  webhookActivationSchema,
-} from '~/lib/room-schema'
-import type { RoomEditInput, WebhookActivationInput } from '~/lib/room-schema'
+import { AI_PROVIDERS, TRANSLATION_STYLES, roomEditSchema } from '~/lib/room-schema'
+import type { RoomEditInput } from '~/lib/room-schema'
 import { useRoomStore } from '~/stores/room-store'
 
 const providerOptions = AI_PROVIDERS.map((provider) => ({
@@ -32,9 +29,6 @@ const styleOptions = TRANSLATION_STYLES.map((style) => ({
 }))
 
 const roomEditResolver = zodResolver(roomEditSchema as never) as Resolver<RoomEditInput>
-const webhookActivationResolver = zodResolver(
-  webhookActivationSchema as never,
-) as Resolver<WebhookActivationInput>
 
 function generateWebhookUrl(roomId: string): string {
   const base =
@@ -52,9 +46,14 @@ export function RoomDetailPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const room = useRoomStore((state) => state.rooms.find((candidate) => candidate.id === id))
+  const rooms = useRoomStore((state) => state.rooms)
+  const listState = useRoomStore((state) => state.listState)
+  const fetchRooms = useRoomStore((state) => state.fetchRooms)
   const updateRoom = useRoomStore((state) => state.updateRoom)
-  const activateWebhook = useRoomStore((state) => state.activateWebhook)
+  const enableRoom = useRoomStore((state) => state.enableRoom)
+  const disableRoom = useRoomStore((state) => state.disableRoom)
+  const room = rooms.find((candidate) => candidate.id === id)
+
   const editDefaults: RoomEditInput = room
     ? {
         originalRoomId: room.originalRoomId,
@@ -62,7 +61,8 @@ export function RoomDetailPage() {
         aiProvider: room.aiProvider,
         aiModel: room.aiModel ?? '',
         translationStyle: room.translationStyle,
-        aiApiToken: room.aiApiToken,
+        aiApiToken: '',
+        webhookSecret: '',
       }
     : {
         originalRoomId: 0,
@@ -71,6 +71,7 @@ export function RoomDetailPage() {
         aiModel: '',
         translationStyle: 'AUTO_CONTEXT',
         aiApiToken: '',
+        webhookSecret: '',
       }
 
   const editForm = useForm<RoomEditInput>({
@@ -78,14 +79,37 @@ export function RoomDetailPage() {
     defaultValues: editDefaults,
   })
 
-  const activationForm = useForm<WebhookActivationInput>({
-    resolver: webhookActivationResolver,
-    defaultValues: {
-      webhookToken: '',
-    },
-  })
-
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!room && listState === 'idle') {
+      void fetchRooms()
+    }
+  }, [fetchRooms, listState, room])
+
+  useEffect(() => {
+    if (!room) {
+      return
+    }
+
+    editForm.reset({
+      originalRoomId: room.originalRoomId,
+      destinationRoomName: room.destinationRoomName,
+      aiProvider: room.aiProvider,
+      aiModel: room.aiModel ?? '',
+      translationStyle: room.translationStyle,
+      aiApiToken: '',
+      webhookSecret: '',
+    })
+  }, [editForm, room])
+
+  if ((listState === 'loading' || listState === 'idle') && !room) {
+    return (
+      <PageShell eyebrow="Loading…" title="Room Detail" description="">
+        <RoomSkeletonCard />
+      </PageShell>
+    )
+  }
 
   if (!room) {
     return (
@@ -141,27 +165,29 @@ export function RoomDetailPage() {
     }, 2000)
   }
 
-  const onEditSubmit = (data: RoomEditInput) => {
-    const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
+  const onEditSubmit = async (data: RoomEditInput) => {
+    const normalizedAiModel = data.aiModel === '' ? null : data.aiModel
 
-    updateRoom(room.id, {
-      ...data,
-      aiModel: normalizedAiModel,
-    })
-    toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
-  }
-
-  const onActivateSubmit = (data: WebhookActivationInput) => {
-    activateWebhook(room.id, data.webhookToken)
-    toast('Webhook activated! Room is now live.')
-    activationForm.reset()
+    try {
+      await updateRoom(room.id, {
+        destinationRoomName: data.destinationRoomName,
+        aiProvider: data.aiProvider,
+        aiModel: normalizedAiModel,
+        translationStyle: data.translationStyle,
+        ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
+        ...(data.webhookSecret !== '' ? { webhookSecret: data.webhookSecret } : {}),
+      })
+      toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : 'Update failed', 'error')
+    }
   }
 
   return (
     <PageShell
       eyebrow="Room Detail"
       title={room.destinationRoomName}
-      description="Edit room configuration or complete webhook activation to go live."
+      description="Edit room configuration, update secrets, or manage live translation status."
       actions={
         <StatusPill tone={room.enabled ? 'success' : 'warning'}>
           <PixelScatterText value={room.enabled ? 'Live' : 'Inactive'} reserveText="Inactive" />
@@ -228,6 +254,13 @@ export function RoomDetailPage() {
                 error={editForm.formState.errors.aiApiToken?.message}
                 {...editForm.register('aiApiToken')}
               />
+              <BrutalInput
+                label="Webhook Secret"
+                type="password"
+                hint="Leave blank to keep existing. Paste new secret to update."
+                error={editForm.formState.errors.webhookSecret?.message}
+                {...editForm.register('webhookSecret')}
+              />
             </div>
 
             <div className="flex flex-wrap gap-3 pt-2">
@@ -252,10 +285,10 @@ export function RoomDetailPage() {
 
         <div className="space-y-5">
           <BrutalCard className="theme-card-peach space-y-4" tilt="right">
-            <StickerLabel tone={room.webhookToken ? 'success' : 'warning'} tilt="right">
+            <StickerLabel tone={room.enabled ? 'success' : 'warning'} tilt="right">
               <PixelScatterText
-                value={room.webhookToken ? 'Webhook Active' : 'Webhook Activation'}
-                reserveText="Webhook Activation"
+                value={room.enabled ? 'Webhook Live' : 'Webhook Ready'}
+                reserveText="Webhook Ready"
               />
             </StickerLabel>
 
@@ -286,9 +319,8 @@ export function RoomDetailPage() {
             </div>
 
             <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-              {room.webhookToken
-                ? 'Webhook token is configured. Room is active.'
-                : 'Paste the Chatwork webhook token below to activate translation.'}
+              Copy this URL into Chatwork when configuring the webhook, then use the room status
+              controls below to pause or resume translation delivery.
             </p>
 
             <button
@@ -302,28 +334,36 @@ export function RoomDetailPage() {
             </button>
           </BrutalCard>
 
-          <form
-            onSubmit={(event) => {
-              void activationForm.handleSubmit(onActivateSubmit)(event)
-            }}
-            noValidate
-          >
-            <BrutalCard className="theme-card-cream space-y-4">
-              <BrutalInput
-                label="Webhook Token"
-                type="password"
-                hint="The token shown by Chatwork after saving the webhook."
-                error={activationForm.formState.errors.webhookToken?.message}
-                {...activationForm.register('webhookToken')}
+          <BrutalCard className="theme-card-cream space-y-4">
+            <StickerLabel tone={room.enabled ? 'success' : 'warning'}>Room Status</StickerLabel>
+            <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
+              {room.enabled
+                ? 'Room is enabled. Translation is active for incoming webhooks.'
+                : 'Room is disabled. Enable to start receiving translations.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void (room.enabled ? disableRoom(room.id) : enableRoom(room.id))
+                  .then(() => {
+                    const message = `"${room.destinationRoomName}" is now ${room.enabled ? 'paused' : 'enabled'}`
+                    toast(message, 'info')
+                  })
+                  .catch((error: unknown) => {
+                    toast(error instanceof ApiError ? error.message : 'Failed', 'error')
+                  })
+              }}
+              className={[
+                'brutal-button w-full py-3 font-heading text-sm font-bold',
+                room.enabled ? 'theme-button-warm text-white' : 'theme-button-violet text-white',
+              ].join(' ')}
+            >
+              <PixelScatterText
+                value={room.enabled ? 'Disable Room' : 'Enable Room'}
+                reserveText="Disable Room"
               />
-              <button
-                type="submit"
-                className="brutal-button theme-button-violet w-full py-3 font-heading text-sm font-bold text-white"
-              >
-                Activate Webhook
-              </button>
-            </BrutalCard>
-          </form>
+            </button>
+          </BrutalCard>
         </div>
       </div>
     </PageShell>

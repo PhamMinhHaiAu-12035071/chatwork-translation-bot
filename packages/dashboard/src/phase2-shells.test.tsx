@@ -24,14 +24,13 @@ function renderWithRoute(path: string, routePath: string, element: ReactElement)
 }
 
 describe('dashboard visual shells', () => {
-  it('renders the live room dashboard copy and seeded room cards', () => {
+  it('renders the live room dashboard shell before client hydration', () => {
     const html = renderWithRoute('/', '/', createElement(RoomListPage))
 
     expect(html).toContain('Translation Rooms')
-    expect(html).toContain('Sakura Desk JP')
-    expect(html).toContain('Gamma Team EN')
     expect(html).toContain('+ New Room')
     expect(html).toContain('Webhook Guide')
+    expect(html).toContain('theme-card-cream')
   })
 
   it('keeps the matcha milk backdrop with brighter candy accents after wiring live data', async () => {
@@ -143,13 +142,12 @@ describe('dashboard visual shells', () => {
     expect(html).toContain('Create Room')
   })
 
-  it('renders the live room detail flow for a route param', () => {
+  it('renders the live room detail loading shell for a route param', () => {
     const html = renderWithRoute('/rooms/room-001', '/rooms/:id', createElement(RoomDetailPage))
 
     expect(html).toContain('Room Detail')
-    expect(html).toContain('Sakura Desk JP')
-    expect(html).toContain('Room Config')
-    expect(html).toContain('Activate Webhook')
+    expect(html).toContain('Loading…')
+    expect(html).toContain('theme-card-cream')
   })
 
   it('renders six webhook guide steps', () => {

@@ -27,42 +27,39 @@ describe('RoomListPage', () => {
     expect(getRoomToggleToastMessage('Sakura Desk JP', true)).toBe('"Sakura Desk JP" is now paused')
   })
 
-  it('renders seeded room data and live dashboard actions', () => {
+  it('renders the dashboard shell, stats, and loading placeholders before hydration', () => {
     const html = renderRoomListPage()
-    const roomIdOccurrences = html.match(/Room ID:/g) ?? []
 
     expect(html).toContain('Translation Rooms')
     expect(html).toContain('Total Rooms')
-    expect(html).toContain('Awaiting Webhook')
-    expect(html).toContain('Sakura Desk JP')
-    expect(html).toContain('Gamma Team EN')
-    expect(html).toContain('Kyoto Finance Hub')
-    expect(html).toContain('Nagoya CX Lab')
-    expect(html).toContain('OpenAI')
-    expect(html).toContain('Technical')
+    expect(html).toContain('Inactive')
     expect(html).toContain('+ New Room')
     expect(html).toContain('Webhook Guide')
-    expect(html).toContain('Edit')
-    expect(html).toContain('Pause')
-    expect(html).toContain('Enable')
-    expect(html).toContain('Delete')
-    expect(roomIdOccurrences).toHaveLength(12)
+    expect(html).toContain('theme-card-cream')
+    expect(html).toContain('bg-[var(--card-glass)]')
   })
 
-  it('keeps room toggle/delete logic in the source', async () => {
+  it('wires fetch, loading, error, enable/disable, delete, and retry logic in the source', async () => {
     const source = await Bun.file(new URL('./room-list.tsx', import.meta.url)).text()
 
-    expect(source).toContain('toggleRoom')
+    expect(source).toContain('fetchRooms')
+    expect(source).toContain('enableRoom')
+    expect(source).toContain('disableRoom')
     expect(source).toContain('deleteRoom')
+    expect(source).toContain('RoomSkeletonList')
+    expect(source).toContain('ApiError')
     expect(source).toContain('DeleteRoomConfirmModal')
     expect(source).toContain('selectedRoom')
     expect(source).toContain('setSelectedRoom')
     expect(source).not.toContain('window.confirm')
+    expect(source).not.toContain('toggleRoom')
+    expect(source).not.toContain('webhookToken')
     expect(source).toContain('getRoomToggleToastMessage')
     expect(source).toContain('room.destinationRoomName')
-    expect(source).not.toContain("toast(currentlyEnabled ? 'Room disabled' : 'Room enabled')")
+    expect(source).toContain('Retry')
     expect(source).toContain("'info'")
     expect(source).toContain("'warning'")
+    expect(source).toContain("'error'")
   })
 
   it('keeps a stable room-card header footprint when the status label changes', async () => {

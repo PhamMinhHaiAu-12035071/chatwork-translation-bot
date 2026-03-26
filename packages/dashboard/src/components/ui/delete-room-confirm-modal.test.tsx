@@ -6,14 +6,14 @@ import { DeleteRoomConfirmModal } from '~/components/ui/delete-room-confirm-moda
 const TEST_ROOM = {
   id: 'room-001',
   originalRoomId: 123456789,
+  destinationRoomId: 99001,
   destinationRoomName: 'Sakura Desk JP',
   aiProvider: 'openai' as const,
   aiModel: 'gpt-4o',
   translationStyle: 'PROFESSIONAL_BUSINESS' as const,
-  aiApiToken: 'sk-test-001',
-  webhookToken: 'cw-token-abc123',
   enabled: true,
   createdAt: '2026-03-20T09:00:00Z',
+  updatedAt: '2026-03-20T09:00:00Z',
 }
 
 describe('DeleteRoomConfirmModal', () => {

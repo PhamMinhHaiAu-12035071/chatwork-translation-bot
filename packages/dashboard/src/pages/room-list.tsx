@@ -1,16 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router'
 import { BrutalCard } from '~/components/ui/brutal-card'
 import { DeleteRoomConfirmModal } from '~/components/ui/delete-room-confirm-modal'
 import { PageShell } from '~/components/ui/page-shell'
 import { PixelScatterText } from '~/components/ui/pixel-scatter-text'
+import { RoomSkeletonList } from '~/components/ui/room-skeleton'
 import { SlideStackNumber } from '~/components/ui/slide-stack-number'
 import { StatusPill } from '~/components/ui/status-pill'
 import { StickerLabel } from '~/components/ui/sticker-label'
 import { useToast } from '~/components/ui/toast-provider'
+import { ApiError } from '~/lib/api-client'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
-import { useRoomStore, type Room } from '~/stores/room-store'
+import { selectListError, selectListState, useRoomStore, type Room } from '~/stores/room-store'
 
 const cardThemeByIndex = [
   'theme-card-lilac',
@@ -31,22 +33,46 @@ export function RoomListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const rooms = useRoomStore((state) => state.rooms)
-  const toggleRoom = useRoomStore((state) => state.toggleRoom)
+  const listState = useRoomStore(selectListState)
+  const listError = useRoomStore(selectListError)
+  const fetchRooms = useRoomStore((state) => state.fetchRooms)
+  const enableRoom = useRoomStore((state) => state.enableRoom)
+  const disableRoom = useRoomStore((state) => state.disableRoom)
   const deleteRoom = useRoomStore((state) => state.deleteRoom)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
 
-  const activeCount = rooms.filter((room) => room.enabled).length
-  const pendingWebhook = rooms.filter((room) => !room.webhookToken).length
+  useEffect(() => {
+    if (listState === 'idle') {
+      void fetchRooms()
+    }
+  }, [fetchRooms, listState])
 
-  const handleToggle = (id: string, roomName: string, currentlyEnabled: boolean) => {
-    toggleRoom(id)
-    toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
+  const activeCount = rooms.filter((room) => room.enabled).length
+  const inactiveCount = rooms.filter((room) => !room.enabled).length
+
+  const handleToggle = async (id: string, roomName: string, currentlyEnabled: boolean) => {
+    try {
+      if (currentlyEnabled) {
+        await disableRoom(id)
+      } else {
+        await enableRoom(id)
+      }
+      toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : 'Toggle failed', 'error')
+    }
   }
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!selectedRoom) return
-    deleteRoom(selectedRoom.id)
-    toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
+
+    try {
+      await deleteRoom(selectedRoom.id)
+      toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : 'Delete failed', 'error')
+    }
+
     setSelectedRoom(null)
   }
 
@@ -95,8 +121,8 @@ export function RoomListPage() {
             tilt: 'flat' as const,
           },
           {
-            label: 'Awaiting Webhook',
-            value: pendingWebhook,
+            label: 'Inactive',
+            value: inactiveCount,
             tone: 'warning' as const,
             theme: 'theme-card-butter',
             tilt: 'right' as const,
@@ -115,7 +141,25 @@ export function RoomListPage() {
         ))}
       </div>
 
-      {rooms.length === 0 ? (
+      {listState === 'loading' || listState === 'idle' ? <RoomSkeletonList count={6} /> : null}
+
+      {listState === 'error' ? (
+        <BrutalCard className="theme-card-blush space-y-3">
+          <StickerLabel tone="warning">Error</StickerLabel>
+          <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">{listError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              void fetchRooms()
+            }}
+            className="brutal-button theme-button-warm px-4 py-2 font-heading text-sm font-bold text-white"
+          >
+            Retry
+          </button>
+        </BrutalCard>
+      ) : null}
+
+      {listState === 'success' && rooms.length === 0 ? (
         <BrutalCard className="theme-card-sky space-y-5">
           <StatusPill tone="warning">Empty State</StatusPill>
           <div className="space-y-3">
@@ -183,9 +227,6 @@ export function RoomListPage() {
                         <span className="font-semibold">Style: </span>
                         {TRANSLATION_STYLE_LABELS[room.translationStyle]}
                       </div>
-                      {!room.webhookToken ? (
-                        <StatusPill tone="warning">Webhook not configured</StatusPill>
-                      ) : null}
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -201,7 +242,7 @@ export function RoomListPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          handleToggle(room.id, room.destinationRoomName, room.enabled)
+                          void handleToggle(room.id, room.destinationRoomName, room.enabled)
                         }}
                         className={[
                           'brutal-button px-4 py-1.5 font-heading text-xs font-bold',
@@ -241,7 +282,9 @@ export function RoomListPage() {
           onCancel={() => {
             setSelectedRoom(null)
           }}
-          onConfirm={handleConfirmDelete}
+          onConfirm={() => {
+            void handleConfirmDelete()
+          }}
         />
       ) : null}
     </PageShell>
