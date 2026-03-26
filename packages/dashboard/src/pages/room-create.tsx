@@ -12,7 +12,8 @@ import { ApiError } from '~/lib/api-client'
 import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomCreateSchema } from '~/lib/room-schema'
 import type { RoomCreateInput } from '~/lib/room-schema'
-import { useRoomStore } from '~/stores/room-store'
+import { useAsyncAction } from '~/hooks/use-async-action'
+import { useRoomStore, type Room } from '~/stores/room-store'
 
 const providerOptions = AI_PROVIDERS.map((provider) => ({
   value: provider,
@@ -34,6 +35,11 @@ export function RoomCreatePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const createRoom = useRoomStore((state) => state.createRoom)
+  const createRoomAction = useAsyncAction<Room>({
+    fallbackErrorMessage: 'Failed to create room',
+    getErrorMessage: (error) =>
+      error instanceof ApiError ? error.message : 'Failed to create room',
+  })
 
   const {
     register,
@@ -72,24 +78,27 @@ export function RoomCreatePage() {
   const onSubmit = async (data: RoomCreateInput) => {
     const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
 
-    try {
-      const room = await createRoom({
+    const result = await createRoomAction.execute(() =>
+      createRoom({
         ...data,
         aiModel: normalizedAiModel,
-      })
+      }),
+    )
 
-      toast(getRoomCreatedToastMessage(data.destinationRoomName))
-      void navigate(`/rooms/${room.id}`)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
+    if (!result.ok) {
+      if (result.cause instanceof ApiError && result.cause.status === 409) {
         setError('originalRoomId', {
           message: 'A room config for this Chatwork room already exists.',
         })
         return
       }
 
-      toast(error instanceof ApiError ? error.message : 'Failed to create room', 'error')
+      toast(result.error, 'error')
+      return
     }
+
+    toast(getRoomCreatedToastMessage(data.destinationRoomName))
+    void navigate(`/rooms/${result.data.id}`)
   }
 
   return (

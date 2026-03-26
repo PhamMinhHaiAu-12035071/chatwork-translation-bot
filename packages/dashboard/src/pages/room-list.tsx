@@ -11,6 +11,7 @@ import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
+import { useAsyncAction } from '~/hooks/use-async-action'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { selectListError, selectListState, useRoomStore, type Room } from '~/stores/room-store'
 
@@ -40,6 +41,14 @@ export function RoomListPage() {
   const disableRoom = useRoomStore((state) => state.disableRoom)
   const deleteRoom = useRoomStore((state) => state.deleteRoom)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
+  const roomToggleAction = useAsyncAction<undefined>({
+    fallbackErrorMessage: 'Toggle failed',
+    getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Toggle failed'),
+  })
+  const deleteRoomAction = useAsyncAction<undefined>({
+    fallbackErrorMessage: 'Delete failed',
+    getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Delete failed'),
+  })
 
   useEffect(() => {
     if (listState === 'idle') {
@@ -51,28 +60,39 @@ export function RoomListPage() {
   const inactiveCount = rooms.filter((room) => !room.enabled).length
 
   const handleToggle = async (id: string, roomName: string, currentlyEnabled: boolean) => {
-    try {
+    const result = await roomToggleAction.execute(async () => {
       if (currentlyEnabled) {
         await disableRoom(id)
       } else {
         await enableRoom(id)
       }
-      toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
-    } catch (error) {
-      toast(error instanceof ApiError ? error.message : 'Toggle failed', 'error')
+
+      return undefined
+    })
+
+    if (!result.ok) {
+      toast(result.error, 'error')
+      return
     }
+
+    toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
   }
 
   const handleConfirmDelete = async () => {
     if (!selectedRoom) return
 
-    try {
+    const result = await deleteRoomAction.execute(async () => {
       await deleteRoom(selectedRoom.id)
-      toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
-    } catch (error) {
-      toast(error instanceof ApiError ? error.message : 'Delete failed', 'error')
+      return undefined
+    })
+
+    if (!result.ok) {
+      toast(result.error, 'error')
+      setSelectedRoom(null)
+      return
     }
 
+    toast(`Room "${selectedRoom.destinationRoomName}" deleted`, 'warning')
     setSelectedRoom(null)
   }
 
@@ -278,7 +298,7 @@ export function RoomListPage() {
         <DeleteRoomConfirmModal
           room={selectedRoom}
           isOpen
-          isDeleting={false}
+          isDeleting={deleteRoomAction.loading}
           onCancel={() => {
             setSelectedRoom(null)
           }}

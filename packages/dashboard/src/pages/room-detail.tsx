@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
@@ -12,11 +12,13 @@ import { RoomSkeletonCard } from '~/components/organisms/room-skeleton'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
+import { useAsyncAction } from '~/hooks/use-async-action'
+import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
 import { ApiError } from '~/lib/api-client'
 import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomEditSchema } from '~/lib/room-schema'
 import type { RoomEditInput } from '~/lib/room-schema'
-import { useRoomStore } from '~/stores/room-store'
+import { useRoomStore, type Room } from '~/stores/room-store'
 
 const providerOptions = AI_PROVIDERS.map((provider) => ({
   value: provider,
@@ -53,6 +55,15 @@ export function RoomDetailPage() {
   const enableRoom = useRoomStore((state) => state.enableRoom)
   const disableRoom = useRoomStore((state) => state.disableRoom)
   const room = rooms.find((candidate) => candidate.id === id)
+  const { copied, copy } = useCopyClipboard()
+  const updateRoomAction = useAsyncAction<Room>({
+    fallbackErrorMessage: 'Update failed',
+    getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Update failed'),
+  })
+  const roomStatusAction = useAsyncAction<undefined>({
+    fallbackErrorMessage: 'Failed',
+    getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Failed'),
+  })
 
   const editDefaults: RoomEditInput = room
     ? {
@@ -78,8 +89,6 @@ export function RoomDetailPage() {
     resolver: roomEditResolver,
     defaultValues: editDefaults,
   })
-
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!room && listState === 'idle') {
@@ -149,38 +158,46 @@ export function RoomDetailPage() {
 
   const webhookUrl = generateWebhookUrl(String(room.originalRoomId))
 
-  const handleCopyUrl = async () => {
-    const clipboard = navigator.clipboard as
-      | { writeText?: (value: string) => Promise<void> }
-      | undefined
-
-    if (!clipboard?.writeText) {
-      return
-    }
-
-    await clipboard.writeText(webhookUrl)
-    setCopied(true)
-    setTimeout(() => {
-      setCopied(false)
-    }, 2000)
-  }
-
   const onEditSubmit = async (data: RoomEditInput) => {
     const normalizedAiModel = data.aiModel === '' ? null : data.aiModel
 
-    try {
-      await updateRoom(room.id, {
+    const result = await updateRoomAction.execute(() =>
+      updateRoom(room.id, {
         destinationRoomName: data.destinationRoomName,
         aiProvider: data.aiProvider,
         aiModel: normalizedAiModel,
         translationStyle: data.translationStyle,
         ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
         ...(data.webhookSecret !== '' ? { webhookSecret: data.webhookSecret } : {}),
-      })
-      toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
-    } catch (error) {
-      toast(error instanceof ApiError ? error.message : 'Update failed', 'error')
+      }),
+    )
+
+    if (!result.ok) {
+      toast(result.error, 'error')
+      return
     }
+
+    toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
+  }
+
+  const handleRoomStatusToggle = async () => {
+    const result = await roomStatusAction.execute(async () => {
+      if (room.enabled) {
+        await disableRoom(room.id)
+      } else {
+        await enableRoom(room.id)
+      }
+
+      return undefined
+    })
+
+    if (!result.ok) {
+      toast(result.error, 'error')
+      return
+    }
+
+    const message = `"${room.destinationRoomName}" is now ${room.enabled ? 'paused' : 'enabled'}`
+    toast(message, 'info')
   }
 
   return (
@@ -306,7 +323,7 @@ export function RoomDetailPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    void handleCopyUrl()
+                    void copy(webhookUrl)
                   }}
                   className={[
                     'brutal-button shrink-0 min-w-[80px] px-4 py-1.5 text-center font-heading text-xs font-bold',
@@ -343,18 +360,12 @@ export function RoomDetailPage() {
             </p>
             <button
               type="button"
+              disabled={roomStatusAction.loading}
               onClick={() => {
-                void (room.enabled ? disableRoom(room.id) : enableRoom(room.id))
-                  .then(() => {
-                    const message = `"${room.destinationRoomName}" is now ${room.enabled ? 'paused' : 'enabled'}`
-                    toast(message, 'info')
-                  })
-                  .catch((error: unknown) => {
-                    toast(error instanceof ApiError ? error.message : 'Failed', 'error')
-                  })
+                void handleRoomStatusToggle()
               }}
               className={[
-                'brutal-button w-full py-3 font-heading text-sm font-bold',
+                'brutal-button w-full py-3 font-heading text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
                 room.enabled ? 'theme-button-warm text-white' : 'theme-button-violet text-white',
               ].join(' ')}
             >

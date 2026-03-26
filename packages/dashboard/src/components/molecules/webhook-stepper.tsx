@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
+import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
 
 interface WebhookStepperProps {
   webhookUrl?: string
@@ -80,7 +81,7 @@ const DEFAULT_PILL_COLOR = 'bg-[var(--accent)]'
 
 export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
   const [activeStep, setActiveStep] = useState(0)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyClipboard()
 
   const activeConfig = STEPS[activeStep]
   const activeTheme = CARD_THEMES[activeStep]
@@ -99,19 +100,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
 
   const handleCopy = async () => {
     const url = webhookUrl ?? 'https://your-server.example.com/webhook'
-    const clipboard = navigator.clipboard as
-      | { writeText?: (value: string) => Promise<void> }
-      | undefined
-
-    if (!clipboard?.writeText) {
-      return
-    }
-
-    await clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => {
-      setCopied(false)
-    }, 2000)
+    await copy(url)
   }
 
   return (
