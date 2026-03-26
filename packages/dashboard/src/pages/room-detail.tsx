@@ -18,7 +18,16 @@ import { ApiError } from '~/lib/api-client'
 import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomEditSchema } from '~/lib/room-schema'
 import type { RoomEditInput } from '~/lib/room-schema'
-import { useRoomStore, type Room } from '~/stores/room-store'
+import {
+  selectDisableRoom,
+  selectEnableRoom,
+  selectFetchRooms,
+  selectListState,
+  selectRoomById,
+  selectUpdateRoom,
+  useRoomStore,
+  type Room,
+} from '~/stores/room-store'
 
 const providerOptions = AI_PROVIDERS.map((provider) => ({
   value: provider,
@@ -44,17 +53,16 @@ export function getRoomUpdatedToastMessage(roomName: string): string {
 }
 
 export function RoomDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id = '' } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const rooms = useRoomStore((state) => state.rooms)
-  const listState = useRoomStore((state) => state.listState)
-  const fetchRooms = useRoomStore((state) => state.fetchRooms)
-  const updateRoom = useRoomStore((state) => state.updateRoom)
-  const enableRoom = useRoomStore((state) => state.enableRoom)
-  const disableRoom = useRoomStore((state) => state.disableRoom)
-  const room = rooms.find((candidate) => candidate.id === id)
+  const room = useRoomStore(selectRoomById(id))
+  const listState = useRoomStore(selectListState)
+  const fetchRooms = useRoomStore(selectFetchRooms)
+  const updateRoom = useRoomStore(selectUpdateRoom)
+  const enableRoom = useRoomStore(selectEnableRoom)
+  const disableRoom = useRoomStore(selectDisableRoom)
   const { copied, copy } = useCopyClipboard()
   const updateRoomAction = useAsyncAction<Room>({
     fallbackErrorMessage: 'Update failed',

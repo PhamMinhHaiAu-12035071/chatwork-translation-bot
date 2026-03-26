@@ -50,7 +50,8 @@ describe('RoomCreatePage', () => {
 
     expect(source).toContain('useForm<RoomCreateInput>')
     expect(source).toContain('const roomCreateResolver = zodResolver(roomCreateSchema as never)')
-    expect(source).toContain('const createRoom = useRoomStore')
+    expect(source).toContain('selectCreateRoom')
+    expect(source).not.toContain('useRoomStore((state) => state.')
     expect(source).toContain('useAsyncAction<Room>')
     expect(source).toContain("register('webhookSecret')")
     expect(source).toContain('setError')

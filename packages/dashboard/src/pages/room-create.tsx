@@ -13,7 +13,7 @@ import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/li
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomCreateSchema } from '~/lib/room-schema'
 import type { RoomCreateInput } from '~/lib/room-schema'
 import { useAsyncAction } from '~/hooks/use-async-action'
-import { useRoomStore, type Room } from '~/stores/room-store'
+import { selectCreateRoom, useRoomStore, type Room } from '~/stores/room-store'
 
 const providerOptions = AI_PROVIDERS.map((provider) => ({
   value: provider,
@@ -34,7 +34,7 @@ export function getRoomCreatedToastMessage(roomName: string): string {
 export function RoomCreatePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const createRoom = useRoomStore((state) => state.createRoom)
+  const createRoom = useRoomStore(selectCreateRoom)
   const createRoomAction = useAsyncAction<Room>({
     fallbackErrorMessage: 'Failed to create room',
     getErrorMessage: (error) =>

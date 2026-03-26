@@ -14,7 +14,7 @@ type LoadState = 'idle' | 'loading' | 'success' | 'error'
 export type { AiProvider, TranslationStyle }
 export type Room = RoomConfigPublic
 
-interface RoomStore {
+interface RoomStoreState {
   rooms: Room[]
   providers: ProviderInfo[]
   listState: LoadState
@@ -40,7 +40,7 @@ function upsertRoom(rooms: Room[], nextRoom: Room): Room[] {
     : [...rooms, nextRoom]
 }
 
-export const useRoomStore = create<RoomStore>()((set) => ({
+export const useRoomStore = create<RoomStoreState>()((set) => ({
   rooms: [],
   providers: [],
   listState: 'idle',
@@ -161,7 +161,17 @@ export const useRoomStore = create<RoomStore>()((set) => ({
   },
 }))
 
-export const selectRooms = (state: RoomStore) => state.rooms
-export const selectProviders = (state: RoomStore) => state.providers
-export const selectListState = (state: RoomStore) => state.listState
-export const selectListError = (state: RoomStore) => state.listError
+export const selectRooms = (state: RoomStoreState) => state.rooms
+export const selectRoomById = (id: string) => (state: RoomStoreState) =>
+  state.rooms.find((room) => room.id === id)
+export const selectProviders = (state: RoomStoreState) => state.providers
+export const selectListState = (state: RoomStoreState) => state.listState
+export const selectListError = (state: RoomStoreState) => state.listError
+export const selectIsLoading = (state: RoomStoreState) => state.listState === 'loading'
+export const selectFetchRooms = (state: RoomStoreState) => state.fetchRooms
+export const selectFetchProviders = (state: RoomStoreState) => state.fetchProviders
+export const selectCreateRoom = (state: RoomStoreState) => state.createRoom
+export const selectUpdateRoom = (state: RoomStoreState) => state.updateRoom
+export const selectDeleteRoom = (state: RoomStoreState) => state.deleteRoom
+export const selectEnableRoom = (state: RoomStoreState) => state.enableRoom
+export const selectDisableRoom = (state: RoomStoreState) => state.disableRoom

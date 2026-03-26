@@ -130,6 +130,20 @@ afterEach(() => {
 })
 
 describe('room store', () => {
+  it('defines selector helpers for room lookups, actions, and loading state', async () => {
+    const source = await Bun.file(new URL('./room-store.ts', import.meta.url)).text()
+
+    expect(source).toContain('export const selectRooms =')
+    expect(source).toContain('export const selectRoomById = (id: string) =>')
+    expect(source).toContain('export const selectProviders =')
+    expect(source).toContain('export const selectIsLoading =')
+    expect(source).toContain('export const selectFetchRooms =')
+    expect(source).toContain('export const selectCreateRoom =')
+    expect(source).toContain('export const selectEnableRoom =')
+    expect(source).toContain('export const selectDisableRoom =')
+    expect(source).toContain('export const selectDeleteRoom =')
+  })
+
   it('hydrates rooms and listState from the API client', async () => {
     const state = useRoomStore.getState()
 

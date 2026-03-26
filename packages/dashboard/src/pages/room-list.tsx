@@ -13,7 +13,17 @@ import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
-import { selectListError, selectListState, useRoomStore, type Room } from '~/stores/room-store'
+import {
+  selectDeleteRoom,
+  selectDisableRoom,
+  selectEnableRoom,
+  selectFetchRooms,
+  selectListError,
+  selectListState,
+  selectRooms,
+  useRoomStore,
+  type Room,
+} from '~/stores/room-store'
 
 const cardThemeByIndex = [
   'theme-card-lilac',
@@ -33,13 +43,13 @@ export function getRoomToggleToastMessage(roomName: string, currentlyEnabled: bo
 export function RoomListPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const rooms = useRoomStore((state) => state.rooms)
+  const rooms = useRoomStore(selectRooms)
   const listState = useRoomStore(selectListState)
   const listError = useRoomStore(selectListError)
-  const fetchRooms = useRoomStore((state) => state.fetchRooms)
-  const enableRoom = useRoomStore((state) => state.enableRoom)
-  const disableRoom = useRoomStore((state) => state.disableRoom)
-  const deleteRoom = useRoomStore((state) => state.deleteRoom)
+  const fetchRooms = useRoomStore(selectFetchRooms)
+  const enableRoom = useRoomStore(selectEnableRoom)
+  const disableRoom = useRoomStore(selectDisableRoom)
+  const deleteRoom = useRoomStore(selectDeleteRoom)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const roomToggleAction = useAsyncAction<undefined>({
     fallbackErrorMessage: 'Toggle failed',
