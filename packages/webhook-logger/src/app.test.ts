@@ -3,6 +3,7 @@ import { describe, expect, it, mock } from 'bun:test'
 
 // Use a base64-encoded secret to mirror Chatwork's real token format
 const TEST_SECRET = Buffer.from('test-app-webhook-secret').toString('base64')
+type FetchInput = string | URL | Request
 
 function makeSignature(rawBody: string): string {
   return createHmac('sha256', Buffer.from(TEST_SECRET, 'base64')).update(rawBody).digest('base64')
@@ -12,13 +13,28 @@ void mock.module('./env', () => ({
   env: {
     LOGGER_PORT: 3001,
     TRANSLATOR_URL: 'http://localhost:3000',
+    TRANSLATOR_INTERNAL_URL: 'http://localhost:3000',
     NODE_ENV: 'test',
-    CHATWORK_WEBHOOK_SECRET: TEST_SECRET,
+    INTERNAL_API_SECRET: 'internal-secret',
     CHATWORK_SKIP_SIGNATURE_VERIFY: false,
   },
 }))
 
-global.fetch = mock(() => Promise.resolve(new Response('OK'))) as unknown as typeof fetch
+global.fetch = mock((input: FetchInput) => {
+  const url =
+    typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+
+  if (url === 'http://localhost:3000/internal/room-secret?room_id=567890123') {
+    return Promise.resolve(
+      new Response(JSON.stringify({ webhookSecret: TEST_SECRET }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+  }
+
+  return Promise.resolve(new Response('OK'))
+}) as unknown as typeof fetch
 
 describe('createApp', () => {
   it('GET /health returns 200', async () => {
