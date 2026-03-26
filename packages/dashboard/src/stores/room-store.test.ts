@@ -1,121 +1,195 @@
-import { describe, expect, it } from 'bun:test'
-import type { Room } from '~/stores/room-store'
-import { SEEDED_ROOMS, useRoomStore } from '~/stores/room-store'
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
+import { ApiError, apiClient } from '~/lib/api-client'
+import type {
+  CreateRoomInput,
+  ProviderInfo,
+  RoomConfigPublic,
+  UpdateRoomInput,
+} from '~/lib/api-types'
+import { useRoomStore } from '~/stores/room-store'
 
-interface ExpectedRoomInput {
-  originalRoomId: number
-  destinationRoomName: string
-  aiProvider: 'openai' | 'gemini'
-  aiModel: string | null
-  translationStyle: 'AUTO_CONTEXT' | 'NATURAL_CASUAL' | 'PROFESSIONAL_BUSINESS' | 'TECHNICAL'
-  aiApiToken: string
+const LIST_ROOMS: RoomConfigPublic[] = [
+  {
+    id: 'room-001',
+    originalRoomId: 123456789,
+    destinationRoomId: 99001,
+    destinationRoomName: 'Sakura Desk JP',
+    aiProvider: 'openai',
+    aiModel: 'gpt-4o',
+    translationStyle: 'PROFESSIONAL_BUSINESS',
+    enabled: true,
+    createdAt: '2026-03-20T09:00:00Z',
+    updatedAt: '2026-03-20T09:00:00Z',
+  },
+]
+
+const PROVIDERS: ProviderInfo[] = [
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    models: ['gpt-5.4', 'gpt-4o'],
+    defaultModel: 'gpt-5.4',
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    models: ['gemini-2.5-pro', 'gemini-2.0-flash'],
+    defaultModel: 'gemini-2.5-pro',
+  },
+]
+
+const CREATED_ROOM: RoomConfigPublic = {
+  id: 'room-002',
+  originalRoomId: 555001,
+  destinationRoomId: 99002,
+  destinationRoomName: 'Osaka Escalations',
+  aiProvider: 'openai',
+  aiModel: 'gpt-4o-mini',
+  translationStyle: 'AUTO_CONTEXT',
+  enabled: false,
+  createdAt: '2026-03-26T12:00:00Z',
+  updatedAt: '2026-03-26T12:00:00Z',
 }
 
-const INITIAL_ROOMS: Room[] = SEEDED_ROOMS.map((room) => ({ ...room }))
+const UPDATED_ROOM: RoomConfigPublic = {
+  ...CREATED_ROOM,
+  destinationRoomName: 'Osaka Escalations APAC',
+  updatedAt: '2026-03-26T12:10:00Z',
+}
 
-function resetStore() {
+const ENABLED_ROOM: RoomConfigPublic = {
+  ...UPDATED_ROOM,
+  enabled: true,
+  updatedAt: '2026-03-26T12:11:00Z',
+}
+
+type ListRoomsSpy = ReturnType<typeof spyOn<typeof apiClient, 'listRooms'>>
+type ListProvidersSpy = ReturnType<typeof spyOn<typeof apiClient, 'listProviders'>>
+type CreateRoomSpy = ReturnType<typeof spyOn<typeof apiClient, 'createRoom'>>
+type UpdateRoomSpy = ReturnType<typeof spyOn<typeof apiClient, 'updateRoom'>>
+type DeleteRoomSpy = ReturnType<typeof spyOn<typeof apiClient, 'deleteRoom'>>
+type EnableRoomSpy = ReturnType<typeof spyOn<typeof apiClient, 'enableRoom'>>
+type DisableRoomSpy = ReturnType<typeof spyOn<typeof apiClient, 'disableRoom'>>
+
+let listRoomsSpy: ListRoomsSpy
+let listProvidersSpy: ListProvidersSpy
+let createRoomSpy: CreateRoomSpy
+let updateRoomSpy: UpdateRoomSpy
+let deleteRoomSpy: DeleteRoomSpy
+let enableRoomSpy: EnableRoomSpy
+let disableRoomSpy: DisableRoomSpy
+
+function resetStoreState() {
   useRoomStore.setState({
-    rooms: INITIAL_ROOMS.map((room) => ({ ...room })),
+    rooms: [],
+    providers: [],
+    listState: 'idle',
+    listError: null,
+    actionError: null,
   })
 }
+
+beforeEach(() => {
+  listRoomsSpy = spyOn(apiClient, 'listRooms').mockImplementation(() =>
+    Promise.resolve({ success: true, data: LIST_ROOMS }),
+  )
+  listProvidersSpy = spyOn(apiClient, 'listProviders').mockImplementation(() =>
+    Promise.resolve({ success: true, data: PROVIDERS }),
+  )
+  createRoomSpy = spyOn(apiClient, 'createRoom').mockImplementation((_input: CreateRoomInput) =>
+    Promise.resolve({ success: true, data: CREATED_ROOM }),
+  )
+  updateRoomSpy = spyOn(apiClient, 'updateRoom').mockImplementation(
+    (_id: string, _input: UpdateRoomInput) =>
+      Promise.resolve({
+        success: true,
+        data: UPDATED_ROOM,
+      }),
+  )
+  deleteRoomSpy = spyOn(apiClient, 'deleteRoom').mockImplementation((_id: string) =>
+    Promise.resolve({ success: true, data: null }),
+  )
+  enableRoomSpy = spyOn(apiClient, 'enableRoom').mockImplementation((_id: string) =>
+    Promise.resolve({ success: true, data: ENABLED_ROOM }),
+  )
+  disableRoomSpy = spyOn(apiClient, 'disableRoom').mockImplementation((_id: string) =>
+    Promise.resolve({ success: true, data: UPDATED_ROOM }),
+  )
+
+  resetStoreState()
+})
+
+afterEach(() => {
+  listRoomsSpy.mockRestore()
+  listProvidersSpy.mockRestore()
+  createRoomSpy.mockRestore()
+  updateRoomSpy.mockRestore()
+  deleteRoomSpy.mockRestore()
+  enableRoomSpy.mockRestore()
+  disableRoomSpy.mockRestore()
+})
 
 describe('room store', () => {
-  it('starts with a scrolling-sized seeded dataset for dashboard QA', () => {
-    const state = useRoomStore.getState() as {
-      rooms: { id: string; destinationRoomName: string; enabled: boolean }[]
-    }
+  it('hydrates rooms and listState from the API client', async () => {
+    const state = useRoomStore.getState()
 
-    expect(SEEDED_ROOMS).toHaveLength(12)
-    expect(state.rooms).toHaveLength(12)
-    expect(state.rooms.map((room) => room.id)).toEqual(SEEDED_ROOMS.map((room) => room.id))
-    expect(state.rooms.map((room) => room.destinationRoomName)).toContain('Sakura Desk JP')
-    expect(state.rooms.map((room) => room.destinationRoomName)).toContain('Gamma Team EN')
-    expect(state.rooms.map((room) => room.destinationRoomName)).toContain('Kyoto Finance Hub')
-    expect(state.rooms.some((room) => room.enabled)).toBe(true)
-    expect(state.rooms.some((room) => !room.enabled)).toBe(true)
+    expect(state.rooms).toEqual([])
+    expect(state.listState).toBe('idle')
+
+    await state.fetchRooms()
+
+    const nextState = useRoomStore.getState()
+    expect(listRoomsSpy).toHaveBeenCalledTimes(1)
+    expect(nextState.rooms).toEqual(LIST_ROOMS)
+    expect(nextState.listState).toBe('success')
+    expect(nextState.listError).toBeNull()
   })
 
-  it('adds a room with generated metadata and disabled webhook state', () => {
-    resetStore()
+  it('captures ApiError messages when fetching rooms fails', async () => {
+    listRoomsSpy.mockImplementationOnce(() => Promise.reject(new ApiError('Network error', 503)))
 
-    const state = useRoomStore.getState() as {
-      addRoom?: (room: ExpectedRoomInput) => string
-      rooms: {
-        id: string
-        originalRoomId: number
-        webhookToken: string | null
-        enabled: boolean
-        createdAt: string
-      }[]
-    }
+    await useRoomStore.getState().fetchRooms()
 
-    expect(typeof state.addRoom).toBe('function')
-    if (!state.addRoom) {
-      return
-    }
+    const nextState = useRoomStore.getState()
+    expect(nextState.listState).toBe('error')
+    expect(nextState.listError).toBe('Network error')
+  })
 
-    const id = state.addRoom({
+  it('loads provider metadata for the create and edit forms', async () => {
+    await useRoomStore.getState().fetchProviders()
+
+    expect(listProvidersSpy).toHaveBeenCalledTimes(1)
+    expect(useRoomStore.getState().providers).toEqual(PROVIDERS)
+  })
+
+  it('creates, updates, enables, disables, and deletes rooms through async actions', async () => {
+    const created = await useRoomStore.getState().createRoom({
       originalRoomId: 555001,
       destinationRoomName: 'Osaka Escalations',
       aiProvider: 'openai',
       aiModel: 'gpt-4o-mini',
       translationStyle: 'AUTO_CONTEXT',
       aiApiToken: 'sk-new-room',
+      webhookSecret: 'cw-secret-555001',
     })
 
-    const createdRoom = useRoomStore.getState().rooms.find((room) => room.id === id) as
-      | {
-          id: string
-          originalRoomId: number
-          webhookToken: string | null
-          enabled: boolean
-          createdAt: string
-        }
-      | undefined
+    expect(created).toEqual(CREATED_ROOM)
+    expect(useRoomStore.getState().rooms).toEqual([CREATED_ROOM])
 
-    expect(createdRoom).toBeDefined()
-    expect(createdRoom?.originalRoomId).toBe(555001)
-    expect(createdRoom?.webhookToken).toBeNull()
-    expect(createdRoom?.enabled).toBe(false)
-    expect(createdRoom?.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
-  })
-
-  it('updates, toggles, activates, and deletes rooms through store actions', () => {
-    resetStore()
-
-    const state = useRoomStore.getState() as {
-      updateRoom?: (id: string, patch: { destinationRoomName?: string }) => void
-      toggleRoom?: (id: string) => void
-      activateWebhook?: (id: string, webhookToken: string) => void
-      deleteRoom?: (id: string) => void
-    }
-
-    expect(typeof state.updateRoom).toBe('function')
-    expect(typeof state.toggleRoom).toBe('function')
-    expect(typeof state.activateWebhook).toBe('function')
-    expect(typeof state.deleteRoom).toBe('function')
-
-    if (!state.updateRoom || !state.toggleRoom || !state.activateWebhook || !state.deleteRoom) {
-      return
-    }
-
-    state.updateRoom('room-002', {
-      destinationRoomName: 'Gamma Team APAC',
+    const updated = await useRoomStore.getState().updateRoom(CREATED_ROOM.id, {
+      destinationRoomName: 'Osaka Escalations APAC',
+      webhookSecret: 'cw-secret-rotated',
     })
-    expect(
-      useRoomStore.getState().rooms.find((room) => room.id === 'room-002')?.destinationRoomName,
-    ).toBe('Gamma Team APAC')
+    expect(updated).toEqual(UPDATED_ROOM)
+    expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM])
 
-    state.toggleRoom('room-002')
-    expect(useRoomStore.getState().rooms.find((room) => room.id === 'room-002')?.enabled).toBe(true)
+    await useRoomStore.getState().enableRoom(CREATED_ROOM.id)
+    expect(useRoomStore.getState().rooms).toEqual([ENABLED_ROOM])
 
-    state.activateWebhook('room-002', 'cw-live-002')
-    const activatedRoom = useRoomStore.getState().rooms.find((room) => room.id === 'room-002')
-    expect(activatedRoom?.webhookToken).toBe('cw-live-002')
-    expect(activatedRoom?.enabled).toBe(true)
+    await useRoomStore.getState().disableRoom(CREATED_ROOM.id)
+    expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM])
 
-    state.deleteRoom('room-001')
-    expect(useRoomStore.getState().rooms).toHaveLength(11)
-    expect(useRoomStore.getState().rooms.map((room) => room.id)).not.toContain('room-001')
+    await useRoomStore.getState().deleteRoom(CREATED_ROOM.id)
+    expect(useRoomStore.getState().rooms).toEqual([])
   })
 })

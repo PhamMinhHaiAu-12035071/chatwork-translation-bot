@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 describe('room schema', () => {
-  it('validates the create payload and rejects invalid room ids', async () => {
+  it('requires webhookSecret when validating the create payload', async () => {
     const schemaModule = await import('~/lib/room-schema').catch(() => null)
 
     expect(schemaModule).not.toBeNull()
@@ -16,6 +16,7 @@ describe('room schema', () => {
       aiModel: 'gpt-4o',
       translationStyle: 'AUTO_CONTEXT',
       aiApiToken: 'sk-demo',
+      webhookSecret: 'cw-secret-demo',
     })
 
     expect(validResult.success).toBe(true)
@@ -39,9 +40,12 @@ describe('room schema', () => {
     expect(invalidResult.error?.flatten().fieldErrors.aiApiToken).toContain(
       'AI API token is required',
     )
+    expect(invalidResult.error?.flatten().fieldErrors.webhookSecret).toContain(
+      'Webhook secret is required',
+    )
   })
 
-  it('requires a webhook token for activation', async () => {
+  it('allows blank secrets on the edit schema so unchanged values can be preserved', async () => {
     const schemaModule = await import('~/lib/room-schema').catch(() => null)
 
     expect(schemaModule).not.toBeNull()
@@ -49,15 +53,27 @@ describe('room schema', () => {
       return
     }
 
-    expect(
-      schemaModule.webhookActivationSchema.safeParse({
-        webhookToken: '',
-      }).success,
-    ).toBe(false)
-    expect(
-      schemaModule.webhookActivationSchema.safeParse({
-        webhookToken: 'cw-token-123',
-      }).success,
-    ).toBe(true)
+    const result = schemaModule.roomEditSchema.safeParse({
+      originalRoomId: 123456,
+      destinationRoomName: 'Tokyo Support',
+      aiProvider: 'openai',
+      aiModel: '',
+      translationStyle: 'AUTO_CONTEXT',
+      aiApiToken: '',
+      webhookSecret: '',
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it('removes the old webhook activation schema export', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+
+    expect(schemaModule).not.toBeNull()
+    if (!schemaModule) {
+      return
+    }
+
+    expect('webhookActivationSchema' in schemaModule).toBe(false)
   })
 })

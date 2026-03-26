@@ -26,18 +26,29 @@ export const roomCreateSchema = z.object({
   aiApiToken: z
     .string({ required_error: 'AI API token is required' })
     .min(1, 'AI API token is required'),
+  webhookSecret: z
+    .string({ required_error: 'Webhook secret is required' })
+    .min(1, 'Webhook secret is required'),
 })
 
 export type RoomCreateInput = z.infer<typeof roomCreateSchema>
 
-export const roomEditSchema = roomCreateSchema
-
-export type RoomEditInput = z.infer<typeof roomEditSchema>
-
-export const webhookActivationSchema = z.object({
-  webhookToken: z
-    .string({ required_error: 'Webhook token is required' })
-    .min(1, 'Webhook token is required'),
+export const roomEditSchema = z.object({
+  originalRoomId: z
+    .number({ required_error: 'Room ID is required' })
+    .int('Room ID must be a whole number')
+    .positive('Room ID must be positive'),
+  destinationRoomName: z
+    .string({ required_error: 'Destination room name is required' })
+    .min(1, 'Destination room name is required')
+    .max(100, 'Max 100 characters'),
+  aiProvider: z.enum(AI_PROVIDERS, { required_error: 'AI Provider is required' }),
+  aiModel: z.string().optional().default(''),
+  translationStyle: z.enum(TRANSLATION_STYLES, {
+    required_error: 'Translation style is required',
+  }),
+  aiApiToken: z.string().optional().default(''),
+  webhookSecret: z.string().optional().default(''),
 })
 
-export type WebhookActivationInput = z.infer<typeof webhookActivationSchema>
+export type RoomEditInput = z.infer<typeof roomEditSchema>
