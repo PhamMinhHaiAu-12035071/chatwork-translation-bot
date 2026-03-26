@@ -287,8 +287,13 @@ describe('DELETE /api/rooms/:id', () => {
     expect(deleteRes.status).toBe(204)
 
     const listRes = await app.handle(new Request('http://localhost/api/rooms'))
-    const body = (await listRes.json()) as { rooms: unknown[] }
-    expect(body.rooms).toHaveLength(0)
+    const body = (await listRes.json()) as {
+      success?: boolean
+      data?: unknown[]
+    }
+
+    expect(body.success).toBe(true)
+    expect(body.data).toEqual([])
   })
 })
 
