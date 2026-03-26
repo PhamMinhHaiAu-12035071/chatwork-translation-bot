@@ -100,6 +100,19 @@ describe('DeleteRoomConfirmModal', () => {
     expect(html).not.toContain('Confirm Delete')
   })
 
+  it('wires dialog accessibility semantics and close behavior in the source', async () => {
+    const source = await Bun.file(
+      new URL('./delete-room-confirm-modal.tsx', import.meta.url),
+    ).text()
+
+    expect(source).toContain('aria-labelledby')
+    expect(source).toContain('aria-describedby')
+    expect(source).toContain('onCancel')
+    expect(source).toContain('useEffect')
+    expect(source).toContain('Escape')
+    expect(source).toContain('useRef')
+  })
+
   it('applies the modal visual class hooks for overlay, shell, warning, preview, and actions', () => {
     const html = renderToStaticMarkup(
       createElement(DeleteRoomConfirmModal, {

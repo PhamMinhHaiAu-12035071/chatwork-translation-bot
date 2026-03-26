@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { Room } from '~/stores/room-store'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { StatusPill } from '~/components/ui/status-pill'
@@ -18,6 +19,23 @@ export function DeleteRoomConfirmModal({
   onCancel,
   onConfirm,
 }: DeleteRoomConfirmModalProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    cancelRef.current?.focus()
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onCancel])
+
   if (!isOpen) return null
 
   return (
@@ -72,6 +90,7 @@ export function DeleteRoomConfirmModal({
 
         <div className="delete-modal-actions mt-5 flex justify-end gap-3">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             className="brutal-button px-5 py-2.5 font-heading text-sm font-bold text-[var(--border)]"
