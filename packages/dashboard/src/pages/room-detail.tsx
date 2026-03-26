@@ -41,11 +41,11 @@ const styleOptions = TRANSLATION_STYLES.map((style) => ({
 
 const roomEditResolver = zodResolver(roomEditSchema as never) as Resolver<RoomEditInput>
 
-function generateWebhookUrl(roomId: string): string {
+function generateWebhookUrl(): string {
   const base =
     typeof window !== 'undefined' ? window.location.origin : 'https://your-server.example.com'
 
-  return `${base}/api/webhook?room_id=${roomId}`
+  return `${base}/webhook`
 }
 
 export function getRoomUpdatedToastMessage(roomName: string): string {
@@ -164,7 +164,7 @@ export function RoomDetailPage() {
     },
   })
 
-  const webhookUrl = generateWebhookUrl(String(room.originalRoomId))
+  const webhookUrl = generateWebhookUrl()
 
   const onEditSubmit = async (data: RoomEditInput) => {
     const normalizedAiModel = data.aiModel === '' ? null : data.aiModel

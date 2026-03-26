@@ -241,8 +241,23 @@ trap trap_cleanup EXIT INT TERM
 # Intercept it: run cleanup first, then exit so the EXIT trap does not double-fire.
 trap 'trap_cleanup; exit 130' TSTP
 
+build_dashboard() {
+  if [ -f packages/dashboard/dist/index.html ]; then
+    echo "[dev] dashboard already built (packages/dashboard/dist/index.html exists)"
+    echo "[dev] to rebuild: bun run build:dashboard"
+  else
+    echo "[dev] building dashboard..."
+    bun run build:dashboard || {
+      echo "[dev] ERROR: dashboard build failed" >&2
+      exit 1
+    }
+    echo "[dev] dashboard built successfully"
+  fi
+}
+
 if [ "$ACTION" = "up" ]; then
   check_duplicate_env_keys || exit 1
+  build_dashboard
 
   if [ "$AI_PROVIDER" != "cursor" ]; then
     start_docker_only

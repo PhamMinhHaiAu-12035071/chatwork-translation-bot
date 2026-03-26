@@ -129,6 +129,28 @@ services:
       retries: 3
       start_period: 180s
 
+  # Dev gateway — nginx reverse proxy as the single entry point.
+  # Routes /webhook → webhook-logger, everything else → translator (API + dashboard).
+  # zrok tunnels here so one public URL serves the entire stack.
+  gateway:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./config/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - '${GATEWAY_PORT:-8080}:80'
+    networks: [chatwork-net]
+    depends_on:
+      translator:
+        condition: service_healthy
+      webhook-logger:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:80/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   # zrok reserved public share — stable HTTPS URL for Chatwork webhook when available
   # If the share cannot be attached, keep local dev running without a public tunnel.
   # One-time setup: see docs/operations/zrok.md
@@ -159,6 +181,21 @@ services:
         reserved_file=/home/ziggy/.zrok/reserved.json
         rm -f "$$ready_file" "$$share_fifo"
         last_share_error_line=
+        backend_target="http://gateway:80"
+        target_marker="/home/ziggy/.zrok/backend_target"
+        # Auto-detect backend target change (e.g. migration from webhook-logger to gateway)
+        # and force re-reservation so zrok points to the correct service.
+        if [ -f "$$target_marker" ]; then
+          old_target=$$(cat "$$target_marker")
+          if [ "$$old_target" != "$$backend_target" ]; then
+            echo "[zrok] backend target changed: $$old_target -> $$backend_target"
+            if [ -f "$$reserved_file" ]; then
+              echo "[zrok] clearing stale reservation for re-creation"
+              rm -f "$$reserved_file"
+            fi
+          fi
+        fi
+        printf '%s' "$$backend_target" > "$$target_marker"
         [ -f /home/ziggy/.zrok/environment.json ] || zrok enable "${ZROK_ENABLE_TOKEN}" --headless
         # Pre-resolve OpenZiti controller hostname to /etc/hosts.
         # Go's built-in DNS resolver can hang inside Docker Desktop on macOS;
@@ -192,7 +229,7 @@ services:
             sed -n 's/.*"token":"\([^"]*\)".*/\1/p' "$$1" | head -n 1
           }
           reserve_share() {
-            reserve_output=$$(zrok reserve public http://webhook-logger:3001 --unique-name "$$normalized_unique_name" --json-output 2>&1)
+            reserve_output=$$(zrok reserve public $$backend_target --unique-name "$$normalized_unique_name" --json-output 2>&1)
             reserve_status=$$?
             if [ $$reserve_status -eq 0 ]; then
               printf '%s\n' "$$reserve_output" > "$$reserved_file"
@@ -228,8 +265,12 @@ services:
                 touch "$$ready_file"
                 echo ""
                 echo "============================================="
-                echo " WEBHOOK URL : $$url"
-                echo " -> Chatwork : Webhook settings -> URL"
+                echo " PUBLIC URL  : $$url"
+                echo ""
+                echo " Dashboard   : $$url/"
+                echo " API         : $$url/api/rooms"
+                echo " Webhook     : $$url/webhook"
+                echo "   -> Chatwork : Webhook settings -> URL"
                 echo "============================================="
                 echo ""
               fi
@@ -285,7 +326,7 @@ services:
         echo ""
         tail -f /dev/null
     depends_on:
-      webhook-logger:
+      gateway:
         condition: service_healthy
 
 networks:

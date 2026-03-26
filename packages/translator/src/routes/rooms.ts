@@ -10,6 +10,13 @@ interface RoomsRoutesOptions {
   chatworkApiToken: string
 }
 
+function resolvePublicOrigin(request: Request): string {
+  const fwdHost = request.headers.get('x-forwarded-host')
+  const fwdProto = request.headers.get('x-forwarded-proto') ?? 'https'
+  if (fwdHost) return `${fwdProto}://${fwdHost}`
+  return new URL(request.url).origin
+}
+
 function errorResponse(status: number, error: string, details?: unknown) {
   return {
     status,
@@ -87,7 +94,7 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
         }
 
         const room = await store.create({ ...data, destinationRoomId })
-        const webhookUrl = `${new URL(request.url).origin}/webhook`
+        const webhookUrl = `${resolvePublicOrigin(request)}/webhook`
 
         set.status = 201
         return { success: true, data: redactRoomConfig(room), webhookUrl }

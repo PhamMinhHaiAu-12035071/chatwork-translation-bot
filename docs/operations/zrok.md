@@ -1,9 +1,22 @@
 # zrok — Dev Tunnel Setup
 
-zrok provides a stable HTTPS URL for exposing `webhook-logger` to Chatwork webhooks during local development.
+zrok provides a stable HTTPS URL for the entire local dev stack — dashboard, API, and
+webhook receiver — through a single public tunnel. The reserved name URL does not change
+across Docker restarts. Configure Chatwork webhook URL once, then forget about it.
 
-The reserved name URL does not change across Docker restarts.
-Configure Chatwork webhook URL once, then forget about it.
+## Architecture
+
+```
+Internet ──► zrok ──► gateway (nginx:80)
+                       ├── /webhook  → webhook-logger:3001
+                       └── /*        → translator:3000 (API + dashboard)
+```
+
+One public URL serves:
+
+- **Dashboard**: `https://<name>.share.zrok.io/`
+- **API**: `https://<name>.share.zrok.io/api/rooms`
+- **Webhook**: `https://<name>.share.zrok.io/webhook`
 
 ---
 
@@ -20,48 +33,32 @@ ZROK_ENABLE_TOKEN=<your-enable-token>
 ZROK_UNIQUE_NAME=chatwork-webhook   # or any lowercase name you prefer
 ```
 
-### 2. Start the stack once (auto-enables environment)
+### 2. Start the stack (auto-enables and reserves)
 
 ```bash
-sh scripts/dev.sh up
+bun run dev
 ```
 
-The zrok container runs `zrok enable --headless` automatically on first start and saves the environment to `.docker/zrok/`.
+The zrok container:
 
-### 3. Reserve your unique name (run once)
-
-After the stack is up, open a second terminal and run:
-
-```bash
-docker exec chatwork-translation-bot-zrok-1 \
-  zrok reserve public http://webhook-logger:3001 \
-    --unique-name ${ZROK_UNIQUE_NAME}
-```
-
-Or with the CLI directly (if installed):
-
-```bash
-zrok reserve public http://localhost:3001 --unique-name chatwork-webhook
-```
-
-This reserves `https://chatwork-webhook.share.zrok.io` permanently for the account.
-
-### 4. Restart zrok to use the reserved share
-
-```bash
-sh scripts/dev.sh down && sh scripts/dev.sh up
-```
+1. Runs `zrok enable --headless` on first start
+2. Auto-reserves the unique name pointing to the gateway
+3. Starts the tunnel and prints the public URL
 
 The log will show:
 
 ```
 =============================================
- WEBHOOK URL : https://chatwork-webhook.share.zrok.io
- -> Chatwork : Webhook settings -> URL
+ PUBLIC URL  : https://chatwork-webhook.share.zrok.io
+
+ Dashboard   : https://chatwork-webhook.share.zrok.io/
+ API         : https://chatwork-webhook.share.zrok.io/api/rooms
+ Webhook     : https://chatwork-webhook.share.zrok.io/webhook
+   -> Chatwork : Webhook settings -> URL
 =============================================
 ```
 
-### 5. Configure Chatwork webhook
+### 3. Configure Chatwork webhook
 
 In your Chatwork webhook settings, set the webhook URL to:
 
@@ -76,10 +73,11 @@ This URL is now **permanent** — no need to update it after restarts.
 ## Daily Usage
 
 ```bash
-sh scripts/dev.sh up
+bun run dev
 ```
 
-That's it. zrok starts automatically, attaches to the reserved share, and the URL stays the same.
+That's it. The dashboard is built, all services start, zrok attaches to the reserved
+share, and the URL stays the same.
 
 ---
 
@@ -90,17 +88,17 @@ Check `docker compose -f docker-compose.dev.yml logs zrok` — likely `ZROK_ENAB
 
 **`enableUnauthorized` (401) on `zrok enable`:**
 For the hosted free plan, this usually means the account already has the maximum number of enabled environments.
-Delete an old environment from the zrok web console, then rerun `sh scripts/dev.sh up`.
+Delete an old environment from the zrok web console, then rerun `bun run dev`.
 
 **URL still random after reserving the share:**
-Make sure you ran `zrok reserve public ... --unique-name <name>` with the same name as `ZROK_UNIQUE_NAME` in `.env`.
+Make sure you ran with the same name as `ZROK_UNIQUE_NAME` in `.env`.
 
 **Environment already exists / stale local state:**
 Reset the local environment and let the container re-enable:
 
 ```bash
 rm -rf .docker/zrok/
-sh scripts/dev.sh up
+bun run dev
 ```
 
 **`context deadline exceeded` on `zrok share reserved` (macOS Docker Desktop):**
@@ -111,7 +109,7 @@ reset and re-enable:
 
 ```bash
 rm -rf .docker/zrok/
-sh scripts/dev.sh up
+bun run dev
 ```
 
 **Hosted service endpoint mismatch:**

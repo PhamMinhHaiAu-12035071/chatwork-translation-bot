@@ -191,6 +191,26 @@ describe('POST /api/rooms', () => {
     expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
   })
 
+  it('uses X-Forwarded-* headers for webhook URL when behind a proxy', async () => {
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-Host': 'bot.share.zrok.io',
+          'X-Forwarded-Proto': 'https',
+        },
+        body: JSON.stringify({ ...VALID_BODY, originalRoomId: 9999 }),
+      }),
+    )
+
+    expect(response.status).toBe(201)
+
+    const body = (await response.json()) as { webhookUrl: string }
+    expect(body.webhookUrl).toBe('https://bot.share.zrok.io/webhook')
+  })
+
   it('returns 409 on duplicate originalRoomId', async () => {
     const app = await buildApp(tmpDir)
 

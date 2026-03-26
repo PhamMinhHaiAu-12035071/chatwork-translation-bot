@@ -82,6 +82,10 @@ function createTestWorkspace(options: TestWorkspaceOptions): TestWorkspace {
     `AI_PROVIDER=${options.provider}\nCURSOR_API_URL=http://localhost:8765/v1\n`,
   )
 
+  const dashboardDistDir = join(rootDir, 'packages', 'dashboard', 'dist')
+  mkdirSync(dashboardDistDir, { recursive: true })
+  writeFileSync(join(dashboardDistDir, 'index.html'), '<!-- test stub -->\n')
+
   writeExecutable(
     join(binDir, 'bunx'),
     `#!/bin/sh
@@ -408,14 +412,15 @@ describe('scripts/dev.sh orchestration', () => {
     expect(zrokBlock).toContain("tr '[:upper:]' '[:lower:]'")
     expect(zrokBlock).toContain("tr -cd '[:alnum:]'")
     expect(zrokBlock).toContain('reserved_file=/home/ziggy/.zrok/reserved.json')
-    expect(zrokBlock).toContain('zrok reserve public http://webhook-logger:3001 --unique-name')
+    expect(zrokBlock).toContain('zrok reserve public $$backend_target --unique-name')
+    expect(zrokBlock).toContain('backend_target="http://gateway:80"')
     expect(zrokBlock).toContain('--json-output 2>&1')
     expect(zrokBlock).toContain('printf \'%s\\n\' "$$reserve_output" > "$$reserved_file"')
     expect(zrokBlock).toContain('extract_share_token() {')
     expect(zrokBlock).toContain('share_token=$$(extract_share_token "$$reserved_file")')
     expect(zrokBlock).toContain('zrok share reserved "$$share_token" --headless')
     expect(zrokBlock).not.toContain('zrok share reserved "${ZROK_UNIQUE_NAME}" --headless')
-    expect(zrokBlock).not.toContain('zrok reserve public http://webhook-logger:3001 --headless')
+    expect(zrokBlock).not.toContain('zrok reserve public http://webhook-logger:3001')
   })
 
   it('removes the v2-only retry and name-selection flow from the zrok container', () => {

@@ -5,16 +5,16 @@
 - [ ] `ROOM_CONFIG_ENCRYPTION_KEY` set (generate: `openssl rand -hex 32`)
 - [ ] `INTERNAL_API_SECRET` set (generate: `openssl rand -hex 16`)
 - [ ] `CHATWORK_API_TOKEN` set (bot account token)
+- [ ] `ZROK_ENABLE_TOKEN` and `ZROK_UNIQUE_NAME` set (see `docs/operations/zrok.md`)
 - [ ] Bot account has room creation permission
-- [ ] Translator running on port 3000
-- [ ] Webhook-logger running on port 3001
-- [ ] Zrok tunnel active (or ngrok/other tunnel for webhook URL)
+- [ ] Run `bun run dev` — starts all services (translator, webhook-logger, gateway, zrok)
+- [ ] Verify zrok public URL appears in Docker logs (e.g. `https://<name>.share.zrok.io`)
 
 ## Happy Path
 
 ### 1. Dashboard Access
 
-- [ ] Open `http://localhost:3000` → dashboard loads
+- [ ] Open `http://localhost:8080` (or zrok public URL) → dashboard loads
 - [ ] Navigation works: Room List, Webhook Guide pages
 - [ ] Empty state shows "Create your first translation room" CTA
 
@@ -29,7 +29,7 @@
 - [ ] Go to Chatwork Admin → Integrations → Webhooks
 - [ ] Create new webhook:
   - Name: "Translation Bot Test"
-  - URL: will be provided by dashboard after room creation (or use tunnel URL + `/webhook`)
+  - URL: `https://<zrok-name>.share.zrok.io/webhook` (shown in Docker logs at startup)
   - Events: "Message created" + "Message updated"
   - Room: select original room
 - [ ] Save and copy the webhook token (this is the `webhookSecret`)
