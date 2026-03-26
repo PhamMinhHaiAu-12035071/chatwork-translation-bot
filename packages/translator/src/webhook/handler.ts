@@ -40,7 +40,7 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     if (roomConfig === null) {
       console.log(
         JSON.stringify({
-          level: 'info',
+          level: 'warn',
           service: 'translator',
           event: 'translation_skipped_no_room_config',
           timestamp: new Date().toISOString(),
