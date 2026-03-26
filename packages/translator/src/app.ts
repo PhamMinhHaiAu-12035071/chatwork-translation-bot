@@ -8,6 +8,7 @@ import { providersRoute } from './routes/providers'
 import { createRoomsRoutes } from './routes/rooms'
 import { createInternalRoomSecretRoute } from './routes/internal-room-secret'
 import { createStatusRoute } from './routes/status'
+import { staticRoutes, spaCatchAll } from './routes/static'
 import { getTranslatorStatusSnapshot } from './services/translator-observability-runtime'
 import { translateRoutes } from './webhook/router'
 import { env } from './env'
@@ -54,4 +55,6 @@ export function createApp({ store }: AppOptions) {
     .use(createRoomsRoutes({ store, chatworkApiToken: env.CHATWORK_API_TOKEN }))
     .use(createInternalRoomSecretRoute({ store, internalApiSecret: env.INTERNAL_API_SECRET }))
     .use(translateRoutes)
+    .use(staticRoutes)
+    .use(spaCatchAll)
 }

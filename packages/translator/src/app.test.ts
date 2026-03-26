@@ -94,8 +94,15 @@ describe('createApp (translator)', () => {
     expect(body.secret).toBe('room-secret')
   })
 
-  it('unknown route returns 404', async () => {
+  it('unknown non-API route falls through to SPA catch-all', async () => {
     const res = await app.handle(new Request('http://localhost/unknown'))
+    // 200 when dashboard dist is built (serves index.html for client-side routing)
+    // 503 when dashboard dist is not built
+    expect([200, 503]).toContain(res.status)
+  })
+
+  it('unknown API route returns 404 via SPA catch-all guard', async () => {
+    const res = await app.handle(new Request('http://localhost/api/nonexistent'))
     expect(res.status).toBe(404)
   })
 })

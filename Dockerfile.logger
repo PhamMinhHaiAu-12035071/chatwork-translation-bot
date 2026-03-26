@@ -3,22 +3,32 @@ FROM oven/bun:1.3-alpine AS builder
 
 WORKDIR /app
 
-# Copy workspace config files
 COPY package.json bun.lock* ./
 COPY tsconfig.base.json ./
 
-# Copy packages
-COPY packages/core/package.json ./packages/core/
-COPY packages/webhook-logger/package.json ./packages/webhook-logger/
+# All workspace package.json files (required for workspace resolution)
+COPY packages/core/package.json packages/core/
+COPY packages/chatwork/package.json packages/chatwork/
+COPY packages/translation-prompt/package.json packages/translation-prompt/
+COPY packages/provider-gemini/package.json packages/provider-gemini/
+COPY packages/provider-openai/package.json packages/provider-openai/
+COPY packages/provider-cursor/package.json packages/provider-cursor/
+COPY packages/translator/package.json packages/translator/
+COPY packages/webhook-logger/package.json packages/webhook-logger/
+COPY packages/dataset-runner/package.json packages/dataset-runner/
+COPY packages/dashboard/package.json packages/dashboard/
 
-# Install dependencies
 RUN bun install --frozen-lockfile
 
-# Copy source files
-COPY packages/core/src ./packages/core/src
-COPY packages/webhook-logger/src ./packages/webhook-logger/src
+# tsconfig files (needed for path alias resolution in bun build)
+COPY packages/webhook-logger/tsconfig.json packages/webhook-logger/
+COPY packages/core/tsconfig.json packages/core/
+COPY packages/chatwork/tsconfig.json packages/chatwork/
 
-# Build the webhook-logger
+COPY packages/core/src packages/core/src
+COPY packages/chatwork/src packages/chatwork/src
+COPY packages/webhook-logger/src packages/webhook-logger/src
+
 RUN bun build packages/webhook-logger/src/index.ts \
     --outfile dist/logger.js \
     --target bun \
