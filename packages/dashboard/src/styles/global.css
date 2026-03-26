@@ -37,7 +37,7 @@ body {
   min-height: 100vh;
   margin: 0;
   color: var(--text-primary);
-  font-family: 'Kiwi Maru', serif;
+  font-family: 'Zen Maru Gothic', sans-serif;
   background:
     radial-gradient(circle at top left, rgba(221, 233, 190, 0.78), transparent 31%),
     radial-gradient(circle at top right, rgba(243, 213, 177, 0.58), transparent 24%),
@@ -68,7 +68,7 @@ button,
 input,
 select,
 textarea {
-  font-family: 'Kiwi Maru', serif;
+  font-family: 'Zen Maru Gothic', sans-serif;
 }
 
 a {
@@ -134,6 +134,14 @@ html::-webkit-scrollbar-thumb:hover {
 
 .font-heading {
   font-family: 'Shantell Sans', cursive;
+}
+
+.font-metric {
+  font-family: 'Fredoka', cursive;
+}
+
+.font-ui-body {
+  font-family: 'Zen Maru Gothic', sans-serif;
 }
 
 .brutal-surface {
@@ -308,5 +316,78 @@ html::-webkit-scrollbar-thumb:hover {
   }
   50% {
     transform: translate3d(0, -10px, 0);
+  }
+}
+
+.delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 26, 46, 0.32);
+  backdrop-filter: blur(2px);
+  animation: delete-modal-fade-in 150ms ease-out;
+}
+
+.delete-modal-shell {
+  position: relative;
+  max-width: 420px;
+  width: calc(100% - 2rem);
+  border: 3px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 243, 230, 0.97);
+  box-shadow: 6px 6px 0 var(--border);
+  padding: 1.5rem;
+  animation: delete-modal-pop-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.delete-modal-warning {
+  color: var(--text-secondary);
+}
+
+.delete-modal-preview {
+  padding: 0.85rem 1rem;
+  border: 2px dashed rgba(26, 26, 46, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.delete-modal-confirm {
+  background: linear-gradient(180deg, #f07ca6 0%, #d44470 100%);
+}
+
+.delete-modal-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes delete-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes delete-modal-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .delete-modal-overlay,
+  .delete-modal-shell {
+    animation: none;
   }
 }

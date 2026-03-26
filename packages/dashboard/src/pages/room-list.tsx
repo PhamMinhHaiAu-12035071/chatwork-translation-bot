@@ -1,12 +1,16 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router'
 import { BrutalCard } from '~/components/ui/brutal-card'
+import { DeleteRoomConfirmModal } from '~/components/ui/delete-room-confirm-modal'
 import { PageShell } from '~/components/ui/page-shell'
+import { PixelScatterText } from '~/components/ui/pixel-scatter-text'
+import { SlideStackNumber } from '~/components/ui/slide-stack-number'
 import { StatusPill } from '~/components/ui/status-pill'
 import { StickerLabel } from '~/components/ui/sticker-label'
 import { useToast } from '~/components/ui/toast-provider'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
-import { useRoomStore } from '~/stores/room-store'
+import { useRoomStore, type Room } from '~/stores/room-store'
 
 const cardThemeByIndex = [
   'theme-card-lilac',
@@ -25,6 +29,7 @@ export function RoomListPage() {
   const rooms = useRoomStore((state) => state.rooms)
   const toggleRoom = useRoomStore((state) => state.toggleRoom)
   const deleteRoom = useRoomStore((state) => state.deleteRoom)
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
 
   const activeCount = rooms.filter((room) => room.enabled).length
   const pendingWebhook = rooms.filter((room) => !room.webhookToken).length
@@ -34,13 +39,11 @@ export function RoomListPage() {
     toast(currentlyEnabled ? 'Room disabled' : 'Room enabled')
   }
 
-  const handleDelete = (id: string, name: string) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) {
-      return
-    }
-
-    deleteRoom(id)
-    toast(`Room "${name}" deleted`)
+  const handleConfirmDelete = () => {
+    if (!selectedRoom) return
+    deleteRoom(selectedRoom.id)
+    toast(`Room "${selectedRoom.destinationRoomName}" deleted`)
+    setSelectedRoom(null)
   }
 
   return (
@@ -75,21 +78,21 @@ export function RoomListPage() {
         {[
           {
             label: 'Total Rooms',
-            value: String(rooms.length),
+            value: rooms.length,
             tone: 'accent' as const,
             theme: 'theme-card-lilac',
             tilt: 'left' as const,
           },
           {
             label: 'Active',
-            value: String(activeCount),
+            value: activeCount,
             tone: 'success' as const,
             theme: 'theme-card-mint',
             tilt: 'flat' as const,
           },
           {
             label: 'Awaiting Webhook',
-            value: String(pendingWebhook),
+            value: pendingWebhook,
             tone: 'warning' as const,
             theme: 'theme-card-butter',
             tilt: 'right' as const,
@@ -101,7 +104,9 @@ export function RoomListPage() {
             className={[stat.theme, 'space-y-3'].join(' ')}
           >
             <StickerLabel tone={stat.tone}>{stat.label}</StickerLabel>
-            <div className="font-heading text-4xl font-extrabold">{stat.value}</div>
+            <div className="text-4xl font-extrabold">
+              <SlideStackNumber value={stat.value} minimumDigits={2} className="font-metric" />
+            </div>
           </BrutalCard>
         ))}
       </div>
@@ -111,7 +116,7 @@ export function RoomListPage() {
           <StatusPill tone="warning">Empty State</StatusPill>
           <div className="space-y-3">
             <h2 className="font-heading text-3xl font-bold">Create your first translation room</h2>
-            <p className="max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">
+            <p className="font-ui-body max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">
               Set up your Chatwork source room, choose an AI provider, and configure translation
               preferences to get started.
             </p>
@@ -145,20 +150,26 @@ export function RoomListPage() {
                 return (
                   <BrutalCard className={[cardTheme, 'space-y-4'].join(' ')} tilt={tilt}>
                     <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1">
+                      <div className="flex-1 min-w-0 space-y-1">
                         <div className="font-heading text-lg font-bold leading-tight">
                           {room.destinationRoomName}
                         </div>
-                        <div className="text-xs text-[var(--text-secondary)]">
+                        <div className="font-ui-body text-xs text-[var(--text-secondary)]">
                           {`Room ID: ${String(room.originalRoomId)}`}
                         </div>
                       </div>
-                      <StatusPill tone={room.enabled ? 'success' : 'neutral'}>
-                        {room.enabled ? 'Live' : 'Paused'}
+                      <StatusPill
+                        tone={room.enabled ? 'success' : 'neutral'}
+                        className="min-w-24 justify-center shrink-0"
+                      >
+                        <PixelScatterText
+                          value={room.enabled ? 'Live' : 'Paused'}
+                          reserveText="Paused"
+                        />
                       </StatusPill>
                     </div>
 
-                    <div className="space-y-1.5 text-xs text-[var(--text-secondary)]">
+                    <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
                       <div>
                         <span className="font-semibold">Provider: </span>
                         {PROVIDER_LABELS[room.aiProvider]}
@@ -195,12 +206,15 @@ export function RoomListPage() {
                             : 'theme-button-violet text-white',
                         ].join(' ')}
                       >
-                        {room.enabled ? 'Pause' : 'Enable'}
+                        <PixelScatterText
+                          value={room.enabled ? 'Pause' : 'Enable'}
+                          reserveText="Enable"
+                        />
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          handleDelete(room.id, room.destinationRoomName)
+                          setSelectedRoom(room)
                         }}
                         className="brutal-button theme-button-pink px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
                       >
@@ -214,6 +228,18 @@ export function RoomListPage() {
           ))}
         </div>
       )}
+
+      {selectedRoom ? (
+        <DeleteRoomConfirmModal
+          room={selectedRoom}
+          isOpen
+          isDeleting={false}
+          onCancel={() => {
+            setSelectedRoom(null)
+          }}
+          onConfirm={handleConfirmDelete}
+        />
+      ) : null}
     </PageShell>
   )
 }
