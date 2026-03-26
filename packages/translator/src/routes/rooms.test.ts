@@ -33,6 +33,29 @@ const VALID_BODY = {
   webhookSecret: 'webhook-secret-abc',
 }
 
+async function createRoomForTest(app: Elysia): Promise<{ id: string }> {
+  const createRes = await app.handle(
+    new Request('http://localhost/api/rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(VALID_BODY),
+    }),
+  )
+
+  const body = (await createRes.json()) as {
+    success?: boolean
+    data?: { id: string }
+  }
+
+  expect(body.success).toBe(true)
+
+  if (body.data === undefined) {
+    throw new Error('Expected room data envelope')
+  }
+
+  return body.data
+}
+
 afterEach(() => {
   mockCreateChatworkRoom.mockClear()
   mockCreateChatworkRoom.mockImplementation(() => Promise.resolve({ room_id: 99001 }))
@@ -103,14 +126,7 @@ describe('GET /api/rooms/:id', () => {
 
   it('returns a success envelope for a room', async () => {
     const app = await buildApp(tmpDir)
-    const createRes = await app.handle(
-      new Request('http://localhost/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY),
-      }),
-    )
-    const { room } = (await createRes.json()) as { room: { id: string } }
+    const room = await createRoomForTest(app)
 
     const response = await app.handle(new Request(`http://localhost/api/rooms/${room.id}`))
 
@@ -159,7 +175,6 @@ describe('POST /api/rooms', () => {
     expect(body.data).toHaveProperty('enabled', false)
     expect(body.data).not.toHaveProperty('encryptedAiApiToken')
     expect(body.data).not.toHaveProperty('encryptedWebhookSecret')
-    expect(body).toHaveProperty('webhookUrl')
     expect(body).toHaveProperty('webhookUrl')
     expect(body.webhookUrl).toBe('http://localhost/webhook')
     expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
@@ -215,14 +230,7 @@ describe('PUT /api/rooms/:id', () => {
 
   it('updates a room and returns a success envelope', async () => {
     const app = await buildApp(tmpDir)
-    const createRes = await app.handle(
-      new Request('http://localhost/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY),
-      }),
-    )
-    const { room } = (await createRes.json()) as { room: { id: string } }
+    const room = await createRoomForTest(app)
 
     const updateRes = await app.handle(
       new Request(`http://localhost/api/rooms/${room.id}`, {
@@ -270,14 +278,7 @@ describe('DELETE /api/rooms/:id', () => {
 
   it('deletes a room', async () => {
     const app = await buildApp(tmpDir)
-    const createRes = await app.handle(
-      new Request('http://localhost/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY),
-      }),
-    )
-    const { room } = (await createRes.json()) as { room: { id: string } }
+    const room = await createRoomForTest(app)
 
     const deleteRes = await app.handle(
       new Request(`http://localhost/api/rooms/${room.id}`, { method: 'DELETE' }),
@@ -304,14 +305,7 @@ describe('POST /api/rooms/:id/enable and /disable', () => {
 
   it('enables a room and returns a success envelope', async () => {
     const app = await buildApp(tmpDir)
-    const createRes = await app.handle(
-      new Request('http://localhost/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY),
-      }),
-    )
-    const { room } = (await createRes.json()) as { room: { id: string } }
+    const room = await createRoomForTest(app)
 
     const res = await app.handle(
       new Request(`http://localhost/api/rooms/${room.id}/enable`, { method: 'POST' }),
@@ -330,14 +324,7 @@ describe('POST /api/rooms/:id/enable and /disable', () => {
 
   it('disables a room and returns a success envelope', async () => {
     const app = await buildApp(tmpDir)
-    const createRes = await app.handle(
-      new Request('http://localhost/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(VALID_BODY),
-      }),
-    )
-    const { room } = (await createRes.json()) as { room: { id: string } }
+    const room = await createRoomForTest(app)
 
     await app.handle(
       new Request(`http://localhost/api/rooms/${room.id}/enable`, { method: 'POST' }),
