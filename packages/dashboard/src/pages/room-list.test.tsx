@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { ToastProvider } from '~/components/ui/toast-provider'
+import { ToastProvider } from '~/components/organisms/toast-provider'
 import { RoomListPage, getRoomToggleToastMessage } from '~/pages/room-list'
 
 function renderRoomListPage() {

@@ -19,7 +19,9 @@ describe('WebhookGuidePage', () => {
   it('uses the WebhookStepper component instead of the old static steps array', async () => {
     const source = await Bun.file(new URL('./webhook-guide.tsx', import.meta.url)).text()
 
-    expect(source).toContain("import { WebhookStepper } from '~/components/ui/webhook-stepper'")
+    expect(source).toContain(
+      "import { WebhookStepper } from '~/components/molecules/webhook-stepper'",
+    )
     expect(source).toContain('<WebhookStepper />')
     expect(source).not.toContain('const steps = [')
   })

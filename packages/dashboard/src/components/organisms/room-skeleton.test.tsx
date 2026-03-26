@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { RoomSkeletonCard, RoomSkeletonList } from '~/components/ui/room-skeleton'
+import { RoomSkeletonCard, RoomSkeletonList } from '~/components/organisms/room-skeleton'
 
 describe('RoomSkeleton', () => {
   it('renders a brutal loading card shell', () => {

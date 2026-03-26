@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { DeleteRoomConfirmModal } from '~/components/ui/delete-room-confirm-modal'
+import { DeleteRoomConfirmModal } from '~/components/organisms/delete-room-confirm-modal'
 
 const TEST_ROOM = {
   id: 'room-001',

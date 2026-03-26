@@ -1,7 +1,7 @@
-import { BrutalCard } from '~/components/ui/brutal-card'
-import { PageShell } from '~/components/ui/page-shell'
-import { StickerLabel } from '~/components/ui/sticker-label'
-import { WebhookStepper } from '~/components/ui/webhook-stepper'
+import { BrutalCard } from '~/components/molecules/brutal-card'
+import { PageShell } from '~/components/layout/page-shell'
+import { StickerLabel } from '~/components/atoms/sticker-label'
+import { WebhookStepper } from '~/components/molecules/webhook-stepper'
 
 export function WebhookGuidePage() {
   return (

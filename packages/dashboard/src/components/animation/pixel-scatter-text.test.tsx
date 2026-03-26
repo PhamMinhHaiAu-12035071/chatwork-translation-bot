@@ -5,7 +5,7 @@ import {
   PixelScatterText,
   getPixelScatterDescriptor,
   splitPixelScatterText,
-} from '~/components/ui/pixel-scatter-text'
+} from '~/components/animation/pixel-scatter-text'
 
 describe('PixelScatterText', () => {
   it('splits labels into stable characters while preserving spaces', () => {

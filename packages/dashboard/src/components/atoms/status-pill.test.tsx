@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { StatusPill } from '~/components/ui/status-pill'
+import { StatusPill } from '~/components/atoms/status-pill'
 
 describe('StatusPill', () => {
   it('forwards custom layout classes so parents can keep header footprints stable', () => {

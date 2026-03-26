@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { StickerLabel } from '~/components/ui/sticker-label'
+import { StickerLabel } from '~/components/atoms/sticker-label'
 
 interface PageShellProps {
   eyebrow: string

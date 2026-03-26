@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import { NavLink, Outlet, useLocation } from 'react-router'
-import { AmbientOrbs } from '~/components/ui/ambient-orbs'
-import { BrutalCard } from '~/components/ui/brutal-card'
-import { StickerLabel } from '~/components/ui/sticker-label'
+import { AmbientOrbs } from '~/components/layout/ambient-orbs'
+import { BrutalCard } from '~/components/molecules/brutal-card'
+import { StickerLabel } from '~/components/atoms/sticker-label'
 
 const navItems = [
   {

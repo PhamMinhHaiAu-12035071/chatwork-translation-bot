@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
-import { BrutalCard } from '~/components/ui/brutal-card'
-import { StatusPill } from '~/components/ui/status-pill'
-import { StickerLabel } from '~/components/ui/sticker-label'
+import { BrutalCard } from '~/components/molecules/brutal-card'
+import { StatusPill } from '~/components/atoms/status-pill'
+import { StickerLabel } from '~/components/atoms/sticker-label'
 
 interface WebhookStepperProps {
   webhookUrl?: string

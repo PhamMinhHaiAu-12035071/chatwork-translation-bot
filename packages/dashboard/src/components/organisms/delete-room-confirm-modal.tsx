@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { Room } from '~/stores/room-store'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
-import { StatusPill } from '~/components/ui/status-pill'
-import { StickerLabel } from '~/components/ui/sticker-label'
+import { StatusPill } from '~/components/atoms/status-pill'
+import { StickerLabel } from '~/components/atoms/sticker-label'
 
 interface DeleteRoomConfirmModalProps {
   room: Room

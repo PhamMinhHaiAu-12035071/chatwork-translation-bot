@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import type { ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { ToastProvider } from '~/components/ui/toast-provider'
+import { ToastProvider } from '~/components/organisms/toast-provider'
 import { RoomCreatePage } from '~/pages/room-create'
 import { RoomDetailPage } from '~/pages/room-detail'
 import { RoomListPage } from '~/pages/room-list'
@@ -97,13 +97,13 @@ describe('dashboard visual shells', () => {
     const detailSource = await Bun.file(new URL('./pages/room-detail.tsx', import.meta.url)).text()
     const layoutSource = await Bun.file(new URL('./layouts/app-layout.tsx', import.meta.url)).text()
     const pageShellSource = await Bun.file(
-      new URL('./components/ui/page-shell.tsx', import.meta.url),
+      new URL('./components/layout/page-shell.tsx', import.meta.url),
     ).text()
     const brutalCardSource = await Bun.file(
-      new URL('./components/ui/brutal-card.tsx', import.meta.url),
+      new URL('./components/molecules/brutal-card.tsx', import.meta.url),
     ).text()
     const stickerSource = await Bun.file(
-      new URL('./components/ui/sticker-label.tsx', import.meta.url),
+      new URL('./components/atoms/sticker-label.tsx', import.meta.url),
     ).text()
 
     expect(stickerSource).toContain("tilt?: 'left' | 'right' | 'flat'")

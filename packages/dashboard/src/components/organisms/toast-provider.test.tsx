@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ToastProvider, useToast } from '~/components/ui/toast-provider'
+import { ToastProvider, useToast } from '~/components/organisms/toast-provider'
 
 function ToastProbe() {
   const { toast } = useToast()

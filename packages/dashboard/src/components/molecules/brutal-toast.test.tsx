@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BrutalToast } from '~/components/ui/brutal-toast'
+import { BrutalToast } from '~/components/molecules/brutal-toast'
 
 describe('BrutalToast', () => {
   it('renders the success variant message and dismiss button', () => {

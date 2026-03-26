@@ -1,8 +1,8 @@
 import { AnimatePresence } from 'framer-motion'
 import { createContext, useCallback, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
-import { BrutalToast } from '~/components/ui/brutal-toast'
-import type { ToastItem, ToastVariant } from '~/components/ui/brutal-toast'
+import { BrutalToast } from '~/components/molecules/brutal-toast'
+import type { ToastItem, ToastVariant } from '~/components/molecules/brutal-toast'
 
 interface ToastContextValue {
   toast: (message: string, variant?: ToastVariant) => void

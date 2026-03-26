@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { WebhookStepper } from '~/components/ui/webhook-stepper'
+import { WebhookStepper } from '~/components/molecules/webhook-stepper'
 
 describe('WebhookStepper', () => {
   it('renders the first step with navigation controls', () => {

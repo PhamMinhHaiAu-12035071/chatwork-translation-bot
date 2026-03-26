@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BrutalInput } from '~/components/ui/brutal-input'
+import { BrutalInput } from '~/components/atoms/brutal-input'
 
 describe('BrutalInput', () => {
   it('renders the label, hint, and input type for normal fields', () => {

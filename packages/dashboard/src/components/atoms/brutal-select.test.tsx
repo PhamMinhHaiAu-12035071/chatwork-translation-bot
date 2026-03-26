@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { BrutalSelect } from '~/components/ui/brutal-select'
+import { BrutalSelect } from '~/components/atoms/brutal-select'
 
 const SOURCE = readFileSync(resolve(import.meta.dir, 'brutal-select.tsx'), 'utf-8')
 

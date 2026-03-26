@@ -6,7 +6,7 @@ import {
   getSlideStackDirection,
   getSlideStackFootprint,
   getSlideStackMotionState,
-} from '~/components/ui/slide-stack-number'
+} from '~/components/animation/slide-stack-number'
 
 describe('SlideStackNumber', () => {
   it('derives forward motion for increments and reverse motion for decrements', () => {
