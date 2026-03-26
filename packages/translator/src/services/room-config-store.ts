@@ -30,6 +30,10 @@ interface RoomConfigStoreOptions {
   encryptionKeyHex: string
 }
 
+function isEnoentError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT'
+}
+
 export class RoomConfigStore {
   private readonly configPath: string
   private readonly archivePath: string
@@ -48,15 +52,7 @@ export class RoomConfigStore {
   async init(): Promise<void> {
     await mkdir(dirname(this.configPath), { recursive: true })
 
-    let data: RoomConfigFile
-    try {
-      const raw = await readFile(this.configPath, 'utf-8')
-      data = RoomConfigFileSchema.parse(JSON.parse(raw))
-    } catch {
-      data = { version: 1, rooms: [] }
-      await this.writeConfig(data)
-    }
-
+    const data = await this.loadConfig()
     this.rebuildIndex(data.rooms)
   }
 
@@ -203,6 +199,24 @@ export class RoomConfigStore {
 
   private allRooms(): RoomConfig[] {
     return Array.from(this.roomsById.values())
+  }
+
+  private async loadConfig(): Promise<RoomConfigFile> {
+    try {
+      const raw = await readFile(this.configPath, 'utf-8')
+      return RoomConfigFileSchema.parse(JSON.parse(raw))
+    } catch (error) {
+      if (isEnoentError(error)) {
+        const emptyConfig: RoomConfigFile = { version: 1, rooms: [] }
+        await this.writeConfig(emptyConfig)
+        return emptyConfig
+      }
+
+      throw new RoomConfigStoreError(
+        `Failed to load room config store from ${this.configPath}: ${error instanceof Error ? error.message : String(error)}`,
+        'INVALID_CONFIG_FILE',
+      )
+    }
   }
 
   private rebuildIndex(rooms: RoomConfig[]): void {

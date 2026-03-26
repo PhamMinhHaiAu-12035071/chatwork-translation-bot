@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { RoomConfigStore, RoomConfigStoreError } from './room-config-store'
@@ -40,6 +40,21 @@ describe('RoomConfigStore', () => {
   it('init() creates an empty store file', () => {
     const rooms = store.list()
     expect(rooms).toHaveLength(0)
+  })
+
+  it('init() fails fast with a clear error when room-configs.json is corrupt', async () => {
+    await writeFile(join(tmpDir, 'room-configs.json'), '{ definitely-not-valid-json }', 'utf-8')
+
+    const brokenStore = new RoomConfigStore({
+      dataDir: tmpDir,
+      encryptionKeyHex: KEY_HEX,
+    })
+
+    const error = await catchError(brokenStore.init())
+
+    expect(error).toBeInstanceOf(RoomConfigStoreError)
+    expect((error as RoomConfigStoreError).code).toBe('INVALID_CONFIG_FILE')
+    expect((error as Error).message).toContain('room-configs.json')
   })
 
   it('create() stores a room and returns it with id + timestamps', async () => {

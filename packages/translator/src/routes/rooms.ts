@@ -10,6 +10,13 @@ interface RoomsRoutesOptions {
   chatworkApiToken: string
 }
 
+function errorResponse(status: number, error: string, details?: unknown) {
+  return {
+    status,
+    body: details === undefined ? { error } : { error, details },
+  }
+}
+
 export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOptions) {
   return new Elysia({ name: 'translator:rooms' })
     .get('/api/rooms', () => {
@@ -29,15 +36,20 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
       async ({ body, request, set }) => {
         const parsed = CreateRoomRequestSchema.safeParse(body)
         if (!parsed.success) {
-          set.status = 400
-          return { error: 'Invalid request body', details: parsed.error.issues }
+          const response = errorResponse(400, 'Invalid request body', parsed.error.issues)
+          set.status = response.status
+          return response.body
         }
 
         const data = parsed.data
         const existing = store.getByOriginalRoomId(data.originalRoomId)
         if (existing !== null) {
-          set.status = 409
-          return { error: `originalRoomId ${data.originalRoomId.toString()} already exists` }
+          const response = errorResponse(
+            409,
+            `originalRoomId ${data.originalRoomId.toString()} already exists`,
+          )
+          set.status = response.status
+          return response.body
         }
 
         const duplicateName = store
@@ -65,11 +77,13 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
           )
           destinationRoomId = created.room_id
         } catch (error) {
-          set.status = 502
-          return {
-            error: 'Failed to create destination room on Chatwork',
-            details: error instanceof Error ? error.message : String(error),
-          }
+          const response = errorResponse(
+            502,
+            'Failed to create destination room on Chatwork',
+            error instanceof Error ? error.message : String(error),
+          )
+          set.status = response.status
+          return response.body
         }
 
         const room = await store.create({ ...data, destinationRoomId })
@@ -85,8 +99,9 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
       async ({ body, params, set }) => {
         const parsed = UpdateRoomRequestSchema.safeParse(body)
         if (!parsed.success) {
-          set.status = 400
-          return { error: 'Invalid request body', details: parsed.error.issues }
+          const response = errorResponse(400, 'Invalid request body', parsed.error.issues)
+          set.status = response.status
+          return response.body
         }
 
         try {
@@ -94,8 +109,9 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
           return { success: true, data: room }
         } catch (error) {
           if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
-            set.status = 404
-            return { error: 'Room not found' }
+            const response = errorResponse(404, 'Room not found')
+            set.status = response.status
+            return response.body
           }
 
           throw error
@@ -110,8 +126,9 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
         return undefined
       } catch (error) {
         if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
-          set.status = 404
-          return { error: 'Room not found' }
+          const response = errorResponse(404, 'Room not found')
+          set.status = response.status
+          return response.body
         }
 
         throw error
@@ -123,8 +140,9 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
         return { success: true, data: room }
       } catch (error) {
         if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
-          set.status = 404
-          return { error: 'Room not found' }
+          const response = errorResponse(404, 'Room not found')
+          set.status = response.status
+          return response.body
         }
 
         throw error
@@ -136,8 +154,9 @@ export function createRoomsRoutes({ store, chatworkApiToken }: RoomsRoutesOption
         return { success: true, data: room }
       } catch (error) {
         if (error instanceof RoomConfigStoreError && error.code === 'NOT_FOUND') {
-          set.status = 404
-          return { error: 'Room not found' }
+          const response = errorResponse(404, 'Room not found')
+          set.status = response.status
+          return response.body
         }
 
         throw error
