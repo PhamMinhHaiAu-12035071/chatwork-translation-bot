@@ -1,5 +1,5 @@
 import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
-import type { Room } from '~/types/room'
+import type { CreateRoomParams, CreateRoomResult, Room } from '~/types/room'
 
 export interface IChatworkApiClient {
   sendRoomMessage(
@@ -17,4 +17,6 @@ export interface IChatworkApiClient {
   listRoomMessages(roomId: number, token: string, force?: boolean): Promise<ChatworkMessage[]>
 
   getRoom(roomId: number, token: string): Promise<Room>
+
+  createRoom(params: CreateRoomParams, token: string): Promise<CreateRoomResult>
 }

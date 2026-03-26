@@ -1,7 +1,7 @@
 import { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
 import type { IChatworkApiClient } from '~/interfaces/chatwork-api'
 import type { ChatworkMember, ChatworkMessage, ChatworkSendMessageResult } from '~/types/message'
-import type { Room } from '~/types/room'
+import type { CreateRoomParams, CreateRoomResult, Room } from '~/types/room'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -148,5 +148,33 @@ export const chatworkApiClient = {
     }
 
     return (await response.json()) as Room
+  },
+
+  async createRoom(params: CreateRoomParams, token: string): Promise<CreateRoomResult> {
+    const url = `${BASE_URL}/rooms`
+    const body = new URLSearchParams()
+    body.set('name', params.name)
+    body.set('members_admin_ids', params.members_admin_ids)
+    if (params.description !== undefined) {
+      body.set('description', params.description)
+    }
+    if (params.icon_preset !== undefined) {
+      body.set('icon_preset', params.icon_preset)
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...makeHeaders(token),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
+
+    return (await response.json()) as CreateRoomResult
   },
 } satisfies IChatworkApiClient
