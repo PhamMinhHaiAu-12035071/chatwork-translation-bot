@@ -151,6 +151,81 @@ describe('webhookRoutes', () => {
     app = new Elysia().use(webhookRoutes)
   })
 
+  describe('room secret cache', () => {
+    it('does not fetch the same room secret again within TTL', async () => {
+      const rawBody = JSON.stringify(makeValidEvent())
+      const sig = makeSignature(rawBody)
+
+      const firstRes = await app.handle(makeRequest(rawBody, sig))
+      const secondRes = await app.handle(makeRequest(rawBody, sig))
+
+      expect(firstRes.status).toBe(200)
+      expect(secondRes.status).toBe(200)
+
+      const secretFetchCalls = mockFetch.mock.calls.filter(
+        (call) => resolveUrl(call[0]) === roomSecretUrl(),
+      )
+      expect(secretFetchCalls).toHaveLength(1)
+    })
+
+    it('serves a cached room secret when the translator internal API is down', async () => {
+      const rawBody = JSON.stringify(makeValidEvent())
+      const sig = makeSignature(rawBody)
+
+      const firstRes = await app.handle(makeRequest(rawBody, sig))
+      expect(firstRes.status).toBe(200)
+
+      mockFetch.mockImplementation((input: FetchInput) => {
+        const url = resolveUrl(input)
+
+        if (url === roomSecretUrl()) {
+          return Promise.reject(new Error('secret service unavailable'))
+        }
+
+        if (url === `${TRANSLATOR_URL}/internal/translate`) {
+          return Promise.resolve(new Response('OK', { status: 200 }))
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const secondRes = await app.handle(makeRequest(rawBody, sig))
+
+      expect(secondRes.status).toBe(200)
+    })
+
+    it('returns 503 when the translator internal API is unavailable for a cache miss', async () => {
+      const roomId = ROOM_ID + 1
+      const event = makeValidEvent()
+      const rawBody = JSON.stringify({
+        ...event,
+        webhook_event: {
+          ...event.webhook_event,
+          room_id: roomId,
+        },
+      })
+
+      mockFetch.mockImplementation((input: FetchInput) => {
+        const url = resolveUrl(input)
+
+        if (url === roomSecretUrl(roomId)) {
+          return Promise.reject(new Error('secret service unavailable'))
+        }
+
+        if (url === `${TRANSLATOR_URL}/internal/translate`) {
+          return Promise.resolve(new Response('OK', { status: 200 }))
+        }
+
+        throw new Error(`Unexpected fetch URL: ${url}`)
+      })
+
+      const sig = makeSignature(rawBody)
+      const res = await app.handle(makeRequest(rawBody, sig))
+
+      expect(res.status).toBe(503)
+    })
+  })
+
   beforeEach(() => {
     installDefaultFetch()
   })

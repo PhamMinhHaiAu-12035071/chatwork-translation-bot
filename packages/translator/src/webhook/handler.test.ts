@@ -45,6 +45,12 @@ function createMockExecutor(): ILLMExecutor {
   }
 }
 
+function readJsonLogs(): { event?: string; level?: string }[] {
+  return consoleLogLines
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line) as { event?: string; level?: string })
+}
+
 function createMockProvider(id: string, executor: ILLMExecutor, timeoutMs = 1_800_000) {
   return {
     manifest: {
@@ -317,9 +323,10 @@ describe('handleTranslateRequest', () => {
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
-    expect(
-      consoleLogLines.some((line) => line.includes('translation_skipped_no_room_config')),
-    ).toBe(true)
+    const skippedLog = readJsonLogs().find(
+      (entry) => entry.event === 'translation_skipped_no_room_config',
+    )
+    expect(skippedLog?.level).toBe('warn')
   })
 
   it('skips when room is disabled', async () => {
@@ -331,9 +338,10 @@ describe('handleTranslateRequest', () => {
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
-    expect(consoleLogLines.some((line) => line.includes('translation_skipped_room_disabled'))).toBe(
-      true,
+    const skippedLog = readJsonLogs().find(
+      (entry) => entry.event === 'translation_skipped_room_disabled',
     )
+    expect(skippedLog?.level).toBe('info')
   })
 
   it('uses the room provider, model, token, and destination instead of global env config', async () => {

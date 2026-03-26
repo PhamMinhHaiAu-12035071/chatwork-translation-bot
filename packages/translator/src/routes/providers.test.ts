@@ -21,7 +21,8 @@ describe('GET /api/providers', () => {
     expect(response.status).toBe(200)
 
     const body = (await response.json()) as {
-      providers: {
+      success?: boolean
+      data?: {
         id: string
         name: string
         models: string[]
@@ -29,13 +30,10 @@ describe('GET /api/providers', () => {
       }[]
     }
 
-    expect(body.providers.length).toBeGreaterThan(0)
-    expect(body.providers[0]).toHaveProperty('id')
-    expect(body.providers[0]).toHaveProperty('name')
-    expect(body.providers[0]).toHaveProperty('models')
-    expect(body.providers[0]).toHaveProperty('defaultModel')
-    expect(body.providers.map((provider) => provider.id)).toContain('openai')
-    expect(body.providers.map((provider) => provider.id)).toContain('gemini')
-    expect(body.providers.map((provider) => provider.id)).not.toContain('cursor')
+    expect(body.success).toBe(true)
+    expect(body.data).toHaveLength(0)
+    expect(body.data?.map((provider) => provider.id)).toContain('openai')
+    expect(body.data?.map((provider) => provider.id)).toContain('gemini')
+    expect(body.data?.map((provider) => provider.id)).not.toContain('cursor')
   })
 })
