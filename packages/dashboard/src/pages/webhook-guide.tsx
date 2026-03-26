@@ -1,69 +1,40 @@
 import { BrutalCard } from '~/components/ui/brutal-card'
 import { PageShell } from '~/components/ui/page-shell'
 import { StickerLabel } from '~/components/ui/sticker-label'
-
-const steps = [
-  ['01', 'Access Chatwork Admin', 'Open Integrations and move to the webhook screen.'],
-  [
-    '02',
-    'Create New Webhook',
-    'Use a clear room-specific name so the operator recognizes it later.',
-  ],
-  [
-    '03',
-    'Paste Webhook URL',
-    'The dashboard-generated URL will live here once activation becomes functional.',
-  ],
-  ['04', 'Select Events', 'Enable message created and message updated for the correct room.'],
-  ['05', 'Save and Copy Token', 'Copy the Chatwork webhook token immediately after saving.'],
-  [
-    '06',
-    'Activate on Dashboard',
-    'Return to the room detail page and paste the token to enable translation.',
-  ],
-] as const
+import { WebhookStepper } from '~/components/ui/webhook-stepper'
 
 export function WebhookGuidePage() {
   return (
     <PageShell
       eyebrow="Manual Guide"
       title="Webhook Setup Guide"
-      description="This page is intentionally instructional because webhook setup remains a human step in the product flow."
+      description="Follow these six steps to connect your Chatwork room to the translation bot. Complete each step before moving on."
     >
-      <div className="grid gap-4 xl:grid-cols-2">
-        {steps.map(([index, title, body]) => (
-          <BrutalCard
-            key={index}
-            tilt={
-              index === '01' || index === '04'
-                ? 'left'
-                : index === '02' || index === '05'
-                  ? 'right'
-                  : index === '03'
-                    ? 'flat'
-                    : 'right'
-            }
-            className={[
-              'space-y-4',
-              index === '01' || index === '04'
-                ? 'theme-card-matcha'
-                : index === '02' || index === '05'
-                  ? 'theme-card-cream'
-                  : index === '03'
-                    ? 'theme-card-sky'
-                    : 'theme-card-blush',
-            ].join(' ')}
-          >
-            <StickerLabel
-              tone={index === '06' ? 'accent' : 'warning'}
-              tilt={index === '02' || index === '05' || index === '06' ? 'right' : 'left'}
-            >{`Step ${index}`}</StickerLabel>
-            <div className="space-y-2">
-              <h2 className="font-heading text-2xl font-bold">{title}</h2>
-              <p className="text-sm leading-7 text-[var(--text-secondary)]">{body}</p>
-            </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)]">
+        <BrutalCard className="theme-card-cream space-y-5">
+          <StickerLabel tone="accent">Step-by-Step</StickerLabel>
+          <WebhookStepper />
+        </BrutalCard>
+
+        <div className="space-y-5">
+          <BrutalCard className="theme-card-sky space-y-3" tilt="right">
+            <StickerLabel tone="warning" tilt="right">
+              Why manual?
+            </StickerLabel>
+            <p className="text-sm leading-7 text-[var(--text-secondary)]">
+              Chatwork webhooks require operator-level access to the Chatwork Admin panel. The
+              dashboard cannot create them on your behalf — this is a Chatwork API limitation.
+            </p>
           </BrutalCard>
-        ))}
+
+          <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
+            <StickerLabel tone="success">One-time setup</StickerLabel>
+            <p className="text-sm leading-7 text-[var(--text-secondary)]">
+              Once the webhook token is pasted into the Activation section of a room, no further
+              manual steps are needed. Translation runs automatically.
+            </p>
+          </BrutalCard>
+        </div>
       </div>
     </PageShell>
   )

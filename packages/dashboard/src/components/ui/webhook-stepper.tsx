@@ -1,0 +1,218 @@
+import { AnimatePresence, motion } from 'framer-motion'
+import { useState } from 'react'
+import { BrutalCard } from '~/components/ui/brutal-card'
+import { StatusPill } from '~/components/ui/status-pill'
+import { StickerLabel } from '~/components/ui/sticker-label'
+
+interface WebhookStepperProps {
+  webhookUrl?: string
+}
+
+interface Step {
+  number: string
+  title: string
+  body: string
+  action?: 'link' | 'copy' | 'none'
+  actionLabel?: string
+}
+
+const STEPS: Step[] = [
+  {
+    number: '01',
+    title: 'Access Chatwork Admin',
+    body: 'Log in to your Chatwork account. Open the Admin panel and navigate to Integrations → Webhooks.',
+    action: 'link',
+    actionLabel: 'Open Chatwork Admin →',
+  },
+  {
+    number: '02',
+    title: 'Create New Webhook',
+    body: 'Click "Add webhook". Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
+    action: 'none',
+  },
+  {
+    number: '03',
+    title: 'Paste Webhook URL',
+    body: 'Copy the URL below and paste it into the "Webhook URL" field in the Chatwork form.',
+    action: 'copy',
+    actionLabel: 'Copy URL',
+  },
+  {
+    number: '04',
+    title: 'Select Events',
+    body: 'Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that room.',
+    action: 'none',
+  },
+  {
+    number: '05',
+    title: 'Save & Copy Token',
+    body: 'Click Save. Chatwork will display a webhook token only once. Copy it immediately — you will paste it into the dashboard in the next step.',
+    action: 'none',
+  },
+  {
+    number: '06',
+    title: 'Activate on Dashboard',
+    body: 'Return to the room detail page. Paste the Chatwork webhook token into the Activation section and click "Activate Webhook". The room will go live.',
+    action: 'none',
+  },
+]
+
+const CARD_THEMES = [
+  'theme-card-matcha',
+  'theme-card-cream',
+  'theme-card-sky',
+  'theme-card-matcha',
+  'theme-card-cream',
+  'theme-card-blush',
+] as const
+
+const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right', 'right'] as const
+
+export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
+  const [activeStep, setActiveStep] = useState(0)
+  const [copied, setCopied] = useState(false)
+
+  const activeConfig = STEPS[activeStep]
+  const activeTheme = CARD_THEMES[activeStep]
+  const activeTilt = TILTS_BY_INDEX[activeStep]
+
+  if (!activeConfig || !activeTheme || !activeTilt) {
+    return null
+  }
+
+  const handleCopy = async () => {
+    const url = webhookUrl ?? 'https://your-server.example.com/webhook'
+    const clipboard = navigator.clipboard as
+      | { writeText?: (value: string) => Promise<void> }
+      | undefined
+
+    if (!clipboard?.writeText) {
+      return
+    }
+
+    await clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => {
+      setCopied(false)
+    }, 2000)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {STEPS.map((step, index) => (
+          <button
+            key={step.number}
+            type="button"
+            onClick={() => {
+              setActiveStep(index)
+            }}
+            className={[
+              'rounded-full border-[3px] border-[var(--border)] px-4 py-1.5',
+              'font-heading text-xs font-bold shadow-[3px_3px_0_var(--border)] transition-all duration-150',
+              index === activeStep
+                ? 'bg-[var(--accent)] text-white shadow-[3px_3px_0_var(--border)]'
+                : index < activeStep
+                  ? 'bg-[var(--success)] text-[var(--border)]'
+                  : 'bg-white/80 text-[var(--text-primary)]',
+            ].join(' ')}
+          >
+            {index < activeStep ? 'OK' : step.number}
+          </button>
+        ))}
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeStep}
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -24 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          <BrutalCard className={[activeTheme, 'space-y-4'].join(' ')} tilt={activeTilt}>
+            <div className="flex flex-wrap items-center gap-3">
+              <StickerLabel
+                tone={activeStep === STEPS.length - 1 ? 'accent' : 'warning'}
+                tilt={activeStep % 2 === 0 ? 'left' : 'right'}
+              >
+                {`Step ${activeConfig.number}`}
+              </StickerLabel>
+              {activeStep < STEPS.length - 1 ? (
+                <StatusPill tone="neutral">
+                  {`${String(activeStep + 1)} of ${String(STEPS.length)}`}
+                </StatusPill>
+              ) : (
+                <StatusPill tone="success">Final step</StatusPill>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="font-heading text-2xl font-bold">{activeConfig.title}</h2>
+              <p className="text-sm leading-7 text-[var(--text-secondary)]">{activeConfig.body}</p>
+            </div>
+
+            {activeStep === 0 ? (
+              <a
+                href="https://www.chatwork.com/service/packages/chatwork/admin/webhook.php"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="brutal-button theme-button-violet inline-flex items-center px-5 py-2.5 font-heading text-sm font-bold text-white"
+              >
+                {activeConfig.actionLabel}
+              </a>
+            ) : null}
+
+            {activeStep === 2 ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5 shadow-[3px_3px_0_var(--border)]">
+                  <code className="flex-1 truncate text-xs text-[var(--text-primary)]">
+                    {webhookUrl ?? 'https://your-server.example.com/webhook'}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleCopy()
+                    }}
+                    className={[
+                      'brutal-button shrink-0 px-4 py-1.5 font-heading text-xs font-bold',
+                      copied ? 'theme-button-gold' : 'theme-button-violet text-white',
+                    ].join(' ')}
+                  >
+                    {copied ? 'Copied!' : 'Copy URL'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </BrutalCard>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="flex justify-between">
+        <button
+          type="button"
+          disabled={activeStep === 0}
+          onClick={() => {
+            setActiveStep((step) => Math.max(0, step - 1))
+          }}
+          className="brutal-button theme-button-warm px-5 py-2.5 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Previous
+        </button>
+        {activeStep < STEPS.length - 1 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveStep((step) => Math.min(STEPS.length - 1, step + 1))
+            }}
+            className="brutal-button theme-button-violet px-5 py-2.5 font-heading text-sm font-bold text-white"
+          >
+            Next →
+          </button>
+        ) : (
+          <StatusPill tone="success">All steps complete OK</StatusPill>
+        )}
+      </div>
+    </div>
+  )
+}

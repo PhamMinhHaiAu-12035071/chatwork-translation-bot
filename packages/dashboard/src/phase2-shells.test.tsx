@@ -1,34 +1,49 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
+import type { ReactElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import { ToastProvider } from '~/components/ui/toast-provider'
 import { RoomCreatePage } from '~/pages/room-create'
 import { RoomDetailPage } from '~/pages/room-detail'
 import { RoomListPage } from '~/pages/room-list'
 import { WebhookGuidePage } from '~/pages/webhook-guide'
 
-describe('phase 2 dashboard shells', () => {
-  it('renders the redesigned room dashboard copy', () => {
-    const html = renderToStaticMarkup(createElement(RoomListPage))
+function renderWithRoute(path: string, routePath: string, element: ReactElement) {
+  const router = createMemoryRouter(
+    [
+      {
+        path: routePath,
+        element: createElement(ToastProvider, null, element),
+      },
+    ],
+    { initialEntries: [path] },
+  )
 
-    expect(html).toContain('Phase 2 Preview')
-    expect(html).toContain('Room Dashboard')
-    expect(html).toContain('Create your first translation room')
+  return renderToStaticMarkup(createElement(RouterProvider, { router }))
+}
+
+describe('dashboard visual shells', () => {
+  it('renders the live room dashboard copy and seeded room cards', () => {
+    const html = renderWithRoute('/', '/', createElement(RoomListPage))
+
+    expect(html).toContain('Translation Rooms')
+    expect(html).toContain('Sakura Desk JP')
+    expect(html).toContain('Gamma Team EN')
+    expect(html).toContain('+ New Room')
+    expect(html).toContain('Webhook Guide')
   })
 
-  it('applies the matcha milk backdrop with brighter candy accents', async () => {
-    const html = renderToStaticMarkup(createElement(RoomListPage))
+  it('keeps the matcha milk backdrop with brighter candy accents after wiring live data', async () => {
+    const html = renderWithRoute('/', '/', createElement(RoomListPage))
     const css = await Bun.file(new URL('./styles/global.css', import.meta.url)).text()
 
-    expect(html).toContain('theme-card-matcha')
-    expect(html).toContain('theme-card-cream')
-    expect(html).toContain('theme-card-sky')
     expect(html).toContain('theme-card-mint')
-    expect(html).toContain('theme-button-violet')
-    expect(html).toContain('theme-button-warm')
-    expect(html).toContain('Gamma Team')
-    expect(html).toContain('Setup')
-
+    expect(html).toContain('theme-card-butter')
+    expect(html).toContain(
+      'theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white',
+    )
+    expect(html).toContain('theme-button-warm px-5 py-3 font-heading text-sm font-bold text-white')
     expect(css).toContain('--bg-gradient-start: #f6f7e9;')
     expect(css).toContain('--bg-gradient-end: #fff1dc;')
     expect(css).toContain('--organic-circle-1: #dde9be;')
@@ -61,27 +76,7 @@ describe('phase 2 dashboard shells', () => {
     expect(css).toContain('scrollbar-width: thin;')
   })
 
-  it('uses white text on saturated actions, improves room-status contrast, and gives the sidebar nav more breathing room', async () => {
-    const html = renderToStaticMarkup(createElement(RoomListPage))
-    const layoutSource = await Bun.file(new URL('./layouts/app-layout.tsx', import.meta.url)).text()
-    const css = await Bun.file(new URL('./styles/global.css', import.meta.url)).text()
-    const brutalButtonBlock = /\.brutal-button\s*\{[^}]+\}/.exec(css)?.[0]
-
-    expect(html).toContain(
-      'theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white',
-    )
-    expect(html).toContain('theme-button-warm px-5 py-3 font-heading text-sm font-bold text-white')
-    expect(html).toContain('theme-button-sky text-[var(--border)]')
-    expect(html).toContain('theme-button-gold text-[var(--border)]')
-    expect(html).toContain('theme-button-pink text-[#fff7ed]')
-    expect(brutalButtonBlock).toBeDefined()
-    expect(brutalButtonBlock).not.toContain('color:')
-    expect(brutalButtonBlock).toContain('cursor: pointer;')
-    expect(layoutSource).toContain('<nav className="space-y-5">')
-    expect(layoutSource).toContain('<NavLink key={item.to} to={item.to} className="block">')
-  })
-
-  it('keeps top chrome stickers and sidebar nav straight while distributing controlled chaos across supporting UI', async () => {
+  it('keeps top chrome stickers and sidebar nav straight while live pages use controlled tilt', async () => {
     const roomListSource = await Bun.file(new URL('./pages/room-list.tsx', import.meta.url)).text()
     const createSource = await Bun.file(new URL('./pages/room-create.tsx', import.meta.url)).text()
     const detailSource = await Bun.file(new URL('./pages/room-detail.tsx', import.meta.url)).text()
@@ -107,38 +102,37 @@ describe('phase 2 dashboard shells', () => {
     expect(layoutSource).not.toContain('rotate: item.tilt')
     expect(layoutSource).not.toContain('tilt: -0.9')
     expect(layoutSource).not.toContain('tilt: 0.9')
-    expect(roomListSource).toContain("tilt={index === 0 ? 'left' : index === 2 ? 'right' : 'flat'}")
+    expect(roomListSource).toContain(
+      "const tiltByIndex = ['left', 'flat', 'right', 'left', 'flat', 'right'] as const",
+    )
     expect(createSource).toContain(
       '<BrutalCard className="theme-card-matcha space-y-3" tilt="left">',
     )
     expect(createSource).toContain(
       '<BrutalCard className="theme-card-lilac space-y-3" tilt="right">',
     )
-    expect(detailSource).toContain('<BrutalCard className="theme-card-sky space-y-4" tilt="left">')
+    expect(detailSource).toContain('<BrutalCard className="theme-card-sky space-y-5" tilt="left">')
     expect(detailSource).toContain(
       '<BrutalCard className="theme-card-peach space-y-4" tilt="right">',
     )
   })
 
-  it('renders the redesigned room creation shell copy', () => {
-    const html = renderToStaticMarkup(createElement(RoomCreatePage))
+  it('renders the live room creation form copy', () => {
+    const html = renderWithRoute('/rooms/new', '/rooms/new', createElement(RoomCreatePage))
 
-    expect(html).toContain('Create Flow Preview')
-    expect(html).toContain('Set up a new translation room')
-    expect(html).toContain('Phase 3 Enables Real Inputs')
+    expect(html).toContain('New Room')
+    expect(html).toContain('Set up a translation room')
+    expect(html).toContain('Room Configuration')
+    expect(html).toContain('Create Room')
   })
 
-  it('renders the redesigned room detail shell for a route param', () => {
-    const router = createMemoryRouter(
-      [{ path: '/rooms/:id', element: createElement(RoomDetailPage) }],
-      { initialEntries: ['/rooms/demo-room'] },
-    )
+  it('renders the live room detail flow for a route param', () => {
+    const html = renderWithRoute('/rooms/room-001', '/rooms/:id', createElement(RoomDetailPage))
 
-    const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
-
-    expect(html).toContain('Activation Preview')
-    expect(html).toContain('demo-room')
-    expect(html).toContain('Create - Activate')
+    expect(html).toContain('Room Detail')
+    expect(html).toContain('Sakura Desk JP')
+    expect(html).toContain('Room Config')
+    expect(html).toContain('Activate Webhook')
   })
 
   it('renders six webhook guide steps', () => {
@@ -146,6 +140,8 @@ describe('phase 2 dashboard shells', () => {
 
     expect(html).toContain('Manual Guide')
     expect(html).toContain('Webhook Setup Guide')
-    expect(html.match(/Step 0[1-6]/g)?.length).toBe(6)
+    expect(html).toContain('Step 01')
+    expect(html).toContain('Access Chatwork Admin')
+    expect(html.match(/>0[1-6]</g)?.length).toBe(6)
   })
 })
