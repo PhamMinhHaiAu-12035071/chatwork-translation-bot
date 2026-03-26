@@ -6,6 +6,19 @@
 
 **Architecture:** Introduce a typed Zustand store (`room-store.ts`) seeded with mock rooms. Add shared form primitives (`BrutalInput`, `BrutalSelect`, `BrutalToast`) that follow the `brutal-surface` + hard-shadow token system already established by `BrutalCard`. Pages consume the store and form primitives; no API calls are made — all mutations operate against in-memory state only. The webhook guide becomes a stateful stepper component driven by local `useState`.
 
+**⚠️ Current codebase state (post-Phase 2):** The design palette has evolved from the original spec. Key differences:
+
+- `--accent: #6e77e5` (violet, NOT deep pink)
+- `--error: #d44470` (deep pink used for error, NOT red-500)
+- `--success: #a1cf8e` (matcha green)
+- `--warning: #ffe19a` (honey yellow)
+- Additional theme accents: `--matcha-accent: #5c8b52`, `--warm-accent: #f27a54`, `--pink-accent: #d44470`, `--sky-accent: #61b7e8`
+- Card themes include: matcha, cream, lilac, blush, sky, mint, butter, peach
+- Button themes include: violet, matcha, pink, warm, sky, gold
+- Body font: `'Kiwi Maru', serif` — Headings: `'Shantell Sans', cursive` (via `.font-heading` class)
+- `main.tsx` uses explicit null check: `const root = document.getElementById('root'); if (!root) throw new Error('Root element not found')`
+- All form error states should use `var(--error)` / `var(--pink-accent)` instead of Tailwind `red-500` for design consistency
+
 **Tech Stack:** React Hook Form, @hookform/resolvers/zod, Zod, Zustand v5, Framer Motion, React Router v7, bun:test
 
 **Spec:** `docs/superpowers/specs/2026-03-25-dashboard-multi-room-design.md`
@@ -333,7 +346,7 @@ export const BrutalInput = forwardRef<HTMLInputElement, BrutalInputProps>(
             'font-body text-sm text-[var(--text-primary)] shadow-[3px_3px_0_var(--border)]',
             'placeholder:text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-1',
             'transition-shadow duration-150',
-            error ? 'border-red-500 shadow-[3px_3px_0_#ef4444]' : '',
+            error ? 'border-[var(--error)] shadow-[3px_3px_0_var(--error)]' : '',
             className ?? '',
           ]
             .filter(Boolean)
@@ -343,7 +356,7 @@ export const BrutalInput = forwardRef<HTMLInputElement, BrutalInputProps>(
         {hint && !error && (
           <p className="text-xs leading-5 text-[var(--text-secondary)]">{hint}</p>
         )}
-        {error && <p className="text-xs leading-5 text-red-500">{error}</p>}
+        {error && <p className="text-xs leading-5 text-[var(--error)]">{error}</p>}
       </div>
     )
   },
@@ -391,7 +404,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
             'font-body text-sm text-[var(--text-primary)] shadow-[3px_3px_0_var(--border)]',
             'focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-1',
             'transition-shadow duration-150',
-            error ? 'border-red-500 shadow-[3px_3px_0_#ef4444]' : '',
+            error ? 'border-[var(--error)] shadow-[3px_3px_0_var(--error)]' : '',
             className ?? '',
           ]
             .filter(Boolean)
@@ -412,7 +425,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
         {hint && !error && (
           <p className="text-xs leading-5 text-[var(--text-secondary)]">{hint}</p>
         )}
-        {error && <p className="text-xs leading-5 text-red-500">{error}</p>}
+        {error && <p className="text-xs leading-5 text-[var(--error)]">{error}</p>}
       </div>
     )
   },
@@ -451,7 +464,7 @@ interface BrutalToastProps {
 
 const variantStyles: Record<ToastVariant, string> = {
   success: 'bg-[var(--success)] text-[var(--border)] border-[var(--border)]',
-  error: 'bg-red-100 text-red-800 border-red-500',
+  error: 'bg-[#fde8ee] text-[var(--error)] border-[var(--error)]',
 }
 
 const variantIcon: Record<ToastVariant, string> = {
@@ -551,7 +564,10 @@ import { ToastProvider } from '~/components/ui/toast-provider'
 import { router } from '~/router'
 import '~/styles/global.css'
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')
+if (!root) throw new Error('Root element not found')
+
+createRoot(root).render(
   <StrictMode>
     <ToastProvider>
       <RouterProvider router={router} />
@@ -1184,7 +1200,7 @@ export function RoomCreatePage() {
 
 ```typescript
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router'
 import { BrutalCard } from '~/components/ui/brutal-card'
@@ -1445,20 +1461,6 @@ export function RoomDetailPage() {
     </PageShell>
   )
 }
-```
-
-Note: `useState` needs to be added to the import from `react` at the top of this file.
-
-- [ ] **Step 2: Fix the `useState` import at the top of `room-detail.tsx`**
-
-The final import block for `room-detail.tsx` should include `useState`:
-
-```typescript
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useNavigate, useParams } from 'react-router'
-// ... rest of imports unchanged
 ```
 
 ---
@@ -1811,7 +1813,7 @@ mock seed data. Add BrutalInput/BrutalSelect primitives, a Framer Motion toast s
 and a 6-step interactive WebhookStepper with copy-to-clipboard. Phase 3 is client-side
 only — no API calls.
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
