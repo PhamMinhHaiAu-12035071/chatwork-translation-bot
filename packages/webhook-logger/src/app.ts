@@ -15,6 +15,8 @@ export function createApp() {
         config: {
           showStartupMessage: false,
           ip: false,
+          customLogFormat:
+            '🦊 {now} {level} {duration} {method} {pathname} {status} {message} {context}',
         },
       }),
     )

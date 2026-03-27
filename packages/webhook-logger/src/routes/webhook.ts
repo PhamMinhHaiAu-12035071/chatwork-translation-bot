@@ -26,8 +26,36 @@ interface CachedRoomSecret {
 
 const roomSecretCache = new Map<number, CachedRoomSecret>()
 
+type WebhookLogLevel = 'info' | 'warn' | 'error'
+
 export function resetRoomSecretCacheForTest(): void {
   roomSecretCache.clear()
+}
+
+function logWebhookEvent(
+  level: WebhookLogLevel,
+  event: string,
+  context: Record<string, unknown>,
+): void {
+  const line = JSON.stringify({
+    level,
+    service: 'webhook-logger',
+    event,
+    timestamp: new Date().toISOString(),
+    ...context,
+  })
+
+  if (level === 'error') {
+    console.error(line)
+    return
+  }
+
+  if (level === 'warn') {
+    console.warn(line)
+    return
+  }
+
+  console.log(line)
 }
 
 function getCachedRoomSecret(roomId: number): string | null {
@@ -45,7 +73,7 @@ function getCachedRoomSecret(roomId: number): string | null {
   return cached.secret
 }
 
-async function fetchRoomSecret(roomId: number): Promise<string | null> {
+async function fetchRoomSecret(roomId: number, traceId: string): Promise<string | null> {
   const cachedSecret = getCachedRoomSecret(roomId)
   if (cachedSecret !== null) {
     return cachedSecret
@@ -59,16 +87,11 @@ async function fetchRoomSecret(roomId: number): Promise<string | null> {
       headers: { 'x-internal-secret': env.INTERNAL_API_SECRET },
     })
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        service: 'webhook-logger',
-        event: 'room_secret_fetch_failed',
-        timestamp: new Date().toISOString(),
-        roomId,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      }),
-    )
+    logWebhookEvent('error', 'room_secret_fetch_failed', {
+      traceId,
+      roomId,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    })
     throw new RoomSecretFetchError('Failed to fetch room secret')
   }
 
@@ -77,16 +100,11 @@ async function fetchRoomSecret(roomId: number): Promise<string | null> {
   }
 
   if (!response.ok) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        service: 'webhook-logger',
-        event: 'room_secret_fetch_error',
-        timestamp: new Date().toISOString(),
-        roomId,
-        status: response.status,
-      }),
-    )
+    logWebhookEvent('error', 'room_secret_fetch_error', {
+      traceId,
+      roomId,
+      status: response.status,
+    })
     throw new RoomSecretFetchError(
       `Room secret fetch failed with status ${response.status.toString()}`,
     )
@@ -128,19 +146,16 @@ async function handleWebhook(
   rawBody: string,
   headers: Record<string, string | undefined>,
 ): Promise<Response> {
+  const traceId = crypto.randomUUID()
+
   // --- Signature verification ---
   const signature = headers['x-chatworkwebhooksignature']
   if (!signature) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        service: 'webhook-logger',
-        event: 'webhook_signature_missing',
-        timestamp: new Date().toISOString(),
-        errorCode: 'WEBHOOK_SIGNATURE_MISSING',
-        errorMessage: 'Missing X-ChatWorkWebhookSignature header',
-      }),
-    )
+    logWebhookEvent('error', 'webhook_signature_missing', {
+      traceId,
+      errorCode: 'WEBHOOK_SIGNATURE_MISSING',
+      errorMessage: 'Missing X-ChatWorkWebhookSignature header',
+    })
     return new Response('Missing signature header', { status: 422 })
   }
 
@@ -149,9 +164,14 @@ async function handleWebhook(
     return new Response('Cannot extract room_id from payload', { status: 422 })
   }
 
+  logWebhookEvent('info', 'room_secret_lookup_started', {
+    traceId,
+    roomId,
+  })
+
   let webhookSecret: string | null
   try {
-    webhookSecret = await fetchRoomSecret(roomId)
+    webhookSecret = await fetchRoomSecret(roomId, traceId)
   } catch (error) {
     if (error instanceof RoomSecretFetchError) {
       return new Response('Translator internal API unavailable', { status: 503 })
@@ -161,29 +181,32 @@ async function handleWebhook(
   }
 
   if (webhookSecret === null) {
-    console.log(
-      JSON.stringify({
-        level: 'info',
-        service: 'webhook-logger',
-        event: 'webhook_skipped_no_room_config',
-        timestamp: new Date().toISOString(),
-        roomId,
-      }),
-    )
+    logWebhookEvent('info', 'room_secret_lookup_not_found_or_disabled', {
+      traceId,
+      roomId,
+      skipReason: 'room_missing_or_disabled',
+      nextExpectedAction: 'check_room_status',
+    })
+    logWebhookEvent('info', 'webhook_skipped_no_room_config', {
+      traceId,
+      roomId,
+      skipReason: 'room_missing_or_disabled',
+      nextExpectedAction: 'check_room_status',
+    })
     return new Response('OK', { status: 200 })
   }
 
+  logWebhookEvent('info', 'room_secret_lookup_resolved', {
+    traceId,
+    roomId,
+  })
+
   const skipVerify = env.CHATWORK_SKIP_SIGNATURE_VERIFY && env.NODE_ENV !== 'production'
   if (skipVerify) {
-    console.warn(
-      JSON.stringify({
-        level: 'warn',
-        service: 'webhook-logger',
-        event: 'webhook_signature_verification_bypassed',
-        timestamp: new Date().toISOString(),
-        message: 'Signature verification bypassed (CHATWORK_SKIP_SIGNATURE_VERIFY=true)',
-      }),
-    )
+    logWebhookEvent('warn', 'webhook_signature_verification_bypassed', {
+      traceId,
+      message: 'Signature verification bypassed (CHATWORK_SKIP_SIGNATURE_VERIFY=true)',
+    })
   }
 
   try {
@@ -193,16 +216,11 @@ async function handleWebhook(
     })
   } catch (err: unknown) {
     if (err instanceof ChatworkWebhookSignatureError) {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          service: 'webhook-logger',
-          event: 'webhook_signature_invalid',
-          timestamp: new Date().toISOString(),
-          errorCode: 'WEBHOOK_SIGNATURE_INVALID',
-          errorMessage: err.message,
-        }),
-      )
+      logWebhookEvent('error', 'webhook_signature_invalid', {
+        traceId,
+        errorCode: 'WEBHOOK_SIGNATURE_INVALID',
+        errorMessage: err.message,
+      })
       return new Response('Invalid webhook signature', { status: 422 })
     }
     throw err
@@ -214,16 +232,11 @@ async function handleWebhook(
     payload = normalizeWebhookPayload(rawBody)
   } catch (err: unknown) {
     if (err instanceof ChatworkWebhookPayloadError) {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          service: 'webhook-logger',
-          event: 'webhook_payload_invalid',
-          timestamp: new Date().toISOString(),
-          errorCode: 'WEBHOOK_PAYLOAD_INVALID',
-          errorMessage: err.message,
-        }),
-      )
+      logWebhookEvent('error', 'webhook_payload_invalid', {
+        traceId,
+        errorCode: 'WEBHOOK_PAYLOAD_INVALID',
+        errorMessage: err.message,
+      })
       return new Response('Invalid webhook payload', { status: 422 })
     }
     throw err
@@ -235,80 +248,58 @@ async function handleWebhook(
   const sourceMessageId = command.sourceMessageId
   const sourceRoomId = command.sourceRoomId
 
-  console.log(
-    JSON.stringify({
-      level: 'info',
-      service: 'webhook-logger',
-      event: 'webhook_received',
-      timestamp: new Date().toISOString(),
-      sourceMessageId,
-      roomId: sourceRoomId,
-    }),
-  )
+  logWebhookEvent('info', 'webhook_received', {
+    traceId,
+    sourceMessageId,
+    roomId: sourceRoomId,
+  })
 
-  console.log(
-    JSON.stringify({
-      level: 'info',
-      service: 'webhook-logger',
-      event: 'translation_forward_started',
-      timestamp: new Date().toISOString(),
-      sourceMessageId,
-      roomId: sourceRoomId,
-    }),
-  )
+  logWebhookEvent('info', 'translation_forward_started', {
+    traceId,
+    sourceMessageId,
+    roomId: sourceRoomId,
+  })
 
   // --- Forward neutral DTO to translator ---
   let response: Response
   try {
     response = await fetch(`${env.TRANSLATOR_URL}/internal/translate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-trace-id': traceId,
+      },
       body: JSON.stringify({ command }),
     })
   } catch (err: unknown) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        service: 'webhook-logger',
-        event: 'translation_forward_failed',
-        timestamp: new Date().toISOString(),
-        sourceMessageId,
-        roomId: sourceRoomId,
-        errorCode: err instanceof Error ? err.name : 'UnknownError',
-        errorMessage: err instanceof Error ? err.message : String(err),
-      }),
-    )
+    logWebhookEvent('error', 'translation_forward_failed', {
+      traceId,
+      sourceMessageId,
+      roomId: sourceRoomId,
+      errorCode: err instanceof Error ? err.name : 'UnknownError',
+      errorMessage: err instanceof Error ? err.message : String(err),
+    })
     return new Response('Translator unavailable', { status: 503 })
   }
 
   if (!response.ok) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        service: 'webhook-logger',
-        event: 'translation_forward_failed',
-        timestamp: new Date().toISOString(),
-        sourceMessageId,
-        roomId: sourceRoomId,
-        errorCode: 'TRANSLATOR_HTTP',
-        errorMessage: `Translator responded with ${String(response.status)}`,
-        translatorStatus: response.status,
-      }),
-    )
+    logWebhookEvent('error', 'translation_forward_failed', {
+      traceId,
+      sourceMessageId,
+      roomId: sourceRoomId,
+      errorCode: 'TRANSLATOR_HTTP',
+      errorMessage: `Translator responded with ${String(response.status)}`,
+      translatorStatus: response.status,
+    })
     return new Response(`Translator error: ${String(response.status)}`, { status: 502 })
   }
 
-  console.log(
-    JSON.stringify({
-      level: 'info',
-      service: 'webhook-logger',
-      event: 'translation_forward_completed',
-      timestamp: new Date().toISOString(),
-      sourceMessageId,
-      roomId: sourceRoomId,
-      translatorStatus: response.status,
-    }),
-  )
+  logWebhookEvent('info', 'translation_forward_completed', {
+    traceId,
+    sourceMessageId,
+    roomId: sourceRoomId,
+    translatorStatus: response.status,
+  })
 
   return new Response('OK', { status: 200 })
 }

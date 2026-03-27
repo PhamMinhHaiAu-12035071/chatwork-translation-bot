@@ -325,7 +325,7 @@ describe('handleTranslateRequest', () => {
     expect(executeCallCount).toBe(1)
 
     const providerSelectedLog = readJsonLogs().find(
-      (entry) => entry.event === 'translation_provider_selected',
+      (entry) => entry['event'] === 'translation_provider_selected',
     )
     expect(providerSelectedLog).toMatchObject({
       event: 'translation_provider_selected',
@@ -343,9 +343,9 @@ describe('handleTranslateRequest', () => {
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
     const skippedLog = readJsonLogs().find(
-      (entry) => entry.event === 'translation_skipped_no_room_config',
+      (entry) => entry['event'] === 'translation_skipped_no_room_config',
     )
-    expect(skippedLog?.level).toBe('warn')
+    expect(skippedLog?.['level']).toBe('warn')
   })
 
   it('skips when room is disabled', async () => {
@@ -359,7 +359,7 @@ describe('handleTranslateRequest', () => {
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
     const skippedLog = readJsonLogs().find(
-      (entry) => entry.event === 'translation_skipped_room_disabled',
+      (entry) => entry['event'] === 'translation_skipped_room_disabled',
     )
     expect(skippedLog).toMatchObject({
       event: 'translation_skipped_room_disabled',
