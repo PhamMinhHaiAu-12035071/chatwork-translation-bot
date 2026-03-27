@@ -8,19 +8,16 @@ const navItems = [
   {
     to: '/',
     label: 'Dashboard',
-    blurb: 'overview + empty state',
     surfaceClassName: 'theme-card-matcha',
   },
   {
     to: '/rooms/new',
     label: '+ New Room',
-    blurb: 'future creation flow',
     surfaceClassName: 'theme-card-blush',
   },
   {
     to: '/guide',
     label: 'Webhook Guide',
-    blurb: 'manual setup steps',
     surfaceClassName: 'theme-card-sky',
   },
 ] as const
@@ -34,15 +31,12 @@ export function AppLayout() {
 
       <div className="relative mx-auto grid min-h-[calc(100vh-2rem)] max-w-7xl gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
-          <BrutalCard className="theme-card-lilac space-y-4">
+          <BrutalCard className="theme-card-lilac">
             <StickerLabel tone="accent" tilt="flat">
               Multi-Room Setup
             </StickerLabel>
-            <div className="space-y-3">
+            <div className="mt-4">
               <h1 className="font-heading text-3xl font-extrabold">Translation Bot</h1>
-              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                Multi-room dashboard shell for setup, guidance, and future activation flows.
-              </p>
             </div>
           </BrutalCard>
 
@@ -77,9 +71,6 @@ export function AppLayout() {
                       ].join(' ')}
                     >
                       <div className="font-heading text-lg font-bold">{item.label}</div>
-                      <div className="font-ui-body mt-1 text-sm text-[var(--text-secondary)]">
-                        {item.blurb}
-                      </div>
                     </motion.div>
                   </div>
                 )}
