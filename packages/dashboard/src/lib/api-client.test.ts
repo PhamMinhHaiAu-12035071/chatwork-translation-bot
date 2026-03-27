@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { ApiError, apiClient } from '~/lib/api-client'
-import type { CreateRoomInput, RoomConfigPublic } from '~/lib/api-types'
+import type { RoomConfigPublic } from '~/lib/api-types'
 
 type FetchSpy = ReturnType<typeof spyOn<typeof globalThis, 'fetch'>>
 
@@ -92,5 +92,4 @@ describe('apiClient', () => {
     expect(response.success).toBe(true)
     expect(response.data).toEqual({ outcome: 'deleted' })
   })
-
 })

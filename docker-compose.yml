@@ -7,7 +7,6 @@ services:
       - .env
     environment:
       ROOM_CONFIG_ENCRYPTION_KEY: ${ROOM_CONFIG_ENCRYPTION_KEY}
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     ports:
       - '${PORT:-3000}:3000'
     volumes:
@@ -32,8 +31,7 @@ services:
     env_file:
       - .env
     environment:
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
-      TRANSLATOR_INTERNAL_URL: http://translator:3000
+      TRANSLATOR_URL: http://translator:3000
     ports:
       - '${LOGGER_PORT:-3001}:3001'
     restart: unless-stopped

@@ -150,13 +150,13 @@ describe('dashboard visual shells', () => {
     expect(html).toContain('theme-card-cream')
   })
 
-  it('renders six webhook guide steps', () => {
+  it('renders five webhook guide steps', () => {
     const html = renderToStaticMarkup(createElement(WebhookGuidePage))
 
     expect(html).toContain('Manual Guide')
     expect(html).toContain('Webhook Setup Guide')
     expect(html).toContain('Step 01')
     expect(html).toContain('Access Chatwork Admin')
-    expect(html.match(/>0[1-6]</g)?.length).toBe(6)
+    expect(html.match(/>0[1-5]</g)?.length).toBe(5)
   })
 })

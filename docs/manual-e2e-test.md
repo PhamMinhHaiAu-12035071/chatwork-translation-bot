@@ -3,7 +3,6 @@
 ## Prerequisites
 
 - [ ] `ROOM_CONFIG_ENCRYPTION_KEY` set (generate: `openssl rand -hex 32`)
-- [ ] `INTERNAL_API_SECRET` set (generate: `openssl rand -hex 16`)
 - [ ] `CHATWORK_API_TOKEN` set (bot account token)
 - [ ] `ZROK_ENABLE_TOKEN` and `ZROK_UNIQUE_NAME` set (see `docs/operations/zrok.md`)
 - [ ] Bot account has room creation permission
@@ -22,7 +21,7 @@
 
 - [ ] Navigate to Webhook Guide page
 - [ ] Step-by-step instructions are clear and complete
-- [ ] Guide explains: go to Chatwork Admin → create webhook → copy token
+- [ ] Guide explains: go to Chatwork Admin → create webhook → save it for the room
 
 ### 3. Set Up Chatwork Webhook (manual — outside dashboard)
 
@@ -32,7 +31,7 @@
   - URL: `https://<zrok-name>.share.zrok.io/webhook` (shown in Docker logs at startup)
   - Events: "Message created" + "Message updated"
   - Room: select original room
-- [ ] Save and copy the webhook token (this is the `webhookSecret`)
+- [ ] Save the webhook in Chatwork
 
 ### 4. Create Room Config on Dashboard
 
@@ -44,25 +43,18 @@
   - AI Model: select or leave default
   - Translation Style: select one
   - AI API Token: (valid token for chosen provider)
-  - Webhook Secret: (paste the token copied from step 3)
 - [ ] Submit → success toast → redirect to Room Detail
 - [ ] Verify on Chatwork: destination room was created
-- [ ] Room Detail shows room info with `enabled: false` status
+- [ ] Room Detail shows the room info and active status controls
 
-### 5. Enable Translation
-
-- [ ] On Room Detail page, click "Enable" button
-- [ ] Room status changes to `enabled: true` (active)
-- [ ] Room List shows room as active (green status)
-
-### 6. Test Translation
+### 5. Test Translation
 
 - [ ] Send a message in the original Chatwork room
 - [ ] Wait 5-10 seconds
 - [ ] Check destination room → translated message appears
 - [ ] Verify translation matches the selected style
 
-### 7. Disable/Enable Toggle
+### 6. Disable/Enable Toggle
 
 - [ ] Click "Disable" on Room Detail or Room List
 - [ ] Send another message in original room
@@ -70,13 +62,13 @@
 - [ ] Click "Enable" again
 - [ ] Send another message → translation resumes
 
-### 8. Edit Room Config
+### 7. Edit Room Config
 
 - [ ] Open Room Detail → edit AI model or translation style
 - [ ] Save changes → success toast
 - [ ] Send message → verify translation uses new settings
 
-### 9. Delete Room
+### 8. Delete Room
 
 - [ ] Click delete on Room List or Room Detail page
 - [ ] Confirm deletion in modal
@@ -100,17 +92,12 @@
 ### Webhook for Unknown Room
 
 - [ ] Send a webhook request with an unknown room_id
-- [ ] Expected: webhook-logger gets 404 from internal-room-secret, logs warning
+- [ ] Expected: translator skips the request because no room config exists, and no translation is sent
 
 ### Webhook for Disabled Room
 
 - [ ] Disable a room, then send a webhook for that room
-- [ ] Expected: internal-room-secret returns 404 (room not enabled), no translation
-
-### Missing Webhook Secret
-
-- [ ] Try submitting create form without Webhook Secret
-- [ ] Expected: form validation error, submit blocked
+- [ ] Expected: translator skips the request because the room is disabled, and no translation is sent
 
 ## Cleanup
 

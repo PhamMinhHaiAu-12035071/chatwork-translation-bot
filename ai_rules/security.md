@@ -4,38 +4,30 @@
 
 ### Required
 
-| Variable                  | Purpose                                               |
-| ------------------------- | ----------------------------------------------------- |
-| `CHATWORK_API_TOKEN`      | Chatwork REST API authentication token                |
-| `CHATWORK_WEBHOOK_SECRET` | Secret for verifying webhook signatures               |
-| `AI_PROVIDER`             | Translation provider: `gemini`, `openai`, or `cursor` |
+| Variable                     | Purpose                                                           |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `CHATWORK_API_TOKEN`         | Chatwork REST API authentication token                            |
+| `CHATWORK_BOT_ACCOUNT_ID`    | Bot account ID used as room admin when creating destination rooms |
+| `ROOM_CONFIG_ENCRYPTION_KEY` | AES-256-GCM key for encrypting per-room AI API tokens at rest     |
 
-### Provider-Specific (required per AI_PROVIDER)
+### Per-Room Provider Secrets
 
-| Variable                       | Provider | Purpose                          |
-| ------------------------------ | -------- | -------------------------------- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | gemini   | Google AI API key                |
-| `OPENAI_API_KEY`               | openai   | OpenAI API key                   |
-| `CURSOR_API_URL`               | cursor   | Local proxy URL (localhost only) |
+- AI provider selection, model selection, translation style, and API tokens are stored per room
+  in encrypted room config managed by the dashboard and translator.
+- No global webhook secret is required.
+- No global provider API key is required for OpenAI or Gemini rooms.
+- `CURSOR_API_URL` remains a local-only integration setting for the `cursor` provider.
 
 ### Optional
 
-| Variable                         | Default                 | Purpose                                                                                           |
-| -------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
-| `PORT`                           | `3000`                  | HTTP server port                                                                                  |
-| `NODE_ENV`                       | `development`           | Runtime environment                                                                               |
-| `AI_MODEL`                       | per provider            | Override default model (any string accepted; unsupported models log warning)                      |
-| `AI_TRANSLATION_STYLE`           | `PROFESSIONAL_BUSINESS` | Global translator output-style preset. Invalid values fail startup; restart required after change |
-| `CHATWORK_SKIP_SIGNATURE_VERIFY` | `false`                 | Bypass webhook signature verification (development only, no-op in production)                     |
-| `ZROK_ENABLE_TOKEN`              | —                       | zrok account enable token (Docker dev tunnel only)                                                |
-| `ZROK_UNIQUE_NAME`               | —                       | Reserved zrok share name (Docker dev tunnel only)                                                 |
-
-`AI_TRANSLATION_STYLE` allowed values:
-
-- `AUTO_CONTEXT`
-- `NATURAL_CASUAL`
-- `PROFESSIONAL_BUSINESS`
-- `TECHNICAL`
+| Variable            | Default                 | Purpose                                                 |
+| ------------------- | ----------------------- | ------------------------------------------------------- |
+| `PORT`              | `3000`                  | Translator HTTP server port                             |
+| `LOGGER_PORT`       | `3001`                  | Webhook logger HTTP server port                         |
+| `NODE_ENV`          | `development`           | Runtime environment                                     |
+| `TRANSLATOR_URL`    | `http://localhost:3000` | Translator URL used by webhook-logger to forward events |
+| `ZROK_ENABLE_TOKEN` | —                       | zrok account enable token (Docker dev tunnel only)      |
+| `ZROK_UNIQUE_NAME`  | —                       | Reserved zrok share name (Docker dev tunnel only)       |
 
 ### Dataset Automation (Local Dev Only)
 
@@ -66,18 +58,6 @@ Copy `.env.example` to `.env` and fill in real values. Never commit `.env`.
 - `.env` is in `.gitignore` — verify before staging
 - For CI/CD, use repository secrets (GitHub Actions secrets)
 - When adding new env vars, add them to `.env.example` with a placeholder value
-
-## Webhook Signature Verification
-
-All incoming webhooks are verified with HMAC-SHA256 before processing:
-
-1. Chatwork sends `X-ChatWorkWebhookSignature` header with every request
-2. Raw body is captured via Elysia `.derive()` + `request.clone().text()` before JSON parsing
-3. Bot computes HMAC-SHA256 of raw body using `CHATWORK_WEBHOOK_SECRET`
-4. Signatures are compared using constant-time comparison (timing-attack safe)
-5. Requests with missing or invalid signatures are rejected with **422**
-
-Implementation: `packages/webhook-logger/src/routes/webhook.ts`
 
 ## Cursor Provider — LOCAL DEV ONLY
 
