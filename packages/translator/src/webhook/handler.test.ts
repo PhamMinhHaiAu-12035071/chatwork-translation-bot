@@ -45,10 +45,10 @@ function createMockExecutor(): ILLMExecutor {
   }
 }
 
-function readJsonLogs(): { event?: string; level?: string }[] {
+function readJsonLogs(): Record<string, unknown>[] {
   return consoleLogLines
     .filter((line) => line.startsWith('{'))
-    .map((line) => JSON.parse(line) as { event?: string; level?: string })
+    .map((line) => JSON.parse(line) as Record<string, unknown>)
 }
 
 function createMockProvider(id: string, executor: ILLMExecutor, timeoutMs = 1_800_000) {
@@ -316,6 +316,17 @@ describe('handleTranslateRequest', () => {
       apiKey: 'room-openai-token',
     })
     expect(executeCallCount).toBe(1)
+
+    const providerSelectedLog = readJsonLogs().find(
+      (entry) => entry.event === 'translation_provider_selected',
+    )
+    expect(providerSelectedLog).toMatchObject({
+      event: 'translation_provider_selected',
+      provider: 'openai',
+      model: 'gpt-4o',
+    })
+    expect(typeof providerSelectedLog?.traceId).toBe('string')
+    expect(providerSelectedLog?.traceId).not.toBe('')
   })
 
   it('skips when source room has no config', async () => {
@@ -343,7 +354,14 @@ describe('handleTranslateRequest', () => {
     const skippedLog = readJsonLogs().find(
       (entry) => entry.event === 'translation_skipped_room_disabled',
     )
-    expect(skippedLog?.level).toBe('info')
+    expect(skippedLog).toMatchObject({
+      event: 'translation_skipped_room_disabled',
+      level: 'info',
+      roomId: 424846369,
+      nextExpectedAction: 'enable_room',
+    })
+    expect(typeof skippedLog?.traceId).toBe('string')
+    expect(skippedLog?.traceId).not.toBe('')
   })
 
   it('uses the room provider, model, token, and destination instead of global env config', async () => {

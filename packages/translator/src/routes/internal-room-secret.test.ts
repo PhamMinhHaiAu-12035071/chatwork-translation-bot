@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,6 +8,14 @@ import { RoomConfigStore } from '~/services/room-config-store'
 
 const KEY_HEX = 'a'.repeat(64)
 const INTERNAL_SECRET = 'my-internal-secret'
+const consoleLogLines: string[] = []
+const originalConsoleLog = console.log
+
+function readJsonLogs(): { event?: string; roomId?: number; nextExpectedAction?: string }[] {
+  return consoleLogLines
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line) as { event?: string; roomId?: number; nextExpectedAction?: string })
+}
 
 async function buildApp(dataDir: string, enabled = true) {
   const store = new RoomConfigStore({ dataDir, encryptionKeyHex: KEY_HEX })
@@ -36,10 +44,15 @@ describe('GET /internal/room-secret', () => {
   let tmpDir: string
 
   beforeEach(async () => {
+    console.log = mock((...args: unknown[]) => {
+      consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.log
     tmpDir = await mkdtemp(join(tmpdir(), 'room-secret-test-'))
   })
 
   afterEach(async () => {
+    console.log = originalConsoleLog
+    consoleLogLines.length = 0
     await rm(tmpDir, { recursive: true, force: true })
   })
 
@@ -66,6 +79,15 @@ describe('GET /internal/room-secret', () => {
     )
 
     expect(response.status).toBe(404)
+
+    const disabledLog = readJsonLogs().find(
+      (entry) => entry.event === 'room_secret_lookup_room_disabled',
+    )
+    expect(disabledLog).toMatchObject({
+      event: 'room_secret_lookup_room_disabled',
+      roomId: 5001,
+      nextExpectedAction: 'enable_room',
+    })
   })
 
   it('returns 401 when X-Internal-Secret is missing', async () => {
@@ -97,6 +119,14 @@ describe('GET /internal/room-secret', () => {
     )
 
     expect(response.status).toBe(404)
+
+    const notFoundLog = readJsonLogs().find(
+      (entry) => entry.event === 'room_secret_lookup_not_found',
+    )
+    expect(notFoundLog).toMatchObject({
+      event: 'room_secret_lookup_not_found',
+      roomId: 9999,
+    })
   })
 
   it('returns 400 when room_id query param is missing', async () => {

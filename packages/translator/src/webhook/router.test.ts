@@ -7,7 +7,7 @@ import type { translateRoutes as TranslateRoutesType } from './router'
 
 const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
 process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
-const mockHandleTranslateRequest = mock((_command: unknown) => Promise.resolve())
+const mockHandleTranslateRequest = mock((_command: unknown, _context: unknown) => Promise.resolve())
 
 void mock.module('./handler', () => ({
   handleTranslateRequest: mockHandleTranslateRequest,
@@ -81,6 +81,27 @@ describe('translateRoutes', () => {
     )
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('OK')
+  })
+
+  it('forwards x-trace-id into the handler context wrapper', async () => {
+    const traceId = 'trace-123-for-router-test'
+    const callCountBefore = mockHandleTranslateRequest.mock.calls.length
+    const res = await app.handle(
+      new Request('http://localhost/internal/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-trace-id': traceId,
+        },
+        body: JSON.stringify(validPayload),
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockHandleTranslateRequest.mock.calls.length).toBe(callCountBefore + 1)
+    expect(mockHandleTranslateRequest.mock.calls.at(-1)?.[1]).toMatchObject({
+      traceId,
+    })
   })
 
   it('POST /internal/translate with missing command returns 422', async () => {

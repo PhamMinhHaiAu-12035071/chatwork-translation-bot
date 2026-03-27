@@ -471,6 +471,44 @@ describe('webhookRoutes', () => {
     expect(jsonLogs.some((entry) => entry.event === 'translation_forward_completed')).toBe(true)
   })
 
+  it('POST /webhook generates a trace id, logs room secret lookup start, and forwards x-trace-id to translator', async () => {
+    console.log = mock((...args: unknown[]) => {
+      consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.log
+
+    const rawBody = JSON.stringify(makeValidEvent())
+    const sig = makeSignature(rawBody)
+
+    const res = await app.handle(makeRequest(rawBody, sig))
+
+    expect(res.status).toBe(200)
+
+    const jsonLogs = consoleLogLines
+      .filter((line) => line.startsWith('{'))
+      .map((line) => JSON.parse(line) as { event?: string; traceId?: string; roomId?: number })
+
+    const roomSecretLookupLog = jsonLogs.find(
+      (entry) => entry.event === 'room_secret_lookup_started',
+    )
+
+    expect(roomSecretLookupLog).toMatchObject({
+      event: 'room_secret_lookup_started',
+      roomId: ROOM_ID,
+    })
+    expect(typeof roomSecretLookupLog?.traceId).toBe('string')
+    expect(roomSecretLookupLog?.traceId).not.toBe('')
+
+    const translationStartLog = jsonLogs.find(
+      (entry) => entry.event === 'translation_forward_started',
+    )
+    expect(translationStartLog?.traceId).toBe(roomSecretLookupLog?.traceId)
+
+    const secondCall = getFetchCall(1)
+    expect(secondCall[1]?.headers).toMatchObject({
+      'x-trace-id': roomSecretLookupLog?.traceId,
+    })
+  })
+
   it('returns 503 when translator forwarding is not reachable after secret fetch succeeds', async () => {
     mockFetch.mockImplementation((input: FetchInput) => {
       const url = resolveUrl(input)
