@@ -8,7 +8,7 @@ export type {
   ChatworkMessage,
   ChatworkSendMessageResult,
 } from '~/types/message'
-export type { CreateRoomParams, CreateRoomResult, Room } from '~/types/room'
+export type { CreateRoomParams, CreateRoomResult, Room, UpdateRoomParams } from '~/types/room'
 
 // Errors
 export { ChatworkWebhookSignatureError } from '~/errors/chatwork-webhook-signature-error'
@@ -29,5 +29,6 @@ export { resolveRoomMemberDisplayName } from '~/services/resolve-room-member-dis
 export { getMe } from '~/services/get-me'
 export { getRoom } from '~/services/get-room'
 export { createRoom } from '~/services/create-room'
+export { updateRoom } from '~/services/update-room'
 export { resolveRoomDisplayName } from '~/services/resolve-room-display-name'
 export { composeTranslatedMessagePair } from '~/services/compose-translated-message-pair'

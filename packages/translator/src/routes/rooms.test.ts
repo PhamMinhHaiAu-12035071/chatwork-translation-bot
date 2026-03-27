@@ -7,10 +7,12 @@ import { RoomConfigStore } from '~/services/room-config-store'
 
 const mockCreateChatworkRoom = mock(() => Promise.resolve({ room_id: 99001 }))
 const mockDeleteChatworkRoom = mock(() => Promise.resolve())
+const mockUpdateChatworkRoom = mock(() => Promise.resolve())
 
 void mock.module('@chatwork-bot/chatwork', () => ({
   createRoom: mockCreateChatworkRoom,
   deleteRoom: mockDeleteChatworkRoom,
+  updateRoom: mockUpdateChatworkRoom,
 }))
 
 const KEY_HEX = 'a'.repeat(64)
@@ -72,6 +74,8 @@ afterEach(() => {
   mockCreateChatworkRoom.mockImplementation(() => Promise.resolve({ room_id: 99001 }))
   mockDeleteChatworkRoom.mockClear()
   mockDeleteChatworkRoom.mockImplementation(() => Promise.resolve())
+  mockUpdateChatworkRoom.mockClear()
+  mockUpdateChatworkRoom.mockImplementation(() => Promise.resolve())
 })
 
 describe('GET /api/rooms', () => {
@@ -340,7 +344,7 @@ describe('PUT /api/rooms/:id', () => {
     await rm(tmpDir, { recursive: true, force: true })
   })
 
-  it('updates a room and returns a success envelope', async () => {
+  it('updates a room locally without calling Chatwork when the name is unchanged', async () => {
     const app = await buildApp(tmpDir)
     const room = await createRoomForTest(app)
 
@@ -361,6 +365,69 @@ describe('PUT /api/rooms/:id', () => {
 
     expect(body.success).toBe(true)
     expect(body.data).toHaveProperty('translationStyle', 'TECHNICAL')
+    expect(mockUpdateChatworkRoom).not.toHaveBeenCalled()
+  })
+
+  it('renames the destination room on Chatwork before persisting locally', async () => {
+    const app = await buildApp(tmpDir)
+    const room = await createRoomForTest(app)
+
+    const updateRes = await app.handle(
+      new Request(`http://localhost/api/rooms/${room.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destinationRoomName: 'Renamed Output Room' }),
+      }),
+    )
+
+    expect(updateRes.status).toBe(200)
+
+    const body = (await updateRes.json()) as {
+      success?: boolean
+      data?: Record<string, unknown>
+    }
+
+    expect(body.success).toBe(true)
+    expect(body.data).toHaveProperty('destinationRoomName', 'Renamed Output Room')
+    expect(mockUpdateChatworkRoom).toHaveBeenCalledTimes(1)
+    expect(mockUpdateChatworkRoom).toHaveBeenCalledWith(
+      99001,
+      { name: 'Renamed Output Room' },
+      API_TOKEN,
+    )
+  })
+
+  it('returns 502 and leaves local data unchanged when Chatwork rename fails', async () => {
+    mockUpdateChatworkRoom.mockImplementationOnce(() =>
+      Promise.reject(new Error('Chatwork rename failed')),
+    )
+
+    const app = await buildApp(tmpDir)
+    const room = await createRoomForTest(app)
+
+    const updateRes = await app.handle(
+      new Request(`http://localhost/api/rooms/${room.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          destinationRoomName: 'Renamed Output Room',
+          translationStyle: 'TECHNICAL',
+        }),
+      }),
+    )
+
+    expect(updateRes.status).toBe(502)
+    expect(mockUpdateChatworkRoom).toHaveBeenCalledTimes(1)
+
+    const getRes = await app.handle(new Request(`http://localhost/api/rooms/${room.id}`))
+    const body = (await getRes.json()) as {
+      success?: boolean
+      data?: Record<string, unknown>
+    }
+
+    expect(body.success).toBe(true)
+    expect(body.data).toHaveProperty('destinationRoomName', 'Translation Output')
+    expect(body.data).toHaveProperty('translationStyle', 'PROFESSIONAL_BUSINESS')
   })
 
   it('returns 404 for unknown id', async () => {
@@ -374,6 +441,7 @@ describe('PUT /api/rooms/:id', () => {
     )
 
     expect(response.status).toBe(404)
+    expect(mockUpdateChatworkRoom).not.toHaveBeenCalled()
   })
 
   it('returns 400 for an invalid update body', async () => {

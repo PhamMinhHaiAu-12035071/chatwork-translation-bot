@@ -6,7 +6,7 @@ import type {
   ChatworkMessage,
   ChatworkSendMessageResult,
 } from '~/types/message'
-import type { CreateRoomParams, CreateRoomResult, Room } from '~/types/room'
+import type { CreateRoomParams, CreateRoomResult, Room, UpdateRoomParams } from '~/types/room'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -209,5 +209,32 @@ export const chatworkApiClient = {
     }
 
     return (await response.json()) as CreateRoomResult
+  },
+
+  async updateRoom(roomId: number, params: UpdateRoomParams, token: string): Promise<void> {
+    const url = `${BASE_URL}/rooms/${roomId.toString()}`
+    const body = new URLSearchParams()
+    if (params.name !== undefined) {
+      body.set('name', params.name)
+    }
+    if (params.description !== undefined) {
+      body.set('description', params.description)
+    }
+    if (params.icon_preset !== undefined) {
+      body.set('icon_preset', params.icon_preset)
+    }
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        ...makeHeaders(token),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    })
+
+    if (!response.ok) {
+      return handleErrorResponse(response)
+    }
   },
 } satisfies IChatworkApiClient

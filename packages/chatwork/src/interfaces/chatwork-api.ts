@@ -4,7 +4,7 @@ import type {
   ChatworkMessage,
   ChatworkSendMessageResult,
 } from '~/types/message'
-import type { CreateRoomParams, CreateRoomResult, Room } from '~/types/room'
+import type { CreateRoomParams, CreateRoomResult, Room, UpdateRoomParams } from '~/types/room'
 
 export interface IChatworkApiClient {
   getMe(token: string): Promise<ChatworkMe>
@@ -28,4 +28,6 @@ export interface IChatworkApiClient {
   getRoom(roomId: number, token: string): Promise<Room>
 
   createRoom(params: CreateRoomParams, token: string): Promise<CreateRoomResult>
+
+  updateRoom(roomId: number, params: UpdateRoomParams, token: string): Promise<void>
 }

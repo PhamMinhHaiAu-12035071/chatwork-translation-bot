@@ -74,6 +74,9 @@ describe('RoomDetailPage', () => {
     expect(source).toContain('toast(result.error,')
     expect(source).toContain("'info'")
     expect(source).toContain("'error'")
+    expect(source).toMatch(
+      /navigate\(\s*['"`]\/['"`]\s*,[\s\S]*state:\s*\{[\s\S]*spotlightRoomId:\s*result\.data\.id[\s\S]*\}\s*\)/,
+    )
   })
 
   it('applies the approved pixel-scatter text treatment to the detail status surfaces', async () => {

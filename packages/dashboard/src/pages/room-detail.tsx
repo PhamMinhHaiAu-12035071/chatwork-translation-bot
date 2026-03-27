@@ -186,6 +186,11 @@ export function RoomDetailPage() {
     }
 
     toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
+    void navigate('/', {
+      state: {
+        spotlightRoomId: result.data.id,
+      },
+    })
   }
 
   const handleRoomStatusToggle = async () => {

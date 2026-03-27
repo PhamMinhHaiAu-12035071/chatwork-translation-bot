@@ -14,3 +14,9 @@ export interface CreateRoomParams {
 export interface CreateRoomResult {
   room_id: number
 }
+
+export interface UpdateRoomParams {
+  name?: string
+  description?: string
+  icon_preset?: string
+}

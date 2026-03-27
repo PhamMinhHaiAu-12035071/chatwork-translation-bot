@@ -166,6 +166,32 @@ describe('chatworkApiClient', () => {
     })
   })
 
+  // ─── updateRoom ────────────────────────────────────────────────────────────
+
+  describe('updateRoom', () => {
+    it('sends PUT to the correct room endpoint with form body', async () => {
+      mockOnce(fetchSpy, new Response(null, { status: 204 }))
+
+      await chatworkApiClient.updateRoom(ROOM_ID, { name: 'Renamed Room' }, TOKEN)
+
+      const [url, init] = fetchSpy.mock.calls.at(-1) as [string, RequestInit]
+      expect(url).toBe(`https://api.chatwork.com/v2/rooms/${ROOM_ID.toString()}`)
+      expect(init.method).toBe('PUT')
+      expect((init.headers as Record<string, string>)['X-ChatWorkToken']).toBe(TOKEN)
+      const body = new URLSearchParams(init.body as string)
+      expect(body.get('name')).toBe('Renamed Room')
+    })
+
+    it('throws ChatworkApiError on error response', async () => {
+      mockOnce(fetchSpy, makeErrorResponse(403, ['Forbidden']))
+
+      const error = await catchError(
+        chatworkApiClient.updateRoom(ROOM_ID, { name: 'Renamed Room' }, TOKEN),
+      )
+      expect(error).toBeInstanceOf(ChatworkApiError)
+    })
+  })
+
   // ─── getRoomMembers ────────────────────────────────────────────────────────
 
   describe('getRoomMembers', () => {

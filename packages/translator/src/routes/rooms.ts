@@ -1,6 +1,7 @@
 import {
   createRoom as createChatworkRoom,
   deleteRoom as deleteChatworkRoom,
+  updateRoom as updateChatworkRoom,
 } from '@chatwork-bot/chatwork'
 import { Elysia, t } from 'elysia'
 import { RoomConfigStoreError } from '~/services/room-config-store'
@@ -126,6 +127,36 @@ export function createRoomsRoutes({
           const response = errorResponse(400, 'Invalid request body', parsed.error.issues)
           set.status = response.status
           return response.body
+        }
+
+        const existing = store.getById(params.id)
+        if (existing === null) {
+          const response = errorResponse(404, 'Room not found')
+          set.status = response.status
+          return response.body
+        }
+
+        const nextDestinationRoomName = parsed.data.destinationRoomName
+        const shouldRenameChatworkRoom =
+          nextDestinationRoomName !== undefined &&
+          nextDestinationRoomName !== existing.destinationRoomName
+
+        if (shouldRenameChatworkRoom) {
+          try {
+            await updateChatworkRoom(
+              existing.destinationRoomId,
+              { name: nextDestinationRoomName },
+              chatworkApiToken,
+            )
+          } catch (error) {
+            const response = errorResponse(
+              502,
+              'Failed to update destination room on Chatwork',
+              error instanceof Error ? error.message : String(error),
+            )
+            set.status = response.status
+            return response.body
+          }
         }
 
         try {
