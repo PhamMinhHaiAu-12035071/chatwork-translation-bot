@@ -56,7 +56,6 @@ export function RoomCreatePage() {
       aiModel: '',
       destinationRoomName: '',
       aiApiToken: '',
-      webhookSecret: '',
     },
   })
 
@@ -109,7 +108,7 @@ export function RoomCreatePage() {
     <PageShell
       eyebrow="New Room"
       title="Set up a translation room"
-      description="Configure the Chatwork source room, AI provider, translation preferences, and webhook secret before saving."
+      description="Configure the Chatwork source room, AI provider, and translation preferences."
     >
       <form
         onSubmit={(event) => {
@@ -169,13 +168,6 @@ export function RoomCreatePage() {
                 error={errors.aiApiToken?.message}
                 {...register('aiApiToken')}
               />
-              <BrutalInput
-                label="Webhook Secret"
-                type="password"
-                hint="The token from Chatwork after saving the webhook. Follow the Webhook Guide first."
-                error={errors.webhookSecret?.message}
-                {...register('webhookSecret')}
-              />
             </div>
 
             <div className="flex flex-wrap gap-3 pt-2">
@@ -200,10 +192,10 @@ export function RoomCreatePage() {
 
           <div className="space-y-6">
             <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
-              <StickerLabel tone="warning">Manual Step Required</StickerLabel>
+              <StickerLabel tone="warning">Before You Start</StickerLabel>
               <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                Before creating a room, set up a Chatwork webhook and have the webhook secret ready.
-                Follow the Webhook Guide.
+                Before creating a room, set up a Chatwork webhook with this server&#39;s URL.
+                Follow the Webhook Guide for step-by-step instructions.
               </p>
               <button
                 type="button"
@@ -242,8 +234,8 @@ export function RoomCreatePage() {
                 Tip
               </StickerLabel>
               <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                Secrets are only sent when you save this form, and the dashboard will not show them
-                again after the room is created.
+                Leave AI Model blank if you want the selected provider to use its default model for
+                this room.
               </p>
             </BrutalCard>
           </div>

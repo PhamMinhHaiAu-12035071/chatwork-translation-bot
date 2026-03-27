@@ -81,7 +81,6 @@ export function RoomDetailPage() {
         aiModel: room.aiModel ?? '',
         translationStyle: room.translationStyle,
         aiApiToken: '',
-        webhookSecret: '',
       }
     : {
         originalRoomId: 0,
@@ -90,7 +89,6 @@ export function RoomDetailPage() {
         aiModel: '',
         translationStyle: 'AUTO_CONTEXT',
         aiApiToken: '',
-        webhookSecret: '',
       }
 
   const editForm = useForm<RoomEditInput>({
@@ -116,7 +114,6 @@ export function RoomDetailPage() {
       aiModel: room.aiModel ?? '',
       translationStyle: room.translationStyle,
       aiApiToken: '',
-      webhookSecret: '',
     })
   }, [editForm, room])
 
@@ -193,7 +190,6 @@ export function RoomDetailPage() {
         aiModel: normalizedAiModel,
         translationStyle: data.translationStyle,
         ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
-        ...(data.webhookSecret !== '' ? { webhookSecret: data.webhookSecret } : {}),
       }),
     )
 
@@ -234,7 +230,7 @@ export function RoomDetailPage() {
     <PageShell
       eyebrow="Room Detail"
       title={room.destinationRoomName}
-      description="Edit room configuration, update secrets, or manage live translation status."
+      description="Edit room configuration and manage live translation status."
       actions={
         <StatusPill tone={room.enabled ? 'success' : 'warning'}>
           <PixelScatterText value={room.enabled ? 'Live' : 'Inactive'} reserveText="Inactive" />
@@ -300,13 +296,6 @@ export function RoomDetailPage() {
                 hint="Leave unchanged to keep the existing token."
                 error={editForm.formState.errors.aiApiToken?.message}
                 {...editForm.register('aiApiToken')}
-              />
-              <BrutalInput
-                label="Webhook Secret"
-                type="password"
-                hint="Leave blank to keep existing. Paste new secret to update."
-                error={editForm.formState.errors.webhookSecret?.message}
-                {...editForm.register('webhookSecret')}
               />
             </div>
 
