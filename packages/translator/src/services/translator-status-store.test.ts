@@ -11,6 +11,7 @@ describe('TranslatorStatusStore', () => {
 
     store.startRequest({
       requestId: 'req-1',
+      traceId: 'trace-store-1',
       sourceMessageId: 'source-1',
       originType: 'automation',
       provider: 'cursor',
@@ -57,6 +58,7 @@ describe('TranslatorStatusStore', () => {
     for (const requestId of ['req-1', 'req-2', 'req-3']) {
       store.startRequest({
         requestId,
+        traceId: `trace-${requestId}`,
         sourceMessageId: `${requestId}-source`,
         originType: 'manual',
         provider: 'cursor',
@@ -94,6 +96,7 @@ describe('TranslatorStatusStore', () => {
 
     store.startRequest({
       requestId: 'req-partial',
+      traceId: 'trace-partial',
       sourceMessageId: 'req-partial-source',
       originType: 'automation',
       provider: 'openai',

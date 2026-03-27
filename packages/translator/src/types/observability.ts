@@ -6,6 +6,7 @@ export type TranslatorFinalStatus = 'completed' | 'failed' | 'aborted'
 
 export interface TranslatorRequestContext {
   requestId: string
+  traceId: string
   sourceMessageId: string
   originType: 'manual' | 'automation'
   provider: string
@@ -40,6 +41,13 @@ export interface TranslatorLogEntry extends TranslatorRequestContext {
   ackStatus?: 'sent' | 'failed'
   errorCode?: string
   errorMessage?: string
+  roomConfigId?: string
+  destinationRoomId?: number
+  enabled?: boolean
+  skipReason?: string
+  nextExpectedAction?: string
+  aiProvider?: string
+  resolvedModel?: string
 }
 
 export interface ActiveTranslatorRequest extends TranslatorRequestContext {

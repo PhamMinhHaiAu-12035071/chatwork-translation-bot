@@ -11,6 +11,7 @@ describe('GET /status', () => {
         activeRequests: [
           {
             requestId: 'req-1',
+            traceId: 'trace-status-1',
             sourceMessageId: 'source-1',
             originType: 'manual',
             provider: 'openai',

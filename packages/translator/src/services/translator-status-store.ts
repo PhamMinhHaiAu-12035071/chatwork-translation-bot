@@ -145,6 +145,7 @@ export class TranslatorStatusStore {
   private buildRequestContext(request: TranslatorRequestContext): TranslatorRequestContext {
     return {
       requestId: request.requestId,
+      traceId: request.traceId,
       sourceMessageId: request.sourceMessageId,
       originType: request.originType,
       provider: request.provider,

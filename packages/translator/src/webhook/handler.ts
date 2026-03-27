@@ -27,14 +27,24 @@ interface HandleTranslateRequestDeps {
   chatworkApiToken: string
 }
 
-let translateRequestHandler: ((command: TranslationIngressCommand) => Promise<void>) | null = null
+interface TranslateRequestContext {
+  traceId?: string
+}
+
+let translateRequestHandler:
+  | ((command: TranslationIngressCommand, context?: TranslateRequestContext) => Promise<void>)
+  | null = null
 
 export function initTranslateHandler(deps: HandleTranslateRequestDeps): void {
   translateRequestHandler = createHandleTranslateRequest(deps)
 }
 
 export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
-  return async function handleTranslateRequest(command: TranslationIngressCommand): Promise<void> {
+  return async function handleTranslateRequest(
+    command: TranslationIngressCommand,
+    context: TranslateRequestContext = {},
+  ): Promise<void> {
+    const traceId = context.traceId ?? crypto.randomUUID()
     const roomConfig = deps.store.getByOriginalRoomId(command.sourceRoomId)
 
     if (roomConfig === null) {
@@ -44,6 +54,7 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
           service: 'translator',
           event: 'translation_skipped_no_room_config',
           timestamp: new Date().toISOString(),
+          traceId,
           sourceRoomId: command.sourceRoomId,
           sourceMessageId: command.sourceMessageId,
         }),
@@ -58,9 +69,11 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
           service: 'translator',
           event: 'translation_skipped_room_disabled',
           timestamp: new Date().toISOString(),
+          traceId,
           sourceRoomId: command.sourceRoomId,
           roomConfigId: roomConfig.id,
           sourceMessageId: command.sourceMessageId,
+          nextExpectedAction: 'enable_room',
         }),
       )
       return
@@ -73,6 +86,7 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
           service: 'translator',
           event: 'translation_skipped_empty',
           timestamp: new Date().toISOString(),
+          traceId,
           sourceMessageId: command.sourceMessageId,
           sourceEventType: command.sourceEventType,
           rawBodyLength: command.rawBody.length,
@@ -101,6 +115,22 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       hasEnvOverride: hasExplicitPipelineTimeoutOverride(),
       providerTimeoutMs: plugin.manifest.timeoutMs,
     })
+
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        service: 'translator',
+        event: 'translation_room_resolved',
+        timestamp: new Date().toISOString(),
+        traceId,
+        sourceMessageId: command.sourceMessageId,
+        sourceRoomId: command.sourceRoomId,
+        roomConfigId: roomConfig.id,
+        destinationRoomId: roomConfig.destinationRoomId,
+        enabled: roomConfig.enabled,
+      }),
+    )
+
     const requestId = crypto.randomUUID()
     const origin = await resolveOutputOrigin(
       command.sourceMessageId,
@@ -112,6 +142,7 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       ...getTranslatorObservabilityConfig(),
       request: {
         requestId,
+        traceId,
         sourceMessageId: command.sourceMessageId,
         originType: origin.type,
         provider: roomConfig.aiProvider,
@@ -130,6 +161,15 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     })
 
     observer.markRequestReceived()
+    observer.logEvent('info', 'translation_provider_selected', {
+      aiProvider: roomConfig.aiProvider,
+      resolvedModel: modelId,
+      translationStyle,
+    })
+    observer.logEvent('info', 'translation_pipeline_started', {
+      sourceMessageId: command.sourceMessageId,
+    })
+
     const callbackUrl =
       process.env['DATASET_RUNNER_CALLBACK_URL'] ??
       'http://dataset-runner:3002/internal/delivery-acks'
@@ -306,12 +346,15 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
   }
 }
 
-export async function handleTranslateRequest(command: TranslationIngressCommand): Promise<void> {
+export async function handleTranslateRequest(
+  command: TranslationIngressCommand,
+  context?: TranslateRequestContext,
+): Promise<void> {
   if (translateRequestHandler === null) {
     throw new Error('Translate handler not initialized')
   }
 
-  return translateRequestHandler(command)
+  return translateRequestHandler(command, context)
 }
 
 interface DecorationSnapshotEnvelope {

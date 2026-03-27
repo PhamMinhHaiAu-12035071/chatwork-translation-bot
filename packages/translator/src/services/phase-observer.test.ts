@@ -23,6 +23,7 @@ describe('createPhaseObserver', () => {
       },
       request: {
         requestId: 'req-1',
+        traceId: 'trace-observer-1',
         sourceMessageId: 'source-1',
         originType: 'automation',
         provider: 'cursor',
@@ -80,6 +81,7 @@ describe('createPhaseObserver', () => {
       },
       request: {
         requestId: 'req-2',
+        traceId: 'trace-observer-2',
         sourceMessageId: 'source-2',
         originType: 'manual',
         provider: 'cursor',
@@ -140,6 +142,7 @@ describe('createPhaseObserver', () => {
       },
       request: {
         requestId: 'req-3',
+        traceId: 'trace-observer-3',
         sourceMessageId: 'source-3',
         originType: 'automation',
         provider: 'openai',
