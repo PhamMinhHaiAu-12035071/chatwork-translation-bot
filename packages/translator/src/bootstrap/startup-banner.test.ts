@@ -23,7 +23,6 @@ describe('logStartupBanner', () => {
         supportedModels: ['gemini-2.5-pro', 'gemini-2.0-flash'],
         defaultModel: 'gemini-2.5-pro',
         capabilities: { streaming: false },
-        requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
       },
       create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })
@@ -51,7 +50,6 @@ describe('logStartupBanner', () => {
         supportedModels: ['gemini-2.5-pro'],
         defaultModel: 'gemini-2.5-pro',
         capabilities: { streaming: false },
-        requiredEnvKeys: [],
       },
       create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })
@@ -78,7 +76,6 @@ describe('logStartupBanner', () => {
         defaultModel: 'gpt-5.4',
         capabilities: { streaming: false },
         timeoutMs: 1_800_000,
-        requiredEnvKeys: ['OPENAI_API_KEY'],
       },
       create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })

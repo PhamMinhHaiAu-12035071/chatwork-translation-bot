@@ -11,7 +11,6 @@ let _plugins: {
     supportedModels: readonly string[]
     defaultModel: string
     capabilities: { readonly streaming: boolean }
-    requiredEnvKeys: readonly string[]
   }
   create: () => { translate: () => Promise<never> }
 }[] = []
@@ -56,7 +55,6 @@ describe('runStartupGuards', () => {
         supportedModels: ['m'],
         defaultModel: 'm',
         capabilities: { streaming: false },
-        requiredEnvKeys: [],
       },
       create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })
@@ -85,7 +83,6 @@ describe('runStartupGuards', () => {
         supportedModels: ['m'],
         defaultModel: 'm',
         capabilities: { streaming: false },
-        requiredEnvKeys: [],
       },
       create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })
@@ -104,7 +101,6 @@ describe('runStartupGuards', () => {
         supportedModels: ['m'],
         defaultModel: 'm',
         capabilities: { streaming: false },
-        requiredEnvKeys: [],
       },
       create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })

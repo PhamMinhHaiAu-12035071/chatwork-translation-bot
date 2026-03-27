@@ -17,7 +17,6 @@ describe('GET /health/provider', () => {
         defaultModel: 'gemini-2.5-pro',
         capabilities: { streaming: false },
         timeoutMs: 1_800_000,
-        requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
       },
       create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
     })

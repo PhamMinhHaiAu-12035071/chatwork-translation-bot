@@ -31,7 +31,6 @@ export const providerHealthRoute = new Elysia().get('/health/provider', () => {
         providerDefaultTimeoutMs: p.manifest.timeoutMs ?? null,
         effectiveTimeoutMs,
         timeoutSource,
-        requiredEnvKeys: p.manifest.requiredEnvKeys,
       }
     }),
   }
