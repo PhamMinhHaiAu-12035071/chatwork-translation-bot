@@ -86,7 +86,7 @@ export class RoomConfigStore {
         translationStyle: params.translationStyle,
         encryptedAiApiToken: await encrypt(params.aiApiToken, this.encryptionKeyHex),
         encryptedWebhookSecret: await encrypt(params.webhookSecret, this.encryptionKeyHex),
-        enabled: false,
+        enabled: true,
         createdAt: now,
         updatedAt: now,
       }

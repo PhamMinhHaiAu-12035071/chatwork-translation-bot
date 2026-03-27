@@ -43,6 +43,19 @@ describe('deleteRoom', () => {
     await deleteRoom(ROOM_ID, TOKEN)
   })
 
+  it('sends action_type=delete in the request body', async () => {
+    let capturedBody = ''
+    fetchSpy.mockImplementationOnce(((_input: unknown, init?: RequestInit) => {
+      const rawBody = init?.body
+      capturedBody = typeof rawBody === 'string' ? rawBody : ''
+      return Promise.resolve(new Response(null, { status: 204 }))
+    }) as unknown as typeof fetch)
+
+    await deleteRoom(ROOM_ID, TOKEN)
+
+    expect(capturedBody).toBe('action_type=delete')
+  })
+
   it('throws ChatworkApiError on failure', async () => {
     mockOnce(
       fetchSpy,

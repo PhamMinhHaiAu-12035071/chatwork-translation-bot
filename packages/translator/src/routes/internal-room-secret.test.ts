@@ -36,9 +36,7 @@ async function buildApp(dataDir: string, enabled = true) {
     webhookSecret: 'secret-xyz',
   })
 
-  if (enabled) {
-    await store.setEnabled(room.id, true)
-  }
+  await store.setEnabled(room.id, enabled)
 
   const route = createInternalRoomSecretRoute({ store, internalApiSecret: INTERNAL_SECRET })
   return new Elysia().use(route)

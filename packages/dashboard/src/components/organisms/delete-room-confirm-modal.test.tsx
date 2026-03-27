@@ -31,7 +31,7 @@ describe('DeleteRoomConfirmModal', () => {
     expect(html).toContain('role="dialog"')
     expect(html).toContain('aria-modal="true"')
     expect(html).toContain('Cancel')
-    expect(html).toContain('Delete (I have confirmed)')
+    expect(html).toContain('Delete Room')
     expect(html).toContain('Room ID')
     expect(html).toContain('Provider')
     expect(html).toContain('Style')
@@ -48,13 +48,13 @@ describe('DeleteRoomConfirmModal', () => {
       }),
     )
 
-    expect(html).toContain('Delete Check')
+    expect(html).toContain('Danger Zone')
     expect(html).toContain('Delete Sakura Desk JP?')
-    expect(html).toContain('Please check the followings prior to deleting group chats')
+    expect(html).toContain('This action is permanent and cannot be undone')
     expect(html).toContain('Source-room webhook cleanup is still manual in Chatwork Admin')
   })
 
-  it('renders the destructive checklist, warning panel, and mini room preview', () => {
+  it('renders the consequence warnings, warning panel, and mini room preview', () => {
     const html = renderToStaticMarkup(
       createElement(DeleteRoomConfirmModal, {
         room: TEST_ROOM,
@@ -65,16 +65,15 @@ describe('DeleteRoomConfirmModal', () => {
       }),
     )
 
-    expect(html.match(/type="checkbox"/g)?.length ?? 0).toBe(3)
-    expect(html).toContain('applied for everyone else participating in the group chat')
-    expect(html).toContain('All messages, tasks, files, and bookmarks will be deleted')
-    expect(html).toContain('All deleted data will never be restored')
+    expect(html).toContain('delete-modal-warn-dot')
+    expect(html).toContain('delete-modal-consequence-item')
+    expect(html).toContain('Applies to everyone in the group chat')
+    expect(html).toContain('All messages, tasks, files, and bookmarks will be lost')
     expect(html).toContain('Sakura Desk JP')
     expect(html).toContain('123456789')
     expect(html).toContain('OpenAI')
     expect(html).toContain('Professional Business')
-    expect(html).toContain('Delete (I have confirmed)')
-    expect(html).toContain('disabled')
+    expect(html).toContain('Delete Room')
   })
 
   it('renders nothing when isOpen is false', () => {
@@ -103,7 +102,7 @@ describe('DeleteRoomConfirmModal', () => {
     )
 
     expect(html).toContain('Deleting')
-    expect(html).not.toContain('Delete (I have confirmed)')
+    expect(html).not.toContain('Delete Room</button>')
   })
 
   it('wires dialog accessibility semantics and close behavior in the source', async () => {
@@ -119,7 +118,6 @@ describe('DeleteRoomConfirmModal', () => {
     expect(source).toContain('useRef')
     expect(source).toContain('createPortal')
     expect(source).toContain('document.body')
-    expect(source).toContain('type="checkbox"')
     expect(source).toContain('Source-room webhook cleanup is still manual in Chatwork Admin')
   })
 

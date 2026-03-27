@@ -51,7 +51,14 @@ export function BrutalToast({ item, onDismiss }: BrutalToastProps) {
         className="ml-auto opacity-60 hover:opacity-100"
         aria-label="Dismiss"
       >
-        X
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M4 4L12 12M12 4L4 12"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+        </svg>
       </button>
     </motion.div>
   )

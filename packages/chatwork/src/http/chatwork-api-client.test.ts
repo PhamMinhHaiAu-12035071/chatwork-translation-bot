@@ -99,6 +99,7 @@ describe('chatworkApiClient', () => {
       expect((init.headers as Record<string, string>)['X-ChatWorkToken']).toBe(TOKEN)
       expect(init.method).toBe('POST')
       expect(init.body).toContain('body=Hello')
+      expect(init.body).toContain('self_unread=1')
     })
 
     it('throws ChatworkApiError on error response', async () => {

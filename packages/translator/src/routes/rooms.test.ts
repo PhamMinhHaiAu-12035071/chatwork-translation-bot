@@ -196,7 +196,7 @@ describe('POST /api/rooms', () => {
     }
 
     expect(body.success).toBe(true)
-    expect(body.data).toHaveProperty('enabled', false)
+    expect(body.data).toHaveProperty('enabled', true)
     expect(body.data).not.toHaveProperty('encryptedAiApiToken')
     expect(body.data).not.toHaveProperty('encryptedWebhookSecret')
     expect(body).toHaveProperty('webhookUrl')

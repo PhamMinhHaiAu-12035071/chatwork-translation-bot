@@ -72,7 +72,7 @@ export const chatworkApiClient = {
     token: string,
   ): Promise<ChatworkSendMessageResult> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}/messages`
-    const body = new URLSearchParams({ body: message })
+    const body = new URLSearchParams({ body: message, self_unread: '1' })
 
     const response = await fetch(url, {
       method: 'POST',
@@ -105,10 +105,15 @@ export const chatworkApiClient = {
 
   async deleteRoom(roomId: number, token: string): Promise<void> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}`
+    const body = new URLSearchParams({ action_type: 'delete' })
 
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: makeHeaders(token),
+      headers: {
+        ...makeHeaders(token),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
     })
 
     if (!response.ok) {

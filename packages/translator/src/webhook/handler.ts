@@ -105,10 +105,6 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       modelId,
       apiKey: aiApiToken,
     }
-    const baseUrl = process.env['CURSOR_API_URL']
-    if (baseUrl) {
-      ctx.baseUrl = baseUrl
-    }
     const executor = plugin.create(ctx)
     const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
       envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,

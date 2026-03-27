@@ -487,18 +487,35 @@ html::-webkit-scrollbar-thumb:hover {
   color: var(--text-secondary);
 }
 
-.delete-modal-checkitem {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
+.delete-modal-consequences {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.delete-modal-checkbox {
-  width: 22px;
-  height: 22px;
-  margin-top: 0.15rem;
+.delete-modal-consequence-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.delete-modal-warn-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
-  accent-color: #3c5d9f;
+  margin-top: 0.1rem;
+  border: 2.5px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffe19a 0%, #f5c34b 100%);
+  box-shadow: 2px 2px 0 var(--border);
+  font-family: 'Shantell Sans', cursive;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--border);
+  transform: rotate(-3deg);
 }
 
 .delete-modal-warning-panel {

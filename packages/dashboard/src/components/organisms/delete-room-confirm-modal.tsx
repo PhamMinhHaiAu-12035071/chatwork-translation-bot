@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import type { Room } from '~/stores/room-store'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
@@ -21,11 +21,6 @@ export function DeleteRoomConfirmModal({
   onConfirm,
 }: DeleteRoomConfirmModalProps) {
   const cancelRef = useRef<HTMLButtonElement>(null)
-  const [confirmEveryone, setConfirmEveryone] = useState(false)
-  const [confirmContentLoss, setConfirmContentLoss] = useState(false)
-  const [confirmIrreversible, setConfirmIrreversible] = useState(false)
-
-  const allConfirmed = confirmEveryone && confirmContentLoss && confirmIrreversible
 
   useEffect(() => {
     if (!isOpen) return
@@ -53,14 +48,6 @@ export function DeleteRoomConfirmModal({
     }
   }, [isOpen, onCancel])
 
-  useEffect(() => {
-    if (!isOpen) return
-
-    setConfirmEveryone(false)
-    setConfirmContentLoss(false)
-    setConfirmIrreversible(false)
-  }, [isOpen, room.id])
-
   if (!isOpen) return null
 
   const overlay = (
@@ -76,7 +63,7 @@ export function DeleteRoomConfirmModal({
         }}
       >
         <StickerLabel tone="warning" tilt="left">
-          Delete Check
+          Danger Zone
         </StickerLabel>
 
         <h2 id="delete-modal-title" className="font-heading mt-4 text-2xl font-bold">
@@ -87,53 +74,27 @@ export function DeleteRoomConfirmModal({
           id="delete-modal-description"
           className="delete-modal-warning font-ui-body mt-2 text-sm leading-relaxed"
         >
-          Please check the followings prior to deleting group chats.
+          This action is permanent and cannot be undone.
         </p>
 
-        <div className="delete-modal-checklist mt-4 space-y-3">
-          <label className="delete-modal-checkitem">
-            <input
-              type="checkbox"
-              checked={confirmEveryone}
-              onChange={(event) => {
-                setConfirmEveryone(event.currentTarget.checked)
-              }}
-              className="delete-modal-checkbox"
-            />
-            <span className="font-ui-body text-sm leading-relaxed">
-              This will not only delete from your list, but will be applied for everyone else
-              participating in the group chat.
+        <ul className="delete-modal-consequences mt-4 space-y-3">
+          <li className="delete-modal-consequence-item">
+            <span className="delete-modal-warn-dot" aria-hidden="true">
+              !
             </span>
-          </label>
-
-          <label className="delete-modal-checkitem">
-            <input
-              type="checkbox"
-              checked={confirmContentLoss}
-              onChange={(event) => {
-                setConfirmContentLoss(event.currentTarget.checked)
-              }}
-              className="delete-modal-checkbox"
-            />
             <span className="font-ui-body text-sm leading-relaxed">
-              All messages, tasks, files, and bookmarks will be deleted.
+              Applies to everyone in the group chat, not just you.
             </span>
-          </label>
-
-          <label className="delete-modal-checkitem">
-            <input
-              type="checkbox"
-              checked={confirmIrreversible}
-              onChange={(event) => {
-                setConfirmIrreversible(event.currentTarget.checked)
-              }}
-              className="delete-modal-checkbox"
-            />
+          </li>
+          <li className="delete-modal-consequence-item">
+            <span className="delete-modal-warn-dot" aria-hidden="true">
+              !
+            </span>
             <span className="font-ui-body text-sm leading-relaxed">
-              All deleted data will never be restored.
+              All messages, tasks, files, and bookmarks will be lost.
             </span>
-          </label>
-        </div>
+          </li>
+        </ul>
 
         <div className="delete-modal-warning-panel mt-4">
           <div className="font-heading text-sm font-bold">Manual Cleanup Still Needed</div>
@@ -178,10 +139,10 @@ export function DeleteRoomConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isDeleting || !allConfirmed}
+            disabled={isDeleting}
             className="brutal-button delete-modal-confirm px-5 py-2.5 font-heading text-sm font-bold text-white"
           >
-            {isDeleting ? 'Deleting\u2026' : 'Delete (I have confirmed)'}
+            {isDeleting ? 'Deleting\u2026' : 'Delete Room'}
           </button>
         </div>
       </div>

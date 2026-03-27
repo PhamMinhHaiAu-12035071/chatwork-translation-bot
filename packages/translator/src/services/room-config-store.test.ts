@@ -71,7 +71,7 @@ describe('RoomConfigStore', () => {
 
     expect(room.id).toMatch(/^[\da-f-]{36}$/iu)
     expect(room.originalRoomId).toBe(1001)
-    expect(room.enabled).toBe(false)
+    expect(room.enabled).toBe(true)
     expect(room.createdAt).toBeTruthy()
     expect(room.updatedAt).toBe(room.createdAt)
     expect(room.encryptedAiApiToken).not.toBe('raw-token')

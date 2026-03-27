@@ -128,6 +128,15 @@ case "$1" in
   echo "proxy:start" >> "$TEST_EVENT_LOG"
 
   if [ "$TEST_PROXY_MODE" = "fail-fast" ]; then
+    attempts=0
+    while [ "$attempts" -lt 20 ]; do
+      if grep -q 'docker:-f docker-compose.dev.yml up ' "$TEST_EVENT_LOG" 2>/dev/null; then
+        break
+      fi
+      sleep 0.1
+      attempts=$((attempts + 1))
+    done
+
     sleep 0.2
     echo "proxy:exit-1" >> "$TEST_EVENT_LOG"
     exit 1

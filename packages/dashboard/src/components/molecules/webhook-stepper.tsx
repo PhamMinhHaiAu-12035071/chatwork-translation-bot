@@ -23,7 +23,7 @@ const STEPS: Step[] = [
     title: 'Access Chatwork Admin',
     body: 'Log in to your Chatwork account. Open the Admin panel and navigate to Integrations → Webhooks.',
     action: 'link',
-    actionLabel: 'Open Chatwork Admin →',
+    actionLabel: 'Open Chatwork Admin',
   },
   {
     number: '02',
@@ -170,9 +170,18 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
                   href="https://www.chatwork.com/service/packages/chatwork/subpackages/webhook/list.php"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="brutal-button theme-button-violet inline-flex items-center px-5 py-2.5 font-heading text-sm font-bold text-white"
+                  className="brutal-button theme-button-violet inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-bold text-white"
                 >
                   {activeConfig.actionLabel}
+                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M3 8H13M13 8L9 4M13 8L9 12"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </a>
               ) : null}
 
@@ -212,7 +221,28 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
           className="brutal-button theme-button-warm px-5 py-2.5 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
           {...previousButtonMotionProps}
         >
-          ← Previous
+          <svg
+            aria-hidden="true"
+            width="15"
+            height="15"
+            viewBox="0 0 16 16"
+            fill="none"
+            style={{
+              display: 'inline-block',
+              verticalAlign: 'middle',
+              marginRight: '6px',
+              marginTop: '-2px',
+            }}
+          >
+            <path
+              d="M13 8H3M3 8L7 4M3 8L7 12"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Previous
         </motion.button>
         <AnimatePresence mode="wait">
           {activeStep < STEPS.length - 1 ? (
@@ -230,7 +260,28 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
             >
-              Next →
+              Next
+              <svg
+                aria-hidden="true"
+                width="15"
+                height="15"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{
+                  display: 'inline-block',
+                  verticalAlign: 'middle',
+                  marginLeft: '6px',
+                  marginTop: '-2px',
+                }}
+              >
+                <path
+                  d="M3 8H13M13 8L9 4M13 8L9 12"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </motion.button>
           ) : (
             <motion.div

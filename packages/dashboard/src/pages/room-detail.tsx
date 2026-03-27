@@ -142,7 +142,24 @@ export function RoomDetailPage() {
             }}
             className="brutal-button theme-button-violet px-5 py-2.5 font-heading text-sm font-bold text-white"
           >
-            ← Back to Dashboard
+            <svg
+              aria-hidden="true"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              className="inline-block align-middle"
+              style={{ marginTop: '-2px', marginRight: '6px' }}
+            >
+              <path
+                d="M13 8H3M3 8L7 4M3 8L7 12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Back to Dashboard
           </button>
         </BrutalCard>
       </PageShell>
@@ -301,7 +318,24 @@ export function RoomDetailPage() {
                 }}
                 className="brutal-button theme-button-warm px-6 py-3 font-heading text-sm font-bold text-white"
               >
-                ← Back
+                <svg
+                  aria-hidden="true"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className="inline-block align-middle"
+                  style={{ marginTop: '-2px', marginRight: '6px' }}
+                >
+                  <path
+                    d="M13 8H3M3 8L7 4M3 8L7 12"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Back
               </button>
               <button
                 type="submit"
@@ -327,8 +361,21 @@ export function RoomDetailPage() {
                 Webhook URL
               </div>
               <div className="brutal-input flex items-center gap-3 px-4 py-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
-                  🔗
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white">
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5L7.5 3.5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5L9 12.5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </span>
                 <code className="flex-1 truncate font-['Shantell_Sans',cursive] text-xs font-medium text-[var(--text-primary)]">
                   {webhookUrl}
@@ -360,7 +407,28 @@ export function RoomDetailPage() {
               }}
               className="brutal-button theme-button-sky px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
             >
-              View Webhook Guide →
+              View Webhook Guide
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{
+                  display: 'inline-block',
+                  verticalAlign: 'middle',
+                  marginLeft: '6px',
+                  marginTop: '-2px',
+                }}
+              >
+                <path
+                  d="M3 8H13M13 8L9 4M13 8L9 12"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </BrutalCard>
 
