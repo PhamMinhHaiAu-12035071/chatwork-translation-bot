@@ -67,6 +67,7 @@ services:
     environment:
       # Override localhost → Docker service name
       - TRANSLATOR_URL=http://translator:3000
+      - TRANSLATOR_INTERNAL_URL=http://translator:3000
       # Skip husky prepare hook during in-container install
       - HUSKY=0
       - BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache

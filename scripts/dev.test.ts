@@ -388,6 +388,13 @@ describe('scripts/dev.sh orchestration', () => {
     }
   })
 
+  it('wires webhook-logger to the translator internal URL in docker-compose.dev.yml', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const webhookLoggerBlock = getComposeServiceBlock(composeContent, 'webhook-logger')
+
+    expect(webhookLoggerBlock).toContain('TRANSLATOR_INTERNAL_URL=http://translator:3000')
+  })
+
   it('keeps the zrok container alive after share exits so dev stays up without a tunnel', () => {
     const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
     const zrokBlock = getComposeServiceBlock(composeContent, 'zrok')

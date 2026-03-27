@@ -282,6 +282,39 @@ describe('webhookRoutes', () => {
     expect(forwardedBody.command['translationInputs']).toEqual(['Hello World'])
   })
 
+  it('POST /webhook uses TRANSLATOR_INTERNAL_URL for room secret fetches and TRANSLATOR_URL for forwarding when they differ', async () => {
+    const publicTranslatorUrl = 'http://translator-public:3000'
+    const internalTranslatorUrl = 'http://translator-internal:3000'
+
+    mockEnv.TRANSLATOR_URL = publicTranslatorUrl
+    mockEnv.TRANSLATOR_INTERNAL_URL = internalTranslatorUrl
+    mockFetch.mockImplementation((input: FetchInput) => {
+      const url = resolveUrl(input)
+
+      if (url === `${internalTranslatorUrl}/internal/room-secret?room_id=${ROOM_ID.toString()}`) {
+        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
+      }
+
+      if (url === `${publicTranslatorUrl}/internal/translate`) {
+        return Promise.resolve(new Response('OK', { status: 200 }))
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url}`)
+    })
+
+    const rawBody = JSON.stringify(makeValidEvent())
+    const sig = makeSignature(rawBody)
+
+    const res = await app.handle(makeRequest(rawBody, sig))
+
+    expect(res.status).toBe(200)
+    expect(mockFetch.mock.calls).toHaveLength(2)
+    expect(resolveUrl(getFetchCall(0)[0])).toBe(
+      `${internalTranslatorUrl}/internal/room-secret?room_id=${ROOM_ID.toString()}`,
+    )
+    expect(resolveUrl(getFetchCall(1)[0])).toBe(`${publicTranslatorUrl}/internal/translate`)
+  })
+
   it('POST /webhook accepts message_updated payloads after secret lookup succeeds', async () => {
     const rawBody = JSON.stringify(makeValidEvent('message_updated'))
     const sig = makeSignature(rawBody)
