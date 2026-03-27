@@ -46,14 +46,8 @@ const STEPS: Step[] = [
   },
   {
     number: '05',
-    title: 'Save & Copy Secret',
-    body: 'Click Save. Chatwork will display the webhook secret only once. Copy it immediately — you will save it in the dashboard in the next step.',
-    action: 'none',
-  },
-  {
-    number: '06',
-    title: 'Save Secret on Dashboard',
-    body: 'Return to the room form or room detail page. Paste the Chatwork secret into the Webhook Secret field, save the room configuration, then enable the room to go live.',
+    title: 'Save Webhook',
+    body: 'Click Save. Chatwork will activate the webhook. No secret needed.',
     action: 'none',
   },
 ]
@@ -64,7 +58,6 @@ const CARD_THEMES = [
   'theme-card-sky',
   'theme-card-matcha',
   'theme-card-peach',
-  'theme-card-blush',
 ] as const
 
 const PILL_COLORS = [
@@ -73,10 +66,9 @@ const PILL_COLORS = [
   'bg-[#5bb89a]',
   'bg-[#d44470]',
   'bg-[#6e77e5]',
-  'bg-[#e8a065]',
 ] as const
 
-const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right', 'right'] as const
+const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right'] as const
 const DEFAULT_PILL_COLOR = 'bg-[var(--accent)]'
 
 export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {

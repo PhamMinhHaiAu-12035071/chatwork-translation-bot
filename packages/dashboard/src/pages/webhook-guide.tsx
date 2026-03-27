@@ -16,7 +16,7 @@ export function WebhookGuidePage() {
     <PageShell
       eyebrow="Manual Guide"
       title="Webhook Setup Guide"
-      description="Follow these six steps to connect your Chatwork room to the translation bot. Complete each step before moving on."
+      description="Follow these five steps to connect your Chatwork room to the translation bot. Complete each step before moving on."
     >
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.6fr)]">
         <BrutalCard className="theme-card-cream space-y-5">
@@ -38,8 +38,8 @@ export function WebhookGuidePage() {
           <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
             <StickerLabel tone="success">One-time setup</StickerLabel>
             <p className="text-sm leading-7 text-[var(--text-secondary)]">
-              Once the webhook secret is saved in the room configuration and the room is enabled, no
-              further manual steps are needed. Translation runs automatically.
+              Once the webhook URL is saved in Chatwork and the room is enabled, translation runs
+              automatically.
             </p>
           </BrutalCard>
         </div>

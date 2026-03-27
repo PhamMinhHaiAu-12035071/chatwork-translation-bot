@@ -13,7 +13,7 @@ describe('WebhookStepper', () => {
 
     expect(html).toContain('Access Chatwork Admin')
     expect(html).toContain('Open Chatwork Admin')
-    expect(html).toContain('1 of 6')
+    expect(html).toContain('1 of 5')
     expect(html).toContain('Previous')
     expect(html).toContain('Next')
   })
@@ -41,15 +41,12 @@ describe('WebhookStepper', () => {
     expect(source).not.toContain('transition-all duration-150')
   })
 
-  it('uses webhook-secret copy instead of the removed activation-token flow', async () => {
+  it('step 5 instructs save without copying a secret', async () => {
     const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
 
-    expect(source).toContain("title: 'Save & Copy Secret'")
-    expect(source).toContain('webhook secret only once')
-    expect(source).toContain('Webhook Secret field')
-    expect(source).toContain('enable the room to go live')
-    expect(source).not.toContain('webhook token')
-    expect(source).not.toContain('Activation section')
-    expect(source).not.toContain('Activate Webhook')
+    expect(source).toContain("title: 'Save Webhook'")
+    expect(source).toContain('No secret needed')
+    expect(source).not.toContain("title: 'Save & Copy Secret'")
+    expect(source).not.toContain('Save Secret on Dashboard')
   })
 })
