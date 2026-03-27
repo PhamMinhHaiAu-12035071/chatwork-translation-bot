@@ -99,7 +99,6 @@ export const openaiPlugin: ProviderPlugin = {
     defaultModel: DEFAULT_OPENAI_MODEL,
     capabilities: { streaming: false },
     timeoutMs: DEFAULT_OPENAI_TIMEOUT_MS,
-    requiredEnvKeys: ['OPENAI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {
     return new OpenAIExecutor(ctx.modelId, ctx.apiKey, ctx.baseUrl)

@@ -104,7 +104,6 @@ export const geminiPlugin: ProviderPlugin = {
     defaultModel: DEFAULT_GEMINI_MODEL,
     capabilities: { streaming: false },
     timeoutMs: DEFAULT_GEMINI_TIMEOUT_MS,
-    requiredEnvKeys: ['GOOGLE_GENERATIVE_AI_API_KEY'],
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {
     return new GeminiExecutor(ctx.modelId, ctx.apiKey)
