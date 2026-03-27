@@ -44,3 +44,6 @@ input/pending/
 input/archive/
 input/failed/
 input/state/
+
+# Local runtime room config state (not committed)
+data/
