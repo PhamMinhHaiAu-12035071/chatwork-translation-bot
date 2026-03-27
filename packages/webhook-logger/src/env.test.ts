@@ -16,10 +16,8 @@ afterEach(() => {
 })
 
 describe('webhook-logger env', () => {
-  it('parses internal translator settings without CHATWORK_WEBHOOK_SECRET', async () => {
-    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
+  it('parses TRANSLATOR_URL and applies defaults', async () => {
     process.env['TRANSLATOR_URL'] = 'http://localhost:3000'
-    delete process.env['CHATWORK_WEBHOOK_SECRET']
 
     const envModuleUnknown: unknown = await import(
       `${import.meta.dir}/env.ts?${crypto.randomUUID()}`
@@ -28,25 +26,8 @@ describe('webhook-logger env', () => {
     const env = parseEnv(process.env)
 
     expect(env.TRANSLATOR_URL).toBe('http://localhost:3000')
-    expect(env.TRANSLATOR_INTERNAL_URL).toBe('http://localhost:3000')
-    expect(env.INTERNAL_API_SECRET).toBe('internal-secret')
-    expect('CHATWORK_WEBHOOK_SECRET' in env).toBe(false)
-  })
-
-  it('preserves a distinct TRANSLATOR_INTERNAL_URL override', async () => {
-    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
-    process.env['TRANSLATOR_URL'] = 'http://translator-public:3000'
-    process.env['TRANSLATOR_INTERNAL_URL'] = 'http://translator-internal:3000'
-    delete process.env['CHATWORK_WEBHOOK_SECRET']
-
-    const envModuleUnknown: unknown = await import(
-      `${import.meta.dir}/env.ts?${crypto.randomUUID()}`
-    )
-    const { parseEnv } = envModuleUnknown as { parseEnv: (input: NodeJS.ProcessEnv) => Env }
-    const env = parseEnv(process.env)
-
-    expect(env.TRANSLATOR_URL).toBe('http://translator-public:3000')
-    expect(env.TRANSLATOR_INTERNAL_URL).toBe('http://translator-internal:3000')
-    expect(env.INTERNAL_API_SECRET).toBe('internal-secret')
+    expect('INTERNAL_API_SECRET' in env).toBe(false)
+    expect('TRANSLATOR_INTERNAL_URL' in env).toBe(false)
+    expect('CHATWORK_SKIP_SIGNATURE_VERIFY' in env).toBe(false)
   })
 })
