@@ -221,7 +221,6 @@ describe('room store', () => {
       aiModel: 'gpt-4o-mini',
       translationStyle: 'AUTO_CONTEXT',
       aiApiToken: 'sk-new-room',
-      webhookSecret: 'cw-secret-555001',
     })
 
     expect(created).toEqual(CREATED_ROOM)
@@ -235,7 +234,6 @@ describe('room store', () => {
 
     const updated = await useRoomStore.getState().updateRoom(CREATED_ROOM.id, {
       destinationRoomName: 'Osaka Escalations APAC',
-      webhookSecret: 'cw-secret-rotated',
     })
     expect(updated).toEqual(UPDATED_ROOM)
     expect(useRoomStore.getState().rooms).toEqual([UPDATED_ROOM, OLDER_ROOM])

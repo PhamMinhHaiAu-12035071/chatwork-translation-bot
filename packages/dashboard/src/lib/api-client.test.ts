@@ -93,30 +93,4 @@ describe('apiClient', () => {
     expect(response.data).toEqual({ outcome: 'deleted' })
   })
 
-  it('sends webhookSecret in createRoom requests', async () => {
-    mockOnce(
-      fetchSpy,
-      new Response(JSON.stringify({ success: true, data: { id: 'room-002' } }), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    const input: CreateRoomInput = {
-      originalRoomId: 555001,
-      destinationRoomName: 'Osaka Escalations',
-      aiProvider: 'openai',
-      aiModel: null,
-      translationStyle: 'AUTO_CONTEXT',
-      aiApiToken: 'sk-new-room',
-      webhookSecret: 'cw-secret-555001',
-    }
-
-    await apiClient.createRoom(input)
-
-    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
-    const body = JSON.parse(init.body as string) as CreateRoomInput
-
-    expect(body.webhookSecret).toBe('cw-secret-555001')
-  })
 })

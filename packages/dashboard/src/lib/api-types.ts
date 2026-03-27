@@ -41,7 +41,6 @@ export interface CreateRoomInput {
   aiModel: string | null
   translationStyle: TranslationStyle
   aiApiToken: string
-  webhookSecret: string
 }
 
 export interface DeleteRoomResult {
@@ -54,5 +53,4 @@ export interface UpdateRoomInput {
   aiModel?: string | null
   translationStyle?: TranslationStyle
   aiApiToken?: string
-  webhookSecret?: string
 }

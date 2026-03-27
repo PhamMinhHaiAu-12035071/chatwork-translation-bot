@@ -3,7 +3,7 @@ import { describe, expect, it } from 'bun:test'
 const removedWebhookActivationSchema = ['webhook', 'Activation', 'Schema'].join('')
 
 describe('room schema', () => {
-  it('requires webhookSecret when validating the create payload', async () => {
+  it('requires aiApiToken when validating the create payload', async () => {
     const schemaModule = await import('~/lib/room-schema').catch(() => null)
 
     expect(schemaModule).not.toBeNull()
@@ -18,7 +18,6 @@ describe('room schema', () => {
       aiModel: 'gpt-4o',
       translationStyle: 'AUTO_CONTEXT',
       aiApiToken: 'sk-demo',
-      webhookSecret: 'cw-secret-demo',
     })
 
     expect(validResult.success).toBe(true)
@@ -42,12 +41,9 @@ describe('room schema', () => {
     expect(invalidResult.error?.flatten().fieldErrors.aiApiToken).toContain(
       'AI API token is required',
     )
-    expect(invalidResult.error?.flatten().fieldErrors.webhookSecret).toContain(
-      'Webhook secret is required',
-    )
   })
 
-  it('allows blank secrets on the edit schema so unchanged values can be preserved', async () => {
+  it('allows blank aiApiToken on the edit schema so unchanged values can be preserved', async () => {
     const schemaModule = await import('~/lib/room-schema').catch(() => null)
 
     expect(schemaModule).not.toBeNull()
@@ -62,7 +58,6 @@ describe('room schema', () => {
       aiModel: '',
       translationStyle: 'AUTO_CONTEXT',
       aiApiToken: '',
-      webhookSecret: '',
     })
 
     expect(result.success).toBe(true)
