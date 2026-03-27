@@ -11,12 +11,10 @@ export type {
 export type { CreateRoomParams, CreateRoomResult, Room, UpdateRoomParams } from '~/types/room'
 
 // Errors
-export { ChatworkWebhookSignatureError } from '~/errors/chatwork-webhook-signature-error'
 export { ChatworkWebhookPayloadError } from '~/errors/chatwork-webhook-payload-error'
 export { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
 
 // Services
-export { verifyWebhookSignature } from '~/services/verify-webhook-signature'
 export { normalizeWebhookPayload } from '~/services/normalize-webhook-payload'
 export { mapWebhookToTranslationCommand } from '~/services/map-webhook-to-translation-command'
 export { sendRoomMessage } from '~/services/send-room-message'
