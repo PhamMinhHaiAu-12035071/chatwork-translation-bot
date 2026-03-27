@@ -37,7 +37,6 @@ describe('createApp (translator)', () => {
       aiModel: 'gpt-4o',
       translationStyle: 'TECHNICAL',
       aiApiToken: 'room-openai-token',
-      webhookSecret: 'room-secret',
     })
     roomId = room.id
     await store.setEnabled(room.id, true)

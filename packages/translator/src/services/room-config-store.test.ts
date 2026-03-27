@@ -66,7 +66,6 @@ describe('RoomConfigStore', () => {
       aiModel: 'gpt-4o',
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'raw-token',
-      webhookSecret: 'raw-secret',
     })
 
     expect(room.id).toMatch(/^[\da-f-]{36}$/iu)
@@ -75,7 +74,6 @@ describe('RoomConfigStore', () => {
     expect(room.createdAt).toBeTruthy()
     expect(room.updatedAt).toBe(room.createdAt)
     expect(room.encryptedAiApiToken).not.toBe('raw-token')
-    expect(room.encryptedWebhookSecret).not.toBe('raw-secret')
   })
 
   it('create() throws duplicate error on duplicate originalRoomId', async () => {
@@ -87,7 +85,6 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     const error = await catchError(
@@ -99,7 +96,6 @@ describe('RoomConfigStore', () => {
         aiModel: null,
         translationStyle: 'AUTO_CONTEXT',
         aiApiToken: 'token2',
-        webhookSecret: 'secret2',
       }),
     )
 
@@ -116,14 +112,12 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     const fetched = store.getById(created.id)
     expect(fetched).not.toBeNull()
     expect(fetched?.id).toBe(created.id)
     expect(fetched).not.toHaveProperty('encryptedAiApiToken')
-    expect(fetched).not.toHaveProperty('encryptedWebhookSecret')
   })
 
   it('getByOriginalRoomId() returns room by sourceRoomId', async () => {
@@ -135,7 +129,6 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     const found = store.getByOriginalRoomId(5555)
@@ -152,7 +145,6 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     await Bun.sleep(5)
@@ -171,7 +163,6 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     const enabled = await store.setEnabled(created.id, true)
@@ -190,7 +181,6 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     await store.delete(created.id)
@@ -213,27 +203,10 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'my-real-openai-token',
-      webhookSecret: 'secret',
     })
 
     const decrypted = await store.decryptApiToken(created.encryptedAiApiToken)
     expect(decrypted).toBe('my-real-openai-token')
-  })
-
-  it('decryptWebhookSecret() returns the original plaintext secret', async () => {
-    const created = await store.create({
-      originalRoomId: 1001,
-      destinationRoomId: 2001,
-      destinationRoomName: 'Room',
-      aiProvider: 'openai',
-      aiModel: null,
-      translationStyle: 'PROFESSIONAL_BUSINESS',
-      aiApiToken: 'token',
-      webhookSecret: 'my-real-webhook-secret',
-    })
-
-    const decrypted = await store.decryptWebhookSecret(created.encryptedWebhookSecret)
-    expect(decrypted).toBe('my-real-webhook-secret')
   })
 
   it('persists data across store re-instantiation', async () => {
@@ -245,7 +218,6 @@ describe('RoomConfigStore', () => {
       aiModel: null,
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'token',
-      webhookSecret: 'secret',
     })
 
     const store2 = await makeStore(tmpDir)

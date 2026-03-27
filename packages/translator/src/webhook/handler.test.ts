@@ -321,7 +321,6 @@ describe('handleTranslateRequest', () => {
       aiModel: 'gpt-4o',
       translationStyle: 'TECHNICAL',
       aiApiToken: 'room-openai-token',
-      webhookSecret: 'room-webhook-secret',
     })
     enabledRoomId = room.id
     await store.setEnabled(room.id, true)

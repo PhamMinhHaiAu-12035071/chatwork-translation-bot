@@ -39,7 +39,6 @@ const VALID_BODY = {
   aiModel: 'gpt-4o',
   translationStyle: 'PROFESSIONAL_BUSINESS',
   aiApiToken: 'sk-openai-key',
-  webhookSecret: 'webhook-secret-abc',
 }
 
 interface AppHandle {
