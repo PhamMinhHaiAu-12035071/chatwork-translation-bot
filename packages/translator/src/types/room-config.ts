@@ -20,7 +20,6 @@ export const RoomConfigSchema = z.object({
   aiModel: z.string().min(1).nullable(),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM),
   encryptedAiApiToken: z.string().min(1),
-  encryptedWebhookSecret: z.string().min(1),
   enabled: z.boolean(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -47,10 +46,10 @@ export const ArchiveFileSchema = z.object({
 
 export type ArchiveFile = z.infer<typeof ArchiveFileSchema>
 
-export type RoomConfigPublic = Omit<RoomConfig, 'encryptedAiApiToken' | 'encryptedWebhookSecret'>
+export type RoomConfigPublic = Omit<RoomConfig, 'encryptedAiApiToken'>
 
 export function redactRoomConfig(room: RoomConfig): RoomConfigPublic {
-  const { encryptedAiApiToken: _a, encryptedWebhookSecret: _w, ...rest } = room
+  const { encryptedAiApiToken: _a, ...rest } = room
 
   return rest
 }
@@ -62,7 +61,6 @@ export const CreateRoomRequestSchema = z.object({
   aiModel: z.string().min(1).nullable().default(null),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM).default('PROFESSIONAL_BUSINESS'),
   aiApiToken: z.string().min(1),
-  webhookSecret: z.string().min(1),
 })
 
 export type CreateRoomRequest = z.infer<typeof CreateRoomRequestSchema>
@@ -73,7 +71,6 @@ export const UpdateRoomRequestSchema = z.object({
   aiModel: z.string().min(1).nullable().optional(),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM).optional(),
   aiApiToken: z.string().min(1).optional(),
-  webhookSecret: z.string().min(1).optional(),
 })
 
 export type UpdateRoomRequest = z.infer<typeof UpdateRoomRequestSchema>

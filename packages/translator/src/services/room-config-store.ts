@@ -85,7 +85,6 @@ export class RoomConfigStore {
         aiModel: params.aiModel,
         translationStyle: params.translationStyle,
         encryptedAiApiToken: await encrypt(params.aiApiToken, this.encryptionKeyHex),
-        encryptedWebhookSecret: await encrypt(params.webhookSecret, this.encryptionKeyHex),
         enabled: true,
         createdAt: now,
         updatedAt: now,
@@ -113,11 +112,6 @@ export class RoomConfigStore {
           ? await encrypt(patch.aiApiToken, this.encryptionKeyHex)
           : existing.encryptedAiApiToken
 
-      const encryptedWebhookSecret =
-        patch.webhookSecret !== undefined
-          ? await encrypt(patch.webhookSecret, this.encryptionKeyHex)
-          : existing.encryptedWebhookSecret
-
       const updated: RoomConfig = {
         ...existing,
         ...(patch.destinationRoomName !== undefined
@@ -129,7 +123,6 @@ export class RoomConfigStore {
           ? { translationStyle: patch.translationStyle }
           : {}),
         encryptedAiApiToken,
-        encryptedWebhookSecret,
         updatedAt: new Date().toISOString(),
       }
 
@@ -177,10 +170,6 @@ export class RoomConfigStore {
 
   async decryptApiToken(encryptedAiApiToken: string): Promise<string> {
     return decrypt(encryptedAiApiToken, this.encryptionKeyHex)
-  }
-
-  async decryptWebhookSecret(encryptedWebhookSecret: string): Promise<string> {
-    return decrypt(encryptedWebhookSecret, this.encryptionKeyHex)
   }
 
   private allRooms(): RoomConfig[] {
