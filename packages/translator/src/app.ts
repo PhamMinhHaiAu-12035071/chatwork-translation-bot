@@ -6,7 +6,6 @@ import { healthRoutes } from './routes/health'
 import { providerHealthRoute } from './routes/provider-health'
 import { providersRoute } from './routes/providers'
 import { createRoomsRoutes } from './routes/rooms'
-import { createInternalRoomSecretRoute } from './routes/internal-room-secret'
 import { createStatusRoute } from './routes/status'
 import { staticRoutes, spaCatchAll } from './routes/static'
 import { getTranslatorStatusSnapshot } from './services/translator-observability-runtime'
@@ -61,7 +60,6 @@ export function createApp({ store }: AppOptions) {
         chatworkBotAccountId: env.CHATWORK_BOT_ACCOUNT_ID,
       }),
     )
-    .use(createInternalRoomSecretRoute({ store, internalApiSecret: env.INTERNAL_API_SECRET }))
     .use(translateRoutes)
     .use(staticRoutes)
     .use(spaCatchAll)

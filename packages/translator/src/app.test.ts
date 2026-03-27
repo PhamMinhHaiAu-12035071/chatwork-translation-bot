@@ -7,7 +7,6 @@ void mock.module('./env', () => ({
   env: {
     CHATWORK_API_TOKEN: 'test-token',
     CHATWORK_BOT_ACCOUNT_ID: 42,
-    INTERNAL_API_SECRET: 'internal-secret',
     PORT: 3000,
     NODE_ENV: 'test',
   },
@@ -79,20 +78,6 @@ describe('createApp (translator)', () => {
   it('GET /api/providers returns 200', async () => {
     const res = await app.handle(new Request('http://localhost/api/providers'))
     expect(res.status).toBe(200)
-  })
-
-  it('GET /internal/room-secret returns 200 with valid internal auth', async () => {
-    const res = await app.handle(
-      new Request('http://localhost/internal/room-secret?room_id=567890123', {
-        headers: {
-          'X-Internal-Secret': 'internal-secret',
-        },
-      }),
-    )
-
-    expect(res.status).toBe(200)
-    const body = (await res.json()) as { secret: string }
-    expect(body.secret).toBe('room-secret')
   })
 
   it('unknown non-API route falls through to SPA catch-all', async () => {

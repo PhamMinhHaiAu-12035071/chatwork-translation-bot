@@ -12,7 +12,6 @@ export const translatorEnvSchema = z.object({
   ROOM_CONFIG_ENCRYPTION_KEY: z
     .string()
     .length(64, 'ROOM_CONFIG_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)'),
-  INTERNAL_API_SECRET: z.string().min(1, 'INTERNAL_API_SECRET is required'),
   ROOM_CONFIG_DATA_DIR: z.string().default('./data'),
   TRANSLATOR_PHASE_HEARTBEAT_MS: z.coerce.number().int().positive().default(30_000),
   TRANSLATOR_TRANSLATION_BUDGET_MS: z.coerce.number().int().positive().default(60_000),

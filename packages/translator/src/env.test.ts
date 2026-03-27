@@ -17,7 +17,6 @@ describe('translator env', () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
     process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
-    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
 
     const { parseTranslatorEnv } = await import('./env-schema')
     const env = parseTranslatorEnv(process.env)
@@ -35,7 +34,6 @@ describe('translator env', () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
     process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
-    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
     process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] = '45000'
 
     const { parseTranslatorEnv } = await import('./env-schema')
@@ -48,7 +46,6 @@ describe('translator env', () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
     process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
-    process.env['INTERNAL_API_SECRET'] = 'internal-secret'
     process.env['ROOM_CONFIG_DATA_DIR'] = '/tmp/translator-room-configs'
 
     const { parseTranslatorEnv } = await import('./env-schema')
@@ -63,18 +60,6 @@ describe('translator env', () => {
       CHATWORK_API_TOKEN: 'token',
       CHATWORK_BOT_ACCOUNT_ID: '42',
       ROOM_CONFIG_ENCRYPTION_KEY: 'short-key',
-      INTERNAL_API_SECRET: 'internal-secret',
-    })
-
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects missing INTERNAL_API_SECRET values at schema level', async () => {
-    const { translatorEnvSchema } = await import('./env-schema')
-    const result = translatorEnvSchema.safeParse({
-      CHATWORK_API_TOKEN: 'token',
-      CHATWORK_BOT_ACCOUNT_ID: '42',
-      ROOM_CONFIG_ENCRYPTION_KEY: 'a'.repeat(64),
     })
 
     expect(result.success).toBe(false)
