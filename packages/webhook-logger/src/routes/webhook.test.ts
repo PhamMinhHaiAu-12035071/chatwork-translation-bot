@@ -1,18 +1,11 @@
-import { createHmac } from 'node:crypto'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import Elysia from 'elysia'
 import type { webhookRoutes as WebhookRoutesType } from './webhook'
 
-const TEST_SECRET = Buffer.from('test-webhook-secret').toString('base64')
-const INTERNAL_API_SECRET = 'internal-secret'
 const TRANSLATOR_URL = 'http://localhost:3000'
 const ROOM_ID = 567890123
 type FetchInput = string | URL | Request
 type FetchCall = [FetchInput, RequestInit | undefined]
-
-function makeSignature(rawBody: string, secret = TEST_SECRET): string {
-  return createHmac('sha256', Buffer.from(secret, 'base64')).update(rawBody).digest('base64')
-}
 
 function makeValidEvent(eventType: 'message_created' | 'message_updated' = 'message_created') {
   return {
@@ -28,17 +21,6 @@ function makeValidEvent(eventType: 'message_created' | 'message_updated' = 'mess
       update_time: eventType === 'message_updated' ? 1498028130 : 0,
     },
   }
-}
-
-function roomSecretUrl(roomId = ROOM_ID): string {
-  return `${TRANSLATOR_URL}/internal/room-secret?room_id=${roomId.toString()}`
-}
-
-function makeJsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
 }
 
 function resolveUrl(input: FetchInput): string {
@@ -67,12 +49,11 @@ function getJsonBody(call: FetchCall): string {
   return body
 }
 
-function makeRequest(rawBody: string, signature?: string): Request {
+function makeRequest(rawBody: string): Request {
   return new Request('http://localhost/webhook', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(signature !== undefined ? { 'X-ChatWorkWebhookSignature': signature } : {}),
     },
     body: rawBody,
   })
@@ -81,10 +62,6 @@ function makeRequest(rawBody: string, signature?: string): Request {
 function installDefaultFetch(): void {
   mockFetch.mockImplementation((input: FetchInput) => {
     const url = resolveUrl(input)
-
-    if (url === roomSecretUrl()) {
-      return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
-    }
 
     if (url === `${TRANSLATOR_URL}/internal/translate`) {
       return Promise.resolve(new Response('OK', { status: 200 }))
@@ -97,17 +74,11 @@ function installDefaultFetch(): void {
 const mockEnv: {
   LOGGER_PORT: number
   TRANSLATOR_URL: string
-  TRANSLATOR_INTERNAL_URL: string
   NODE_ENV: 'development' | 'production' | 'test' | 'local'
-  INTERNAL_API_SECRET: string
-  CHATWORK_SKIP_SIGNATURE_VERIFY: boolean
 } = {
   LOGGER_PORT: 3001,
   TRANSLATOR_URL,
-  TRANSLATOR_INTERNAL_URL: TRANSLATOR_URL,
   NODE_ENV: 'test',
-  INTERNAL_API_SECRET,
-  CHATWORK_SKIP_SIGNATURE_VERIFY: false,
 }
 
 void mock.module('../env', () => ({
@@ -122,159 +93,47 @@ global.fetch = mockFetch as unknown as typeof fetch
 const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
 const originalConsoleError = console.error
-const originalConsoleWarn = console.warn
 let webhookRoutes: typeof WebhookRoutesType
 let app: ReturnType<typeof Elysia.prototype.use>
-let resetRoomSecretCacheForTest: () => void
 
 describe('webhookRoutes', () => {
   beforeAll(async () => {
     const mod = await import('./webhook')
     webhookRoutes = mod.webhookRoutes
-    resetRoomSecretCacheForTest = mod.resetRoomSecretCacheForTest
     app = new Elysia().use(webhookRoutes)
-  })
-
-  describe('room secret cache', () => {
-    it('does not fetch the same room secret again within TTL', async () => {
-      const rawBody = JSON.stringify(makeValidEvent())
-      const sig = makeSignature(rawBody)
-
-      const firstRes = await app.handle(makeRequest(rawBody, sig))
-      const secondRes = await app.handle(makeRequest(rawBody, sig))
-
-      expect(firstRes.status).toBe(200)
-      expect(secondRes.status).toBe(200)
-
-      const secretFetchCalls = mockFetch.mock.calls.filter(
-        (call) => resolveUrl(call[0]) === roomSecretUrl(),
-      )
-      expect(secretFetchCalls).toHaveLength(1)
-    })
-
-    it('serves a cached room secret when the translator internal API is down', async () => {
-      const rawBody = JSON.stringify(makeValidEvent())
-      const sig = makeSignature(rawBody)
-
-      const firstRes = await app.handle(makeRequest(rawBody, sig))
-      expect(firstRes.status).toBe(200)
-
-      mockFetch.mockImplementation((input: FetchInput) => {
-        const url = resolveUrl(input)
-
-        if (url === roomSecretUrl()) {
-          return Promise.reject(new Error('secret service unavailable'))
-        }
-
-        if (url === `${TRANSLATOR_URL}/internal/translate`) {
-          return Promise.resolve(new Response('OK', { status: 200 }))
-        }
-
-        throw new Error(`Unexpected fetch URL: ${url}`)
-      })
-
-      const secondRes = await app.handle(makeRequest(rawBody, sig))
-
-      expect(secondRes.status).toBe(200)
-    })
-
-    it('returns 503 when the translator internal API is unavailable for a cache miss', async () => {
-      const roomId = ROOM_ID + 1
-      const event = makeValidEvent()
-      const rawBody = JSON.stringify({
-        ...event,
-        webhook_event: {
-          ...event.webhook_event,
-          room_id: roomId,
-        },
-      })
-
-      mockFetch.mockImplementation((input: FetchInput) => {
-        const url = resolveUrl(input)
-
-        if (url === roomSecretUrl(roomId)) {
-          return Promise.reject(new Error('secret service unavailable'))
-        }
-
-        if (url === `${TRANSLATOR_URL}/internal/translate`) {
-          return Promise.resolve(new Response('OK', { status: 200 }))
-        }
-
-        throw new Error(`Unexpected fetch URL: ${url}`)
-      })
-
-      const sig = makeSignature(rawBody)
-      const res = await app.handle(makeRequest(rawBody, sig))
-
-      expect(res.status).toBe(503)
-    })
-    it('refetches the room secret after the cache entry expires', async () => {
-      const originalNow = Date.now
-      let now = 1_000_000
-      Date.now = () => now
-
-      try {
-        const rawBody = JSON.stringify(makeValidEvent())
-        const sig = makeSignature(rawBody)
-
-        const firstRes = await app.handle(makeRequest(rawBody, sig))
-        expect(firstRes.status).toBe(200)
-
-        now += 60_001
-
-        const secondRes = await app.handle(makeRequest(rawBody, sig))
-        expect(secondRes.status).toBe(200)
-
-        const secretFetchCalls = mockFetch.mock.calls.filter(
-          (call) => resolveUrl(call[0]) === roomSecretUrl(),
-        )
-        expect(secretFetchCalls).toHaveLength(2)
-      } finally {
-        Date.now = originalNow
-      }
-    })
   })
 
   beforeEach(() => {
     installDefaultFetch()
-    resetRoomSecretCacheForTest()
     mockEnv.NODE_ENV = 'test'
-    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = false
     mockEnv.TRANSLATOR_URL = TRANSLATOR_URL
-    mockEnv.TRANSLATOR_INTERNAL_URL = TRANSLATOR_URL
-    mockEnv.INTERNAL_API_SECRET = INTERNAL_API_SECRET
   })
 
   afterEach(() => {
     console.log = originalConsoleLog
     console.error = originalConsoleError
-    console.warn = originalConsoleWarn
     consoleLogLines.length = 0
     mockFetch.mockReset()
-    resetRoomSecretCacheForTest()
   })
 
-  it('POST /webhook fetches the per-room secret before forwarding the neutral DTO', async () => {
+  it('POST /webhook forwards the neutral DTO to translator', async () => {
     const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(200)
-    expect(mockFetch.mock.calls).toHaveLength(2)
+    expect(mockFetch.mock.calls).toHaveLength(1)
 
-    const firstCall = getFetchCall(0)
-    const secondCall = getFetchCall(1)
-    const roomSecretHeaders = new Headers(firstCall[1]?.headers)
-    const traceHeader = roomSecretHeaders.get('x-trace-id')
+    const [translateInput, translateInit] = getFetchCall(0)
+    const translateHeaders = new Headers(translateInit?.headers)
+    const traceHeader = translateHeaders.get('x-trace-id')
 
-    expect(resolveUrl(firstCall[0])).toBe(roomSecretUrl())
-    expect(roomSecretHeaders.get('x-internal-secret')).toBe(INTERNAL_API_SECRET)
+    expect(resolveUrl(translateInput)).toBe(`${TRANSLATOR_URL}/internal/translate`)
+    expect(translateHeaders.get('Content-Type')).toBe('application/json')
     expect(typeof traceHeader).toBe('string')
     expect(traceHeader).not.toBe('')
-    expect(resolveUrl(secondCall[0])).toBe(`${TRANSLATOR_URL}/internal/translate`)
 
-    const forwardedBody = JSON.parse(getJsonBody(secondCall)) as {
+    const forwardedBody = JSON.parse(getJsonBody(getFetchCall(0))) as {
       command: Record<string, unknown>
     }
     expect(forwardedBody.command['sourceSystem']).toBe('chatwork')
@@ -284,48 +143,14 @@ describe('webhookRoutes', () => {
     expect(forwardedBody.command['translationInputs']).toEqual(['Hello World'])
   })
 
-  it('POST /webhook uses TRANSLATOR_INTERNAL_URL for room secret fetches and TRANSLATOR_URL for forwarding when they differ', async () => {
-    const publicTranslatorUrl = 'http://translator-public:3000'
-    const internalTranslatorUrl = 'http://translator-internal:3000'
-
-    mockEnv.TRANSLATOR_URL = publicTranslatorUrl
-    mockEnv.TRANSLATOR_INTERNAL_URL = internalTranslatorUrl
-    mockFetch.mockImplementation((input: FetchInput) => {
-      const url = resolveUrl(input)
-
-      if (url === `${internalTranslatorUrl}/internal/room-secret?room_id=${ROOM_ID.toString()}`) {
-        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
-      }
-
-      if (url === `${publicTranslatorUrl}/internal/translate`) {
-        return Promise.resolve(new Response('OK', { status: 200 }))
-      }
-
-      throw new Error(`Unexpected fetch URL: ${url}`)
-    })
-
-    const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
-
-    const res = await app.handle(makeRequest(rawBody, sig))
-
-    expect(res.status).toBe(200)
-    expect(mockFetch.mock.calls).toHaveLength(2)
-    expect(resolveUrl(getFetchCall(0)[0])).toBe(
-      `${internalTranslatorUrl}/internal/room-secret?room_id=${ROOM_ID.toString()}`,
-    )
-    expect(resolveUrl(getFetchCall(1)[0])).toBe(`${publicTranslatorUrl}/internal/translate`)
-  })
-
-  it('POST /webhook accepts message_updated payloads after secret lookup succeeds', async () => {
+  it('POST /webhook accepts message_updated payloads', async () => {
     const rawBody = JSON.stringify(makeValidEvent('message_updated'))
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(200)
 
-    const forwardedBody = JSON.parse(getJsonBody(getFetchCall(1))) as {
+    const forwardedBody = JSON.parse(getJsonBody(getFetchCall(0))) as {
       command: Record<string, unknown>
     }
 
@@ -334,8 +159,8 @@ describe('webhookRoutes', () => {
     expect(forwardedBody.command['translationInputs']).toEqual(['Hello World'])
   })
 
-  it('POST /webhook missing X-ChatWorkWebhookSignature header returns 422', async () => {
-    const rawBody = JSON.stringify(makeValidEvent())
+  it('POST /webhook with malformed JSON returns 422', async () => {
+    const rawBody = 'not-valid-json'
 
     const res = await app.handle(makeRequest(rawBody))
 
@@ -343,94 +168,16 @@ describe('webhookRoutes', () => {
     expect(mockFetch.mock.calls).toHaveLength(0)
   })
 
-  it('POST /webhook returns 200 and skips when translator has no room config for room_id', async () => {
-    mockFetch.mockImplementation((input: FetchInput) => {
-      const url = resolveUrl(input)
-
-      if (url === roomSecretUrl()) {
-        return Promise.resolve(new Response('not found', { status: 404 }))
-      }
-
-      throw new Error(`Unexpected fetch URL: ${url}`)
-    })
-
-    const rawBody = JSON.stringify(makeValidEvent())
-    const res = await app.handle(makeRequest(rawBody, 'wrong-signature-still-skips'))
-
-    expect(res.status).toBe(200)
-    expect(mockFetch.mock.calls).toHaveLength(1)
-  })
-
-  it('POST /webhook with invalid signature returns 422 after fetching the room secret', async () => {
-    const rawBody = JSON.stringify(makeValidEvent())
-
-    const res = await app.handle(makeRequest(rawBody, 'invalidsignature=='))
-
-    expect(res.status).toBe(422)
-    expect(mockFetch.mock.calls).toHaveLength(1)
-  })
-
-  it('POST /webhook returns 503 when room secret fetch fails with a network error', async () => {
-    mockFetch.mockImplementation((input: FetchInput) => {
-      const url = resolveUrl(input)
-
-      if (url === roomSecretUrl()) {
-        return Promise.reject(new Error('secret service unavailable'))
-      }
-
-      throw new Error(`Unexpected fetch URL: ${url}`)
-    })
-
-    const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
-
-    const res = await app.handle(makeRequest(rawBody, sig))
-
-    expect(res.status).toBe(503)
-    expect(mockFetch.mock.calls).toHaveLength(1)
-  })
-
-  it('POST /webhook returns 503 when room secret fetch returns non-404 non-ok', async () => {
-    mockFetch.mockImplementation((input: FetchInput) => {
-      const url = resolveUrl(input)
-
-      if (url === roomSecretUrl()) {
-        return Promise.resolve(new Response('error', { status: 500 }))
-      }
-
-      throw new Error(`Unexpected fetch URL: ${url}`)
-    })
-
-    const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
-
-    const res = await app.handle(makeRequest(rawBody, sig))
-
-    expect(res.status).toBe(503)
-    expect(mockFetch.mock.calls).toHaveLength(1)
-  })
-
-  it('POST /webhook with malformed JSON returns 422 when room_id cannot be extracted', async () => {
-    const rawBody = 'not-valid-json'
-    const sig = makeSignature(rawBody)
-
-    const res = await app.handle(makeRequest(rawBody, sig))
-
-    expect(res.status).toBe(422)
-    expect(mockFetch.mock.calls).toHaveLength(0)
-  })
-
-  it('POST /webhook with valid JSON but missing room fields returns 422 before secret fetch', async () => {
+  it('POST /webhook with valid JSON but missing room fields returns 422', async () => {
     const rawBody = JSON.stringify({ invalid: 'payload' })
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(422)
     expect(mockFetch.mock.calls).toHaveLength(0)
   })
 
-  it('POST /webhook fetches the room secret when room_id is only present in webhook_setting', async () => {
+  it('POST /webhook with room_id only in webhook_setting returns 422', async () => {
     const rawBody = JSON.stringify({
       webhook_setting: {
         room_id: ROOM_ID,
@@ -445,24 +192,21 @@ describe('webhookRoutes', () => {
         update_time: 0,
       },
     })
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(422)
-    expect(resolveUrl(getFetchCall(0)[0])).toBe(roomSecretUrl())
-    expect(mockFetch.mock.calls).toHaveLength(1)
+    expect(mockFetch.mock.calls).toHaveLength(0)
   })
 
-  it('POST /webhook logs completion when secret fetch and forward both succeed', async () => {
+  it('POST /webhook logs completion when forwarding succeeds', async () => {
     console.log = mock((...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.log
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
 
-    await app.handle(makeRequest(rawBody, sig))
+    await app.handle(makeRequest(rawBody))
 
     const jsonLogs = consoleLogLines
       .filter((line) => line.startsWith('{'))
@@ -473,51 +217,43 @@ describe('webhookRoutes', () => {
     expect(jsonLogs.some((entry) => entry.event === 'translation_forward_completed')).toBe(true)
   })
 
-  it('POST /webhook generates a trace id, logs room secret lookup start, and forwards x-trace-id to translator', async () => {
+  it('POST /webhook generates a trace id, logs receipt, and forwards x-trace-id to translator', async () => {
     console.log = mock((...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.log
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(200)
 
     const jsonLogs = consoleLogLines
       .filter((line) => line.startsWith('{'))
-      .map((line) => JSON.parse(line) as { event?: string; traceId?: string; roomId?: number })
+      .map((line) => JSON.parse(line) as { event?: string; traceId?: string })
 
-    const roomSecretLookupLog = jsonLogs.find(
-      (entry) => entry.event === 'room_secret_lookup_started',
-    )
+    const webhookReceivedLog = jsonLogs.find((entry) => entry.event === 'webhook_received')
 
-    expect(roomSecretLookupLog).toMatchObject({
-      event: 'room_secret_lookup_started',
+    expect(webhookReceivedLog).toMatchObject({
+      event: 'webhook_received',
     })
-    expect(typeof roomSecretLookupLog?.traceId).toBe('string')
-    expect(roomSecretLookupLog?.traceId).not.toBe('')
+    expect(typeof webhookReceivedLog?.traceId).toBe('string')
+    expect(webhookReceivedLog?.traceId).not.toBe('')
 
     const translationStartLog = jsonLogs.find(
       (entry) => entry.event === 'translation_forward_started',
     )
-    expect(translationStartLog?.traceId).toBe(roomSecretLookupLog?.traceId)
+    expect(translationStartLog?.traceId).toBe(webhookReceivedLog?.traceId)
 
-    const secondCall = getFetchCall(1)
-    expect(secondCall[1]?.headers).toMatchObject({
-      'Content-Type': 'application/json',
-      'x-trace-id': roomSecretLookupLog?.traceId,
-    })
+    const [_, translateInit] = getFetchCall(0)
+    const translateHeaders = new Headers(translateInit?.headers)
+    expect(translateHeaders.get('Content-Type')).toBe('application/json')
+    expect(translateHeaders.get('x-trace-id')).toBe(webhookReceivedLog?.traceId ?? null)
   })
 
-  it('returns 503 when translator forwarding is not reachable after secret fetch succeeds', async () => {
+  it('returns 503 when translator forwarding is not reachable', async () => {
     mockFetch.mockImplementation((input: FetchInput) => {
       const url = resolveUrl(input)
-
-      if (url === roomSecretUrl()) {
-        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
-      }
 
       if (url === `${TRANSLATOR_URL}/internal/translate`) {
         return Promise.reject(new Error('fetch failed'))
@@ -527,21 +263,16 @@ describe('webhookRoutes', () => {
     })
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(503)
-    expect(mockFetch.mock.calls).toHaveLength(2)
+    expect(mockFetch.mock.calls).toHaveLength(1)
   })
 
-  it('returns 502 when translator returns non-2xx after secret fetch succeeds', async () => {
+  it('returns 502 when translator returns non-2xx', async () => {
     mockFetch.mockImplementation((input: FetchInput) => {
       const url = resolveUrl(input)
-
-      if (url === roomSecretUrl()) {
-        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
-      }
 
       if (url === `${TRANSLATOR_URL}/internal/translate`) {
         return Promise.resolve(new Response('error', { status: 500 }))
@@ -551,12 +282,11 @@ describe('webhookRoutes', () => {
     })
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
 
-    const res = await app.handle(makeRequest(rawBody, sig))
+    const res = await app.handle(makeRequest(rawBody))
 
     expect(res.status).toBe(502)
-    expect(mockFetch.mock.calls).toHaveLength(2)
+    expect(mockFetch.mock.calls).toHaveLength(1)
   })
 
   it('logs translation_forward_failed when translator forwarding rejects', async () => {
@@ -567,10 +297,6 @@ describe('webhookRoutes', () => {
     mockFetch.mockImplementation((input: FetchInput) => {
       const url = resolveUrl(input)
 
-      if (url === roomSecretUrl()) {
-        return Promise.resolve(makeJsonResponse({ secret: TEST_SECRET }))
-      }
-
       if (url === `${TRANSLATOR_URL}/internal/translate`) {
         return Promise.reject(new Error('translator down'))
       }
@@ -579,55 +305,13 @@ describe('webhookRoutes', () => {
     })
 
     const rawBody = JSON.stringify(makeValidEvent())
-    const sig = makeSignature(rawBody)
 
-    await app.handle(makeRequest(rawBody, sig))
+    await app.handle(makeRequest(rawBody))
 
     const jsonLogs = consoleLogLines
       .filter((line) => line.startsWith('{'))
       .map((line) => JSON.parse(line) as { event: string })
 
     expect(jsonLogs.some((entry) => entry.event === 'translation_forward_failed')).toBe(true)
-  })
-})
-
-describe('webhookRoutes – CHATWORK_SKIP_SIGNATURE_VERIFY', () => {
-  beforeEach(() => {
-    installDefaultFetch()
-    resetRoomSecretCacheForTest()
-    mockEnv.NODE_ENV = 'test'
-    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = false
-  })
-
-  afterEach(() => {
-    console.warn = originalConsoleWarn
-    mockFetch.mockReset()
-    resetRoomSecretCacheForTest()
-  })
-
-  it('bypasses verification in development when CHATWORK_SKIP_SIGNATURE_VERIFY=true and logs warning', async () => {
-    const warnLines: string[] = []
-    console.warn = mock((...args: unknown[]) => {
-      warnLines.push(args.map((arg) => String(arg)).join(' '))
-    }) as typeof console.warn
-
-    mockEnv.NODE_ENV = 'development'
-    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = true
-
-    const rawBody = JSON.stringify(makeValidEvent())
-    const res = await app.handle(makeRequest(rawBody, 'wrong-sig'))
-
-    expect(res.status).toBe(200)
-    expect(warnLines.some((line) => line.includes('verification'))).toBe(true)
-  })
-
-  it('does NOT bypass verification in production even when CHATWORK_SKIP_SIGNATURE_VERIFY=true', async () => {
-    mockEnv.NODE_ENV = 'production'
-    mockEnv.CHATWORK_SKIP_SIGNATURE_VERIFY = true
-
-    const rawBody = JSON.stringify(makeValidEvent())
-    const res = await app.handle(makeRequest(rawBody, 'wrong-sig'))
-
-    expect(res.status).toBe(422)
   })
 })
