@@ -284,7 +284,10 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
         console.error(
           JSON.stringify({
             level: 'error',
+            service: 'translator',
             event: 'output-rewrite-failed',
+            timestamp: new Date().toISOString(),
+            traceId,
             messageId,
             errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
             error: error instanceof Error ? error.message : String(error),

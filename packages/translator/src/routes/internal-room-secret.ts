@@ -46,6 +46,7 @@ export function createInternalRoomSecretRoute({
   return new Elysia({ name: 'translator:internal-room-secret' }).get(
     '/internal/room-secret',
     async ({ headers, query, set }) => {
+      const traceId = headers['x-trace-id']
       const providedSecret = headers['x-internal-secret']
       if (!providedSecret || providedSecret !== internalApiSecret) {
         const response = errorResponse(401, 'Unauthorized')
@@ -71,6 +72,7 @@ export function createInternalRoomSecretRoute({
       if (room === null) {
         logRoomSecretEvent('warn', 'room_secret_lookup_not_found', {
           roomId,
+          ...(traceId !== undefined ? { traceId } : {}),
         })
         const response = errorResponse(404, `No room configured for room_id ${roomId.toString()}`)
         set.status = response.status
@@ -82,6 +84,7 @@ export function createInternalRoomSecretRoute({
           roomId,
           roomConfigId: room.id,
           nextExpectedAction: 'enable_room',
+          ...(traceId !== undefined ? { traceId } : {}),
         })
         const response = errorResponse(404, `No room configured for room_id ${roomId.toString()}`)
         set.status = response.status
@@ -93,6 +96,7 @@ export function createInternalRoomSecretRoute({
         roomId,
         roomConfigId: room.id,
         enabled: room.enabled,
+        ...(traceId !== undefined ? { traceId } : {}),
       })
       return { secret }
     },

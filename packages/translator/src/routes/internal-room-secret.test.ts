@@ -15,7 +15,10 @@ const originalConsoleWarn = console.warn
 function readJsonLogs(): { event?: string; roomId?: number; nextExpectedAction?: string }[] {
   return consoleLogLines
     .filter((line) => line.startsWith('{'))
-    .map((line) => JSON.parse(line) as { event?: string; roomId?: number; nextExpectedAction?: string })
+    .map(
+      (line) =>
+        JSON.parse(line) as { event?: string; roomId?: number; nextExpectedAction?: string },
+    )
 }
 
 async function buildApp(dataDir: string, enabled = true) {
@@ -61,10 +64,14 @@ describe('GET /internal/room-secret', () => {
   })
 
   it('returns { secret: string } for an enabled room with correct internal secret', async () => {
+    const traceId = 'trace-room-secret-resolved'
     const app = await buildApp(tmpDir, true)
     const response = await app.handle(
       new Request('http://localhost/internal/room-secret?room_id=5001', {
-        headers: { 'x-internal-secret': INTERNAL_SECRET },
+        headers: {
+          'x-internal-secret': INTERNAL_SECRET,
+          'x-trace-id': traceId,
+        },
       }),
     )
 
@@ -72,13 +79,25 @@ describe('GET /internal/room-secret', () => {
 
     const body = (await response.json()) as { secret: string }
     expect(body).toEqual({ secret: 'secret-xyz' })
+
+    const resolvedLog = readJsonLogs().find(
+      (entry) => entry.event === 'room_secret_lookup_resolved',
+    )
+    expect(resolvedLog).toMatchObject({
+      event: 'room_secret_lookup_resolved',
+      traceId,
+    })
   })
 
   it('returns 404 for a disabled room', async () => {
+    const traceId = 'trace-room-secret-disabled'
     const app = await buildApp(tmpDir, false)
     const response = await app.handle(
       new Request('http://localhost/internal/room-secret?room_id=5001', {
-        headers: { 'x-internal-secret': INTERNAL_SECRET },
+        headers: {
+          'x-internal-secret': INTERNAL_SECRET,
+          'x-trace-id': traceId,
+        },
       }),
     )
 
@@ -89,6 +108,7 @@ describe('GET /internal/room-secret', () => {
     )
     expect(disabledLog).toMatchObject({
       event: 'room_secret_lookup_room_disabled',
+      traceId,
       nextExpectedAction: 'enable_room',
     })
   })
@@ -114,10 +134,14 @@ describe('GET /internal/room-secret', () => {
   })
 
   it('returns 404 for unknown room_id', async () => {
+    const traceId = 'trace-room-secret-missing'
     const app = await buildApp(tmpDir, true)
     const response = await app.handle(
       new Request('http://localhost/internal/room-secret?room_id=9999', {
-        headers: { 'x-internal-secret': INTERNAL_SECRET },
+        headers: {
+          'x-internal-secret': INTERNAL_SECRET,
+          'x-trace-id': traceId,
+        },
       }),
     )
 
@@ -128,6 +152,7 @@ describe('GET /internal/room-secret', () => {
     )
     expect(notFoundLog).toMatchObject({
       event: 'room_secret_lookup_not_found',
+      traceId,
     })
   })
 

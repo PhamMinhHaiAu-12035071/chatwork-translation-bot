@@ -4,7 +4,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
+import type * as OutputWriter from '~/utils/output-writer'
 import type { RoomConfigStore } from '~/services/room-config-store'
+import type { OutputRecord } from '~/types/output'
 
 // ── Pipeline fixtures (single executor call) ─────────────────────────────────
 
@@ -18,6 +20,7 @@ const pipelineFixtures: unknown[] = [
 let executeCallCount = 0
 const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
+const originalConsoleError = console.error
 const ROOM_CONFIG_KEY_HEX = 'a'.repeat(64)
 const DEFAULT_DESTINATION_ROOM_ID = 45678
 const mockNotifyDatasetRunner = mock((_payload: unknown, _config: unknown) => Promise.resolve())
@@ -34,6 +37,12 @@ const mockComposeTranslatedMessagePair = mock(
 const mockSendRoomMessage = mock((_roomId: number, _message: string, _token: string) =>
   Promise.resolve({ message_id: 'mock-id' }),
 )
+type OutputWriterModule = typeof OutputWriter
+
+const mockWriteTranslationOutput = mock((_record: OutputRecord, _baseDir?: string) =>
+  Promise.resolve(),
+)
+let realWriteTranslationOutput: (record: OutputRecord, baseDir?: string) => Promise<void>
 
 function createMockExecutor(): ILLMExecutor {
   return {
@@ -146,10 +155,7 @@ describe('handleTranslateRequest', () => {
   let createHandleTranslateRequest: (deps: {
     store: RoomConfigStore
     chatworkApiToken: string
-  }) => (
-    command: TranslationIngressCommand,
-    context?: { traceId?: string },
-  ) => Promise<void>
+  }) => (command: TranslationIngressCommand, context?: { traceId?: string }) => Promise<void>
   let handleTranslateRequest: (
     command: TranslationIngressCommand,
     context?: { traceId?: string },
@@ -161,6 +167,12 @@ describe('handleTranslateRequest', () => {
   beforeAll(async () => {
     const realCore = await import('@chatwork-bot/core')
     const realChatwork = await import('@chatwork-bot/chatwork')
+    const outputWriterModuleUnknown: unknown = await import(
+      `~/utils/output-writer?real=${crypto.randomUUID()}`
+    )
+    const realOutputWriter = outputWriterModuleUnknown as OutputWriterModule
+    realWriteTranslationOutput = (record: OutputRecord, baseDir?: string) =>
+      realOutputWriter.writeTranslationOutput(record, baseDir)
 
     void mock.module('@chatwork-bot/core', () => ({
       ...realCore,
@@ -220,6 +232,10 @@ describe('handleTranslateRequest', () => {
     void mock.module('../env', () => ({
       env: mockEnv,
     }))
+    void mock.module('~/utils/output-writer', () => ({
+      ...realOutputWriter,
+      writeTranslationOutput: mockWriteTranslationOutput,
+    }))
 
     const mod = (await import(`./handler?${crypto.randomUUID()}`)) as {
       createHandleTranslateRequest: typeof createHandleTranslateRequest
@@ -232,6 +248,7 @@ describe('handleTranslateRequest', () => {
     delete process.env['DATASET_INPUT_DIR']
     rmSync(testOutputDir, { recursive: true, force: true })
     console.log = originalConsoleLog
+    console.error = originalConsoleError
     mock.restore()
   })
 
@@ -263,9 +280,16 @@ describe('handleTranslateRequest', () => {
     mockSendRoomMessage.mockImplementation((_roomId, _message, _token) =>
       Promise.resolve({ message_id: 'mock-id' }),
     )
+    mockWriteTranslationOutput.mockReset()
+    mockWriteTranslationOutput.mockImplementation((record: OutputRecord, baseDir?: string) =>
+      realWriteTranslationOutput(record, baseDir),
+    )
     console.log = mock((...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
     }) as typeof console.log
+    console.error = mock((...args: unknown[]) => {
+      consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
+    }) as typeof console.error
     mockGetProviderPlugin.mockImplementation((_id: string) =>
       createMockProvider('openai', createMockExecutor()),
     )
@@ -532,6 +556,45 @@ describe('handleTranslateRequest', () => {
     expect(snapshot.recentResults[0]).toMatchObject({
       finalStatus: 'completed',
       deliveryStatus: 'failed',
+    })
+  })
+
+  it('logs output-rewrite-failed with trace correlation when post-delivery persistence fails', async () => {
+    const traceId = 'trace-output-rewrite-failed'
+    let writeCallCount = 0
+
+    mockWriteTranslationOutput.mockImplementation(
+      async (record: OutputRecord, baseDir?: string) => {
+        writeCallCount += 1
+        if (writeCallCount === 2) {
+          throw new Error('rewrite failed')
+        }
+
+        await realWriteTranslationOutput(record, baseDir)
+      },
+    )
+
+    const runResult = handleTranslateRequest(makeCommand(), { traceId }).then(
+      () => {
+        throw new Error('Expected rewrite failure')
+      },
+      (error: unknown) => {
+        if (!(error instanceof Error)) {
+          throw error
+        }
+        expect(error).toBeInstanceOf(Error)
+        expect(error.message).toBe('rewrite failed')
+      },
+    )
+    await runResult
+
+    const outputRewriteFailedLog = readJsonLogs().find(
+      (entry) => entry['event'] === 'output-rewrite-failed',
+    )
+    expect(outputRewriteFailedLog).toMatchObject({
+      event: 'output-rewrite-failed',
+      service: 'translator',
+      traceId,
     })
   })
 

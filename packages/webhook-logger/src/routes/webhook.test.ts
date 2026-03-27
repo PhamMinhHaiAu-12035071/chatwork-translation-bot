@@ -265,11 +265,13 @@ describe('webhookRoutes', () => {
 
     const firstCall = getFetchCall(0)
     const secondCall = getFetchCall(1)
+    const roomSecretHeaders = new Headers(firstCall[1]?.headers)
+    const traceHeader = roomSecretHeaders.get('x-trace-id')
 
     expect(resolveUrl(firstCall[0])).toBe(roomSecretUrl())
-    expect(firstCall[1]?.headers).toMatchObject({
-      'x-internal-secret': INTERNAL_API_SECRET,
-    })
+    expect(roomSecretHeaders.get('x-internal-secret')).toBe(INTERNAL_API_SECRET)
+    expect(typeof traceHeader).toBe('string')
+    expect(traceHeader).not.toBe('')
     expect(resolveUrl(secondCall[0])).toBe(`${TRANSLATOR_URL}/internal/translate`)
 
     const forwardedBody = JSON.parse(getJsonBody(secondCall)) as {

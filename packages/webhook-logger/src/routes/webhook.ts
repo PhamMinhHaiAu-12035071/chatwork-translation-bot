@@ -84,7 +84,10 @@ async function fetchRoomSecret(roomId: number, traceId: string): Promise<string 
   let response: Response
   try {
     response = await fetch(url, {
-      headers: { 'x-internal-secret': env.INTERNAL_API_SECRET },
+      headers: {
+        'x-internal-secret': env.INTERNAL_API_SECRET,
+        'x-trace-id': traceId,
+      },
     })
   } catch (error) {
     logWebhookEvent('error', 'room_secret_fetch_failed', {
