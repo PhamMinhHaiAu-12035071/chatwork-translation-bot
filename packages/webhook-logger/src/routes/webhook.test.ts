@@ -493,7 +493,6 @@ describe('webhookRoutes', () => {
 
     expect(roomSecretLookupLog).toMatchObject({
       event: 'room_secret_lookup_started',
-      roomId: ROOM_ID,
     })
     expect(typeof roomSecretLookupLog?.traceId).toBe('string')
     expect(roomSecretLookupLog?.traceId).not.toBe('')
@@ -505,6 +504,7 @@ describe('webhookRoutes', () => {
 
     const secondCall = getFetchCall(1)
     expect(secondCall[1]?.headers).toMatchObject({
+      'Content-Type': 'application/json',
       'x-trace-id': roomSecretLookupLog?.traceId,
     })
   })

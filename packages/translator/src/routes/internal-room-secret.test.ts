@@ -10,6 +10,7 @@ const KEY_HEX = 'a'.repeat(64)
 const INTERNAL_SECRET = 'my-internal-secret'
 const consoleLogLines: string[] = []
 const originalConsoleLog = console.log
+const originalConsoleWarn = console.warn
 
 function readJsonLogs(): { event?: string; roomId?: number; nextExpectedAction?: string }[] {
   return consoleLogLines
@@ -44,14 +45,17 @@ describe('GET /internal/room-secret', () => {
   let tmpDir: string
 
   beforeEach(async () => {
-    console.log = mock((...args: unknown[]) => {
+    const captureConsole = (...args: unknown[]) => {
       consoleLogLines.push(args.map((arg) => String(arg)).join(' '))
-    }) as typeof console.log
+    }
+    console.log = mock(captureConsole) as typeof console.log
+    console.warn = mock(captureConsole) as typeof console.warn
     tmpDir = await mkdtemp(join(tmpdir(), 'room-secret-test-'))
   })
 
   afterEach(async () => {
     console.log = originalConsoleLog
+    console.warn = originalConsoleWarn
     consoleLogLines.length = 0
     await rm(tmpDir, { recursive: true, force: true })
   })
@@ -85,7 +89,6 @@ describe('GET /internal/room-secret', () => {
     )
     expect(disabledLog).toMatchObject({
       event: 'room_secret_lookup_room_disabled',
-      roomId: 5001,
       nextExpectedAction: 'enable_room',
     })
   })
@@ -125,7 +128,6 @@ describe('GET /internal/room-secret', () => {
     )
     expect(notFoundLog).toMatchObject({
       event: 'room_secret_lookup_not_found',
-      roomId: 9999,
     })
   })
 

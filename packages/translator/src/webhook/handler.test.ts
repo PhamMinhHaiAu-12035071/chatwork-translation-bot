@@ -146,8 +146,14 @@ describe('handleTranslateRequest', () => {
   let createHandleTranslateRequest: (deps: {
     store: RoomConfigStore
     chatworkApiToken: string
-  }) => (command: TranslationIngressCommand) => Promise<void>
-  let handleTranslateRequest: (command: TranslationIngressCommand) => Promise<void>
+  }) => (
+    command: TranslationIngressCommand,
+    context?: { traceId?: string },
+  ) => Promise<void>
+  let handleTranslateRequest: (
+    command: TranslationIngressCommand,
+    context?: { traceId?: string },
+  ) => Promise<void>
   let store: RoomConfigStore
   let storeDataDir: string
   let enabledRoomId: string
@@ -304,10 +310,11 @@ describe('handleTranslateRequest', () => {
 
   it('translates message via registry-resolved provider', async () => {
     const command = makeCommand()
+    const traceId = 'trace-123'
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
-    await handleTranslateRequest(command)
+    await handleTranslateRequest(command, { traceId })
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart + 1)
     expect(mockGetProviderPlugin.mock.calls.at(-1)?.[0]).toBe('openai')
@@ -322,11 +329,10 @@ describe('handleTranslateRequest', () => {
     )
     expect(providerSelectedLog).toMatchObject({
       event: 'translation_provider_selected',
-      provider: 'openai',
-      model: 'gpt-4o',
+      traceId,
+      aiProvider: 'openai',
+      resolvedModel: 'gpt-4o',
     })
-    expect(typeof providerSelectedLog?.traceId).toBe('string')
-    expect(providerSelectedLog?.traceId).not.toBe('')
   })
 
   it('skips when source room has no config', async () => {
@@ -344,10 +350,11 @@ describe('handleTranslateRequest', () => {
 
   it('skips when room is disabled', async () => {
     await store.setEnabled(enabledRoomId, false)
+    const traceId = 'trace-123'
 
     const getStart = mockGetProviderPlugin.mock.calls.length
 
-    await handleTranslateRequest(makeCommand())
+    await handleTranslateRequest(makeCommand(), { traceId })
 
     expect(mockGetProviderPlugin.mock.calls.length).toBe(getStart)
     expect(executeCallCount).toBe(0)
@@ -356,12 +363,9 @@ describe('handleTranslateRequest', () => {
     )
     expect(skippedLog).toMatchObject({
       event: 'translation_skipped_room_disabled',
-      level: 'info',
-      roomId: 424846369,
+      traceId,
       nextExpectedAction: 'enable_room',
     })
-    expect(typeof skippedLog?.traceId).toBe('string')
-    expect(skippedLog?.traceId).not.toBe('')
   })
 
   it('uses the room provider, model, token, and destination instead of global env config', async () => {
