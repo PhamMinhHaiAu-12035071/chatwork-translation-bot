@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
-import { useNavigate } from 'react-router'
+import { useNavigate, useLocation } from 'react-router'
 import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
@@ -10,7 +11,13 @@ import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
-import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
+import {
+  BEST_MODEL_BY_PROVIDER,
+  PROVIDER_LABELS,
+  PROVIDER_MODELS,
+  TRANSLATION_STYLE_LABELS,
+  isModelValidForProvider,
+} from '~/lib/provider-models'
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomCreateSchema } from '~/lib/room-schema'
 import type { RoomCreateInput } from '~/lib/room-schema'
 import { useAsyncAction } from '~/hooks/use-async-action'
@@ -35,6 +42,8 @@ export function getRoomCreatedToastMessage(roomName: string): string {
 export function RoomCreatePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const location = useLocation()
+  const prefillRoomId = (location.state as { originalRoomId?: string } | null)?.originalRoomId
   const createRoom = useRoomStore(selectCreateRoom)
   const createRoomAction = useAsyncAction<Room>({
     fallbackErrorMessage: 'Failed to create room',
@@ -47,43 +56,44 @@ export function RoomCreatePage() {
     handleSubmit,
     watch,
     setValue,
+    getValues,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<RoomCreateInput>({
     resolver: roomCreateResolver,
     defaultValues: {
+      ...(prefillRoomId !== undefined ? { originalRoomId: Number(prefillRoomId) } : {}),
       aiProvider: 'openai',
       translationStyle: 'PROFESSIONAL_BUSINESS',
-      aiModel: '',
+      aiModel: 'gpt-5.4-pro',
       destinationRoomName: '',
       aiApiToken: '',
-    },
+    } as RoomCreateInput,
   })
 
   const selectedProvider = watch('aiProvider')
-  const modelOptions = [
-    { value: '', label: 'Default model' },
-    ...PROVIDER_MODELS[selectedProvider].map((model) => ({
-      value: model.value,
-      label: model.label,
-    })),
-  ]
+  const aiModel = watch('aiModel')
+  const modelOptions = PROVIDER_MODELS[selectedProvider].map((model) => ({
+    value: model.value,
+    label: model.label,
+  }))
+
+  useEffect(() => {
+    const current = getValues('aiModel')
+    if (!isModelValidForProvider(current, selectedProvider)) {
+      setValue('aiModel', BEST_MODEL_BY_PROVIDER[selectedProvider], { shouldValidate: true })
+    }
+  }, [getValues, selectedProvider, setValue])
 
   const aiProviderField = register('aiProvider', {
-    onChange: () => {
-      setValue('aiModel', '')
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newProvider = e.target.value as typeof selectedProvider
+      setValue('aiModel', BEST_MODEL_BY_PROVIDER[newProvider])
     },
   })
 
   const onSubmit = async (data: RoomCreateInput) => {
-    const normalizedAiModel = data.aiModel === '' || data.aiModel == null ? null : data.aiModel
-
-    const result = await createRoomAction.execute(() =>
-      createRoom({
-        ...data,
-        aiModel: normalizedAiModel,
-      }),
-    )
+    const result = await createRoomAction.execute(() => createRoom(data))
 
     if (!result.ok) {
       if (result.cause instanceof ApiError && result.cause.status === 409) {
@@ -150,8 +160,9 @@ export function RoomCreatePage() {
                 label="AI Model"
                 options={modelOptions}
                 colorVariant="mint"
-                hint="Leave blank to use the provider default."
+                hint="Select the model for translation quality and cost balance."
                 error={errors.aiModel?.message}
+                value={aiModel}
                 {...register('aiModel')}
               />
               <BrutalSelect
@@ -165,6 +176,7 @@ export function RoomCreatePage() {
               <BrutalInput
                 label="AI API Token"
                 type="password"
+                placeholder={selectedProvider === 'openai' ? 'sk-...' : 'AIza...'}
                 hint="Your provider API key for the selected translation service."
                 error={errors.aiApiToken?.message}
                 {...register('aiApiToken')}
@@ -215,8 +227,8 @@ export function RoomCreatePage() {
                 Tip
               </StickerLabel>
               <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                Leave AI Model blank if you want the selected provider to use its default model for
-                this room.
+                Switching provider resets the model to that provider&apos;s recommended default; you
+                can pick another model anytime.
               </p>
             </BrutalCard>
           </div>

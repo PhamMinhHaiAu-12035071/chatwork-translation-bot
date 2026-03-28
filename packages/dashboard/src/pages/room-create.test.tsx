@@ -67,4 +67,22 @@ describe('RoomCreatePage', () => {
     )
     expect(source).not.toContain('navigate(`/rooms/${result.data.id}`)')
   })
+
+  it('pre-fills originalRoomId when Router location state contains originalRoomId', async () => {
+    const source = await Bun.file(new URL('./room-create.tsx', import.meta.url)).text()
+
+    expect(source).toContain('useLocation')
+    expect(source).toContain(
+      'const prefillRoomId = (location.state as { originalRoomId?: string } | null)?.originalRoomId',
+    )
+    expect(source).toContain(
+      'prefillRoomId !== undefined ? { originalRoomId: Number(prefillRoomId) } : {}',
+    )
+  })
+
+  it('leaves originalRoomId empty when Router location state is absent', () => {
+    const html = renderRoomCreatePage()
+    // the field must not contain a pre-filled number when arriving without state
+    expect(html).not.toContain('424846369')
+  })
 })
