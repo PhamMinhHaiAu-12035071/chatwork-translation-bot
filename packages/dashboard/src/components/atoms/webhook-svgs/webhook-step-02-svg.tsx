@@ -35,22 +35,42 @@ export function WebhookStep02Svg() {
       >
         + Add webhook
       </text>
-      {/* Dashed highlight border */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="171" y="39" width="84" height="28" rx="4" fill="#1a1a2e" />
+      {/* Highlight rect — thick solid, no dash */}
       <rect
         x="167"
         y="35"
         width="84"
         height="28"
         rx="4"
-        fill="none"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="2"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="175" y="23" width="68" height="12" rx="6" fill="#e84040" />
-      <text x="209" y="32" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="179" y="27" width="68" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="175"
+        y="23"
+        width="68"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="209"
+        y="33.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         ← Click here
       </text>
 

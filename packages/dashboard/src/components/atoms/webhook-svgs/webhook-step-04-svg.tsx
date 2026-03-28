@@ -1,7 +1,7 @@
 export function WebhookStep04Svg() {
   return (
     <svg
-      viewBox="0 0 260 150"
+      viewBox="0 0 260 156"
       width="260"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
@@ -15,7 +15,7 @@ export function WebhookStep04Svg() {
       </text>
 
       {/* Form area */}
-      <rect y="26" width="260" height="124" fill="white" />
+      <rect y="26" width="260" height="130" fill="white" />
 
       {/* Webhook URL row — dimmed context */}
       <line x1="0" y1="26" x2="260" y2="26" stroke="#eee" strokeWidth="1" />
@@ -127,22 +127,42 @@ export function WebhookStep04Svg() {
         424846369
       </text>
 
-      {/* Dashed highlight bracket around event section */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="88" y="56" width="172" height="78" rx="3" fill="#1a1a2e" />
+      {/* Highlight bracket — thick solid, no dash */}
       <rect
         x="84"
         y="52"
         width="172"
         height="78"
         rx="3"
-        fill="none"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="1.5"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="80" y="136" width="130" height="12" rx="6" fill="#e84040" />
-      <text x="145" y="145" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="84" y="140" width="130" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="80"
+        y="136"
+        width="130"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="145"
+        y="146.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         Select + tick both + enter Room ID
       </text>
     </svg>

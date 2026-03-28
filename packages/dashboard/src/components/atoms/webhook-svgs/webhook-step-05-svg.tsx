@@ -59,22 +59,42 @@ export function WebhookStep05Svg() {
       >
         Save
       </text>
-      {/* Dashed highlight border */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="193" y="57" width="62" height="30" rx="4" fill="#1a1a2e" />
+      {/* Highlight border — thick solid, no dash */}
       <rect
         x="189"
         y="53"
         width="62"
         height="30"
         rx="4"
-        fill="none"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="2"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="188" y="41" width="72" height="12" rx="6" fill="#e84040" />
-      <text x="224" y="50" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="192" y="45" width="72" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="188"
+        y="41"
+        width="72"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="224"
+        y="51.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         Click to save ↓
       </text>
 

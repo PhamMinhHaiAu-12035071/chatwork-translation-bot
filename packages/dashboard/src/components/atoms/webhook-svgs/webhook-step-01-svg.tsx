@@ -62,22 +62,42 @@ export function WebhookStep01Svg() {
         ▶ Webhook
       </text>
 
-      {/* Red dashed highlight border */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="6" y="136" width="124" height="18" rx="3" fill="#1a1a2e" />
+      {/* Highlight rect — thick solid, no dash */}
       <rect
         x="2"
         y="132"
         width="124"
         height="18"
-        rx="2"
-        fill="none"
+        rx="3"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="1.5"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="58" y="120" width="64" height="12" rx="6" fill="#e84040" />
-      <text x="90" y="129" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="62" y="124" width="64" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="58"
+        y="120"
+        width="64"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="90"
+        y="130.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         ← Click here
       </text>
     </svg>
