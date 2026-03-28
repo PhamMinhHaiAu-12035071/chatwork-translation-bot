@@ -7,6 +7,7 @@ import {
   RoomListPage,
   getDeleteRoomToastMessage,
   getRoomToggleToastMessage,
+  getRoomCardIndex,
 } from '~/pages/room-list'
 
 const removedToggleRoomSymbol = ['toggle', 'Room'].join('')
@@ -128,5 +129,36 @@ describe('RoomListPage', () => {
     expect(source).toContain('New')
     expect(source).toContain('backgroundColor')
     expect(source).toContain('boxShadow')
+  })
+})
+
+describe('getRoomCardIndex', () => {
+  it('returns the same index for the same room ID every time (stable identity)', () => {
+    const id = 'abc-123-xyz'
+    const first = getRoomCardIndex(id)
+    expect(getRoomCardIndex(id)).toBe(first)
+    expect(getRoomCardIndex(id)).toBe(first)
+  })
+
+  it('returns a value in range [0, 5]', () => {
+    const ids = ['room-1', 'room-2', 'abc', 'xyz-999', '', 'Z', 'hello-world']
+    for (const id of ids) {
+      const idx = getRoomCardIndex(id)
+      expect(idx).toBeGreaterThanOrEqual(0)
+      expect(idx).toBeLessThanOrEqual(5)
+    }
+  })
+
+  it('distributes across at least 4 of 6 buckets for varied IDs', () => {
+    const ids = Array.from({ length: 30 }, (_, i) => `room-uuid-${String(i)}`)
+    const seen = new Set(ids.map(getRoomCardIndex))
+    expect(seen.size).toBeGreaterThanOrEqual(4)
+  })
+
+  it('returns 0 for empty string without throwing', () => {
+    expect(() => getRoomCardIndex('')).not.toThrow()
+    const idx = getRoomCardIndex('')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    expect(idx).toBeLessThanOrEqual(5)
   })
 })

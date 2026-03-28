@@ -44,6 +44,18 @@ interface RoomListLocationState {
   spotlightRoomId?: string
 }
 
+/**
+ * Maps a room ID to a stable theme index [0–5] via polynomial hash.
+ * Same ID always gets the same color regardless of list position.
+ */
+export function getRoomCardIndex(roomId: string): number {
+  let h = 0
+  for (let i = 0; i < roomId.length; i++) {
+    h = (h * 31 + roomId.charCodeAt(i)) | 0
+  }
+  return Math.abs(h) % cardThemeByIndex.length
+}
+
 export function getRoomToggleToastMessage(roomName: string, currentlyEnabled: boolean): string {
   return `"${roomName}" is now ${currentlyEnabled ? 'paused' : 'enabled'}`
 }
@@ -325,9 +337,9 @@ export function RoomListPage() {
                   className="rounded-[24px] p-1"
                 >
                   {(() => {
-                    const cardTheme =
-                      cardThemeByIndex[index % cardThemeByIndex.length] ?? 'theme-card-lilac'
-                    const tilt = tiltByIndex[index % tiltByIndex.length] ?? 'flat'
+                    const roomIdx = getRoomCardIndex(room.id)
+                    const cardTheme = cardThemeByIndex[roomIdx] ?? 'theme-card-lilac'
+                    const tilt = tiltByIndex[roomIdx] ?? 'flat'
                     const spotlightTheme = isSpotlighted
                       ? 'theme-card-butter border-[var(--pink-accent)] shadow-[8px_8px_0_var(--pink-accent)]'
                       : cardTheme
