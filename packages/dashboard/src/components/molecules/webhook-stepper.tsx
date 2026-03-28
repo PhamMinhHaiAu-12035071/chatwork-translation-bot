@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
+import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
@@ -165,15 +166,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
                   className="brutal-button theme-button-violet inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-bold text-white"
                 >
                   {activeConfig.actionLabel}
-                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16" fill="none">
-                    <path
-                      d="M3 8H13M13 8L9 4M13 8L9 12"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Icon name="arrow-right" variant="stroke" size={15} aria-hidden />
                 </a>
               ) : null}
 
@@ -210,30 +203,10 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
           onClick={() => {
             setActiveStep((step) => Math.max(0, step - 1))
           }}
-          className="brutal-button theme-button-warm px-5 py-2.5 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="brutal-button theme-button-warm inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
           {...previousButtonMotionProps}
         >
-          <svg
-            aria-hidden="true"
-            width="15"
-            height="15"
-            viewBox="0 0 16 16"
-            fill="none"
-            style={{
-              display: 'inline-block',
-              verticalAlign: 'middle',
-              marginRight: '6px',
-              marginTop: '-2px',
-            }}
-          >
-            <path
-              d="M13 8H3M3 8L7 4M3 8L7 12"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Icon name="arrow-left" variant="stroke" size={15} aria-hidden />
           Previous
         </motion.button>
         <AnimatePresence mode="wait">
@@ -244,7 +217,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
               onClick={() => {
                 setActiveStep((step) => Math.min(STEPS.length - 1, step + 1))
               }}
-              className="brutal-button theme-button-violet px-5 py-2.5 font-heading text-sm font-bold text-white"
+              className="brutal-button theme-button-violet inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-bold text-white"
               initial={{ opacity: 0, scale: 0.8, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.6, y: -12 }}
@@ -253,27 +226,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
               whileTap={{ scale: 0.95 }}
             >
               Next
-              <svg
-                aria-hidden="true"
-                width="15"
-                height="15"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{
-                  display: 'inline-block',
-                  verticalAlign: 'middle',
-                  marginLeft: '6px',
-                  marginTop: '-2px',
-                }}
-              >
-                <path
-                  d="M3 8H13M13 8L9 4M13 8L9 12"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <Icon name="arrow-right" variant="stroke" size={15} aria-hidden />
             </motion.button>
           ) : (
             <motion.div
