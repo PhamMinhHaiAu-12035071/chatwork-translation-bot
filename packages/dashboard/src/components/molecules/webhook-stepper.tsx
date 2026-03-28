@@ -251,9 +251,10 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
             <motion.div
               key="completed"
               className="brutal-button theme-button-matcha flex items-center justify-center px-5 py-2.5 font-heading text-sm font-bold text-white"
-              initial={{ opacity: 0, scale: 0.5, rotate: -8 }}
+              initial={{ opacity: 0, scale: 0.85, rotate: -8 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+              exit={{ opacity: 0, scale: 0.85, rotate: 8 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
             >
               Completed
             </motion.div>
