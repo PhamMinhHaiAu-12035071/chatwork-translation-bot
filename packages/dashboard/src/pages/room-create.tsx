@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { useNavigate } from 'react-router'
+import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
@@ -202,30 +203,10 @@ export function RoomCreatePage() {
                 onClick={() => {
                   void navigate('/guide')
                 }}
-                className="brutal-button theme-button-sky px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
+                className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
               >
                 Open Webhook Guide
-                <svg
-                  aria-hidden="true"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  style={{
-                    display: 'inline-block',
-                    verticalAlign: 'middle',
-                    marginLeft: '6px',
-                    marginTop: '-2px',
-                  }}
-                >
-                  <path
-                    d="M3 8H13M13 8L9 4M13 8L9 12"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <Icon name="external-link" variant="stroke" size={14} aria-hidden />
               </button>
             </BrutalCard>
 
