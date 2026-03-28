@@ -89,21 +89,22 @@ describe('RoomListPage', () => {
     expect(source).toContain("'error'")
   })
 
-  it('keeps a stable room-card header footprint when the status label changes', async () => {
+  it('uses StatusRibbon and RoomStatusToggle in the card header, not StatusPill', async () => {
     const source = await Bun.file(new URL('./room-list.tsx', import.meta.url)).text()
 
-    expect(source).toContain('flex-1 min-w-0')
-    expect(source).toContain('min-w-24 justify-center shrink-0')
+    expect(source).toContain('StatusRibbon')
+    expect(source).toContain('RoomStatusToggle')
+    expect(source).toContain('roomToggleAction.loading')
+    expect(source).not.toContain('min-w-24 justify-center shrink-0')
   })
 
-  it('wires the approved runtime motion primitives into the dashboard list surface', async () => {
+  it('keeps SlideStackNumber for stat metrics and removes PixelScatterText from room cards', async () => {
     const source = await Bun.file(new URL('./room-list.tsx', import.meta.url)).text()
 
-    expect(source).toContain('PixelScatterText')
     expect(source).toContain('SlideStackNumber')
-    expect(source).toContain('reserveText="Paused"')
-    expect(source).toContain('reserveText="Enable"')
     expect(source).toContain('minimumDigits={2}')
+    expect(source).not.toContain('reserveText="Paused"')
+    expect(source).not.toContain('reserveText="Enable"')
   })
 
   it('applies the Combo A typography roles to metrics, titles, and room metadata', async () => {

@@ -4,7 +4,8 @@ import { useLocation, useNavigate } from 'react-router'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { DeleteRoomConfirmModal } from '~/components/organisms/delete-room-confirm-modal'
 import { PageShell } from '~/components/layout/page-shell'
-import { PixelScatterText } from '~/components/animation/pixel-scatter-text'
+import { RoomStatusToggle } from '~/components/atoms/room-status-toggle'
+import { StatusRibbon } from '~/components/atoms/status-ribbon'
 import { RoomSkeletonList } from '~/components/organisms/room-skeleton'
 import { SlideStackNumber } from '~/components/animation/slide-stack-number'
 import { StatusPill } from '~/components/atoms/status-pill'
@@ -162,7 +163,7 @@ export function RoomListPage() {
             onClick={() => {
               void navigate('/rooms/new')
             }}
-            className="brutal-button theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-violet w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
           >
             + New Room
           </button>
@@ -171,7 +172,7 @@ export function RoomListPage() {
             onClick={() => {
               void navigate('/guide')
             }}
-            className="brutal-button theme-button-warm px-5 py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-warm w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
           >
             Webhook Guide
           </button>
@@ -309,8 +310,18 @@ export function RoomListPage() {
 
                     return (
                       <BrutalCard className={[spotlightTheme, 'space-y-4'].join(' ')} tilt={tilt}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0 space-y-1">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <StatusRibbon enabled={room.enabled} />
+                            <RoomStatusToggle
+                              enabled={room.enabled}
+                              loading={roomToggleAction.loading}
+                              onToggle={() => {
+                                void handleToggle(room.id, room.destinationRoomName, room.enabled)
+                              }}
+                            />
+                          </div>
+                          <div className="min-w-0 space-y-1">
                             {isSpotlighted ? (
                               <StickerLabel tone="warning" tilt="right">
                                 New
@@ -323,15 +334,6 @@ export function RoomListPage() {
                               {`Room ID: ${String(room.originalRoomId)}`}
                             </div>
                           </div>
-                          <StatusPill
-                            tone={room.enabled ? 'success' : 'neutral'}
-                            className="min-w-24 justify-center shrink-0"
-                          >
-                            <PixelScatterText
-                              value={room.enabled ? 'Live' : 'Paused'}
-                              reserveText="Paused"
-                            />
-                          </StatusPill>
                         </div>
 
                         <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
@@ -355,23 +357,6 @@ export function RoomListPage() {
                             className="brutal-button theme-button-sky px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
                           >
                             Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void handleToggle(room.id, room.destinationRoomName, room.enabled)
-                            }}
-                            className={[
-                              'brutal-button px-4 py-1.5 font-heading text-xs font-bold',
-                              room.enabled
-                                ? 'theme-button-gold text-[var(--border)]'
-                                : 'theme-button-violet text-white',
-                            ].join(' ')}
-                          >
-                            <PixelScatterText
-                              value={room.enabled ? 'Pause' : 'Enable'}
-                              reserveText="Enable"
-                            />
                           </button>
                           <button
                             type="button"
