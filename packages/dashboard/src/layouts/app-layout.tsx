@@ -50,14 +50,18 @@ export function AppLayout() {
             </div>
           </BrutalCard>
 
-          <nav className="space-y-5">
+          <nav className="flex gap-3 overflow-x-auto pb-1 lg:flex-col lg:space-y-5 lg:overflow-visible lg:pb-0">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} className="block">
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className="block shrink-0 min-w-[8.5rem] lg:min-w-0"
+              >
                 {({ isActive }) => (
                   <div className="relative">
                     {isActive ? (
                       <motion.div
-                        className="nav-candy-thumb absolute -left-[22px] top-1/2 h-[86%]"
+                        className="nav-candy-thumb absolute -left-[22px] top-1/2 h-[86%] hidden lg:block"
                         layoutId="nav-indicator"
                         style={{ y: '-50%' }}
                         transition={{ type: 'spring', stiffness: 380, damping: 28 }}
