@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 02 · Fat Pill + Diagonal Banner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=Shantell+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./shared.css">
+  <style>
+    /* ── Option 02: Fat Pill Toggle + Diagonal Corner Banner ── */
+
+    /* Toggle: taller pill, chunkier proportions */
+    [data-variant="fat-pill-diagonal"] .tog-track {
+      width: 60px;
+      height: 34px;
+      border-radius: 999px;
+      border: 3px solid var(--ink);
+      box-shadow: 4px 4px 0 var(--ink),
+                  inset 0 3px 7px rgba(255,255,255,0.5),
+                  inset 0 -3px 5px rgba(0,0,0,0.07);
+    }
+
+    [data-variant="fat-pill-diagonal"] .tog-track[data-live="true"] {
+      background: var(--mint-on);
+      box-shadow: 4px 4px 0 #16a34a,
+                  inset 0 3px 7px rgba(255,255,255,0.4);
+    }
+
+    [data-variant="fat-pill-diagonal"] .tog-thumb {
+      width: 24px;
+      height: 24px;
+      left: 2px;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.15);
+    }
+
+    [data-variant="fat-pill-diagonal"] .tog-track[data-live="true"] .tog-thumb {
+      left: 30px; /* 60 - 3 - 3 - 24 = 30 */
+    }
+
+    /* Diagonal corner banner: positioned absolute top-left */
+    [data-variant="fat-pill-diagonal"] .room-card {
+      overflow: hidden; /* needed for diagonal clip */
+    }
+
+    [data-variant="fat-pill-diagonal"] .ribbon {
+      position: absolute;
+      top: 16px;
+      left: -32px;
+      width: 120px;
+      padding: 6px 0;
+      text-align: center;
+      transform: rotate(-45deg);
+      transform-origin: center center;
+      font-family: var(--font-heading);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 2.5px solid var(--ink);
+      box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+      z-index: 3;
+      transition: background 260ms ease, color 200ms ease;
+    }
+
+    [data-variant="fat-pill-diagonal"] .ribbon[data-live="true"] {
+      background: var(--mint-on);
+      color: #14532d;
+    }
+
+    [data-variant="fat-pill-diagonal"] .ribbon[data-live="false"] {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    /* Text sweep animation */
+    [data-variant="fat-pill-diagonal"] .ribbon-text.ribbon-change {
+      animation: banner-sweep 200ms ease both;
+    }
+
+    @keyframes banner-sweep {
+      0%   { opacity: 1; letter-spacing: 0.06em; }
+      50%  { opacity: 0; letter-spacing: 0.2em;  }
+      100% { opacity: 0; }
+    }
+
+    /* Adjust card padding for diagonal ribbon */
+    [data-variant="fat-pill-diagonal"] .room-head {
+      padding-left: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.TOGGLE_RIBBON_PREVIEW = {
+      index: '02',
+      title: 'Fat Pill + Diagonal Banner',
+      summary: 'Toggle pill to bự hơn chuẩn — cảm giác tactile, dễ bấm. Ribbon là dải 45° cắt góc trên trái card kiểu "SALE" banner cổ điển. Bold, dễ nhận biết trạng thái từ xa.',
+      intensity: 'Medium',
+      shipRisk: 'Low',
+      riskTone: 'safe',
+      variant: 'fat-pill-diagonal',
+      liveLabel: 'LIVE',
+      pausedLabel: 'PAUSED',
+      ribbonPosition: 'absolute',
+      previewNote: '✦ Bold nhất trong các option position-absolute. Cần overflow:hidden trên card nhưng không ảnh hưởng layout. Phù hợp nếu bạn muốn trạng thái thật nổi bật.',
+      translationHint: 'Toggle: tăng width/height CSS vars. Ribbon: absolute + rotate(-45deg). Cần overflow:hidden trên BrutalCard wrapper. reducedMotion safe.',
+      prev: './option-01-clay-ios-sticker.html',
+      next: './option-03-raised-tape-strip.html',
+      buildRibbonHtml: function(live) {
+        const text = live ? 'LIVE' : 'PAUSED';
+        return `<div class="ribbon" data-role="ribbon" data-live="${live}">
+          <span class="ribbon-text" data-role="ribbon-text">${text}</span>
+        </div>`;
+      }
+    }
+  </script>
+  <script src="./shared.js"></script>
+</body>
+</html>

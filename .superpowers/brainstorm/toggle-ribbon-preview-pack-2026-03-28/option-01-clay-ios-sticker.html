@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 01 · Clay iOS + Sticker Pop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=Shantell+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./shared.css">
+  <style>
+    /* ── Option 01: Clay iOS + Sticker Pop ── */
+
+    /* Toggle: standard iOS clay — same as base, just highlight the clay shine */
+    [data-variant="clay-ios-sticker"] .tog-track {
+      box-shadow: 3px 3px 0 var(--ink),
+                  inset 0 2px 5px rgba(255,255,255,0.55),
+                  inset 0 -2px 4px rgba(0,0,0,0.06);
+    }
+
+    [data-variant="clay-ios-sticker"] .tog-track[data-live="true"] {
+      box-shadow: 3px 3px 0 #16a34a,
+                  inset 0 2px 5px rgba(255,255,255,0.4),
+                  inset 0 -2px 4px rgba(0,0,0,0.06);
+    }
+
+    /* Ribbon: StickerLabel pill — top-left of room-head, inline */
+    [data-variant="clay-ios-sticker"] .ribbon {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border: 2.5px solid var(--ink);
+      border-radius: 999px;
+      font-family: var(--font-heading);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      box-shadow: 2px 2px 0 var(--ink),
+                  inset 0 2px 4px rgba(255,255,255,0.5);
+      transition: background 260ms ease, box-shadow 200ms ease, color 200ms ease;
+      will-change: transform;
+    }
+
+    [data-variant="clay-ios-sticker"] .ribbon[data-live="true"] {
+      background: #bbf7d0;
+      color: #14532d;
+      box-shadow: 2px 2px 0 #16a34a,
+                  inset 0 2px 4px rgba(255,255,255,0.5);
+    }
+
+    [data-variant="clay-ios-sticker"] .ribbon[data-live="false"] {
+      background: #f3f4f6;
+      color: var(--ink);
+    }
+
+    /* Pop animation on ribbon text change */
+    [data-variant="clay-ios-sticker"] .ribbon-text.ribbon-change {
+      animation: sticker-pop-out 180ms ease both;
+    }
+
+    @keyframes sticker-pop-out {
+      0%   { transform: scale(1) translateY(0);   opacity: 1; }
+      40%  { transform: scale(1.18, 0.8);          opacity: 0.7; }
+      100% { transform: scale(0.7, 1.3) translateY(-4px); opacity: 0; }
+    }
+
+    /* Ribbon inside room-head */
+    [data-variant="clay-ios-sticker"] .room-head {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    [data-variant="clay-ios-sticker"] .room-head-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.TOGGLE_RIBBON_PREVIEW = {
+      index: '01',
+      title: 'Clay iOS + Sticker Pop',
+      summary: 'Toggle clay iOS chuẩn mực với inner shine. Ribbon là sticker pill ngay trong header của card, pop in/out với squash & stretch. Approach an toàn nhất và gần nhất với UX pattern hiện tại.',
+      intensity: 'Low',
+      shipRisk: 'Low',
+      riskTone: 'safe',
+      variant: 'clay-ios-sticker',
+      liveLabel: '● LIVE',
+      pausedLabel: '‖ PAUSED',
+      ribbonPosition: 'head-inline',
+      previewNote: '✦ Recommend nếu bạn muốn approach minimal risk, gần nhất với StickerLabel component đã có trong codebase.',
+      translationHint: 'Toggle: extend tog-track class. Ribbon: tái dụng StickerLabel atom với tone prop. Ripple: Framer Motion clipPath từ top-right. reducedMotion safe.',
+      prev: './option-10-kawaii-washi.html',
+      next: './option-02-fat-pill-diagonal.html',
+      buildRibbonHtml: function(live) {
+        const text = live ? '● LIVE' : '‖ PAUSED';
+        return `<div class="ribbon" data-role="ribbon" data-live="${live}" style="align-self:flex-start">
+          <span class="ribbon-text" data-role="ribbon-text">${text}</span>
+        </div>`;
+      }
+    }
+  </script>
+  <script src="./shared.js"></script>
+</body>
+</html>

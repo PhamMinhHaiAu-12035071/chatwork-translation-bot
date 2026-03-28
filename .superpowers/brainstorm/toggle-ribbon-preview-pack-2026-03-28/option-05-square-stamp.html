@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 05 · Square Brutal + Stamp Badge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=Shantell+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./shared.css">
+  <style>
+    /* ── Option 05: Square Brutal Toggle + Circle Stamp Badge ── */
+
+    /* Toggle: square-ish track with larger offset shadow */
+    [data-variant="square-stamp"] .tog-track {
+      border-radius: 10px; /* less rounded = more brutal */
+      box-shadow: 5px 5px 0 var(--ink);
+      border: 3px solid var(--ink);
+    }
+
+    [data-variant="square-stamp"] .tog-track[data-live="true"] {
+      background: var(--mint-on);
+      box-shadow: 5px 5px 0 #15803d;
+    }
+
+    [data-variant="square-stamp"] .tog-thumb {
+      border-radius: 6px; /* square thumb */
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+    }
+
+    [data-variant="square-stamp"] .tog-wrap:active .tog-track {
+      transform: translate(4px, 4px);
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+
+    [data-variant="square-stamp"] .tog-wrap {
+      transition: transform 120ms ease;
+    }
+
+    /* Circle stamp badge absolute top-left */
+    [data-variant="square-stamp"] .ribbon {
+      position: absolute;
+      top: -14px;
+      left: -14px;
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 3px solid var(--ink);
+      box-shadow: 3px 3px 0 var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 0;
+      text-align: center;
+      font-family: var(--font-heading);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      z-index: 4;
+      transition: background 280ms ease, color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+    }
+
+    [data-variant="square-stamp"] .ribbon[data-live="true"] {
+      background: #bbf7d0;
+      color: #14532d;
+      box-shadow: 3px 3px 0 #16a34a;
+    }
+
+    [data-variant="square-stamp"] .ribbon[data-live="false"] {
+      background: #f3f4f6;
+      color: #374151;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    /* Stamp dot icon */
+    [data-variant="square-stamp"] .ribbon::before {
+      content: '';
+      display: block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-bottom: 3px;
+      border: 2px solid currentColor;
+      flex-shrink: 0;
+    }
+
+    [data-variant="square-stamp"] .ribbon[data-live="true"]::before {
+      background: #22c55e;
+    }
+
+    [data-variant="square-stamp"] .ribbon[data-live="false"]::before {
+      background: #9ca3af;
+    }
+
+    /* Stamp bounce animation */
+    [data-variant="square-stamp"] .ribbon-text.ribbon-change {
+      animation: stamp-bounce 220ms cubic-bezier(0.16, 1.28, 0.3, 1) both;
+    }
+
+    @keyframes stamp-bounce {
+      0%   { transform: scale(1);    opacity: 1; }
+      40%  { transform: scale(0.6);  opacity: 0.3; }
+      100% { transform: scale(1.15); opacity: 0; }
+    }
+
+    /* Adjust card for stamp overlap */
+    [data-variant="square-stamp"] .room-card {
+      overflow: visible; /* allow stamp to overflow */
+      margin-top: 12px;
+      margin-left: 12px;
+    }
+
+    [data-variant="square-stamp"] .room-head {
+      padding-left: 52px;
+      padding-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.TOGGLE_RIBBON_PREVIEW = {
+      index: '05',
+      title: 'Square Brutal + Stamp Badge',
+      summary: 'Toggle cạnh vuông hơn (border-radius nhỏ), offset shadow lớn — mang feel "con dấu đóng" của Neubrutalism. Ribbon là huy hiệu tròn tràn ra ngoài góc card, bold và rõ ràng.',
+      intensity: 'Medium',
+      shipRisk: 'Low',
+      riskTone: 'safe',
+      variant: 'square-stamp',
+      liveLabel: 'LIVE',
+      pausedLabel: 'OFF',
+      ribbonPosition: 'absolute',
+      previewNote: '✦ Stamp badge rất distinctive — nhìn vào list của nhiều cards là phân biệt được ngay. Overflow:visible cần thiết nhưng không gây layout issue trong grid.',
+      translationHint: 'Toggle: giảm border-radius. Ribbon: absolute, overflow:visible, negative top/left. Grid gap cần tăng 12-14px. reducedMotion safe.',
+      prev: './option-04-wide-bookmark.html',
+      next: './option-06-rubber-dogear.html',
+      buildRibbonHtml: function(live) {
+        const text = live ? 'LIVE' : 'OFF';
+        return `<div class="ribbon" data-role="ribbon" data-live="${live}">
+          <span class="ribbon-text" data-role="ribbon-text">${text}</span>
+        </div>`;
+      }
+    }
+  </script>
+  <script src="./shared.js"></script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Option 11 · Hybrid Clay + Kawaii Icon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=Shantell+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./shared.css">
+  <style>
+    /* ════════════════════════════════════════════════════════
+       OPTION 11: Hybrid — Clay iOS (base) + Kawaii Icon Thumb
+       + Tilting Ribbon Sticker
+       ════════════════════════════════════════════════════════
+
+       Toggle:  Clay iOS track (option-01)
+                ↳ Thumb carries a tiny icon: ✦ when LIVE, ‖ when PAUSED (option-10)
+
+       Ribbon:  Sticker pill style (option-01 shape)
+                ↳ Tilts at different angles per state (option-10 washi behaviour)
+                   LIVE  → rotate(-4deg)  — playful tilt left
+                   PAUSED → rotate(2deg)  — subtle tilt right
+
+       Ripple:  ❌ removed — no background color change
+    */
+
+    /* ── Track: clay iOS identical to option-01 ── */
+    [data-variant="hybrid-clay-kawaii"] .tog-track {
+      box-shadow:
+        3px 3px 0 var(--ink),
+        inset 0 2px 6px rgba(255,255,255,0.60),
+        inset 0 -2px 5px rgba(0,0,0,0.06);
+      transition:
+        background 260ms ease,
+        box-shadow 240ms ease;
+    }
+
+    [data-variant="hybrid-clay-kawaii"] .tog-track[data-live="true"] {
+      background: var(--mint-on);
+      box-shadow:
+        3px 3px 0 #16a34a,
+        inset 0 2px 6px rgba(255,255,255,0.45),
+        inset 0 -2px 5px rgba(0,0,0,0.06);
+    }
+
+    /* ── Thumb: clean white clay — identical to option-01 ── */
+
+    /* Thumb moves to right when on */
+    [data-variant="hybrid-clay-kawaii"] .tog-track[data-live="true"] .tog-thumb {
+      left: 30px;
+    }
+
+    /* Press: track squishes gently */
+    [data-variant="hybrid-clay-kawaii"] .tog-wrap:active .tog-track {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 var(--ink);
+      transition: transform 80ms ease, box-shadow 80ms ease;
+    }
+
+    /* ── Ribbon: sticker pill with STATE-BASED TILT ── */
+    [data-variant="hybrid-clay-kawaii"] .ribbon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border: 2.5px solid var(--ink);
+      border-radius: 999px;
+      font-family: var(--font-heading);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      /* Clay shine on sticker */
+      box-shadow:
+        2px 2px 0 var(--ink),
+        inset 0 2px 4px rgba(255,255,255,0.55);
+      /* ── key: transform handles tilt, transition animates it ── */
+      transform: rotate(-4deg);
+      transform-origin: left center;
+      transition:
+        background   260ms ease,
+        box-shadow   240ms ease,
+        color        200ms ease,
+        transform    320ms cubic-bezier(0.34, 1.4, 0.64, 1);
+      will-change: transform;
+      align-self: flex-start;
+    }
+
+    /* LIVE state: tilt left (playful, energetic) */
+    [data-variant="hybrid-clay-kawaii"] .ribbon[data-live="true"] {
+      background: #bbf7d0;
+      color: #14532d;
+      box-shadow:
+        2px 2px 0 #16a34a,
+        inset 0 2px 4px rgba(255,255,255,0.5);
+      transform: rotate(-4deg);
+    }
+
+    /* PAUSED state: tilt right (slightly droopy, sleepy) */
+    [data-variant="hybrid-clay-kawaii"] .ribbon[data-live="false"] {
+      background: #f3f4f6;
+      color: #4b5563;
+      box-shadow:
+        2px 2px 0 var(--ink),
+        inset 0 2px 4px rgba(255,255,255,0.5);
+      transform: rotate(2deg);
+    }
+
+    /* Dot indicator before text */
+    [data-variant="hybrid-clay-kawaii"] .ribbon::before {
+      content: '';
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 2px solid currentColor;
+      transition: background 260ms ease, box-shadow 260ms ease;
+    }
+
+    [data-variant="hybrid-clay-kawaii"] .ribbon[data-live="true"]::before {
+      background: #22c55e;
+      border-color: #15803d;
+    }
+
+    [data-variant="hybrid-clay-kawaii"] .ribbon[data-live="false"]::before {
+      background: #d1d5db;
+      border-color: #9ca3af;
+    }
+
+    /* Ribbon text: fade + tiny scale on change */
+    [data-variant="hybrid-clay-kawaii"] .ribbon-text.ribbon-change {
+      animation: hybrid-text-swap 190ms cubic-bezier(0.4, 0, 0.6, 1) both;
+    }
+
+    @keyframes hybrid-text-swap {
+      0%   { opacity: 1; transform: scale(1)    translateY(0); }
+      40%  { opacity: 0; transform: scale(0.85) translateY(-3px); }
+      100% { opacity: 0; transform: scale(0.85) translateY(-3px); }
+    }
+
+    /* ── Layout: ribbon inline in room-head, same row ── */
+    [data-variant="hybrid-clay-kawaii"] .room-head {
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    [data-variant="hybrid-clay-kawaii"] .room-head-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+      gap: 12px;
+    }
+
+    /* ── Disable ripple layer entirely ── */
+    [data-variant="hybrid-clay-kawaii"] .ripple-layer {
+      display: none;
+    }
+
+    /* ── Nice hover on whole card ── */
+    [data-variant="hybrid-clay-kawaii"].room-card:hover {
+      box-shadow: 8px 8px 0 var(--ink);
+      transform: translate(-2px, -2px);
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    /* Reduce motion: disable tilt spring */
+    @media (prefers-reduced-motion: reduce) {
+      [data-variant="hybrid-clay-kawaii"] .ribbon {
+        transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
+        transform: none !important;
+      }
+      [data-variant="hybrid-clay-kawaii"] .ribbon[data-live="true"]  { transform: none !important; }
+      [data-variant="hybrid-clay-kawaii"] .ribbon[data-live="false"] { transform: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    window.TOGGLE_RIBBON_PREVIEW = {
+      index: '11',
+      title: 'Hybrid — Clay iOS + Kawaii Icon',
+      summary: 'Kết hợp tốt nhất của Option 01 và 10. Toggle y hệt Option 01: clay iOS chuẩn, thumb trắng clay sạch, inner shine, mint green track, 3px border + shadow. Ribbon là sticker pill (Option 01) nhưng thay đổi góc nghiêng theo state: -4° khi Live (vui, energetic) → +2° khi Paused (hơi rũ xuống, spring animation). Không có ripple / background color change.',
+      intensity: 'Low+',
+      shipRisk: 'Low',
+      riskTone: 'safe',
+      variant: 'hybrid-clay-kawaii',
+      liveLabel: 'Live',
+      pausedLabel: 'Paused',
+      ribbonPosition: 'head-inline',
+      previewNote: '✦ Final hybrid design. Bấm toggle trên từng card và quan sát: (1) thumb icon thay đổi, (2) ribbon sticker xoay góc với spring animation. Click "Toggle Each" để so sánh cả 3 cards cùng lúc.',
+      translationHint: 'Toggle thumb: ::after pseudo-element với content icon. Ribbon tilt: CSS transform rotate + cubic-bezier spring. Framer Motion: animate={{ rotate }} variant. reducedMotion: tắt tilt, giữ color transition.',
+      prev: './option-10-kawaii-washi.html',
+      next: './option-01-clay-ios-sticker.html',
+      buildRibbonHtml: function(live) {
+        const text = live ? 'Live' : 'Paused';
+        return `<div class="ribbon" data-role="ribbon" data-live="${live}" style="align-self:flex-start">
+          <span class="ribbon-text" data-role="ribbon-text">${text}</span>
+        </div>`;
+      }
+    }
+  </script>
+  <script src="./shared.js"></script>
+</body>
+</html>
