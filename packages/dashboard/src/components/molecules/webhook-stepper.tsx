@@ -5,6 +5,7 @@ import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
+import { WebhookStep01Svg } from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
   webhookUrl?: string
@@ -26,7 +27,7 @@ const STEPS: Step[] = [
     body: 'Log in to your Chatwork account. Open the Admin panel and navigate to Integrations → Webhooks.',
     action: 'link',
     actionLabel: 'Open Chatwork Admin',
-    svgFragment: null,
+    svgFragment: <WebhookStep01Svg />,
   },
   {
     number: '02',
