@@ -1,26 +1,36 @@
 import { motion } from 'framer-motion'
 import { NavLink, Outlet, useLocation } from 'react-router'
+import { Icon } from '~/components/atoms/icons'
+import type { ClayIconName } from '~/components/atoms/icons'
 import { AmbientOrbs } from '~/components/layout/ambient-orbs'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 
-const navItems = [
+const navItems: readonly {
+  to: string
+  label: string
+  surfaceClassName: string
+  icon: ClayIconName | null
+}[] = [
   {
     to: '/',
     label: 'Dashboard',
     surfaceClassName: 'theme-card-matcha',
+    icon: 'dashboard',
   },
   {
     to: '/rooms/new',
-    label: '+ New Room',
+    label: 'New Room',
     surfaceClassName: 'theme-card-blush',
+    icon: 'plus',
   },
   {
     to: '/guide',
     label: 'Webhook Guide',
     surfaceClassName: 'theme-card-sky',
+    icon: 'book',
   },
-] as const
+]
 
 export function AppLayout() {
   const location = useLocation()
@@ -47,7 +57,7 @@ export function AppLayout() {
                   <div className="relative">
                     {isActive ? (
                       <motion.div
-                        className="absolute -left-4 top-1/2 h-[70%] w-[5px] rounded-full bg-[var(--accent)]"
+                        className="nav-candy-thumb absolute -left-[22px] top-1/2 h-[86%]"
                         layoutId="nav-indicator"
                         style={{ y: '-50%' }}
                         transition={{ type: 'spring', stiffness: 380, damping: 28 }}
@@ -70,7 +80,17 @@ export function AppLayout() {
                           : 'opacity-65 hover:opacity-90',
                       ].join(' ')}
                     >
-                      <div className="font-heading text-lg font-bold">{item.label}</div>
+                      <div className="grid grid-cols-[2.5rem_1fr] items-center gap-x-2 text-left font-heading text-lg font-bold">
+                        <span
+                          className="flex size-6 items-center justify-center justify-self-center"
+                          aria-hidden
+                        >
+                          {item.icon ? (
+                            <Icon name={item.icon} variant="clay" size={24} aria-hidden />
+                          ) : null}
+                        </span>
+                        <span>{item.label}</span>
+                      </div>
                     </motion.div>
                   </div>
                 )}

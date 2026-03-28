@@ -49,7 +49,7 @@ describe('RoomListPage', () => {
     expect(html).toContain('Translation Rooms')
     expect(html).toContain('Total Rooms')
     expect(html).toContain('Inactive')
-    expect(html).toContain('+ New Room')
+    expect(html).toContain('New Room')
     expect(html).toContain('Webhook Guide')
     expect(html).toContain('theme-card-cream')
     expect(html).toContain('bg-[var(--card-glass)]')

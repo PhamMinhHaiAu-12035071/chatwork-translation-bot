@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import type { SelectHTMLAttributes } from 'react'
 import { createPortal } from 'react-dom'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Icon } from '~/components/atoms/icons'
 import type { ClayIconName } from '~/components/atoms/icons'
 
@@ -39,6 +40,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
     ref,
   ) => {
     const selectId = id ?? label.toLowerCase().replace(/\s+/g, '-')
+    const reducedMotion = useReducedMotion()
     const [isOpen, setIsOpen] = useState(false)
     const [activeIndex, setActiveIndex] = useState(-1)
     const triggerRef = useRef<HTMLButtonElement>(null)
@@ -235,7 +237,18 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
             </span>
           </span>
           <span className="brutal-dropdown-chevron" data-open={isOpen ? 'true' : undefined}>
-            <Icon name="chevron-down" variant="stroke" size={14} aria-hidden />
+            <motion.span
+              className="inline-flex will-change-transform"
+              style={{ transformOrigin: '50% 55%' }}
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : { type: 'spring', stiffness: 520, damping: 34, mass: 0.55 }
+              }
+            >
+              <Icon name="chevron-down" variant="stroke" size={18} aria-hidden />
+            </motion.span>
           </span>
         </button>
 

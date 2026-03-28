@@ -10,6 +10,8 @@ export const CLAY_COLORS: Record<ClayIconName, ClayColorDef> = {
   pencil: { from: '#d5f0ff', to: '#7dc8ec' }, // sky blue    → room-card-action-btn--edit
   trash: { from: '#ffe0f0', to: '#f4a0c8' }, // pink coral  → room-card-action-btn--delete
   book: { from: '#fde7c0', to: '#f4a060' }, // warm amber  → theme-button-warm
+  bookSky: { from: '#d5e8ff', to: '#6eaaec' }, // sky — same as webhook → theme-button-sky Guide CTAs
+  dashboard: { from: '#e9fad8', to: '#7abf64' }, // matcha → sidebar Dashboard / theme-card-matcha
   link: { from: '#e9fad8', to: '#7abf64' }, // matcha      → --matcha-accent
   webhook: { from: '#d5e8ff', to: '#6eaaec' }, // sky accent  → --sky-accent
   pause: { from: '#fef9d0', to: '#f9d44a' }, // butter      → --warning

@@ -10,6 +10,8 @@ export type ClayIconName =
   | 'pencil'
   | 'trash'
   | 'book'
+  | 'bookSky'
+  | 'dashboard'
   | 'link'
   | 'webhook'
   | 'pause'
@@ -47,7 +49,7 @@ export const STROKE_PATHS: Record<StrokeIconName, StrokePathDef> = {
   'chevron-down': {
     d: 'M2 2L9 10L16 2',
     viewBox: '0 0 18 12',
-    strokeWidth: 3.5,
+    strokeWidth: 4.25,
     animClass: 'icon-anim-lift',
   },
   close: {

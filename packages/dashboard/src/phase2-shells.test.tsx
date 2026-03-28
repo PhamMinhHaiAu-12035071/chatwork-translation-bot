@@ -28,7 +28,7 @@ describe('dashboard visual shells', () => {
     const html = renderWithRoute('/', '/', createElement(RoomListPage))
 
     expect(html).toContain('Translation Rooms')
-    expect(html).toContain('+ New Room')
+    expect(html).toContain('New Room')
     expect(html).toContain('Webhook Guide')
     expect(html).toContain('theme-card-cream')
   })

@@ -205,9 +205,8 @@ export function RoomCreatePage() {
                 }}
                 className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
               >
-                <Icon name="book" variant="clay" size={20} aria-hidden />
+                <Icon name="bookSky" variant="clay" size={20} aria-hidden />
                 Open Webhook Guide
-                <Icon name="external-link" variant="stroke" size={14} aria-hidden />
               </button>
             </BrutalCard>
 

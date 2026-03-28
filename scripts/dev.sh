@@ -252,7 +252,7 @@ build_dashboard() {
 
 if [ "$ACTION" = "up" ]; then
   check_duplicate_env_keys || exit 1
-  build_dashboard
+  # build_dashboard # Bỏ qua build tĩnh vì đã dùng Vite dev server (HMR) trong Docker
 
   if [ "$AI_PROVIDER" != "cursor" ]; then
     start_docker_only

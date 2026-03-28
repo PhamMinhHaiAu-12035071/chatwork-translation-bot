@@ -1,6 +1,30 @@
 import type { ClayIconName } from './icon-paths'
 import type React from 'react'
 
+const bookClaySymbol = (): React.JSX.Element => (
+  <>
+    <path d="M22 13V33" stroke="#1a1a2e" strokeWidth="2.5" strokeLinecap="round" />
+    <path
+      d="M22 13C19 11 13 12 11 14V31C13 29.5 19 29 22 31"
+      stroke="#1a1a2e"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="white"
+      fillOpacity="0.7"
+    />
+    <path
+      d="M22 13C25 11 31 12 33 14V31C31 29.5 25 29 22 31"
+      stroke="#1a1a2e"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="white"
+      fillOpacity="0.7"
+    />
+  </>
+)
+
 export const CLAY_SYMBOLS: Record<ClayIconName, () => React.JSX.Element> = {
   plus: () => (
     <path
@@ -68,29 +92,53 @@ export const CLAY_SYMBOLS: Record<ClayIconName, () => React.JSX.Element> = {
     </>
   ),
 
-  book: () => (
+  dashboard: () => (
     <>
-      <path d="M22 13V33" stroke="#1a1a2e" strokeWidth="2.5" strokeLinecap="round" />
-      <path
-        d="M22 13C19 11 13 12 11 14V31C13 29.5 19 29 22 31"
+      <rect
+        x="10"
+        y="12"
+        width="11"
+        height="9"
+        rx="2.5"
+        fill="white"
         stroke="#1a1a2e"
         strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="white"
-        fillOpacity="0.7"
       />
-      <path
-        d="M22 13C25 11 31 12 33 14V31C31 29.5 25 29 22 31"
+      <rect
+        x="23"
+        y="12"
+        width="11"
+        height="9"
+        rx="2.5"
+        fill="white"
         stroke="#1a1a2e"
         strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      />
+      <rect
+        x="10"
+        y="23"
+        width="11"
+        height="9"
+        rx="2.5"
         fill="white"
-        fillOpacity="0.7"
+        stroke="#1a1a2e"
+        strokeWidth="2.2"
+      />
+      <rect
+        x="23"
+        y="23"
+        width="11"
+        height="9"
+        rx="2.5"
+        fill="white"
+        stroke="#1a1a2e"
+        strokeWidth="2.2"
       />
     </>
   ),
+
+  book: bookClaySymbol,
+  bookSky: bookClaySymbol,
 
   link: () => (
     <>

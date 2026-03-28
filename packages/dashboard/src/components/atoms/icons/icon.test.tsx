@@ -159,6 +159,25 @@ describe('Icon clay — book', () => {
   })
 })
 
+describe('Icon clay — bookSky', () => {
+  it('renders sky gradient (same as webhook) and same book paths', () => {
+    const html = renderToStaticMarkup(createElement(Icon, { name: 'bookSky', variant: 'clay' }))
+    expect(html).toContain('#d5e8ff')
+    expect(html).toContain('#6eaaec')
+    expect(html).toContain('M22 13V33')
+  })
+})
+
+describe('Icon clay — dashboard', () => {
+  it('renders matcha gradient and 2×2 grid tiles', () => {
+    const html = renderToStaticMarkup(createElement(Icon, { name: 'dashboard', variant: 'clay' }))
+    expect(html).toContain('#e9fad8')
+    expect(html).toContain('#7abf64')
+    expect(html).toContain('x="10"')
+    expect(html).toContain('x="23"')
+  })
+})
+
 describe('Icon clay — link', () => {
   it('renders matcha gradient and chain paths', () => {
     const html = renderToStaticMarkup(createElement(Icon, { name: 'link', variant: 'clay' }))

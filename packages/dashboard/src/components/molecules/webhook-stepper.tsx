@@ -173,7 +173,10 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
               {activeStep === 2 ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5 shadow-[3px_3px_0_var(--border)]">
-                    <code className="font-ui-body flex-1 truncate text-xs text-[var(--text-primary)]">
+                    <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
+                      <Icon name="link" variant="clay" size={24} aria-hidden />
+                    </span>
+                    <code className="font-ui-body flex-1 truncate text-sm text-[var(--text-primary)]">
                       {webhookUrl ?? 'https://your-server.example.com/webhook'}
                     </code>
                     <button

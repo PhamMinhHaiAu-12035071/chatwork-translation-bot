@@ -84,4 +84,10 @@ describe('RoomDetailPage', () => {
     expect(source).toContain('reserveText="Inactive"')
     expect(source).toContain('reserveText="Disable Room"')
   })
+
+  it('does not render the room UUID badge next to Room Config', async () => {
+    const source = await Bun.file(new URL('./room-detail.tsx', import.meta.url)).text()
+
+    expect(source).not.toContain('<span className="opacity-60">#</span>')
+  })
 })

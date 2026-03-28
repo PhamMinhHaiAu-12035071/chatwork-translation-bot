@@ -12,9 +12,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.TRANSLATOR_URL || 'http://localhost:3000',
         changeOrigin: true,
       },
     },

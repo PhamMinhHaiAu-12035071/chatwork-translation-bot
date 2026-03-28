@@ -116,6 +116,12 @@ export function RoomListPage() {
   const inactiveCount = rooms.filter((room) => !room.enabled).length
 
   const handleToggle = async (id: string, roomName: string, currentlyEnabled: boolean) => {
+    // Optimistic UI update: Toggle immediately in local state
+    const targetState = !currentlyEnabled
+    useRoomStore.setState((state) => ({
+      rooms: state.rooms.map((r) => (r.id === id ? { ...r, enabled: targetState } : r)),
+    }))
+
     const result = await roomToggleAction.execute(async () => {
       if (currentlyEnabled) {
         await disableRoom(id)
@@ -127,11 +133,15 @@ export function RoomListPage() {
     })
 
     if (!result.ok) {
+      // Revert optimistic update on failure
+      useRoomStore.setState((state) => ({
+        rooms: state.rooms.map((r) => (r.id === id ? { ...r, enabled: currentlyEnabled } : r)),
+      }))
       toast(result.error, 'error')
       return
     }
 
-    toast(getRoomToggleToastMessage(roomName, currentlyEnabled), 'info')
+    toast(getRoomToggleToastMessage(roomName, targetState), 'info')
   }
 
   const handleConfirmDelete = async () => {
@@ -158,28 +168,38 @@ export function RoomListPage() {
       title="Translation Rooms"
       description="Manage all your Chatwork translation rooms. Toggle to pause, or set up a new webhook from the guide."
       actions={
-        <>
+        <div className="flex w-full min-w-[min(100%,17.5rem)] flex-col gap-3">
           <button
             type="button"
             onClick={() => {
               void navigate('/rooms/new')
             }}
-            className="brutal-button theme-button-violet inline-flex items-center gap-2 w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-violet grid w-full grid-cols-[2.5rem_1fr] items-center gap-x-2 px-4 py-3 text-left font-heading text-sm font-bold text-white whitespace-nowrap"
           >
-            <Icon name="plus" variant="clay" size={20} aria-hidden />
-            New Room
+            <span
+              className="flex size-6 items-center justify-center justify-self-center"
+              aria-hidden
+            >
+              <Icon name="plus" variant="clay" size={24} aria-hidden />
+            </span>
+            <span>New Room</span>
           </button>
           <button
             type="button"
             onClick={() => {
               void navigate('/guide')
             }}
-            className="brutal-button theme-button-warm inline-flex items-center gap-2 w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-warm grid w-full grid-cols-[2.5rem_1fr] items-center gap-x-2 px-4 py-3 text-left font-heading text-sm font-bold text-white whitespace-nowrap"
           >
-            <Icon name="book" variant="clay" size={20} aria-hidden />
-            Webhook Guide
+            <span
+              className="flex size-6 items-center justify-center justify-self-center"
+              aria-hidden
+            >
+              <Icon name="book" variant="clay" size={24} aria-hidden />
+            </span>
+            <span>Webhook Guide</span>
           </button>
-        </>
+        </div>
       }
     >
       <div className="grid gap-4 xl:grid-cols-3">
@@ -252,9 +272,9 @@ export function RoomListPage() {
             onClick={() => {
               void navigate('/rooms/new')
             }}
-            className="brutal-button theme-button-violet inline-flex items-center gap-2 px-5 py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-violet inline-flex items-center gap-2.5 px-5 py-3 font-heading text-sm font-bold text-white"
           >
-            <Icon name="plus" variant="clay" size={20} aria-hidden />
+            <Icon name="plus" variant="clay" size={24} aria-hidden />
             Create First Room
           </button>
         </BrutalCard>
@@ -315,7 +335,7 @@ export function RoomListPage() {
                     return (
                       <BrutalCard className={[spotlightTheme, 'space-y-4'].join(' ')} tilt={tilt}>
                         <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 items-start justify-between gap-4">
                             <StatusRibbon enabled={room.enabled} />
                             <RoomStatusToggle
                               enabled={room.enabled}
@@ -360,7 +380,7 @@ export function RoomListPage() {
                             }}
                             className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
                           >
-                            <Icon name="pencil" variant="clay" size={16} aria-hidden />
+                            <Icon name="pencil" variant="clay" size={20} aria-hidden />
                             Edit
                           </button>
                           <button
@@ -370,7 +390,7 @@ export function RoomListPage() {
                             }}
                             className="brutal-button theme-button-pink inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
                           >
-                            <Icon name="trash" variant="clay" size={16} aria-hidden />
+                            <Icon name="trash" variant="clay" size={20} aria-hidden />
                             Delete
                           </button>
                         </div>
