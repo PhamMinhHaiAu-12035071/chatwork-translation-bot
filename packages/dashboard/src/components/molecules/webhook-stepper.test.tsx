@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { WebhookStepper } from '~/components/molecules/webhook-stepper'
 
 describe('WebhookStepper', () => {
   it('renders the first step with navigation controls', () => {
-    const html = renderToStaticMarkup(
-      createElement(WebhookStepper, {
-        webhookUrl: 'https://example.com/webhook?room_id=123',
-      }),
-    )
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        element: createElement(WebhookStepper, {
+          webhookUrl: 'https://example.com/webhook?room_id=123',
+        }),
+      },
+    ])
+
+    const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
 
     expect(html).toContain('Access Chatwork Admin')
     expect(html).toContain('Open Chatwork Admin')
@@ -56,5 +62,23 @@ describe('WebhookStepper', () => {
     expect(source).toContain("title: 'Note Your Room ID'")
     expect(source).toContain("action: 'roomId'")
     expect(source).toContain("'theme-card-lilac'")
+  })
+
+  it('step 6 renders a room ID input and a navigate button with disabled-when-empty logic', async () => {
+    const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
+
+    expect(source).toContain('roomIdValue')
+    expect(source).toContain('activeStep === 5')
+    expect(source).toContain('inputMode="numeric"')
+    expect(source).toContain('roomIdValue.trim() === ')
+    expect(source).toContain('Go to Create Room')
+  })
+
+  it('navigates to /rooms/new with originalRoomId in Router state on step 6 button click', async () => {
+    const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
+
+    expect(source).toContain("'/rooms/new'")
+    expect(source).toContain('originalRoomId')
+    expect(source).toContain('useNavigate')
   })
 })

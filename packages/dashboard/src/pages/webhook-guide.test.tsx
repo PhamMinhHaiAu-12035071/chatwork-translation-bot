@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'bun:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { WebhookGuidePage } from '~/pages/webhook-guide'
 
 describe('WebhookGuidePage', () => {
   it('renders the interactive stepper shell and supporting rationale cards', () => {
-    const html = renderToStaticMarkup(createElement(WebhookGuidePage))
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        element: createElement(WebhookGuidePage),
+      },
+    ])
+
+    const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
 
     expect(html).toContain('Webhook Setup Guide')
     expect(html).toContain('Step-by-Step')

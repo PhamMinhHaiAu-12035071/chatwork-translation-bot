@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StatusPill } from '~/components/atoms/status-pill'
@@ -98,6 +99,8 @@ const DEFAULT_PILL_COLOR = 'bg-[var(--accent)]'
 export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
   const [activeStep, setActiveStep] = useState(0)
   const { copied, copy } = useCopyClipboard()
+  const [roomIdValue, setRoomIdValue] = useState('')
+  const navigate = useNavigate()
 
   const activeConfig = STEPS[activeStep]
   const activeTheme = CARD_THEMES[activeStep]
@@ -220,6 +223,27 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
                   </div>
                 </div>
               ) : null}
+
+              {activeStep === 5 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5 shadow-[3px_3px_0_var(--border)]">
+                    <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
+                      <Icon name="link" variant="clay" size={24} aria-hidden />
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={roomIdValue}
+                      onChange={(e) => {
+                        setRoomIdValue(e.target.value)
+                      }}
+                      placeholder="e.g. 424846369"
+                      aria-label="Your Chatwork Room ID"
+                      className="font-ui-body flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none"
+                    />
+                  </div>
+                </div>
+              ) : null}
             </BrutalCard>
           </motion.div>
         </AnimatePresence>
@@ -258,16 +282,26 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
               <Icon name="arrow-right" variant="stroke" size={15} aria-hidden />
             </motion.button>
           ) : (
-            <motion.div
-              key="completed"
-              className="brutal-button theme-button-matcha flex items-center justify-center px-5 py-2.5 font-heading text-sm font-bold text-white"
+            <motion.button
+              key="go-create"
+              type="button"
+              disabled={roomIdValue.trim() === ''}
+              onClick={() => {
+                void navigate('/rooms/new', {
+                  state: { originalRoomId: roomIdValue.trim() },
+                })
+              }}
+              className="brutal-button theme-button-matcha inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               initial={{ opacity: 0, scale: 0.85, rotate: -8 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.85, rotate: 8 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
             >
-              Completed
-            </motion.div>
+              Go to Create Room
+              <Icon name="arrow-right" variant="stroke" size={15} aria-hidden />
+            </motion.button>
           )}
         </AnimatePresence>
       </div>

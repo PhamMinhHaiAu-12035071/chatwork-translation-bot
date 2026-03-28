@@ -160,12 +160,19 @@ describe('dashboard visual shells', () => {
   })
 
   it('renders five webhook guide steps', () => {
-    const html = renderToStaticMarkup(createElement(WebhookGuidePage))
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        element: createElement(WebhookGuidePage),
+      },
+    ])
+
+    const html = renderToStaticMarkup(createElement(RouterProvider, { router }))
 
     expect(html).toContain('Manual Guide')
     expect(html).toContain('Webhook Setup Guide')
     expect(html).toContain('Step 01')
     expect(html).toContain('Access Chatwork Admin')
-    expect(html.match(/>0[1-5]</g)?.length).toBe(5)
+    expect(html.match(/>0[1-6]</g)?.length).toBe(6)
   })
 })
