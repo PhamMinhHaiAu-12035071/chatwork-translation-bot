@@ -127,8 +127,6 @@ export function WebhookStep04Svg() {
         424846369
       </text>
 
-      {/* 3D shadow — Neubrutalism offset */}
-      <rect x="88" y="56" width="172" height="78" rx="3" fill="#1a1a2e" />
       {/* Highlight bracket — thick solid, no dash */}
       <rect
         x="84"

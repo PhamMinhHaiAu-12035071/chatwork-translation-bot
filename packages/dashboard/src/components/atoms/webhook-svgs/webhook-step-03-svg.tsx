@@ -58,8 +58,6 @@ export function WebhookStep03Svg() {
         Required
       </text>
 
-      {/* 3D shadow — Neubrutalism offset */}
-      <rect x="122" y="59" width="134" height="18" rx="3" fill="#1a1a2e" />
       {/* URL input — thick solid, no dash */}
       <rect
         x="118"

@@ -46,21 +46,10 @@ export function WebhookStep05Svg() {
         Back
       </text>
 
-      {/* Save button */}
-      <rect x="192" y="56" width="56" height="24" rx="3" fill="#1a4080" />
-      <text
-        x="220"
-        y="71"
-        fontFamily="sans-serif"
-        fontSize="9"
-        fill="white"
-        fontWeight="bold"
-        textAnchor="middle"
-      >
-        Save
-      </text>
-      {/* 3D shadow — Neubrutalism offset */}
+      {/* 3D shadow — behind Save button */}
       <rect x="193" y="57" width="62" height="30" rx="4" fill="#1a1a2e" />
+      {/* Save button bg — covers shadow in center */}
+      <rect x="192" y="56" width="56" height="24" rx="3" fill="#1a4080" />
       {/* Highlight border — thick solid, no dash */}
       <rect
         x="189"
@@ -72,6 +61,18 @@ export function WebhookStep05Svg() {
         stroke="#e84040"
         strokeWidth="3"
       />
+      {/* Save text — on top */}
+      <text
+        x="220"
+        y="71"
+        fontFamily="sans-serif"
+        fontSize="9"
+        fill="white"
+        fontWeight="bold"
+        textAnchor="middle"
+      >
+        Save
+      </text>
 
       {/* Label shadow */}
       <rect x="192" y="45" width="72" height="14" rx="14" fill="#1a1a2e" />

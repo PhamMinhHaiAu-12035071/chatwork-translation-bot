@@ -22,21 +22,10 @@ export function WebhookStep02Svg() {
         Webhook
       </text>
 
-      {/* Add webhook button */}
-      <rect x="170" y="38" width="78" height="22" rx="3" fill="#1a4080" />
-      <text
-        x="209"
-        y="52"
-        fontFamily="sans-serif"
-        fontSize="8"
-        fill="white"
-        fontWeight="bold"
-        textAnchor="middle"
-      >
-        + Add webhook
-      </text>
-      {/* 3D shadow — Neubrutalism offset */}
+      {/* 3D shadow — behind button */}
       <rect x="171" y="39" width="84" height="28" rx="4" fill="#1a1a2e" />
+      {/* Add webhook button bg — covers shadow in center */}
+      <rect x="170" y="38" width="78" height="22" rx="3" fill="#1a4080" />
       {/* Highlight rect — thick solid, no dash */}
       <rect
         x="167"
@@ -48,6 +37,18 @@ export function WebhookStep02Svg() {
         stroke="#e84040"
         strokeWidth="3"
       />
+      {/* Button text — on top */}
+      <text
+        x="209"
+        y="52"
+        fontFamily="sans-serif"
+        fontSize="8"
+        fill="white"
+        fontWeight="bold"
+        textAnchor="middle"
+      >
+        + Add webhook
+      </text>
 
       {/* Label shadow */}
       <rect x="179" y="27" width="68" height="14" rx="14" fill="#1a1a2e" />

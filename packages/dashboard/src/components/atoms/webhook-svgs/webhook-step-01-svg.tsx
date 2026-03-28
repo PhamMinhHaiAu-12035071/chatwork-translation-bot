@@ -62,9 +62,7 @@ export function WebhookStep01Svg() {
         ▶ Webhook
       </text>
 
-      {/* 3D shadow — Neubrutalism offset */}
-      <rect x="6" y="136" width="124" height="18" rx="3" fill="#1a1a2e" />
-      {/* Highlight rect — thick solid, no dash */}
+      {/* Highlight rect — thick solid border */}
       <rect
         x="2"
         y="132"
