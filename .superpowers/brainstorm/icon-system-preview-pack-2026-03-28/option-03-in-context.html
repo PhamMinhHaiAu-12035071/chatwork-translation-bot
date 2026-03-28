@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Option 03 — Full Dashboard Context</title>
+  <link rel="stylesheet" href="shared.css"/>
+  <style>
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      text-decoration: none; color: var(--text-sub); margin-bottom: 32px;
+    }
+    /* ── Simulated page shell ─────────────────────────────── */
+    .sim-page { max-width: 960px; }
+
+    .sim-eyebrow {
+      font-family: var(--font-body); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--text-sub); margin-bottom: 4px;
+    }
+    .sim-title {
+      font-family: var(--font-heading); font-size: 32px; font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .sim-desc {
+      font-family: var(--font-body); font-size: 14px; color: var(--text-sub);
+      line-height: 1.7; max-width: 520px; margin-bottom: 24px;
+    }
+    .sim-actions { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+
+    /* ── Stat cards ───────────────────────────────────────── */
+    .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      padding: 20px;
+      border: 3px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 5px 5px 0 var(--border), var(--clay-shine);
+    }
+    .stat-label-wrap { margin-bottom: 12px; }
+    .stat-sticker {
+      display: inline-block;
+      font-family: var(--font-body); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      border: 2.5px solid var(--border); border-radius: 999px;
+      padding: 3px 12px;
+      box-shadow: 2px 2px 0 var(--border);
+    }
+    .stat-value { font-family: var(--font-metric); font-size: 42px; font-weight: 700; }
+
+    /* ── Room card ────────────────────────────────────────── */
+    .room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 16px; }
+    .room-card {
+      padding: 20px;
+      border: 3px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 5px 5px 0 var(--border), var(--clay-shine);
+    }
+    .room-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+    .ribbon {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--font-body); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      border: 2.5px solid var(--border);
+      padding: 4px 10px 4px 8px;
+      border-radius: 6px;
+    }
+    .ribbon.enabled { background: var(--card-mint); }
+    .ribbon.disabled { background: var(--card-butter); }
+    .ribbon-dot { width:8px; height:8px; border-radius:50%; border:2px solid var(--border); }
+    .ribbon.enabled .ribbon-dot { background: #22c55e; }
+    .ribbon.disabled .ribbon-dot { background: #f59e0b; }
+
+    .toggle-pill {
+      width: 44px; height: 24px; border-radius: 999px;
+      border: 2.5px solid var(--border);
+      position: relative; cursor: pointer;
+      box-shadow: 2px 2px 0 var(--border);
+      transition: background 0.2s;
+    }
+    .toggle-pill.on  { background: #4ade80; }
+    .toggle-pill.off { background: #e2e8f0; }
+    .toggle-pill::after {
+      content: '';
+      position: absolute; top: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--border);
+      transition: left 0.2s;
+    }
+    .toggle-pill.on::after  { left: calc(100% - 18px); }
+    .toggle-pill.off::after { left: 2px; }
+
+    .room-name { font-family: var(--font-heading); font-size: 17px; font-weight: 800; margin-bottom: 4px; }
+    .room-id   { font-family: var(--font-body); font-size: 11px; color: var(--text-sub); margin-bottom: 12px; }
+    .room-meta { font-family: var(--font-body); font-size: 12px; color: var(--text-sub); line-height: 1.6; margin-bottom: 16px; }
+    .room-meta strong { color: var(--text); }
+    .room-actions { display: flex; gap: 8px; }
+
+    /* ── Back button / Page header ────────────────────────── */
+    .detail-back {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-heading); font-size: 14px; font-weight: 800;
+      text-decoration: none; color: white;
+    }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+    .toast {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      border: 3px solid var(--border);
+      border-radius: 14px; padding: 12px 16px;
+      background: white;
+      box-shadow: 4px 4px 0 var(--border), var(--clay-shine);
+      font-family: var(--font-body); font-size: 13px;
+      min-width: 280px;
+    }
+    .toast.info    { background: var(--card-sky); }
+    .toast.success { background: var(--card-mint); }
+    .toast.warning { background: var(--card-butter); }
+
+    /* ── Form field with link icon ────────────────────────── */
+    .field-label {
+      font-family: var(--font-body); font-size: 12px; font-weight: 700;
+      color: var(--text-sub); margin-bottom: 6px;
+    }
+    .field-input-wrap {
+      display: flex; align-items: center; gap: 10px;
+      border: 3px solid var(--border); border-radius: 14px;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 3px 3px 0 var(--border);
+      padding: 10px 14px;
+    }
+    .field-url { font-family: monospace; font-size: 12px; flex: 1; word-break: break-all; color: var(--text-sub); }
+
+    /* ── Section divider ──────────────────────────────────── */
+    .ctx-section { margin-bottom: 44px; }
+    .ctx-label {
+      font-family: var(--font-body); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-sub);
+      border-bottom: 2px dashed rgba(26,26,46,0.15);
+      padding-bottom: 8px; margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="page sim-page">
+  <a href="index.html" class="back-link">← Back to index</a>
+
+  <div class="page-title">Option 03 — Full Dashboard Context</div>
+  <div class="page-sub">Icons rendering in actual dashboard UI — room list page, room cards, back navigation, form fields, toast. Hover everything!</div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONTEXT 1: Room List page header (actions row)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="ctx-section">
+    <div class="ctx-label">Context A — Room List Page Header</div>
+    <div style="padding:28px;border:3px solid var(--border);border-radius:20px;background:var(--card-glass);box-shadow:5px 5px 0 var(--border),var(--clay-shine);">
+      <div class="sim-eyebrow">Room Dashboard</div>
+      <div class="sim-title">Translation Rooms</div>
+      <div class="sim-desc">Manage all your Chatwork translation rooms. Toggle to pause, or set up a new webhook from the guide.</div>
+      <div class="sim-actions">
+        <!-- + New Room with clay plus icon -->
+        <button class="brutal-btn btn-violet">
+          <span class="clay-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 44 44" fill="none">
+              <defs><linearGradient id="ctx-plus" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="rgba(255,255,255,0.85)"/><stop offset="100%" stop-color="rgba(196,181,247,0.8)"/></linearGradient></defs>
+              <rect x="5" y="5" width="36" height="36" rx="13" fill="rgba(0,0,0,0.22)"/>
+              <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#ctx-plus)" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+              <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.5" transform="rotate(-18 13 11)"/>
+              <path d="M22 12V32 M12 22H32" stroke="#1a1a2e" stroke-width="5.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          New Room
+        </button>
+
+        <!-- Webhook Guide with clay book icon + stroke arrow -->
+        <button class="brutal-btn btn-warm">
+          <span class="clay-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 44 44" fill="none">
+              <defs><linearGradient id="ctx-book" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="rgba(255,255,255,0.85)"/><stop offset="100%" stop-color="rgba(255,183,120,0.8)"/></linearGradient></defs>
+              <rect x="5" y="5" width="36" height="36" rx="13" fill="rgba(0,0,0,0.22)"/>
+              <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#ctx-book)" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+              <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.5" transform="rotate(-18 13 11)"/>
+              <path d="M22 13V33" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M22 13C19 11 13 12 11 14V31C13 29.5 19 29 22 31" stroke="#1a1a2e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="white" fill-opacity="0.7"/>
+              <path d="M22 13C25 11 31 12 33 14V31C31 29.5 25 29 22 31" stroke="#1a1a2e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="white" fill-opacity="0.7"/>
+            </svg>
+          </span>
+          Webhook Guide
+          <span class="stroke-icon-wrap">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <path d="M3 10H17 M12 4L18 10L12 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1,1)" opacity="0.3"/>
+              <path d="M3 10H17 M12 4L18 10L12 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONTEXT 2: Room Cards
+  ══════════════════════════════════════════════════════════ -->
+  <div class="ctx-section">
+    <div class="ctx-label">Context B — Room Cards (Edit / Delete)</div>
+    <div class="room-grid">
+
+      <!-- Card 1: Enabled -->
+      <div class="room-card" style="background:var(--card-lilac);">
+        <div class="room-card-header">
+          <div class="ribbon enabled">
+            <div class="ribbon-dot"></div>
+            Live
+          </div>
+          <div class="toggle-pill on" title="Toggle room"></div>
+        </div>
+        <div class="room-name">JP Sales Team</div>
+        <div class="room-id">Room ID: 112233445</div>
+        <div class="room-meta">
+          <strong>Provider:</strong> Gemini Flash<br/>
+          <strong>Style:</strong> Professional Business
+        </div>
+        <div class="room-actions">
+          <button class="room-btn edit">
+            <span class="clay-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 44 44" fill="none">
+                <defs><linearGradient id="rc1-pen" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#d5f0ff"/><stop offset="100%" stop-color="#7dc8ec"/></linearGradient></defs>
+                <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.2"/>
+                <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#rc1-pen)" stroke="#1a1a2e" stroke-width="2.5"/>
+                <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+                <path d="M29.5 10.5L33.5 14.5L17.5 30.5L11 32.5L13 26Z" fill="white" stroke="#1a1a2e" stroke-width="2.2" stroke-linejoin="round"/>
+                <line x1="13" y1="26" x2="17.5" y2="30.5" stroke="#1a1a2e" stroke-width="1.5"/>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button class="room-btn delete">
+            <span class="clay-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 44 44" fill="none">
+                <defs><linearGradient id="rc1-tr" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#ffe0f0"/><stop offset="100%" stop-color="#f4a0c8"/></linearGradient></defs>
+                <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.2"/>
+                <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#rc1-tr)" stroke="#1a1a2e" stroke-width="2.5"/>
+                <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+                <path d="M17 15H27 M13 18H31" stroke="#1a1a2e" stroke-width="2.8" stroke-linecap="round"/>
+                <rect x="15" y="19.5" width="14" height="12.5" rx="3.5" fill="white" stroke="#1a1a2e" stroke-width="2.2"/>
+                <line x1="19" y1="22.5" x2="19" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="22" y1="22.5" x2="22" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="25" y1="22.5" x2="25" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 2: Disabled -->
+      <div class="room-card" style="background:var(--card-peach);">
+        <div class="room-card-header">
+          <div class="ribbon disabled">
+            <div class="ribbon-dot"></div>
+            Paused
+          </div>
+          <div class="toggle-pill off" title="Toggle room"></div>
+        </div>
+        <div class="room-name">EN Product Docs</div>
+        <div class="room-id">Room ID: 998877665</div>
+        <div class="room-meta">
+          <strong>Provider:</strong> OpenAI GPT-4o<br/>
+          <strong>Style:</strong> Technical
+        </div>
+        <div class="room-actions">
+          <button class="room-btn edit">
+            <span class="clay-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 44 44" fill="none">
+                <defs><linearGradient id="rc2-pen" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#d5f0ff"/><stop offset="100%" stop-color="#7dc8ec"/></linearGradient></defs>
+                <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.2"/>
+                <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#rc2-pen)" stroke="#1a1a2e" stroke-width="2.5"/>
+                <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+                <path d="M29.5 10.5L33.5 14.5L17.5 30.5L11 32.5L13 26Z" fill="white" stroke="#1a1a2e" stroke-width="2.2" stroke-linejoin="round"/>
+                <line x1="13" y1="26" x2="17.5" y2="30.5" stroke="#1a1a2e" stroke-width="1.5"/>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button class="room-btn delete">
+            <span class="clay-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 44 44" fill="none">
+                <defs><linearGradient id="rc2-tr" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#ffe0f0"/><stop offset="100%" stop-color="#f4a0c8"/></linearGradient></defs>
+                <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.2"/>
+                <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#rc2-tr)" stroke="#1a1a2e" stroke-width="2.5"/>
+                <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+                <path d="M17 15H27 M13 18H31" stroke="#1a1a2e" stroke-width="2.8" stroke-linecap="round"/>
+                <rect x="15" y="19.5" width="14" height="12.5" rx="3.5" fill="white" stroke="#1a1a2e" stroke-width="2.2"/>
+                <line x1="19" y1="22.5" x2="19" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="22" y1="22.5" x2="22" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="25" y1="22.5" x2="25" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <!-- Card 3: Another enabled -->
+      <div class="room-card" style="background:var(--card-sky);">
+        <div class="room-card-header">
+          <div class="ribbon enabled"><div class="ribbon-dot"></div>Live</div>
+          <div class="toggle-pill on"></div>
+        </div>
+        <div class="room-name">KR Marketing Hub</div>
+        <div class="room-id">Room ID: 445566778</div>
+        <div class="room-meta">
+          <strong>Provider:</strong> Gemini Flash · gemini-2.0-flash<br/>
+          <strong>Style:</strong> Natural Casual
+        </div>
+        <div class="room-actions">
+          <button class="room-btn edit">
+            <span class="clay-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 44 44" fill="none">
+                <defs><linearGradient id="rc3-pen" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#d5f0ff"/><stop offset="100%" stop-color="#7dc8ec"/></linearGradient></defs>
+                <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.2"/>
+                <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#rc3-pen)" stroke="#1a1a2e" stroke-width="2.5"/>
+                <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+                <path d="M29.5 10.5L33.5 14.5L17.5 30.5L11 32.5L13 26Z" fill="white" stroke="#1a1a2e" stroke-width="2.2" stroke-linejoin="round"/>
+                <line x1="13" y1="26" x2="17.5" y2="30.5" stroke="#1a1a2e" stroke-width="1.5"/>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button class="room-btn delete">
+            <span class="clay-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 44 44" fill="none">
+                <defs><linearGradient id="rc3-tr" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#ffe0f0"/><stop offset="100%" stop-color="#f4a0c8"/></linearGradient></defs>
+                <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.2"/>
+                <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#rc3-tr)" stroke="#1a1a2e" stroke-width="2.5"/>
+                <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+                <path d="M17 15H27 M13 18H31" stroke="#1a1a2e" stroke-width="2.8" stroke-linecap="round"/>
+                <rect x="15" y="19.5" width="14" height="12.5" rx="3.5" fill="white" stroke="#1a1a2e" stroke-width="2.2"/>
+                <line x1="19" y1="22.5" x2="19" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="22" y1="22.5" x2="22" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+                <line x1="25" y1="22.5" x2="25" y2="29" stroke="#1a1a2e" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONTEXT 3: Room Detail / Back navigation
+  ══════════════════════════════════════════════════════════ -->
+  <div class="ctx-section">
+    <div class="ctx-label">Context C — Back Navigation &amp; Webhook URL field</div>
+    <div style="padding:28px;border:3px solid var(--border);border-radius:20px;background:var(--card-cream);box-shadow:5px 5px 0 var(--border),var(--clay-shine);">
+      <!-- Back button with stroke arrow -->
+      <div style="margin-bottom:20px;">
+        <button class="brutal-btn btn-violet">
+          <span class="stroke-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M17 10H3 M8 4L2 10L8 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1.3,1.3)" opacity="0.3"/>
+              <path d="M17 10H3 M8 4L2 10L8 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          Back to Dashboard
+        </button>
+      </div>
+
+      <!-- Webhook URL field -->
+      <div style="margin-bottom:16px;">
+        <div class="field-label">Webhook URL</div>
+        <div class="field-input-wrap">
+          <!-- Link/chain clay icon -->
+          <span class="clay-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 44 44" fill="none">
+              <defs><linearGradient id="fld-link" x1="3" y1="3" x2="41" y2="41"><stop offset="0%" stop-color="#e9fad8"/><stop offset="100%" stop-color="#7abf64"/></linearGradient></defs>
+              <rect x="5" y="5" width="36" height="36" rx="13" fill="#1a1a2e" opacity="0.18"/>
+              <rect x="3" y="3" width="36" height="36" rx="13" fill="url(#fld-link)" stroke="#1a1a2e" stroke-width="2.5"/>
+              <ellipse cx="13" cy="11" rx="9" ry="6" fill="white" opacity="0.42" transform="rotate(-18 13 11)"/>
+              <path d="M19 26.5C16.515 26.5 14.5 24.485 14.5 22C14.5 19.515 16.515 17.5 19 17.5H20.5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round"/>
+              <path d="M25 17.5C27.485 17.5 29.5 19.515 29.5 22C29.5 24.485 27.485 26.5 25 26.5H23.5" stroke="#1a1a2e" stroke-width="3" stroke-linecap="round"/>
+              <path d="M18.5 22H25.5" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="field-url">https://api.chatwork-bot.example.com/webhook/abc123xyz</span>
+        </div>
+      </div>
+
+      <!-- View Guide link with stroke external arrow -->
+      <button class="brutal-btn btn-sky" style="font-size:13px;padding:8px 16px;">
+        View Webhook Guide
+        <span class="stroke-icon-wrap">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <path d="M9 4H4C3.448 4 3 4.448 3 5V16C3 16.552 3.448 17 4 17H15C15.552 17 16 16.552 16 16V11 M12 3H17V8 M17 3L10 10" stroke="#1a1a2e" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0.8,0.8)" opacity="0.22"/>
+            <path d="M9 4H4C3.448 4 3 4.448 3 5V16C3 16.552 3.448 17 4 17H15C15.552 17 16 16.552 16 16V11 M12 3H17V8 M17 3L10 10" stroke="#1a1a2e" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONTEXT 4: Webhook Stepper nav
+  ══════════════════════════════════════════════════════════ -->
+  <div class="ctx-section">
+    <div class="ctx-label">Context D — Webhook Stepper Prev/Next</div>
+    <div style="padding:24px;border:3px solid var(--border);border-radius:18px;background:var(--card-sky);box-shadow:4px 4px 0 var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <button class="brutal-btn btn-white">
+          <span class="stroke-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M17 10H3 M8 4L2 10L8 16" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1.3,1.3)" opacity="0.22"/>
+              <path d="M17 10H3 M8 4L2 10L8 16" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          Previous
+        </button>
+
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-sub);">
+          Step <strong style="color:var(--text);">2</strong> of 4
+        </div>
+
+        <button class="brutal-btn btn-violet">
+          Next Step
+          <span class="stroke-icon-wrap">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M3 10H17 M12 4L18 10L12 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1.3,1.3)" opacity="0.3"/>
+              <path d="M3 10H17 M12 4L18 10L12 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONTEXT 5: Toast with close icon
+  ══════════════════════════════════════════════════════════ -->
+  <div class="ctx-section">
+    <div class="ctx-label">Context E — Toast Notifications (Dismiss ×)</div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:400px;">
+      <div class="toast info">
+        <span>"JP Sales Team" is now <strong>enabled</strong></span>
+        <button style="border:none;background:none;cursor:pointer;padding:3px;display:flex;">
+          <span class="stroke-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M3 3L15 15 M15 3L3 15" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" transform="translate(1,1)" opacity="0.22"/>
+              <path d="M3 3L15 15 M15 3L3 15" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+      <div class="toast warning">
+        <span>"EN Product Docs" is now <strong>paused</strong></span>
+        <button style="border:none;background:none;cursor:pointer;padding:3px;display:flex;">
+          <span class="stroke-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M3 3L15 15 M15 3L3 15" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" transform="translate(1,1)" opacity="0.22"/>
+              <path d="M3 3L15 15 M15 3L3 15" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       CONTEXT 6: Select dropdown chevron
+  ══════════════════════════════════════════════════════════ -->
+  <div class="ctx-section">
+    <div class="ctx-label">Context F — AI Provider Select (Chevron)</div>
+    <div style="max-width:320px;display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <div class="field-label">AI Provider</div>
+        <div style="position:relative;">
+          <select style="width:100%;appearance:none;-webkit-appearance:none;border:3px solid var(--border);border-radius:14px;padding:11px 44px 11px 16px;font-family:var(--font-heading);font-size:14px;font-weight:700;background:rgba(255,255,255,0.8);box-shadow:3px 3px 0 var(--border);cursor:pointer;color:var(--text);">
+            <option>Gemini Flash</option>
+            <option>OpenAI GPT-4o</option>
+          </select>
+          <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+              <path d="M2 2L9 10L16 2" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(0.8,0.8)" opacity="0.22"/>
+              <path d="M2 2L9 10L16 2" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">Translation Style</div>
+        <div style="position:relative;">
+          <select style="width:100%;appearance:none;-webkit-appearance:none;border:3px solid var(--border);border-radius:14px;padding:11px 44px 11px 16px;font-family:var(--font-heading);font-size:14px;font-weight:700;background:rgba(255,255,255,0.8);box-shadow:3px 3px 0 var(--border);cursor:pointer;color:var(--text);">
+            <option>Professional Business</option>
+            <option>Natural Casual</option>
+            <option>Technical</option>
+            <option>Auto Context</option>
+          </select>
+          <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+              <path d="M2 2L9 10L16 2" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(0.8,0.8)" opacity="0.22"/>
+              <path d="M2 2L9 10L16 2" stroke="#1a1a2e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <a href="option-04-animation.html" class="brutal-btn btn-violet" style="margin-top:8px;">
+    Option 04 — Animation Showcase
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+      <path d="M3 10H17 M12 4L18 10L12 16" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </a>
+</div>
+</body>
+</html>
