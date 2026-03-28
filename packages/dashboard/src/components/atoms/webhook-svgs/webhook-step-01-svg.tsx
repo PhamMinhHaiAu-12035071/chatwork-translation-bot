@@ -96,7 +96,7 @@ export function WebhookStep01Svg() {
         fontWeight="800"
         textAnchor="middle"
       >
-        ← Click here
+        Click here ↓
       </text>
     </svg>
   )

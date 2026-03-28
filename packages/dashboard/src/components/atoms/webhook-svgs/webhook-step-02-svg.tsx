@@ -72,7 +72,7 @@ export function WebhookStep02Svg() {
         fontWeight="800"
         textAnchor="middle"
       >
-        ← Click here
+        Click here ↓
       </text>
 
       {/* Divider */}
