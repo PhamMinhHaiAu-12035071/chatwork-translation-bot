@@ -291,22 +291,42 @@ export function WebhookStep01Svg() {
         ▶ Webhook
       </text>
 
-      {/* Red dashed highlight border */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="6" y="136" width="124" height="18" rx="3" fill="#1a1a2e" />
+      {/* Highlight rect — thick solid, no dash */}
       <rect
         x="2"
         y="132"
         width="124"
         height="18"
-        rx="2"
-        fill="none"
+        rx="3"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="1.5"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="58" y="120" width="64" height="12" rx="6" fill="#e84040" />
-      <text x="90" y="129" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="62" y="124" width="64" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="58"
+        y="120"
+        width="64"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="90"
+        y="130.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         ← Click here
       </text>
     </svg>
@@ -448,22 +468,42 @@ export function WebhookStep02Svg() {
       >
         + Add webhook
       </text>
-      {/* Dashed highlight border */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="171" y="39" width="84" height="28" rx="4" fill="#1a1a2e" />
+      {/* Highlight rect — thick solid, no dash */}
       <rect
         x="167"
         y="35"
         width="84"
         height="28"
         rx="4"
-        fill="none"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="2"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="175" y="23" width="68" height="12" rx="6" fill="#e84040" />
-      <text x="209" y="32" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="179" y="27" width="68" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="175"
+        y="23"
+        width="68"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="209"
+        y="33.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         ← Click here
       </text>
 
@@ -658,16 +698,18 @@ export function WebhookStep03Svg() {
         Required
       </text>
 
-      {/* URL input — red highlight */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="122" y="59" width="134" height="18" rx="3" fill="#1a1a2e" />
+      {/* URL input — thick solid, no dash */}
       <rect
         x="118"
         y="55"
         width="134"
         height="18"
-        rx="2"
-        fill="rgba(232,64,64,0.05)"
+        rx="3"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="2"
+        strokeWidth="3"
       />
       <text x="123" y="67" fontFamily="sans-serif" fontSize="6.5" fill="#555">
         https://your-bot.server.com/webhook
@@ -678,9 +720,28 @@ export function WebhookStep03Svg() {
         Enter URL that starts with https.
       </text>
 
-      {/* Pill label */}
-      <rect x="122" y="44" width="82" height="12" rx="6" fill="#e84040" />
-      <text x="163" y="53" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="126" y="48" width="82" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="122"
+        y="44"
+        width="82"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="163"
+        y="54.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         Paste URL here ↓
       </text>
     </svg>
@@ -918,22 +979,42 @@ export function WebhookStep04Svg() {
         424846369
       </text>
 
-      {/* Dashed highlight bracket around event section */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="88" y="56" width="172" height="78" rx="3" fill="#1a1a2e" />
+      {/* Highlight bracket around event section — thick solid, no dash */}
       <rect
         x="84"
         y="52"
         width="172"
         height="78"
         rx="3"
-        fill="none"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="1.5"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="80" y="136" width="130" height="12" rx="6" fill="#e84040" />
-      <text x="145" y="145" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="84" y="140" width="130" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="80"
+        y="136"
+        width="130"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="145"
+        y="146.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         Select + tick both + enter Room ID
       </text>
     </svg>
@@ -1105,22 +1186,42 @@ export function WebhookStep05Svg() {
       >
         Save
       </text>
-      {/* Dashed highlight border */}
+      {/* 3D shadow — Neubrutalism offset */}
+      <rect x="193" y="57" width="62" height="30" rx="4" fill="#1a1a2e" />
+      {/* Highlight border — thick solid, no dash */}
       <rect
         x="189"
         y="53"
         width="62"
         height="30"
         rx="4"
-        fill="none"
+        fill="rgba(232,64,64,0.08)"
         stroke="#e84040"
-        strokeWidth="2"
-        strokeDasharray="3,2"
+        strokeWidth="3"
       />
 
-      {/* Pill label */}
-      <rect x="188" y="41" width="72" height="12" rx="6" fill="#e84040" />
-      <text x="224" y="50" fontFamily="sans-serif" fontSize="7" fill="white" textAnchor="middle">
+      {/* Label shadow */}
+      <rect x="192" y="45" width="72" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label — Shantell Sans, dark outline */}
+      <rect
+        x="188"
+        y="41"
+        width="72"
+        height="14"
+        rx="14"
+        fill="#e84040"
+        stroke="#1a1a2e"
+        strokeWidth="2.5"
+      />
+      <text
+        x="224"
+        y="51.5"
+        fontFamily="'Shantell Sans', cursive"
+        fontSize="7.5"
+        fill="white"
+        fontWeight="800"
+        textAnchor="middle"
+      >
         Click to save ↓
       </text>
 
