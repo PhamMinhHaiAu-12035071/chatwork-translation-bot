@@ -13,7 +13,7 @@ describe('WebhookStepper', () => {
 
     expect(html).toContain('Access Chatwork Admin')
     expect(html).toContain('Open Chatwork Admin')
-    expect(html).toContain('1 of 5')
+    expect(html).toContain('1 of 6')
     expect(html).toContain('Previous')
     expect(html).toContain('Next')
   })
@@ -48,5 +48,13 @@ describe('WebhookStepper', () => {
     expect(source).toContain('No secret needed')
     expect(source).not.toContain("title: 'Save & Copy Secret'")
     expect(source).not.toContain('Save Secret on Dashboard')
+  })
+
+  it('step 06 is defined with the correct title and action type', async () => {
+    const source = await Bun.file(new URL('./webhook-stepper.tsx', import.meta.url)).text()
+
+    expect(source).toContain("title: 'Note Your Room ID'")
+    expect(source).toContain("action: 'roomId'")
+    expect(source).toContain("'theme-card-lilac'")
   })
 })

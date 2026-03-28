@@ -11,6 +11,7 @@ import {
   WebhookStep03Svg,
   WebhookStep04Svg,
   WebhookStep05Svg,
+  WebhookStep06Svg,
 } from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
@@ -21,7 +22,7 @@ interface Step {
   number: string
   title: string
   body: string
-  action?: 'link' | 'copy' | 'none'
+  action?: 'link' | 'copy' | 'none' | 'roomId'
   actionLabel?: string
   svgFragment: React.ReactNode
 }
@@ -64,6 +65,13 @@ const STEPS: Step[] = [
     action: 'none',
     svgFragment: <WebhookStep05Svg />,
   },
+  {
+    number: '06',
+    title: 'Note Your Room ID',
+    body: 'Enter the Room ID you used in the previous step. You will need it when creating a room in this dashboard.',
+    action: 'roomId',
+    svgFragment: <WebhookStep06Svg />,
+  },
 ]
 
 const CARD_THEMES = [
@@ -72,6 +80,7 @@ const CARD_THEMES = [
   'theme-card-sky',
   'theme-card-matcha',
   'theme-card-peach',
+  'theme-card-lilac',
 ] as const
 
 const PILL_COLORS = [
@@ -80,9 +89,10 @@ const PILL_COLORS = [
   'bg-[#5bb89a]',
   'bg-[#d44470]',
   'bg-[#6e77e5]',
+  'bg-[#5bb89a]',
 ] as const
 
-const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right'] as const
+const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right', 'left'] as const
 const DEFAULT_PILL_COLOR = 'bg-[var(--accent)]'
 
 export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
