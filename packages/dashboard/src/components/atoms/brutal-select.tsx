@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import type { SelectHTMLAttributes } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from '~/components/atoms/icons'
 
 interface SelectOption {
   value: string
@@ -17,18 +18,6 @@ interface BrutalSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string | undefined
   colorVariant?: DropdownColor | undefined
 }
-
-const ChevronIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-    <path
-      d="M2.5 4.5L6 8L9.5 4.5"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
 
 export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
   (
@@ -229,7 +218,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
             {displayLabel}
           </span>
           <span className="brutal-dropdown-chevron" data-open={isOpen ? 'true' : undefined}>
-            <ChevronIcon />
+            <Icon name="chevron-down" variant="stroke" size={14} aria-hidden />
           </span>
         </button>
 

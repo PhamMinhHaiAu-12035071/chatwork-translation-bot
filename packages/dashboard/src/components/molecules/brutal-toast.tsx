@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Icon } from '~/components/atoms/icons'
 
 export type ToastVariant = 'success' | 'info' | 'warning' | 'error'
 
@@ -51,14 +52,7 @@ export function BrutalToast({ item, onDismiss }: BrutalToastProps) {
         className="ml-auto opacity-60 hover:opacity-100"
         aria-label="Dismiss"
       >
-        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path
-            d="M4 4L12 12M12 4L4 12"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-        </svg>
+        <Icon name="close" variant="stroke" size={14} aria-hidden />
       </button>
     </motion.div>
   )
