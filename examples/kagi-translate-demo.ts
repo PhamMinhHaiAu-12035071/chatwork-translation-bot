@@ -94,3 +94,66 @@ async function translateText(text: string, from: string, to: string): Promise<Tr
   const data: TranslateResponse = await response.json()
   return data
 }
+
+/**
+ * Display translation result with pretty formatting
+ */
+function displayResult(
+  input: string,
+  output: string | undefined,
+  sourceLang: string,
+  targetLang: string,
+  detectedLang?: { iso: string; label: string },
+): void {
+  console.log('\n' + '━'.repeat(60))
+  console.log('🌐 Kagi Translate Demo (Experimental)')
+  console.log('━'.repeat(60) + '\n')
+
+  console.log(`📝 Input (${sourceLang}):`)
+  console.log(`   ${input}\n`)
+
+  if (detectedLang && detectedLang.iso !== sourceLang) {
+    console.log(`🔍 Detected: ${detectedLang.label} (${detectedLang.iso})\n`)
+  }
+
+  console.log(`🔄 Translation (${targetLang}):`)
+  if (output) {
+    console.log(`   ${output}\n`)
+    console.log('✅ Success!')
+  } else {
+    console.log('   ❌ No translation returned\n')
+  }
+
+  console.log('━'.repeat(60) + '\n')
+}
+
+/**
+ * Display error with helpful context
+ */
+function displayError(error: unknown, response?: TranslateResponse): void {
+  console.log('\n' + '━'.repeat(60))
+  console.log('❌ Translation Failed')
+  console.log('━'.repeat(60) + '\n')
+
+  if (response?.error) {
+    console.log(`Error: ${response.error}`)
+
+    if (response.details) {
+      console.log('\nDetails:')
+      for (const detail of response.details) {
+        console.log(`  - ${detail.field}: ${detail.message}`)
+      }
+    }
+  } else if (error instanceof Error) {
+    console.log(`Error: ${error.message}`)
+  } else {
+    console.log(`Error: ${String(error)}`)
+  }
+
+  console.log('\n💡 Troubleshooting:')
+  console.log('  1. Check internet connection')
+  console.log('  2. Verify API endpoint is accessible')
+  console.log('  3. Try different session_token value')
+  console.log('  4. Check if rate limited (wait 60s)')
+  console.log('\n' + '━'.repeat(60) + '\n')
+}
