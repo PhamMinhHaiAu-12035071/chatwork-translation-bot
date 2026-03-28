@@ -9,6 +9,7 @@ import {
   WebhookStep01Svg,
   WebhookStep02Svg,
   WebhookStep03Svg,
+  WebhookStep04Svg,
 } from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
@@ -53,7 +54,7 @@ const STEPS: Step[] = [
     title: 'Select Events',
     body: 'Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that room.',
     action: 'none',
-    svgFragment: null,
+    svgFragment: <WebhookStep04Svg />,
   },
   {
     number: '05',
