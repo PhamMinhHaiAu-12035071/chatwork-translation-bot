@@ -16,6 +16,7 @@ interface Step {
   body: string
   action?: 'link' | 'copy' | 'none'
   actionLabel?: string
+  svgFragment: React.ReactNode
 }
 
 const STEPS: Step[] = [
@@ -25,12 +26,14 @@ const STEPS: Step[] = [
     body: 'Log in to your Chatwork account. Open the Admin panel and navigate to Integrations → Webhooks.',
     action: 'link',
     actionLabel: 'Open Chatwork Admin',
+    svgFragment: null,
   },
   {
     number: '02',
     title: 'Create New Webhook',
     body: 'Click "Add webhook". Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
     action: 'none',
+    svgFragment: null,
   },
   {
     number: '03',
@@ -38,18 +41,21 @@ const STEPS: Step[] = [
     body: 'Copy the URL below and paste it into the "Webhook URL" field in the Chatwork form.',
     action: 'copy',
     actionLabel: 'Copy URL',
+    svgFragment: null,
   },
   {
     number: '04',
     title: 'Select Events',
     body: 'Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that room.',
     action: 'none',
+    svgFragment: null,
   },
   {
     number: '05',
     title: 'Save Webhook',
     body: 'Click Save. Chatwork will activate the webhook. No secret needed.',
     action: 'none',
+    svgFragment: null,
   },
 ]
 
@@ -121,7 +127,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
         ))}
       </div>
 
-      <div className="min-h-[280px]">
+      <div className="min-h-[360px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeStep}
@@ -151,11 +157,14 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <h2 className="font-heading text-2xl font-bold">{activeConfig.title}</h2>
-                <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                  {activeConfig.body}
-                </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+                <div className="space-y-2">
+                  <h2 className="font-heading text-2xl font-bold">{activeConfig.title}</h2>
+                  <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
+                    {activeConfig.body}
+                  </p>
+                </div>
+                <div className="flex items-start justify-center">{activeConfig.svgFragment}</div>
               </div>
 
               {activeStep === 0 ? (
