@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useLocation, useNavigate } from 'react-router'
+import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { DeleteRoomConfirmModal } from '~/components/organisms/delete-room-confirm-modal'
 import { PageShell } from '~/components/layout/page-shell'
@@ -163,17 +164,19 @@ export function RoomListPage() {
             onClick={() => {
               void navigate('/rooms/new')
             }}
-            className="brutal-button theme-button-violet w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-violet inline-flex items-center gap-2 w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
           >
-            + New Room
+            <Icon name="plus" variant="clay" size={20} aria-hidden />
+            New Room
           </button>
           <button
             type="button"
             onClick={() => {
               void navigate('/guide')
             }}
-            className="brutal-button theme-button-warm w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-warm inline-flex items-center gap-2 w-[10.5rem] py-3 font-heading text-sm font-bold text-white"
           >
+            <Icon name="book" variant="clay" size={20} aria-hidden />
             Webhook Guide
           </button>
         </>
@@ -249,9 +252,10 @@ export function RoomListPage() {
             onClick={() => {
               void navigate('/rooms/new')
             }}
-            className="brutal-button theme-button-violet px-5 py-3 font-heading text-sm font-bold text-white"
+            className="brutal-button theme-button-violet inline-flex items-center gap-2 px-5 py-3 font-heading text-sm font-bold text-white"
           >
-            + Create First Room
+            <Icon name="plus" variant="clay" size={20} aria-hidden />
+            Create First Room
           </button>
         </BrutalCard>
       ) : (
@@ -354,8 +358,9 @@ export function RoomListPage() {
                             onClick={() => {
                               void navigate(`/rooms/${room.id}`)
                             }}
-                            className="brutal-button theme-button-sky px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
+                            className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
                           >
+                            <Icon name="pencil" variant="clay" size={16} aria-hidden />
                             Edit
                           </button>
                           <button
@@ -363,8 +368,9 @@ export function RoomListPage() {
                             onClick={() => {
                               setSelectedRoom(room)
                             }}
-                            className="brutal-button theme-button-pink px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
+                            className="brutal-button theme-button-pink inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
                           >
+                            <Icon name="trash" variant="clay" size={16} aria-hidden />
                             Delete
                           </button>
                         </div>
