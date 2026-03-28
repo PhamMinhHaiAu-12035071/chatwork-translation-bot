@@ -35,6 +35,8 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
       className,
       id,
       onChange,
+      value: valueProp,
+      defaultValue,
       ...rest
     },
     ref,
@@ -60,8 +62,11 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
       [ref],
     )
 
-    const fallback = (rest.defaultValue as string | undefined) ?? ''
-    const currentValue = hiddenSelectRef.current?.value ?? fallback
+    const fallback = (defaultValue as string | undefined) ?? ''
+    // Prefer controlled `value` from RHF/parent so the trigger label stays in sync when options
+    // change (e.g. switching AI provider) — reading only the DOM ref can leave a stale/invalid value.
+    const currentValue =
+      valueProp !== undefined ? String(valueProp) : (hiddenSelectRef.current?.value ?? fallback)
     const selectedOption = options.find((opt) => opt.value === currentValue)
     const displayLabel = selectedOption?.label ?? placeholder ?? ''
 
@@ -199,6 +204,11 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
           aria-hidden="true"
           onChange={onChange}
           {...rest}
+          {...(valueProp !== undefined
+            ? { value: String(valueProp) }
+            : defaultValue !== undefined
+              ? { defaultValue }
+              : {})}
         >
           {placeholder ? (
             <option value="" disabled>
@@ -216,7 +226,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
           ref={triggerRef}
           type="button"
           className={[
-            'brutal-input flex w-full items-center justify-between px-4 py-2.5',
+            'brutal-input flex w-full min-w-0 items-center justify-between px-4 py-2.5',
             'font-ui-body text-sm text-[var(--text-primary)]',
             'cursor-pointer text-left',
             error ? 'brutal-input-error' : '',
@@ -232,7 +242,15 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
         >
           <span className="flex min-w-0 flex-1 items-center gap-x-2">
             {icon ? <Icon name={icon} variant="clay" size={20} aria-hidden /> : null}
-            <span className={selectedOption ? '' : 'text-[var(--text-secondary)]'}>
+            <span
+              className={[
+                'min-w-0 flex-1 truncate',
+                selectedOption ? '' : 'text-[var(--text-secondary)]',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              title={displayLabel || undefined}
+            >
               {displayLabel}
             </span>
           </span>
@@ -247,7 +265,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
                   : { type: 'spring', stiffness: 520, damping: 34, mass: 0.55 }
               }
             >
-              <Icon name="chevron-down" variant="stroke" size={18} aria-hidden />
+              <Icon name="chevron-down" variant="stroke" size={14} aria-hidden />
             </motion.span>
           </span>
         </button>

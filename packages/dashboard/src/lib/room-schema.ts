@@ -19,7 +19,7 @@ export const roomCreateSchema = z.object({
     .min(1, 'Destination room name is required')
     .max(100, 'Max 100 characters'),
   aiProvider: z.enum(AI_PROVIDERS, { required_error: 'AI Provider is required' }),
-  aiModel: z.string().nullable().optional(),
+  aiModel: z.string({ required_error: 'AI Model is required' }).min(1, 'AI Model is required'),
   translationStyle: z.enum(TRANSLATION_STYLES, {
     required_error: 'Translation style is required',
   }),
@@ -40,7 +40,7 @@ export const roomEditSchema = z.object({
     .min(1, 'Destination room name is required')
     .max(100, 'Max 100 characters'),
   aiProvider: z.enum(AI_PROVIDERS, { required_error: 'AI Provider is required' }),
-  aiModel: z.string().optional().default(''),
+  aiModel: z.string({ required_error: 'AI Model is required' }).min(1, 'AI Model is required'),
   translationStyle: z.enum(TRANSLATION_STYLES, {
     required_error: 'Translation style is required',
   }),

@@ -45,8 +45,8 @@ describe('geminiPlugin', () => {
     expect(geminiPlugin.manifest.id).toBe('gemini')
   })
 
-  it('manifest defaultModel is gemini-2.5-pro', () => {
-    expect(geminiPlugin.manifest.defaultModel).toBe('gemini-2.5-pro')
+  it('manifest defaultModel is gemini-3.1-pro-preview', () => {
+    expect(geminiPlugin.manifest.defaultModel).toBe('gemini-3.1-pro-preview')
   })
 
   it('manifest supportedModels contains gemini-2.5-pro and gemini-2.0-flash', () => {

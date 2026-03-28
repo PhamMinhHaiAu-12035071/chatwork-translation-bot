@@ -20,7 +20,6 @@ export const GEMINI_MODEL_VALUES = [
   'gemini-2.0-flash',
 ] as const
 export type GeminiModel = (typeof GEMINI_MODEL_VALUES)[number]
-export const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-2.5-pro'
 const DEFAULT_GEMINI_TIMEOUT_MS = 1_800_000
 
 function isAbortError(error: unknown): error is Error {
@@ -40,7 +39,7 @@ class GeminiExecutor implements ILLMExecutor {
   private readonly provider: ReturnType<typeof createGoogleGenerativeAI>
 
   constructor(
-    private readonly modelId: string = DEFAULT_GEMINI_MODEL,
+    private readonly modelId: string,
     apiKey?: string,
   ) {
     this.provider = apiKey !== undefined ? createGoogleGenerativeAI({ apiKey }) : google
@@ -101,7 +100,7 @@ export const geminiPlugin: ProviderPlugin = {
   manifest: {
     id: 'gemini',
     supportedModels: GEMINI_MODEL_VALUES,
-    defaultModel: DEFAULT_GEMINI_MODEL,
+    defaultModel: 'gemini-3.1-pro-preview',
     capabilities: { streaming: false },
     timeoutMs: DEFAULT_GEMINI_TIMEOUT_MS,
   },

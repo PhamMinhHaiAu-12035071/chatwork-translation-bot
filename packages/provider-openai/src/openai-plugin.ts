@@ -20,7 +20,6 @@ export const OPENAI_MODEL_VALUES = [
   'gpt-4o-mini',
 ] as const
 export type OpenAIModel = (typeof OPENAI_MODEL_VALUES)[number]
-export const DEFAULT_OPENAI_MODEL: OpenAIModel = 'gpt-5.4'
 const DEFAULT_OPENAI_TIMEOUT_MS = 1_800_000
 
 function isAbortError(error: unknown): error is Error {
@@ -36,7 +35,7 @@ class OpenAIExecutor implements ILLMExecutor {
   private readonly provider: ReturnType<typeof createOpenAI>
 
   constructor(
-    private readonly modelId: string = DEFAULT_OPENAI_MODEL,
+    private readonly modelId: string,
     private readonly apiKey?: string,
     private readonly baseUrl?: string,
   ) {
@@ -96,7 +95,7 @@ export const openaiPlugin: ProviderPlugin = {
   manifest: {
     id: 'openai',
     supportedModels: OPENAI_MODEL_VALUES,
-    defaultModel: DEFAULT_OPENAI_MODEL,
+    defaultModel: 'gpt-5.4-pro',
     capabilities: { streaming: false },
     timeoutMs: DEFAULT_OPENAI_TIMEOUT_MS,
   },

@@ -23,9 +23,10 @@ export const BrutalInput = forwardRef<HTMLInputElement, BrutalInputProps>(
           ref={ref}
           id={inputId}
           className={[
-            'brutal-input w-full px-4 py-2.5',
+            'brutal-input w-full min-w-0 px-4 py-2.5',
             'font-ui-body text-sm text-[var(--text-primary)]',
-            'placeholder:text-[var(--text-secondary)]',
+            'truncate',
+            'placeholder:text-[var(--text-secondary)] placeholder:opacity-50',
             error ? 'brutal-input-error' : '',
             className ?? '',
           ]

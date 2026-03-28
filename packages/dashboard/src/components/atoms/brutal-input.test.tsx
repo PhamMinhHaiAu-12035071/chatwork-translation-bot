@@ -17,6 +17,7 @@ describe('BrutalInput', () => {
     expect(html).toContain('Stored in memory only.')
     expect(html).toContain('type="password"')
     expect(html).toContain('brutal-input')
+    expect(html).toContain('truncate')
     expect(html).toContain('font-ui-body')
   })
 

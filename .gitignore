@@ -27,6 +27,9 @@ Thumbs.db
 .cursor-pro-max-manifest
 GLOBAL_RULE.md
 
+# Superpowers workspace artifacts (local brainstorming/planning only)
+.superpowers/
+
 # Bun
 bun.lockb
 

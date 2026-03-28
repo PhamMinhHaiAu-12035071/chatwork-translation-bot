@@ -55,7 +55,7 @@ describe('room schema', () => {
       originalRoomId: 123456,
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
-      aiModel: '',
+      aiModel: 'gpt-5.4-pro',
       translationStyle: 'AUTO_CONTEXT',
       aiApiToken: '',
     })

@@ -16,7 +16,13 @@ import { useToast } from '~/components/organisms/toast-provider'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
 import { ApiError } from '~/lib/api-client'
-import { PROVIDER_LABELS, PROVIDER_MODELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
+import {
+  BEST_MODEL_BY_PROVIDER,
+  PROVIDER_LABELS,
+  PROVIDER_MODELS,
+  TRANSLATION_STYLE_LABELS,
+  isModelValidForProvider,
+} from '~/lib/provider-models'
 import { AI_PROVIDERS, TRANSLATION_STYLES, roomEditSchema } from '~/lib/room-schema'
 import type { RoomEditInput } from '~/lib/room-schema'
 import {
@@ -79,7 +85,7 @@ export function RoomDetailPage() {
         originalRoomId: room.originalRoomId,
         destinationRoomName: room.destinationRoomName,
         aiProvider: room.aiProvider,
-        aiModel: room.aiModel ?? '',
+        aiModel: room.aiModel ?? BEST_MODEL_BY_PROVIDER[room.aiProvider],
         translationStyle: room.translationStyle,
         aiApiToken: '',
       }
@@ -87,7 +93,7 @@ export function RoomDetailPage() {
         originalRoomId: 0,
         destinationRoomName: '',
         aiProvider: 'openai',
-        aiModel: '',
+        aiModel: BEST_MODEL_BY_PROVIDER.openai,
         translationStyle: 'AUTO_CONTEXT',
         aiApiToken: '',
       }
@@ -112,11 +118,39 @@ export function RoomDetailPage() {
       originalRoomId: room.originalRoomId,
       destinationRoomName: room.destinationRoomName,
       aiProvider: room.aiProvider,
-      aiModel: room.aiModel ?? '',
+      aiModel: room.aiModel ?? BEST_MODEL_BY_PROVIDER[room.aiProvider],
       translationStyle: room.translationStyle,
       aiApiToken: '',
     })
   }, [editForm, room])
+
+  const selectedProvider = editForm.watch('aiProvider')
+  const aiModel = editForm.watch('aiModel')
+  const destinationRoomNameWatch = editForm.watch('destinationRoomName')
+
+  useEffect(() => {
+    if (!room) {
+      return
+    }
+
+    if (!isModelValidForProvider(aiModel, selectedProvider)) {
+      editForm.setValue('aiModel', BEST_MODEL_BY_PROVIDER[selectedProvider], {
+        shouldValidate: true,
+      })
+    }
+  }, [room, editForm, selectedProvider, aiModel])
+
+  const modelOptions = PROVIDER_MODELS[selectedProvider].map((model) => ({
+    value: model.value,
+    label: model.label,
+  }))
+
+  const aiProviderField = editForm.register('aiProvider', {
+    onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newProvider = e.target.value as typeof selectedProvider
+      editForm.setValue('aiModel', BEST_MODEL_BY_PROVIDER[newProvider])
+    },
+  })
 
   if ((listState === 'loading' || listState === 'idle') && !room) {
     return (
@@ -148,31 +182,19 @@ export function RoomDetailPage() {
     )
   }
 
-  const selectedProvider = editForm.watch('aiProvider')
-  const modelOptions = [
-    { value: '', label: 'Default model' },
-    ...PROVIDER_MODELS[selectedProvider].map((model) => ({
-      value: model.value,
-      label: model.label,
-    })),
-  ]
-
-  const aiProviderField = editForm.register('aiProvider', {
-    onChange: () => {
-      editForm.setValue('aiModel', '')
-    },
-  })
-
   const webhookUrl = generateWebhookUrl()
 
-  const onEditSubmit = async (data: RoomEditInput) => {
-    const normalizedAiModel = data.aiModel === '' ? null : data.aiModel
+  const headerRoomTitle =
+    destinationRoomNameWatch.trim() !== ''
+      ? destinationRoomNameWatch.trim()
+      : room.destinationRoomName
 
+  const onEditSubmit = async (data: RoomEditInput) => {
     const result = await updateRoomAction.execute(() =>
       updateRoom(room.id, {
         destinationRoomName: data.destinationRoomName,
         aiProvider: data.aiProvider,
-        aiModel: normalizedAiModel,
+        aiModel: data.aiModel,
         translationStyle: data.translationStyle,
         ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
       }),
@@ -224,7 +246,7 @@ export function RoomDetailPage() {
   return (
     <PageShell
       eyebrow="Room Detail"
-      title={room.destinationRoomName}
+      title={headerRoomTitle}
       description="Edit room configuration and manage live translation status."
       actions={
         <StatusPill tone={room.enabled ? 'success' : 'warning'}>
@@ -262,7 +284,6 @@ export function RoomDetailPage() {
                 label="AI Provider"
                 options={providerOptions}
                 colorVariant="accent"
-                icon="webhook"
                 error={editForm.formState.errors.aiProvider?.message}
                 {...aiProviderField}
               />
@@ -270,21 +291,21 @@ export function RoomDetailPage() {
                 label="AI Model"
                 options={modelOptions}
                 colorVariant="mint"
-                icon="play"
                 error={editForm.formState.errors.aiModel?.message}
+                value={aiModel}
                 {...editForm.register('aiModel')}
               />
               <BrutalSelect
                 label="Translation Style"
                 options={styleOptions}
                 colorVariant="peach"
-                icon="pencil"
                 error={editForm.formState.errors.translationStyle?.message}
                 {...editForm.register('translationStyle')}
               />
               <BrutalInput
                 label="AI API Token"
                 type="password"
+                placeholder={selectedProvider === 'openai' ? 'sk-...' : 'AIza...'}
                 hint="Leave unchanged to keep the existing token."
                 error={editForm.formState.errors.aiApiToken?.message}
                 {...editForm.register('aiApiToken')}
@@ -329,7 +350,10 @@ export function RoomDetailPage() {
                 <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
                   <Icon name="link" variant="clay" size={24} aria-hidden />
                 </span>
-                <code className="flex-1 truncate font-['Shantell_Sans',cursive] text-sm font-medium text-[var(--text-primary)]">
+                <code
+                  className="min-w-0 flex-1 truncate font-['Shantell_Sans',cursive] text-sm font-medium text-[var(--text-primary)]"
+                  title={webhookUrl}
+                >
                   {webhookUrl}
                 </code>
                 <button
