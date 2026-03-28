@@ -207,7 +207,7 @@ html::-webkit-scrollbar-thumb:hover {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.8);
   box-shadow: 3px 3px 0 var(--border);
-  font-family: 'Shantell Sans', cursive;
+  font-family: 'Zen Maru Gothic', sans-serif;
   font-weight: 400;
   transition:
     box-shadow 160ms ease,

@@ -351,7 +351,7 @@ export function RoomDetailPage() {
                   <Icon name="link" variant="clay" size={24} aria-hidden />
                 </span>
                 <code
-                  className="min-w-0 flex-1 truncate font-['Shantell_Sans',cursive] text-sm font-medium text-[var(--text-primary)]"
+                  className="min-w-0 flex-1 truncate font-mono text-sm font-medium text-[var(--text-primary)]"
                   title={webhookUrl}
                 >
                   {webhookUrl}
