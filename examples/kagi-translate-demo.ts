@@ -157,3 +157,40 @@ function displayError(error: unknown, response?: TranslateResponse): void {
   console.log('  4. Check if rate limited (wait 60s)')
   console.log('\n' + '━'.repeat(60) + '\n')
 }
+
+/**
+ * Main entry point
+ */
+async function main(): Promise<void> {
+  console.log('\n🚀 Starting Kagi Translate Demo...\n')
+  console.log(`   Text: "${DEMO_TEXT}"`)
+  console.log(`   From: ${SOURCE_LANGUAGE}`)
+  console.log(`   To: ${TARGET_LANGUAGE}`)
+  console.log(`   Session Token: ${FAKE_SESSION_TOKEN} (fake)\n`)
+  console.log('⏳ Translating...')
+
+  try {
+    const result = await translateText(DEMO_TEXT, SOURCE_LANGUAGE, TARGET_LANGUAGE)
+
+    // Check for API error in response
+    if (result.error) {
+      displayError(new Error('API returned error'), result)
+      process.exit(1)
+    }
+
+    // Display successful translation
+    displayResult(
+      DEMO_TEXT,
+      result.translation,
+      SOURCE_LANGUAGE,
+      TARGET_LANGUAGE,
+      result.detectedLanguage,
+    )
+  } catch (error) {
+    displayError(error)
+    process.exit(1)
+  }
+}
+
+// Run main function
+await main()
