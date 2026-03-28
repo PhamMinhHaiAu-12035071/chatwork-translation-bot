@@ -5,7 +5,11 @@ import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
-import { WebhookStep01Svg, WebhookStep02Svg } from '~/components/atoms/webhook-svgs'
+import {
+  WebhookStep01Svg,
+  WebhookStep02Svg,
+  WebhookStep03Svg,
+} from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
   webhookUrl?: string
@@ -42,7 +46,7 @@ const STEPS: Step[] = [
     body: 'Copy the URL below and paste it into the "Webhook URL" field in the Chatwork form.',
     action: 'copy',
     actionLabel: 'Copy URL',
-    svgFragment: null,
+    svgFragment: <WebhookStep03Svg />,
   },
   {
     number: '04',
