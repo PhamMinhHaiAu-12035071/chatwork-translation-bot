@@ -10,6 +10,7 @@ import {
   WebhookStep02Svg,
   WebhookStep03Svg,
   WebhookStep04Svg,
+  WebhookStep05Svg,
 } from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
@@ -61,7 +62,7 @@ const STEPS: Step[] = [
     title: 'Save Webhook',
     body: 'Click Save. Chatwork will activate the webhook. No secret needed.',
     action: 'none',
-    svgFragment: null,
+    svgFragment: <WebhookStep05Svg />,
   },
 ]
 
