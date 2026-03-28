@@ -192,8 +192,14 @@ export function RoomDetailPage() {
   }
 
   const handleRoomStatusToggle = async () => {
+    // Optimistic UI update: Toggle immediately in local state
+    const targetState = !room.enabled
+    useRoomStore.setState((state) => ({
+      rooms: state.rooms.map((r) => (r.id === room.id ? { ...r, enabled: targetState } : r)),
+    }))
+
     const result = await roomStatusAction.execute(async () => {
-      if (room.enabled) {
+      if (!targetState) {
         await disableRoom(room.id)
       } else {
         await enableRoom(room.id)
@@ -203,11 +209,15 @@ export function RoomDetailPage() {
     })
 
     if (!result.ok) {
+      // Revert optimistic update on failure
+      useRoomStore.setState((state) => ({
+        rooms: state.rooms.map((r) => (r.id === room.id ? { ...r, enabled: !targetState } : r)),
+      }))
       toast(result.error, 'error')
       return
     }
 
-    const message = `"${room.destinationRoomName}" is now ${room.enabled ? 'paused' : 'enabled'}`
+    const message = `"${room.destinationRoomName}" is now ${targetState ? 'enabled' : 'paused'}`
     toast(message, 'info')
   }
 
@@ -230,13 +240,7 @@ export function RoomDetailPage() {
           noValidate
         >
           <BrutalCard className="theme-card-sky space-y-5" tilt="left">
-            <div className="flex flex-wrap items-center gap-3">
-              <StickerLabel tone="accent">Room Config</StickerLabel>
-              <span className="inline-flex items-center gap-1.5 rounded-full border-[3px] border-[var(--border)] bg-[var(--warning)] px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)] shadow-[3px_3px_0_var(--border)]">
-                <span className="opacity-60">#</span>
-                {room.id}
-              </span>
-            </div>
+            <StickerLabel tone="accent">Room Config</StickerLabel>
 
             <div className="grid gap-5 md:grid-cols-2">
               <BrutalInput
@@ -258,6 +262,7 @@ export function RoomDetailPage() {
                 label="AI Provider"
                 options={providerOptions}
                 colorVariant="accent"
+                icon="webhook"
                 error={editForm.formState.errors.aiProvider?.message}
                 {...aiProviderField}
               />
@@ -265,6 +270,7 @@ export function RoomDetailPage() {
                 label="AI Model"
                 options={modelOptions}
                 colorVariant="mint"
+                icon="play"
                 error={editForm.formState.errors.aiModel?.message}
                 {...editForm.register('aiModel')}
               />
@@ -272,6 +278,7 @@ export function RoomDetailPage() {
                 label="Translation Style"
                 options={styleOptions}
                 colorVariant="peach"
+                icon="pencil"
                 error={editForm.formState.errors.translationStyle?.message}
                 {...editForm.register('translationStyle')}
               />
@@ -319,8 +326,10 @@ export function RoomDetailPage() {
                 Webhook URL
               </div>
               <div className="brutal-input flex items-center gap-3 px-4 py-3">
-                <Icon name="link" variant="clay" size={18} aria-hidden />
-                <code className="flex-1 truncate font-['Shantell_Sans',cursive] text-xs font-medium text-[var(--text-primary)]">
+                <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
+                  <Icon name="link" variant="clay" size={24} aria-hidden />
+                </span>
+                <code className="flex-1 truncate font-['Shantell_Sans',cursive] text-sm font-medium text-[var(--text-primary)]">
                   {webhookUrl}
                 </code>
                 <button
@@ -350,6 +359,7 @@ export function RoomDetailPage() {
               }}
               className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
             >
+              <Icon name="book" variant="clay" size={20} aria-hidden />
               View Webhook Guide
               <Icon name="external-link" variant="stroke" size={14} aria-hidden />
             </button>

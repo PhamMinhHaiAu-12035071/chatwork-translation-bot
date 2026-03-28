@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 import type { SelectHTMLAttributes } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '~/components/atoms/icons'
+import type { ClayIconName } from '~/components/atoms/icons'
 
 interface SelectOption {
   value: string
@@ -17,11 +18,24 @@ interface BrutalSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   hint?: string | undefined
   error?: string | undefined
   colorVariant?: DropdownColor | undefined
+  icon?: ClayIconName | undefined
 }
 
 export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
   (
-    { label, options, placeholder, hint, error, colorVariant, className, id, onChange, ...rest },
+    {
+      label,
+      options,
+      placeholder,
+      hint,
+      error,
+      colorVariant,
+      icon,
+      className,
+      id,
+      onChange,
+      ...rest
+    },
     ref,
   ) => {
     const selectId = id ?? label.toLowerCase().replace(/\s+/g, '-')
@@ -214,8 +228,11 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
           aria-expanded={isOpen}
           aria-label={label}
         >
-          <span className={selectedOption ? '' : 'text-[var(--text-secondary)]'}>
-            {displayLabel}
+          <span className="flex min-w-0 flex-1 items-center gap-x-2">
+            {icon ? <Icon name={icon} variant="clay" size={20} aria-hidden /> : null}
+            <span className={selectedOption ? '' : 'text-[var(--text-secondary)]'}>
+              {displayLabel}
+            </span>
           </span>
           <span className="brutal-dropdown-chevron" data-open={isOpen ? 'true' : undefined}>
             <Icon name="chevron-down" variant="stroke" size={14} aria-hidden />

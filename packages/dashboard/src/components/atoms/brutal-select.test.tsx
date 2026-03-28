@@ -81,4 +81,27 @@ describe('BrutalSelect', () => {
     expect(SOURCE).toContain('data-color')
     expect(SOURCE).toContain('DropdownColor')
   })
+
+  it('renders a clay icon inside the trigger when icon prop is provided', () => {
+    const html = renderToStaticMarkup(
+      createElement(BrutalSelect, {
+        label: 'AI Provider',
+        options: [{ value: 'openai', label: 'OpenAI' }],
+        icon: 'webhook',
+      }),
+    )
+
+    expect(html).toContain('clay-icon-wrap')
+  })
+
+  it('renders no icon element when icon prop is omitted', () => {
+    const html = renderToStaticMarkup(
+      createElement(BrutalSelect, {
+        label: 'AI Provider',
+        options: [{ value: 'openai', label: 'OpenAI' }],
+      }),
+    )
+
+    expect(html).not.toContain('clay-icon-wrap')
+  })
 })

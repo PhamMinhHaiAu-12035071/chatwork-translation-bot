@@ -14,7 +14,10 @@ export function RoomStatusToggle({ enabled, loading, onToggle }: RoomStatusToggl
       aria-disabled={loading ? true : undefined}
       disabled={loading}
       onClick={onToggle}
-      className={['cursor-pointer border-none bg-transparent p-0', loading ? 'opacity-50' : '']
+      className={[
+        'tog-wrap cursor-pointer border-none bg-transparent p-0 outline-none [-webkit-tap-highlight-color:transparent]',
+        loading ? 'opacity-50' : '',
+      ]
         .join(' ')
         .trim()}
     >
