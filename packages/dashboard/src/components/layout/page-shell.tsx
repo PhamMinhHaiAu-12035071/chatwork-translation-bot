@@ -11,7 +11,7 @@ interface PageShellProps {
 
 export function PageShell({ eyebrow, title, description, actions, children }: PageShellProps) {
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-4">
           <StickerLabel tone="warning" tilt="flat">
@@ -26,7 +26,8 @@ export function PageShell({ eyebrow, title, description, actions, children }: Pa
         </div>
         {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
       </div>
-      {children}
+      <div className="page-divider-brutal" aria-hidden />
+      <div className="pt-2">{children}</div>
     </div>
   )
 }

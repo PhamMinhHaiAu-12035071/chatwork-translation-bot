@@ -489,6 +489,22 @@ html::-webkit-scrollbar-thumb:hover {
   font-weight: 800;
 }
 
+/* ── PageShell ruling divider ── */
+.page-divider-brutal {
+  height: 3px;
+  margin: 0.25rem 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--border) 0px,
+      var(--border) 14px,
+      transparent 14px,
+      transparent 20px
+    );
+  border-radius: 2px;
+  opacity: 0.55;
+}
+
 @keyframes float-orb {
   0%,
   100% {
