@@ -105,9 +105,9 @@ export function AppLayout() {
 
         <motion.main
           key={location.pathname}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
+          initial={{ opacity: 0, y: 10, scale: 0.99, rotate: -0.4 }}
+          animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           className="relative"
         >
           <div className="brutal-surface theme-card-cream relative min-h-full overflow-hidden p-6 md:p-8">
