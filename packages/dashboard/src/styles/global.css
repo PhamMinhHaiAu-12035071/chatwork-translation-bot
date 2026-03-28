@@ -697,3 +697,180 @@ html::-webkit-scrollbar-thumb:hover {
     transform: none;
   }
 }
+
+/* ── Icon system — clay + stroke variants ──────────────────── */
+
+/* Clay icon wrapper: positions shine streak pseudo-element */
+.clay-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 13px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.clay-icon-wrap::after {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: -50%;
+  width: 35%;
+  height: 150%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.75) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%) skewX(-15deg);
+  pointer-events: none;
+}
+
+/* Stroke icon wrapper */
+.stroke-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* ── Clay keyframes ──────────────────────────────────────────── */
+@keyframes clay-bounce {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.22) rotate(-5deg);
+  }
+  45% {
+    transform: scale(0.9) rotate(3deg);
+  }
+  65% {
+    transform: scale(1.1) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-130%) skewX(-15deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(230%) skewX(-15deg);
+    opacity: 0;
+  }
+}
+
+/* ── Stroke keyframes ────────────────────────────────────────── */
+@keyframes icon-slide-right {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(6px);
+    opacity: 0.5;
+  }
+  41% {
+    transform: translateX(-8px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-2px);
+    opacity: 0.7;
+  }
+}
+
+@keyframes icon-slide-left {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  40% {
+    transform: translateX(-6px);
+    opacity: 0.5;
+  }
+  41% {
+    transform: translateX(8px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(2px);
+    opacity: 0.7;
+  }
+}
+
+@keyframes icon-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(12deg) scale(1.1);
+  }
+  40% {
+    transform: rotate(-10deg);
+  }
+  60% {
+    transform: rotate(7deg);
+  }
+  80% {
+    transform: rotate(-4deg);
+  }
+}
+
+@keyframes icon-lift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-1.5px, -1.5px);
+  }
+}
+
+/* ── Hover animation dispatch ────────────────────────────────── */
+.clay-icon-wrap:hover svg {
+  animation: clay-bounce 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+}
+
+.clay-icon-wrap:hover::after {
+  animation: shine-sweep 0.6s ease forwards;
+}
+
+.stroke-icon-wrap.icon-anim-slide-right:hover svg {
+  animation: icon-slide-right 0.4s ease forwards;
+}
+
+.stroke-icon-wrap.icon-anim-slide-left:hover svg {
+  animation: icon-slide-left 0.4s ease forwards;
+}
+
+.stroke-icon-wrap.icon-anim-wiggle:hover svg {
+  animation: icon-wiggle 0.45s ease forwards;
+}
+
+.stroke-icon-wrap.icon-anim-lift:hover svg {
+  animation: icon-lift 0.28s ease forwards;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .clay-icon-wrap:hover svg,
+  .clay-icon-wrap:hover::after,
+  .stroke-icon-wrap:hover svg {
+    animation: none;
+  }
+}
