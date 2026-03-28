@@ -139,13 +139,13 @@ export function WebhookStep04Svg() {
         strokeWidth="3"
       />
 
-      {/* Label shadow */}
-      <rect x="84" y="140" width="130" height="14" rx="14" fill="#1a1a2e" />
+      {/* Label shadow — centered at bracket center x=170, width=168 */}
+      <rect x="89" y="140" width="168" height="14" rx="14" fill="#1a1a2e" />
       {/* Label — Shantell Sans, dark outline */}
       <rect
-        x="80"
+        x="85"
         y="136"
-        width="130"
+        width="168"
         height="14"
         rx="14"
         fill="#e84040"
@@ -153,7 +153,7 @@ export function WebhookStep04Svg() {
         strokeWidth="2.5"
       />
       <text
-        x="145"
+        x="169"
         y="146.5"
         fontFamily="'Shantell Sans', cursive"
         fontSize="7.5"
