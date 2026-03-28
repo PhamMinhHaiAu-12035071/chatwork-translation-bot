@@ -50,7 +50,7 @@ export function AppLayout() {
             </div>
           </BrutalCard>
 
-          <nav className="flex gap-3 overflow-x-auto pb-1 lg:flex-col lg:space-y-5 lg:overflow-visible lg:pb-0">
+          <nav className="flex gap-3 overflow-x-auto pb-1 lg:flex-col lg:space-y-3.5 lg:overflow-visible lg:pb-0">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
