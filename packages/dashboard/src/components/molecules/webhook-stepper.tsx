@@ -5,7 +5,7 @@ import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
-import { WebhookStep01Svg } from '~/components/atoms/webhook-svgs'
+import { WebhookStep01Svg, WebhookStep02Svg } from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
   webhookUrl?: string
@@ -34,7 +34,7 @@ const STEPS: Step[] = [
     title: 'Create New Webhook',
     body: 'Click "Add webhook". Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
     action: 'none',
-    svgFragment: null,
+    svgFragment: <WebhookStep02Svg />,
   },
   {
     number: '03',
