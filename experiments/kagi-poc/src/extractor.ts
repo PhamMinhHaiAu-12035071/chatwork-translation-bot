@@ -1,11 +1,12 @@
 import type { Page } from 'playwright'
 
-// NOTE: Kagi Translate may require verification (CAPTCHA) for headless browsers.
-// If you encounter "Please complete the verification step", Kagi is blocking the headless session.
-// Workarounds:
-// 1. Try with user-visible browser (debugging mode)
-// 2. Add delay/randomization to requests
-// 3. Use Kagi's official API if available
+// NOTE: Kagi Translate / Cloudflare Turnstile protection is aggressive against bots.
+// Current mitigation: playwright-extra + stealth + human-like mouse movements + randomized UA + delays.
+// If you still see verification challenge:
+// 1. Run with HEADLESS=false (visible browser)
+// 2. Add Turnstile solver (e.g. @sknx/cf-bypass or 2captcha)
+// 3. Use real residential proxies
+// 4. Consider switching to official Kagi API if available for production
 
 // Selector strategies in priority order.
 // Kagi Translate uses SvelteKit — these cover the most likely patterns.
@@ -27,42 +28,54 @@ const OUTPUT_SELECTORS = [
   '[role="textbox"][aria-readonly="true"]',
 ]
 
+const VI_DIACRITICS = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/g
+
 export async function extractTranslation(page: Page): Promise<string> {
-  // Wait for page to load and stabilize
   await page.waitForLoadState('load')
-  // Extended buffer for API response and rendering
-  await page.waitForTimeout(5_000)
+
+  // Wait until translation output appears (Vietnamese diacritics signal completion)
+  // Falls through after 20s if language target is not Vietnamese
+  await page
+    .waitForFunction(
+      () => {
+        const body = document.body.textContent ?? ''
+        return (
+          (
+            body.match(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/g) ??
+            []
+          ).length > 3
+        )
+      },
+      { timeout: 20_000 },
+    )
+    .catch(() => {
+      // Not translating to Vietnamese — fall through after 8s buffer
+      return page.waitForTimeout(8_000)
+    })
 
   // Try JavaScript evaluation to find translated text
   try {
     const jsResult = await page.evaluate(() => {
-      // First: look for Vietnamese text in textareas (most specific)
-      const textareas = document.querySelectorAll('textarea')
-      for (const ta of textareas) {
-        const text = (ta.value || ta.textContent || '').trim()
-        if (text.length > 15 && text.split(' ').length > 3) {
-          return text
-        }
-      }
+      const viPattern = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/g
 
-      // Second: search for Vietnamese text patterns in the DOM
+      // Search all elements for Vietnamese-diacritic-rich short text (translation output)
       const allElements = document.querySelectorAll('div, span, p, textarea')
+      let best: { text: string; score: number } | null = null
+
       for (const elem of allElements) {
-        const text = (elem.textContent || '').trim()
-        // Look for Vietnamese diacritics (quick heuristic)
-        if (
-          text.length > 15 &&
-          text.split(' ').length > 3 &&
-          (
-            text.match(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/g) ||
-            []
-          ).length > 2
-        ) {
-          return text
+        if ((elem as HTMLElement).offsetParent === null) continue // skip hidden
+        const text = (
+          elem instanceof HTMLTextAreaElement ? elem.value : (elem.textContent ?? '')
+        ).trim()
+        const words = text.split(/\s+/).length
+        const diacritics = (text.match(viPattern) ?? []).length
+        if (text.length > 5 && words >= 2 && diacritics >= 2) {
+          const score = diacritics * 2 + words
+          if (!best || score > best.score) best = { text, score }
         }
       }
 
-      return null
+      return best?.text ?? null
     })
     if (jsResult) return jsResult
   } catch {
