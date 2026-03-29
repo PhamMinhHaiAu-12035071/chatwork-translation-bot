@@ -3,12 +3,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import type { KagiTranslateOptions } from './types'
 import { buildKagiUrl } from './url-builder'
 import { extractTranslation } from './extractor'
-import { TurnstileSolver } from './turnstile-solver'
 
 chromium.use(StealthPlugin())
-
-const USE_SOLVER =
-  process.env['USE_TURNSTILE_SOLVER'] === 'true' || process.env['USE_TURNSTILE_SOLVER'] === '1'
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
@@ -92,30 +88,8 @@ export async function translate(options: KagiTranslateOptions): Promise<string> 
   const page = await context.newPage()
 
   try {
-    // If USE_SOLVER is enabled, use Turnstile solver before navigating
-    if (USE_SOLVER) {
-      console.log('[Kagi POC] Using Turnstile Solver (theyka/turnstile_solver)')
-      try {
-        const token = await TurnstileSolver.solve(url)
-        console.log('[Kagi POC] Solver returned token:', token.slice(0, 20) + '...')
-
-        // Navigate then inject token
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
-        await TurnstileSolver.injectToken(page, token)
-        await page.waitForTimeout(2000) // Wait for token to take effect
-      } catch (solverErr: any) {
-        console.warn(
-          '[Kagi POC] Solver failed, falling back to stealth+human behavior:',
-          solverErr.message,
-        )
-        // Fall back to human behavior if solver fails
-        await humanLikeBehavior(page, url)
-      }
-    } else {
-      // Default: stealth + human-like behavior without external solver
-      await humanLikeBehavior(page, url)
-    }
-
+    // Use stealth + human-like behavior
+    await humanLikeBehavior(page, url)
     const result = await extractTranslation(page)
     return result
   } catch (err) {
@@ -130,8 +104,8 @@ export async function translate(options: KagiTranslateOptions): Promise<string> 
 
       throw new Error(
         `Cloudflare / Turnstile likely blocking automation. Screenshots saved. ` +
-          `Try running with USE_TURNSTILE_SOLVER=true and ensure Docker solver is running (docker compose up -d). ` +
-          `Or run with HEADLESS=false to debug visually. ` +
+          `Try running with HEADLESS=false to debug visually. ` +
+          `Consider using paid services like 2captcha or switching to official Kagi API. ` +
           `See debug-*.png files for diagnosis.`,
       )
     }
