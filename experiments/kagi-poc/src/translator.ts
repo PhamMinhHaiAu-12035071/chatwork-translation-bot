@@ -3,6 +3,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import type { KagiTranslateOptions } from './types'
 import { buildKagiUrl } from './url-builder'
 import { extractTranslation } from './extractor'
+import { clickTurnstileCheckbox } from './turnstile-clicker'
 
 chromium.use(StealthPlugin())
 
@@ -42,7 +43,13 @@ async function humanLikeBehavior(page: any, url: string) {
   } catch (e) {}
 
   await page.waitForTimeout(1500 + Math.random() * 2000)
-  await page.waitForLoadState('networkidle')
+
+  // Try to wait for networkidle but don't fail if Cloudflare is blocking
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {
+    console.log(
+      '[Kagi POC] networkidle timeout (likely Cloudflare challenge), continuing anyway...',
+    )
+  })
 }
 
 export async function translate(options: KagiTranslateOptions): Promise<string> {
@@ -90,6 +97,14 @@ export async function translate(options: KagiTranslateOptions): Promise<string> 
   try {
     // Use stealth + human-like behavior
     await humanLikeBehavior(page, url)
+
+    // Try to click Turnstile checkbox if present
+    const turnstileClicked = await clickTurnstileCheckbox(page)
+    if (turnstileClicked) {
+      // Wait for translation to process after verification
+      await page.waitForTimeout(3000)
+    }
+
     const result = await extractTranslation(page)
     return result
   } catch (err) {
