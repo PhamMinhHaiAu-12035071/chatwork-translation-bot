@@ -214,207 +214,216 @@ export function RoomListPage() {
         </div>
       }
     >
-      <div className="grid gap-4 xl:grid-cols-3">
-        {[
-          {
-            label: 'Total Rooms',
-            value: rooms.length,
-            tone: 'accent' as const,
-            theme: 'theme-card-lilac',
-            tilt: 'left' as const,
-          },
-          {
-            label: 'Active',
-            value: activeCount,
-            tone: 'success' as const,
-            theme: 'theme-card-mint',
-            tilt: 'flat' as const,
-          },
-          {
-            label: 'Inactive',
-            value: inactiveCount,
-            tone: 'warning' as const,
-            theme: 'theme-card-butter',
-            tilt: 'right' as const,
-          },
-        ].map((stat) => (
-          <BrutalCard
-            key={stat.label}
-            tilt={stat.tilt}
-            className={[stat.theme, 'space-y-3'].join(' ')}
-          >
-            <StickerLabel tone={stat.tone}>{stat.label}</StickerLabel>
-            <div className="text-4xl font-extrabold">
-              <SlideStackNumber value={stat.value} minimumDigits={2} className="font-metric" />
-            </div>
-          </BrutalCard>
-        ))}
-      </div>
-
-      {listState === 'loading' || listState === 'idle' ? <RoomSkeletonList count={6} /> : null}
-
-      {listState === 'error' ? (
-        <BrutalCard className="theme-card-blush space-y-3">
-          <StickerLabel tone="warning">Error</StickerLabel>
-          <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">{listError}</p>
-          <button
-            type="button"
-            onClick={() => {
-              void fetchRooms()
-            }}
-            className="brutal-button theme-button-warm px-4 py-2 font-heading text-sm font-bold text-white"
-          >
-            Retry
-          </button>
-        </BrutalCard>
-      ) : null}
-
-      {listState === 'success' && rooms.length === 0 ? (
-        <BrutalCard className="theme-card-sky space-y-5">
-          <StatusPill tone="warning">Empty State</StatusPill>
-          <div className="space-y-3">
-            <h2 className="font-heading text-3xl font-bold">Create your first translation room</h2>
-            <p className="font-ui-body max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">
-              Set up your Chatwork source room, choose an AI provider, and configure translation
-              preferences to get started.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              void navigate('/rooms/new')
-            }}
-            className="brutal-button theme-button-violet inline-flex items-center gap-2.5 px-5 py-3 font-heading text-sm font-bold text-white"
-          >
-            <Icon name="plus" variant="clay" size={24} aria-hidden />
-            Create First Room
-          </button>
-        </BrutalCard>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {rooms.map((room, index) =>
-            (() => {
-              const isSpotlighted = room.id === spotlightRoomId
-              const spotlightAnimate = isSpotlighted
-                ? reducedMotion
-                  ? {
-                      backgroundColor: 'rgba(255, 225, 154, 0.92)',
-                      boxShadow: '8px 8px 0 rgba(212, 68, 112, 0.92)',
-                    }
-                  : {
-                      backgroundColor: [
-                        'rgba(255, 225, 154, 0)',
-                        'rgba(255, 225, 154, 0.96)',
-                        'rgba(255, 225, 154, 0.28)',
-                      ],
-                      boxShadow: [
-                        '0px 0px 0 rgba(212, 68, 112, 0)',
-                        '8px 8px 0 rgba(212, 68, 112, 0.96)',
-                        '4px 4px 0 rgba(212, 68, 112, 0.34)',
-                      ],
-                    }
-                : {
-                    backgroundColor: 'rgba(255, 225, 154, 0)',
-                    boxShadow: '0px 0px 0 rgba(212, 68, 112, 0)',
-                  }
-
-              return (
-                <motion.div
-                  key={room.id}
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                    ...spotlightAnimate,
-                  }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{
-                    duration: reducedMotion ? 0 : isSpotlighted ? 2.2 : 0.18,
-                    delay: index * 0.04,
-                    ease: 'easeOut',
-                  }}
-                  className="rounded-[24px] p-1"
-                >
-                  {(() => {
-                    const roomIdx = getRoomCardIndex(room.id)
-                    const cardTheme = cardThemeByIndex[roomIdx] ?? 'theme-card-lilac'
-                    const tilt = tiltByIndex[roomIdx] ?? 'flat'
-                    const spotlightTheme = isSpotlighted
-                      ? 'theme-card-butter border-[var(--pink-accent)] shadow-[8px_8px_0_var(--pink-accent)]'
-                      : cardTheme
-
-                    return (
-                      <BrutalCard className={[spotlightTheme, 'space-y-4'].join(' ')} tilt={tilt}>
-                        <div className="space-y-2">
-                          <div className="flex min-w-0 items-start justify-between gap-4">
-                            <StatusRibbon enabled={room.enabled} />
-                            <RoomStatusToggle
-                              enabled={room.enabled}
-                              loading={roomToggleAction.loading}
-                              onToggle={() => {
-                                void handleToggle(room.id, room.destinationRoomName, room.enabled)
-                              }}
-                            />
-                          </div>
-                          <div className="min-w-0 space-y-1">
-                            {isSpotlighted ? (
-                              <StickerLabel tone="warning" tilt="right">
-                                New
-                              </StickerLabel>
-                            ) : null}
-                            <div className="font-heading text-lg font-bold leading-tight">
-                              {room.destinationRoomName}
-                            </div>
-                            <div className="font-ui-body text-xs text-[var(--text-secondary)]">
-                              {`Room ID: ${String(room.originalRoomId)}`}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
-                          <div>
-                            <span className="font-semibold">Provider: </span>
-                            {PROVIDER_LABELS[room.aiProvider]}
-                            {room.aiModel ? ` · ${room.aiModel}` : ' · default model'}
-                          </div>
-                          <div>
-                            <span className="font-semibold">Style: </span>
-                            {TRANSLATION_STYLE_LABELS[room.translationStyle]}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void navigate(`/rooms/${room.id}`)
-                            }}
-                            className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
-                          >
-                            <Icon name="pencil" variant="clay" size={20} aria-hidden />
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedRoom(room)
-                            }}
-                            className="brutal-button theme-button-pink inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
-                          >
-                            <Icon name="trash" variant="clay" size={20} aria-hidden />
-                            Delete
-                          </button>
-                        </div>
-                      </BrutalCard>
-                    )
-                  })()}
-                </motion.div>
-              )
-            })(),
-          )}
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-4 xl:grid-cols-3">
+          {[
+            {
+              label: 'Total Rooms',
+              value: rooms.length,
+              tone: 'accent' as const,
+              theme: 'theme-card-lilac',
+              tilt: 'left' as const,
+            },
+            {
+              label: 'Active',
+              value: activeCount,
+              tone: 'success' as const,
+              theme: 'theme-card-mint',
+              tilt: 'flat' as const,
+            },
+            {
+              label: 'Inactive',
+              value: inactiveCount,
+              tone: 'warning' as const,
+              theme: 'theme-card-butter',
+              tilt: 'right' as const,
+            },
+          ].map((stat) => (
+            <BrutalCard
+              key={stat.label}
+              tilt={stat.tilt}
+              className={[stat.theme, 'space-y-3'].join(' ')}
+            >
+              <StickerLabel tone={stat.tone}>{stat.label}</StickerLabel>
+              <div className="text-4xl font-extrabold">
+                <SlideStackNumber value={stat.value} minimumDigits={2} className="font-metric" />
+              </div>
+            </BrutalCard>
+          ))}
         </div>
-      )}
+
+        {listState === 'loading' || listState === 'idle' ? <RoomSkeletonList count={6} /> : null}
+
+        {listState === 'error' ? (
+          <BrutalCard className="theme-card-blush space-y-3">
+            <StickerLabel tone="warning">Error</StickerLabel>
+            <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
+              {listError}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void fetchRooms()
+              }}
+              className="brutal-button theme-button-warm px-4 py-2 font-heading text-sm font-bold text-white"
+            >
+              Retry
+            </button>
+          </BrutalCard>
+        ) : null}
+
+        {listState === 'success' && rooms.length === 0 ? (
+          <BrutalCard className="theme-card-sky space-y-5">
+            <StatusPill tone="warning">Empty State</StatusPill>
+            <div className="space-y-3">
+              <h2 className="font-heading text-3xl font-bold">
+                Create your first translation room
+              </h2>
+              <p className="font-ui-body max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">
+                Set up your Chatwork source room, choose an AI provider, and configure translation
+                preferences to get started.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void navigate('/rooms/new')
+              }}
+              className="brutal-button theme-button-violet inline-flex items-center gap-2.5 px-5 py-3 font-heading text-sm font-bold text-white"
+            >
+              <Icon name="plus" variant="clay" size={24} aria-hidden />
+              Create First Room
+            </button>
+          </BrutalCard>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {rooms.map((room, index) =>
+              (() => {
+                const isSpotlighted = room.id === spotlightRoomId
+                const spotlightAnimate = isSpotlighted
+                  ? reducedMotion
+                    ? {
+                        backgroundColor: 'rgba(255, 225, 154, 0.92)',
+                        boxShadow: '8px 8px 0 rgba(212, 68, 112, 0.92)',
+                      }
+                    : {
+                        backgroundColor: [
+                          'rgba(255, 225, 154, 0)',
+                          'rgba(255, 225, 154, 0.96)',
+                          'rgba(255, 225, 154, 0.28)',
+                        ],
+                        boxShadow: [
+                          '0px 0px 0 rgba(212, 68, 112, 0)',
+                          '8px 8px 0 rgba(212, 68, 112, 0.96)',
+                          '4px 4px 0 rgba(212, 68, 112, 0.34)',
+                        ],
+                      }
+                  : {
+                      backgroundColor: 'rgba(255, 225, 154, 0)',
+                      boxShadow: '0px 0px 0 rgba(212, 68, 112, 0)',
+                    }
+
+                return (
+                  <motion.div
+                    key={room.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      ...spotlightAnimate,
+                    }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{
+                      duration: reducedMotion ? 0 : isSpotlighted ? 2.2 : 0.18,
+                      delay: index * 0.04,
+                      ease: 'easeOut',
+                    }}
+                    className="rounded-[24px] p-1"
+                  >
+                    {(() => {
+                      const roomIdx = getRoomCardIndex(room.id)
+                      const cardTheme = cardThemeByIndex[roomIdx] ?? 'theme-card-lilac'
+                      const tilt = tiltByIndex[roomIdx] ?? 'flat'
+                      const spotlightTheme = isSpotlighted
+                        ? 'theme-card-butter border-[var(--pink-accent)] shadow-[8px_8px_0_var(--pink-accent)]'
+                        : cardTheme
+
+                      return (
+                        <BrutalCard
+                          className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
+                          tilt={tilt}
+                        >
+                          <div className="space-y-2">
+                            <div className="flex min-w-0 items-start justify-between gap-4">
+                              <StatusRibbon enabled={room.enabled} />
+                              <RoomStatusToggle
+                                enabled={room.enabled}
+                                loading={roomToggleAction.loading}
+                                onToggle={() => {
+                                  void handleToggle(room.id, room.destinationRoomName, room.enabled)
+                                }}
+                              />
+                            </div>
+                            <div className="min-w-0 space-y-1">
+                              {isSpotlighted ? (
+                                <StickerLabel tone="warning" tilt="right">
+                                  New
+                                </StickerLabel>
+                              ) : null}
+                              <div className="font-heading text-lg font-bold leading-tight">
+                                {room.destinationRoomName}
+                              </div>
+                              <div className="font-ui-body text-xs text-[var(--text-secondary)]">
+                                {`Room ID: ${String(room.originalRoomId)}`}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
+                            <div>
+                              <span className="font-semibold">Provider: </span>
+                              {PROVIDER_LABELS[room.aiProvider]}
+                              {room.aiModel ? ` · ${room.aiModel}` : ' · default model'}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Style: </span>
+                              {TRANSLATION_STYLE_LABELS[room.translationStyle]}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void navigate(`/rooms/${room.id}`)
+                              }}
+                              className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
+                            >
+                              <Icon name="pencil" variant="clay" size={20} aria-hidden />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedRoom(room)
+                              }}
+                              className="brutal-button theme-button-pink inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
+                            >
+                              <Icon name="trash" variant="clay" size={20} aria-hidden />
+                              Delete
+                            </button>
+                          </div>
+                        </BrutalCard>
+                      )
+                    })()}
+                  </motion.div>
+                )
+              })(),
+            )}
+          </div>
+        )}
+      </div>
 
       {selectedRoom ? (
         <DeleteRoomConfirmModal

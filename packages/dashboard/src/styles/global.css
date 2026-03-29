@@ -492,7 +492,7 @@ html::-webkit-scrollbar-thumb:hover {
 /* ── PageShell ruling divider ── */
 .page-divider-brutal {
   height: 3px;
-  margin: 0.25rem 0;
+  margin: 0;
   background:
     repeating-linear-gradient(
       90deg,
