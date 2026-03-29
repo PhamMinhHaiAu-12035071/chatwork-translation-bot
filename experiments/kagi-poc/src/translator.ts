@@ -20,10 +20,20 @@ export async function translate(options: KagiTranslateOptions): Promise<string> 
 
   try {
     await page.setExtraHTTPHeaders({ 'User-Agent': USER_AGENT })
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
-    return await extractTranslation(page)
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    const result = await extractTranslation(page)
+    return result
   } catch (err) {
-    await page.screenshot({ path: 'debug-error.png', fullPage: true }).catch(() => {})
+    const errorMessage = (err as Error).message || String(err)
+    // If extraction fails due to verification, provide helpful guidance
+    if (errorMessage.includes('Could not find translation output')) {
+      await page.screenshot({ path: 'debug-extraction-failed.png', fullPage: true }).catch(() => {})
+      throw new Error(
+        'Translation failed: Kagi Translate may require verification (CAPTCHA) for headless browsers. ' +
+          'For local testing, use a visible browser with `--headed` flag or use the authenticated API. ' +
+          'See debug-extraction-failed.png for details.',
+      )
+    }
     throw err
   } finally {
     await browser.close()
