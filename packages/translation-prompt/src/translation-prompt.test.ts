@@ -117,6 +117,31 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).toMatch(/katakana loanwords/i)
   })
 
+  it('treats Japanese formulas functionally and minimally', () => {
+    const result = buildSingleCallPrompts('お世話になっております。', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/function/i)
+    expect(result.system).toMatch(/お世話になっております/i)
+    expect(result.system).toMatch(/do not invent|unless the source explicitly carries that meaning/i)
+    expect(result.system).toMatch(/Trân trọng|xem xét|cảm ơn/i)
+  })
+
+  it('keeps Japanese-script personal names instead of auto-romanizing them', () => {
+    const result = buildSingleCallPrompts('山田太郎さんに連絡してください。', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/Japanese-script personal names/i)
+  })
+
+  it('includes a first-class English workplace layer instead of relying on Japanese fallback rules', () => {
+    const result = buildSingleCallPrompts('Could you check this by Friday?', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/English source rules|English workplace/i)
+    expect(result.system).toMatch(/Could you|Just checking|Hope you're well/i)
+  })
+
+  it('treats English hedging by communicative intent instead of literal syntax mirroring', () => {
+    const result = buildSingleCallPrompts('I wanted to follow up on this.', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/communicative intent/i)
+    expect(result.system).toMatch(/bookish|syntax-mirroring/i)
+  })
+
   it('natural style uses casual register guidance without persona theater', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
     expect(result.system).toMatch(/NATURAL_CASUAL/i)
