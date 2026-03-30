@@ -164,6 +164,13 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).toMatch(/literal phrasing/i)
   })
 
+  it('natural casual has the highest paraphrase budget and avoids overfamiliar chat slang', () => {
+    const result = buildSingleCallPrompts('進捗どうですか？', 'NATURAL_CASUAL')
+    expect(result.system).toMatch(/highest paraphrase budget|native-feeling Vietnamese/i)
+    expect(result.system).toMatch(/chat-app slang|overfamiliar/i)
+    expect(result.system).toMatch(/only when local context supports them|prefer no pronoun/i)
+  })
+
   it('natural style has no micro-examples or contrastive packs', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
     expect(result.system).not.toMatch(/Bad\s*->\s*Good/i)
@@ -184,6 +191,12 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).toMatch(/（.*）|「.*」|Japanese punctuation/i)
   })
 
+  it('professional business stays the stable default workplace style', () => {
+    const result = buildSingleCallPrompts('Please review the attached file.', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/stable default/i)
+    expect(result.system).toMatch(/modern|respectful|concise/i)
+  })
+
   it('technical style keeps engineering terminology and terse register', () => {
     const result = buildSingleCallPrompts('テスト', 'TECHNICAL')
     expect(result.system).toMatch(/technical.*register|technical prose/i)
@@ -200,6 +213,20 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).toMatch(/business.*cadence/i)
     expect(result.system).toMatch(/decorative language/i)
     expect(result.system).not.toMatch(/Bad\s*->\s*Good/i)
+  })
+
+  it('technical keeps the lowest paraphrase budget and preserves more industry English', () => {
+    const result = buildSingleCallPrompts('Deploy to staging after approval.', 'TECHNICAL')
+    expect(result.system).toMatch(/lowest paraphrase budget/i)
+    expect(result.system).toMatch(/industry-standard English|technical force/i)
+  })
+
+  it('self-verification checks naturalness, semantic fidelity, and style separation only', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/naturalness/i)
+    expect(result.system).toMatch(/semantic fidelity/i)
+    expect(result.system).toMatch(/style separation/i)
+    expect(result.system).not.toMatch(/warmth present|Particle Logic/i)
   })
 })
 
