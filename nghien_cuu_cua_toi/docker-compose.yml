@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  translator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kagi-translator
+    restart: unless-stopped
+    environment:
+      - DISPLAY=:99
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    # Optional: Resource limits (uncomment if needed)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 2G
