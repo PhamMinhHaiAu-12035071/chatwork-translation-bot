@@ -396,7 +396,7 @@ describe('handleTranslateRequest', () => {
       aiProvider: 'gemini',
       aiModel: 'gemini-2.5-pro',
       aiApiToken: 'room-gemini-token',
-      translationStyle: 'AUTO_CONTEXT',
+      translationStyle: 'NATURAL_CASUAL',
     })
 
     mockGetProviderPlugin.mockImplementation((id: string) =>

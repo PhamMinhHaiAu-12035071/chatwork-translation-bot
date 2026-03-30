@@ -94,7 +94,7 @@ describe('RoomConfigStore', () => {
         destinationRoomName: 'Other Room',
         aiProvider: 'gemini',
         aiModel: null,
-        translationStyle: 'AUTO_CONTEXT',
+        translationStyle: 'NATURAL_CASUAL',
         aiApiToken: 'token2',
       }),
     )

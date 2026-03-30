@@ -4,7 +4,6 @@ export const AI_PROVIDER_VALUES = ['openai', 'gemini'] as const
 export type RoomAiProvider = (typeof AI_PROVIDER_VALUES)[number]
 
 export const TRANSLATION_STYLE_VALUES_ROOM = [
-  'AUTO_CONTEXT',
   'NATURAL_CASUAL',
   'PROFESSIONAL_BUSINESS',
   'TECHNICAL',

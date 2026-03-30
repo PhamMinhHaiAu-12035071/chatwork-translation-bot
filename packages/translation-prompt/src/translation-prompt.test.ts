@@ -80,7 +80,7 @@ describe('buildSingleCallPrompts', () => {
   })
 
   it('keeps fidelity-first wording inside the style policy', () => {
-    const result = buildSingleCallPrompts('テスト', 'AUTO_CONTEXT')
+    const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
     expect(result.system).toMatch(/preserve fidelity|source meaning|politeness intent/i)
   })
 })
@@ -122,12 +122,9 @@ describe('buildStructuredTranslationPrompts', () => {
 })
 
 describe('translation style profiles', () => {
-  it('defines stable profile content for all four presets', async () => {
+  it('defines stable profile content for all three presets', async () => {
     const { TRANSLATION_STYLE_PROFILES } = await import('~/sections/translation-style-profiles')
 
-    expect(TRANSLATION_STYLE_PROFILES.AUTO_CONTEXT).toMatchObject({
-      name: 'Auto-detect Context',
-    })
     expect(TRANSLATION_STYLE_PROFILES.NATURAL_CASUAL).toMatchObject({
       name: 'Natural / Casual',
     })
