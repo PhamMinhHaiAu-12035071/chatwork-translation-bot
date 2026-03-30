@@ -16,18 +16,18 @@ function makeExecutor(
 }
 
 describe('TranslationPipeline', () => {
-  it('calls executor exactly once for any text', async () => {
+  it('calls executor twice for any text (draft + polish)', async () => {
     const { executor, getCallCount } = makeExecutor()
     const pipeline = new TranslationPipeline(executor)
     await pipeline.run('お世話になっております。')
-    expect(getCallCount()).toBe(1)
+    expect(getCallCount()).toBe(2)
   })
 
-  it('calls executor exactly once for short text', async () => {
+  it('calls executor twice for short text (draft + polish)', async () => {
     const { executor, getCallCount } = makeExecutor()
     const pipeline = new TranslationPipeline(executor)
     await pipeline.run('OK')
-    expect(getCallCount()).toBe(1)
+    expect(getCallCount()).toBe(2)
   })
 
   it('returns TranslationResult with translatedText from executor', async () => {
@@ -166,5 +166,119 @@ describe('TranslationPipeline', () => {
         message: 'Translation segment count mismatch',
       })
     }
+  })
+
+  describe('two-step pipeline (draft → polish)', () => {
+    it('calls executor twice for single text — draft then polish', async () => {
+      let callCount = 0
+      const executor: ILLMExecutor = {
+        execute<T>(_prompts: PromptPair, _schema: ISchema<T>) {
+          callCount++
+          if (callCount === 1) {
+            return Promise.resolve({ sourceLang: 'Japanese', translated: 'Bản nháp' } as T)
+          }
+          return Promise.resolve({ translated: 'Bản hoàn thiện' } as T)
+        },
+      }
+      const pipeline = new TranslationPipeline(executor)
+      const result = await pipeline.run('テスト')
+      expect(callCount).toBe(2)
+      expect(result.translatedText).toBe('Bản hoàn thiện')
+      expect(result.sourceLang).toBe('Japanese')
+    })
+
+    it('calls executor twice for structured multi-segment translation', async () => {
+      let callCount = 0
+      const executor: ILLMExecutor = {
+        execute<T>(_prompts: PromptPair, _schema: ISchema<T>) {
+          callCount++
+          if (callCount === 1) {
+            return Promise.resolve({
+              sourceLang: 'Japanese',
+              translatedSegments: ['Nháp 1', 'Nháp 2'],
+            } as T)
+          }
+          return Promise.resolve({ translatedSegments: ['Hoàn thiện 1', 'Hoàn thiện 2'] } as T)
+        },
+      }
+      const pipeline = new TranslationPipeline(executor)
+      const result = await pipeline.runStructured({
+        cleanText: 'こんにちは\n資料をご確認ください。',
+        translationInputs: ['こんにちは', '資料をご確認ください。'],
+      })
+      expect(callCount).toBe(2)
+      expect(result.translatedSegments).toEqual(['Hoàn thiện 1', 'Hoàn thiện 2'])
+    })
+
+    it('passes source text and draft to polish prompt (second call)', async () => {
+      const calls: PromptPair[] = []
+      const executor: ILLMExecutor = {
+        execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
+          calls.push(prompts)
+          if (calls.length === 1) {
+            return Promise.resolve({ sourceLang: 'Japanese', translated: 'Bản nháp' } as T)
+          }
+          return Promise.resolve({ translated: 'Bản hoàn thiện' } as T)
+        },
+      }
+      const pipeline = new TranslationPipeline(executor)
+      await pipeline.run('テスト')
+      expect(calls).toHaveLength(2)
+      // Polish call (second) should contain both source and draft
+      if (calls[1]) {
+        expect(calls[1].user).toContain('テスト')
+        expect(calls[1].user).toContain('Bản nháp')
+      }
+    })
+
+    it('falls back to draft when polish step fails', async () => {
+      let callCount = 0
+      const executor: ILLMExecutor = {
+        execute<T>(_prompts: PromptPair, _schema: ISchema<T>) {
+          callCount++
+          if (callCount === 1) {
+            return Promise.resolve({ sourceLang: 'Japanese', translated: 'Bản nháp' } as T)
+          }
+          return Promise.reject(new Error('Polish LLM failed'))
+        },
+      }
+      const pipeline = new TranslationPipeline(executor)
+      const result = await pipeline.run('テスト')
+      expect(result.translatedText).toBe('Bản nháp')
+      expect(result.sourceLang).toBe('Japanese')
+    })
+
+    it('falls back to draft segments when structured polish step fails', async () => {
+      let callCount = 0
+      const executor: ILLMExecutor = {
+        execute<T>(_prompts: PromptPair, _schema: ISchema<T>) {
+          callCount++
+          if (callCount === 1) {
+            return Promise.resolve({
+              sourceLang: 'Japanese',
+              translatedSegments: ['Nháp 1', 'Nháp 2'],
+            } as T)
+          }
+          return Promise.reject(new Error('Polish LLM failed'))
+        },
+      }
+      const pipeline = new TranslationPipeline(executor)
+      const result = await pipeline.runStructured({
+        cleanText: 'こんにちは\n資料',
+        translationInputs: ['こんにちは', '資料'],
+      })
+      expect(result.translatedSegments).toEqual(['Nháp 1', 'Nháp 2'])
+    })
+
+    it('still skips LLM entirely for zero-input structured requests', async () => {
+      const { executor, getCallCount } = makeExecutor()
+      const pipeline = new TranslationPipeline(executor)
+      const result = await pipeline.runStructured({
+        cleanText: '[code]x[/code]',
+        translationInputs: [],
+      })
+      expect(getCallCount()).toBe(0)
+      expect(result.translatedSegments).toEqual([])
+    })
   })
 })
