@@ -2,8 +2,12 @@ import { describe, it, expect } from 'bun:test'
 import {
   buildSingleCallPrompts,
   buildStructuredTranslationPrompts,
+  buildPolishPrompts,
+  buildStructuredPolishPrompts,
   StructuredTranslationDraftSchema,
   TranslationDraftSchema,
+  PolishResultSchema,
+  StructuredPolishResultSchema,
 } from './translation-prompt'
 
 describe('buildSingleCallPrompts', () => {
@@ -165,5 +169,90 @@ describe('StructuredTranslationDraftSchema', () => {
         translatedSegments: [],
       }),
     ).toThrow()
+  })
+})
+
+describe('buildPolishPrompts', () => {
+  it('returns PromptPair with system and user strings', () => {
+    const result = buildPolishPrompts('テスト', 'Kiểm tra', 'NATURAL_CASUAL')
+    expect(typeof result.system).toBe('string')
+    expect(typeof result.user).toBe('string')
+  })
+
+  it('embeds source text in user prompt', () => {
+    const result = buildPolishPrompts('お世話になっております。', 'Xin chào.', 'NATURAL_CASUAL')
+    expect(result.user).toContain('お世話になっております。')
+  })
+
+  it('embeds draft translation in user prompt', () => {
+    const result = buildPolishPrompts('テスト', 'Bản dịch nháp', 'NATURAL_CASUAL')
+    expect(result.user).toContain('Bản dịch nháp')
+  })
+
+  it('system prompt contains polish persona', () => {
+    const result = buildPolishPrompts('テスト', 'Kiểm tra', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/native Vietnamese editor|translationese/i)
+  })
+
+  it('system prompt contains style-specific polish criteria', () => {
+    const result = buildPolishPrompts('テスト', 'Kiểm tra', 'NATURAL_CASUAL')
+    expect(result.system).toContain('NATURAL_CASUAL')
+    expect(result.system).toMatch(/Zalo|colleague|conversational/i)
+  })
+
+  it('user prompt instructs JSON-only output with translated key', () => {
+    const result = buildPolishPrompts('テスト', 'Kiểm tra', 'NATURAL_CASUAL')
+    expect(result.user).toContain('JSON')
+    expect(result.user).toContain('"translated"')
+  })
+})
+
+describe('buildStructuredPolishPrompts', () => {
+  it('returns PromptPair with system and user strings', () => {
+    const result = buildStructuredPolishPrompts(
+      ['一つ目', '二つ目'],
+      ['Cái thứ nhất', 'Cái thứ hai'],
+      'PROFESSIONAL_BUSINESS',
+    )
+    expect(typeof result.system).toBe('string')
+    expect(typeof result.user).toBe('string')
+  })
+
+  it('embeds source segments in user prompt', () => {
+    const segments = ['お世話になっております。', '資料をご確認ください。']
+    const drafts = ['Xin chào.', 'Vui lòng xem tài liệu.']
+    const result = buildStructuredPolishPrompts(segments, drafts, 'PROFESSIONAL_BUSINESS')
+    for (const seg of segments) {
+      expect(result.user).toContain(seg)
+    }
+  })
+
+  it('embeds draft segments in user prompt', () => {
+    const segments = ['テスト']
+    const drafts = ['Bản dịch nháp']
+    const result = buildStructuredPolishPrompts(segments, drafts, 'PROFESSIONAL_BUSINESS')
+    expect(result.user).toContain('Bản dịch nháp')
+  })
+
+  it('instructs JSON-only output with translatedSegments', () => {
+    const result = buildStructuredPolishPrompts(['テスト'], ['Kiểm tra'], 'TECHNICAL')
+    expect(result.user).toContain('JSON')
+    expect(result.user).toContain('translatedSegments')
+  })
+})
+
+describe('PolishResultSchema', () => {
+  it('parses valid polish result', () => {
+    const result = PolishResultSchema.parse({ translated: 'Xin chào' })
+    expect(result.translated).toBe('Xin chào')
+  })
+})
+
+describe('StructuredPolishResultSchema', () => {
+  it('parses valid structured polish result', () => {
+    const result = StructuredPolishResultSchema.parse({
+      translatedSegments: ['Xin chào'],
+    })
+    expect(result.translatedSegments).toEqual(['Xin chào'])
   })
 })
