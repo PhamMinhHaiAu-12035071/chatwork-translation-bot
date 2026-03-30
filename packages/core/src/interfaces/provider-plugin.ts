@@ -1,9 +1,11 @@
+import type { TranslationStyle } from '~/types/translation-style'
 import type { ILLMExecutor } from './llm-executor'
 
 export interface ProviderCreateContext {
   modelId: string
   apiKey?: string
   baseUrl?: string
+  translationStyle?: TranslationStyle
 }
 
 export interface ProviderManifest {

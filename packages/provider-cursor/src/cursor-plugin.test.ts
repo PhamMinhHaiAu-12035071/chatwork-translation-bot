@@ -102,6 +102,23 @@ describe('cursorPlugin', () => {
     expect(result.translated).toBe('Xin chào')
   })
 
+  it('describes provider-managed execution metadata for cursor', () => {
+    const executor = cursorPlugin.create({
+      modelId: 'sonnet-4.6',
+      baseUrl: 'http://127.0.0.1:8765/v1',
+      translationStyle: 'NATURAL_CASUAL',
+    })
+
+    expect(executor.describeExecution()).toEqual({
+      generation: {
+        temperature: null,
+        maxOutputTokens: null,
+        providerOptions: null,
+        providerManaged: true,
+      },
+    })
+  })
+
   it('executes with JSON wrapped in markdown code block', async () => {
     mockResponseText =
       'Here is the translation:\n```json\n{"sourceLang": "Japanese", "translated": "Xin chào"}\n```'

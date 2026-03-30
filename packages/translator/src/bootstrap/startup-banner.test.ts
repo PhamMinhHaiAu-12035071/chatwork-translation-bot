@@ -24,7 +24,17 @@ describe('logStartupBanner', () => {
         defaultModel: 'gemini-2.5-pro',
         capabilities: { streaming: false },
       },
-      create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
+      create: () => ({
+        execute: () => Promise.reject(new Error('noop')),
+        describeExecution: () => ({
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }),
+      }),
     })
 
     const { logStartupBanner } = await import('./startup-banner')
@@ -51,7 +61,17 @@ describe('logStartupBanner', () => {
         defaultModel: 'gemini-2.5-pro',
         capabilities: { streaming: false },
       },
-      create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
+      create: () => ({
+        execute: () => Promise.reject(new Error('noop')),
+        describeExecution: () => ({
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }),
+      }),
     })
 
     const { logStartupBanner } = await import('./startup-banner')
@@ -77,7 +97,17 @@ describe('logStartupBanner', () => {
         capabilities: { streaming: false },
         timeoutMs: 1_800_000,
       },
-      create: () => ({ execute: () => Promise.reject(new Error('noop')) }),
+      create: () => ({
+        execute: () => Promise.reject(new Error('noop')),
+        describeExecution: () => ({
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }),
+      }),
     })
 
     const { logStartupBanner } = await import('./startup-banner')

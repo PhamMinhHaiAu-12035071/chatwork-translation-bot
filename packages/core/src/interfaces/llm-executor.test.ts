@@ -18,11 +18,22 @@ describe('ILLMExecutor types', () => {
       execute<T>(prompts: PromptPair, schema: ISchema<T>): Promise<T> {
         return Promise.resolve(schema.parse({ x: 1 }))
       },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
+      },
     }
     const result = await executor.execute(
       { system: 'sys', user: 'usr' },
       { parse: (d: unknown) => d as { x: number } },
     )
     expect(result.x).toBe(1)
+    expect(executor.describeExecution().generation.temperature).toBe(0)
   })
 })

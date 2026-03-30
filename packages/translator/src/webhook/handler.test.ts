@@ -51,6 +51,16 @@ function createMockExecutor(): ILLMExecutor {
       executeCallCount++
       return Promise.resolve(schema.parse(response))
     },
+    describeExecution() {
+      return {
+        generation: {
+          temperature: 0,
+          maxOutputTokens: 4000,
+          providerOptions: null,
+          providerManaged: false,
+        },
+      }
+    },
   }
 }
 
@@ -427,9 +437,85 @@ describe('handleTranslateRequest', () => {
     const content = (await Bun.file(filepath).json()) as {
       origin?: { type: string }
       delivery?: { status: string }
+      llm?: {
+        promptMode?: string
+        promptBuildId?: string
+        translationStyle?: string
+        generation?: { temperature?: number }
+      }
     }
     expect(content.origin?.type).toBe('manual')
     expect(content.delivery?.status).toBe('sent')
+    expect(content.llm?.promptMode).toBe('structured_segments')
+    expect(content.llm?.translationStyle).toBe('TECHNICAL')
+    expect(content.llm?.generation?.temperature).toBe(0)
+    expect(content.llm?.promptBuildId).toBe('2026-03-30-lyra-principle-based-v6')
+  })
+
+  it('writes a structured natural-casual prompt mode and v3 runtime metadata for long single-message input', async () => {
+    await store.update(enabledRoomId, {
+      aiProvider: 'openai',
+      aiModel: 'gpt-5.4',
+      aiApiToken: 'room-openai-token',
+      translationStyle: 'NATURAL_CASUAL',
+    })
+
+    let capturedPrompts: PromptPair | undefined
+    mockGetProviderPlugin.mockImplementation(() =>
+      createMockProvider('openai', {
+        execute<T>(prompts: PromptPair, schema: ISchema<T>): Promise<T> {
+          capturedPrompts = prompts
+          return Promise.resolve(
+            schema.parse({
+              sourceLang: 'Japanese',
+              translatedSegments: ['Đoạn 1', 'Đoạn 2', 'Đoạn 3'],
+            }),
+          )
+        },
+        describeExecution() {
+          return {
+            generation: {
+              temperature: 0.55,
+              maxOutputTokens: 4000,
+              providerOptions: { openai: { reasoningEffort: 'low' } },
+              providerManaged: false,
+            },
+          }
+        },
+      }),
+    )
+
+    const source =
+      '動画を一定時間のチャンクに分割する\n\n2. 圧縮技術による最適化\nエンコード処理\n\nフレームサンプリング:\nすべてを送る必要はない。'
+    const command = makeCommand({
+      rawBody: source,
+      translatableText: source,
+      translationInputs: [source],
+    })
+
+    await handleTranslateRequest(command)
+
+    expect(capturedPrompts?.user).toContain('<TRANSLATE_SEGMENTS>')
+
+    const dateStr = new Date().toISOString().slice(0, 10)
+    const filepath = join(
+      testOutputDir,
+      dateStr,
+      '2081046619322847232:message_created:1772633778.json',
+    )
+    const content = (await Bun.file(filepath).json()) as {
+      llm?: {
+        promptMode?: string
+        promptBuildId?: string
+        translationStyle?: string
+        generation?: { temperature?: number }
+      }
+    }
+
+    expect(content.llm?.promptMode).toBe('structured_segments')
+    expect(content.llm?.translationStyle).toBe('NATURAL_CASUAL')
+    expect(content.llm?.generation?.temperature).toBe(0.55)
+    expect(content.llm?.promptBuildId).toBe('2026-03-30-lyra-principle-based-v6')
   })
 
   it('emits structured lifecycle logs and records completed request in status snapshot', async () => {
@@ -515,6 +601,14 @@ describe('handleTranslateRequest', () => {
     mockGetProviderPlugin.mockImplementation(() =>
       createMockProvider('openai', {
         execute: () => Promise.reject(new MockTranslationError('translate failed', 'API_ERROR')),
+        describeExecution: () => ({
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }),
       } as ILLMExecutor),
     )
 
@@ -761,6 +855,16 @@ describe('handleTranslateRequest', () => {
                 )
               })
             })
+          },
+          describeExecution() {
+            return {
+              generation: {
+                temperature: 0,
+                maxOutputTokens: 4000,
+                providerOptions: null,
+                providerManaged: false,
+              },
+            }
           },
         },
         50,

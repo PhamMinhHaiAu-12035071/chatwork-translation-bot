@@ -9,6 +9,17 @@ export interface PromptPair {
   user: string
 }
 
+export interface LLMExecutionGenerationMetadata {
+  temperature: number | null
+  maxOutputTokens: number | null
+  providerOptions: Record<string, unknown> | null
+  providerManaged: boolean
+}
+
+export interface LLMExecutionMetadata {
+  generation: LLMExecutionGenerationMetadata
+}
+
 /** Generic LLM execution interface — all providers implement this. */
 export interface ILLMExecutor {
   execute<T>(
@@ -16,4 +27,5 @@ export interface ILLMExecutor {
     schema: ISchema<T>,
     options?: { signal?: AbortSignal },
   ): Promise<T>
+  describeExecution(): LLMExecutionMetadata
 }

@@ -21,9 +21,22 @@ export const OPENAI_MODEL_VALUES = [
 ] as const
 export type OpenAIModel = (typeof OPENAI_MODEL_VALUES)[number]
 const DEFAULT_OPENAI_TIMEOUT_MS = 1_800_000
+const DEFAULT_MAX_OUTPUT_TOKENS = 4000
 
 function isAbortError(error: unknown): error is Error {
   return error instanceof Error && error.name === 'AbortError'
+}
+
+function resolveTemperature(style?: ProviderCreateContext['translationStyle']): number {
+  switch (style) {
+    case 'NATURAL_CASUAL':
+      return 0.55
+    case 'PROFESSIONAL_BUSINESS':
+      return 0.15
+    case 'TECHNICAL':
+    default:
+      return 0
+  }
 }
 
 // Module-level export — used by index.ts for startup banner (avoids regex duplication)
@@ -38,6 +51,7 @@ class OpenAIExecutor implements ILLMExecutor {
     private readonly modelId: string,
     private readonly apiKey?: string,
     private readonly baseUrl?: string,
+    private readonly translationStyle?: ProviderCreateContext['translationStyle'],
   ) {
     this.provider =
       apiKey !== undefined || baseUrl !== undefined
@@ -48,10 +62,27 @@ class OpenAIExecutor implements ILLMExecutor {
         : openai
   }
 
-  private resolveThinking(modelId: string): Record<string, Record<string, string>> | null {
+  private resolveThinking(
+    modelId: string,
+    style?: ProviderCreateContext['translationStyle'],
+  ): Record<string, Record<string, string>> | null {
     if (!supportsThinking(modelId)) return null
-    const effort = (process.env['OPENAI_REASONING_EFFORT'] ?? 'medium') as 'low' | 'medium' | 'high'
+    const effort =
+      style === 'NATURAL_CASUAL'
+        ? 'low'
+        : ((process.env['OPENAI_REASONING_EFFORT'] ?? 'medium') as 'low' | 'medium' | 'high')
     return { openai: { reasoningEffort: effort } }
+  }
+
+  describeExecution() {
+    return {
+      generation: {
+        temperature: resolveTemperature(this.translationStyle),
+        maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        providerOptions: this.resolveThinking(this.modelId, this.translationStyle),
+        providerManaged: false,
+      },
+    }
   }
 
   async execute<T>(
@@ -60,16 +91,18 @@ class OpenAIExecutor implements ILLMExecutor {
     options?: { signal?: AbortSignal },
   ): Promise<T> {
     try {
-      const thinking = this.resolveThinking(this.modelId)
+      const execution = this.describeExecution()
       const { output } = await generateText({
         model: this.provider(this.modelId),
         system: prompts.system,
         prompt: prompts.user,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
         output: Output.object({ schema: schema as any }),
-        temperature: 0,
-        maxOutputTokens: 4000,
-        ...(thinking ? { providerOptions: thinking } : {}),
+        temperature: execution.generation.temperature,
+        maxOutputTokens: execution.generation.maxOutputTokens,
+        ...(execution.generation.providerOptions
+          ? { providerOptions: execution.generation.providerOptions }
+          : {}),
         ...(options?.signal && { abortSignal: options.signal }),
       })
       return output as T
@@ -100,6 +133,6 @@ export const openaiPlugin: ProviderPlugin = {
     timeoutMs: DEFAULT_OPENAI_TIMEOUT_MS,
   },
   create(ctx: ProviderCreateContext): ILLMExecutor {
-    return new OpenAIExecutor(ctx.modelId, ctx.apiKey, ctx.baseUrl)
+    return new OpenAIExecutor(ctx.modelId, ctx.apiKey, ctx.baseUrl, ctx.translationStyle)
   },
 }

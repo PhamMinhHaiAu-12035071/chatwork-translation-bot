@@ -16,7 +16,17 @@ function makePlugin(id: string): ProviderPlugin {
       defaultModel: 'model-x',
       capabilities: { streaming: false },
     },
-    create: () => ({ execute: () => Promise.reject(new Error('not implemented')) }),
+    create: () => ({
+      execute: () => Promise.reject(new Error('not implemented')),
+      describeExecution: () => ({
+        generation: {
+          temperature: 0,
+          maxOutputTokens: 4000,
+          providerOptions: null,
+          providerManaged: false,
+        },
+      }),
+    }),
   }
 }
 

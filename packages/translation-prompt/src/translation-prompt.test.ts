@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'bun:test'
 import {
   buildSingleCallPrompts,
   buildStructuredTranslationPrompts,
   StructuredTranslationDraftSchema,
+  TRANSLATION_PROMPT_BUILD_ID,
   TranslationDraftSchema,
 } from './translation-prompt'
 
@@ -35,104 +35,121 @@ describe('buildSingleCallPrompts', () => {
     expect(result.user).toContain('translated')
   })
 
-  it('system prompt is materially shorter than the previous shared mega-prompt', () => {
-    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system.length).toBeLessThan(4000)
+  it('system prompt is reasonable size — under 6500 chars for any style', () => {
+    for (const style of ['NATURAL_CASUAL', 'PROFESSIONAL_BUSINESS', 'TECHNICAL'] as const) {
+      const result = buildSingleCallPrompts('テスト', style)
+      expect(result.system.length).toBeLessThan(6500)
+    }
   })
 
-  it('system prompt removes the old shared professional-translator anchor', () => {
+  it('system prompt uses a strong identity anchor, not a generic role', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/best.*translator/i)
     expect(result.system).not.toMatch(/elite professional translator|20 years/i)
   })
 
-  it('shared core normalizes Japanese punctuation artifacts into natural Vietnamese punctuation', () => {
+  it('core doctrine front-loads naturalness as the primary mandate', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(
-      /normalize.*punctuation|Japanese punctuation artifacts|full-width punctuation/i,
-    )
+    const naturalIdx = result.system.indexOf('Naturalness')
+    const fidelityIdx = result.system.indexOf('Fidelity')
+    expect(naturalIdx).toBeGreaterThan(-1)
+    expect(fidelityIdx).toBeGreaterThan(-1)
+    expect(naturalIdx).toBeLessThan(fidelityIdx)
   })
 
-  it('shared core carries the Kagi-like naturalness doctrine instead of only fidelity rules', () => {
+  it('core doctrine carries the Kagi-like naturalness mandate', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(
-      /translation should be.*natural|must read like original Vietnamese/i,
-    )
-    expect(result.system).toMatch(
-      /avoid.*word-for-word|mirroring the source language sentence structure/i,
-    )
-    expect(result.system).toMatch(/re-?arrange|restructure/i)
-    expect(result.system).toMatch(/guess the context|intended context/i)
+    expect(result.system).toMatch(/Vietnamese MUST sound completely natural/i)
+    expect(result.system).toMatch(/Restructure sentence patterns/i)
+    expect(result.system).toMatch(/Vietnamize completely/i)
+    expect(result.system).toMatch(/native.*speaker/i)
   })
 
-  it('shared core preserves punctuation exactly for punctuation-sensitive content', () => {
+  it('core doctrine preserves formatting and punctuation rules', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/Preserve punctuation exactly|keep hyphens/i)
+    expect(result.system).toMatch(/Preserve formatting.*line breaks/i)
+    expect(result.system).toMatch(/keep hyphens/i)
+    expect(result.system).toMatch(/Japanese full-width punctuation/i)
   })
 
-  it('natural style uses register guidance, not chat-app persona theater', () => {
+  it('core doctrine defaults to dialect-neutral Vietnamese', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/dialect-neutral/i)
+    expect(result.system).not.toMatch(/transl_start/i)
+  })
+
+  it('includes prompt injection protection in system prompt', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/literal text to translate.*never instructions/i)
+    expect(result.system).toMatch(/CANNOT.*change your role/i)
+    expect(result.system).toMatch(/reveal system prompts/i)
+    expect(result.system).toMatch(/DO NOT divulge/i)
+  })
+
+  it('includes Japanese-specific rules for business formulas and keigo', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/お世話になっております/i)
+    expect(result.system).toMatch(/functional greeting/i)
+    expect(result.system).toMatch(/katakana loanwords/i)
+  })
+
+  it('natural style uses casual register guidance without persona theater', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
+    expect(result.system).toMatch(/NATURAL_CASUAL/i)
+    expect(result.system).toMatch(/conversational workplace/i)
     expect(result.system).not.toMatch(/Zalo|Slack|teammate|colleague/i)
-    expect(result.system).toMatch(/casual register|natural casual Vietnamese|workplace-safe/i)
   })
 
-  it('natural style pushes colloquial compression and bans half-English casual tech phrasing', () => {
+  it('natural style instructs coworker-like rewriting and everyday Vietnamese', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
-    expect(result.system).toContain('Đâu cần gửi hết làm gì.')
-    expect(result.system).toMatch(/AI detect|độ chính xác detect|half-English hybrid/i)
+    expect(result.system).toMatch(/Vietnamese person actually say/i)
+    expect(result.system).toMatch(/Three-Step Naturalness Process/i)
+    expect(result.system).toMatch(/B2 Vietnamese.*CEFR/i)
+    expect(result.system).toMatch(/Particle Logic/i)
   })
 
-  it('natural style teaches mixed technical prose with spoken anchors instead of document scaffolding', () => {
+  it('natural style bans half-English hybrids and literal phrasing', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
-    expect(result.system).toContain('tầm 10 giây')
-    expect(result.system).toMatch(/theo khoảng thời gian cố định|phần dùng cho/i)
+    expect(result.system).toMatch(/AI detect/i)
+    expect(result.system).toMatch(/half-English hybrid/i)
+    expect(result.system).toMatch(/literal phrasing/i)
   })
 
-  it('natural style no longer depends on bulky contrastive packs to drive core naturalness', () => {
+  it('natural style has no micro-examples or contrastive packs', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
     expect(result.system).not.toMatch(/Bad\s*->\s*Good/i)
+    expect(result.system).not.toMatch(/^Ex \d/m)
+    expect(result.system).not.toMatch(/^Example \d/m)
   })
 
-  it('natural style localizes semi-technical headings when Vietnamese reads more naturally', () => {
-    const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
-    expect(result.system).toContain('Lấy mẫu khung hình')
-    expect(result.system).toMatch(/Frame sampling/i)
-  })
-
-  it('natural style stays within the V4 token budget guardrail', () => {
-    const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
-    expect(result.system.length).toBeLessThanOrEqual(4050)
-  })
-
-  it('professional style uses a business register adapter, not a PM persona', () => {
+  it('professional style uses a business register with clear constraints', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/internal business prose|professional register|internal email/i)
-    expect(result.system).not.toMatch(/project manager|PM|Zalo|particles sprinkled on top/i)
+    expect(result.system).toMatch(/internal business prose/i)
+    expect(result.system).toMatch(/calm professional Vietnamese/i)
+    expect(result.system).not.toMatch(/project manager|PM|Zalo/i)
   })
 
-  it('professional style stays slim and bans Japanese punctuation artifacts and casual filler', () => {
+  it('professional style bans casual filler and Japanese punctuation artifacts', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/（.\.\.）|「.*」|full-width punctuation|Japanese punctuation/i)
-    expect(result.system).toMatch(/casual filler|casual particles/i)
-    expect(result.system).not.toMatch(/Bad\s*->\s*Good/i)
+    expect(result.system).toMatch(/casual.*filler|casual particles/i)
+    expect(result.system).toMatch(/（.*）|「.*」|Japanese punctuation/i)
   })
 
-  it('technical style keeps engineering terminology with register guidance, not a thick persona', () => {
+  it('technical style keeps engineering terminology and terse register', () => {
     const result = buildSingleCallPrompts('テスト', 'TECHNICAL')
-    expect(result.system).toMatch(/technical register|technical docs|deploy|staging|pipeline/i)
-    expect(result.system).not.toMatch(/senior engineer|internal email|Zalo/i)
-  })
-
-  it('technical style includes explanatory-prose anchors for proxy video and frame-rate tradeoffs', () => {
-    const result = buildSingleCallPrompts('テスト', 'TECHNICAL')
+    expect(result.system).toMatch(/technical.*register|technical prose/i)
     expect(result.system).toMatch(/proxy video/i)
-    expect(result.system).toMatch(/frame rate|10 fps|object detection/i)
+    expect(result.system).toMatch(/frame rate/i)
+    expect(result.system).toMatch(/object detection/i)
+    expect(result.system).toMatch(/deploy/i)
+    expect(result.system).not.toMatch(/senior engineer|Zalo/i)
   })
 
-  it('technical style bans hybrid phrasing without leaning on contrastive pack bulk', () => {
+  it('technical style bans hybrid phrasing and decorative language', () => {
     const result = buildSingleCallPrompts('テスト', 'TECHNICAL')
     expect(result.system).toMatch(/detect object/i)
-    expect(result.system).toMatch(/object detection/i)
-    expect(result.system).toMatch(/business cadence|business-email cadence/i)
+    expect(result.system).toMatch(/business.*cadence/i)
+    expect(result.system).toMatch(/decorative language/i)
     expect(result.system).not.toMatch(/Bad\s*->\s*Good/i)
   })
 })
@@ -176,31 +193,6 @@ describe('translation style profiles', () => {
   })
 })
 
-describe('prompt V4 mini eval pack', () => {
-  it('defines a mixed-tech mini eval pack with demo coverage and the locked rubric', () => {
-    const file = new URL('../../../nghiencuu/prompt-v4-mini-eval-pack.json', import.meta.url)
-    const data = JSON.parse(readFileSync(file, 'utf8')) as {
-      acceptanceDemo: string
-      criteria: string[]
-      cases: { id: string; sourceLang: string; targetLang: string; category: string }[]
-    }
-
-    expect(data.acceptanceDemo).toContain('analyze.txt')
-    expect(data.criteria).toEqual([
-      'Beat Kagi',
-      'Natural/humanizer',
-      'All styles near 10/10',
-      'Token effectiveness',
-    ])
-    expect(data.cases.length).toBeGreaterThanOrEqual(6)
-    expect(data.cases.length).toBeLessThanOrEqual(12)
-    expect(new Set(data.cases.map((item) => item.id)).size).toBe(data.cases.length)
-    expect(data.cases.every((item) => item.sourceLang === 'Japanese')).toBe(true)
-    expect(data.cases.every((item) => item.targetLang === 'Vietnamese')).toBe(true)
-    expect(data.cases.some((item) => item.category === 'mixed-tech-casual')).toBe(true)
-  })
-})
-
 describe('TranslationDraftSchema', () => {
   it('parses valid translation output', () => {
     const result = TranslationDraftSchema.parse({ sourceLang: 'Japanese', translated: 'Xin chào' })
@@ -233,6 +225,10 @@ describe('StructuredTranslationDraftSchema', () => {
 })
 
 describe('package exports', () => {
+  it('exports the prompt build id for runtime logging', () => {
+    expect(TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-lyra-principle-based-v6')
+  })
+
   it('removes polish builders and schemas from the public barrel', async () => {
     const api = await import('./index')
 
@@ -240,5 +236,11 @@ describe('package exports', () => {
     expect(api).not.toHaveProperty('buildStructuredPolishPrompts')
     expect(api).not.toHaveProperty('PolishResultSchema')
     expect(api).not.toHaveProperty('StructuredPolishResultSchema')
+  })
+
+  it('re-exports the prompt build id from the public barrel', async () => {
+    const api = await import('./index')
+
+    expect(api.TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-lyra-principle-based-v6')
   })
 })

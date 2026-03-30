@@ -43,6 +43,25 @@ const sampleRecord: OutputRecord = {
     targetLang: 'Vietnamese',
     timestamp: '2026-03-04T11:44:36.577Z',
   },
+  llm: {
+    provider: 'openai',
+    model: 'gpt-5.4',
+    translationStyle: 'NATURAL_CASUAL',
+    promptMode: 'structured_segments',
+    promptBuildId: '2026-03-30-kagi-core-pivot-v2',
+    prompt: {
+      system: 'system prompt body',
+      user: 'user prompt body',
+      systemSha256: 'sys-sha',
+      userSha256: 'user-sha',
+    },
+    generation: {
+      temperature: 0.35,
+      maxOutputTokens: 4000,
+      providerOptions: { openai: { reasoningEffort: 'medium' } },
+      providerManaged: false,
+    },
+  },
 }
 
 describe('writeTranslationOutput', () => {
@@ -74,6 +93,8 @@ describe('writeTranslationOutput', () => {
     expect(content.translation.sourceLang).toBe('Japanese')
     expect(content.translation.targetLang).toBe('Vietnamese')
     expect(content.translation.timestamp).toBe('2026-03-04T11:44:36.577Z')
+    expect(content.llm?.promptBuildId).toBe('2026-03-30-kagi-core-pivot-v2')
+    expect(content.llm?.generation.temperature).toBe(0.35)
 
     await rm(testDir, { recursive: true, force: true })
   })
@@ -140,6 +161,8 @@ describe('writeTranslationOutput', () => {
         errorMessage: 'Bad Gateway',
       },
     ])
+    expect(content.llm?.prompt.systemSha256).toBe('sys-sha')
+    expect(content.llm?.generation.providerManaged).toBe(false)
 
     await rm(testDir, { recursive: true, force: true })
   })

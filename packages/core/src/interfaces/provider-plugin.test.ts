@@ -18,6 +18,16 @@ describe('ProviderPlugin contract', () => {
           execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
             return Promise.resolve(schema.parse({}))
           },
+          describeExecution() {
+            return {
+              generation: {
+                temperature: 0,
+                maxOutputTokens: 4000,
+                providerOptions: null,
+                providerManaged: false,
+              },
+            }
+          },
         }
       },
     }
@@ -33,8 +43,10 @@ describe('ProviderPlugin contract', () => {
     const ctx: ProviderCreateContext = {
       modelId: 'model-a',
       apiKey: 'room-scoped-key',
+      translationStyle: 'NATURAL_CASUAL',
     }
 
     expect(ctx.apiKey).toBe('room-scoped-key')
+    expect(ctx.translationStyle).toBe('NATURAL_CASUAL')
   })
 })

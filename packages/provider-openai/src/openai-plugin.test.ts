@@ -114,6 +114,22 @@ describe('openaiPlugin', () => {
       expect((error as InstanceType<typeof TranslationError>).code).toBe('TIMEOUT')
     }
   })
+
+  it('describes style-aware execution metadata for natural casual', () => {
+    const executor = openaiPlugin.create({
+      modelId: 'gpt-5.4',
+      translationStyle: 'NATURAL_CASUAL',
+    })
+
+    expect(executor.describeExecution()).toEqual({
+      generation: {
+        temperature: 0.55,
+        maxOutputTokens: 4000,
+        providerOptions: { openai: { reasoningEffort: 'low' } },
+        providerManaged: false,
+      },
+    })
+  })
 })
 
 describe('OpenAI resolveThinking', () => {
@@ -175,5 +191,19 @@ describe('OpenAI resolveThinking', () => {
     await executor.execute({ system: 's', user: 'u' }, schema as never)
     const lastCall = getLastCallArg()
     expect(lastCall['providerOptions']).toBeUndefined()
+  })
+
+  it('uses the natural-casual temperature policy when that style is selected', async () => {
+    mockOutput = { sourceLang: 'Japanese', translated: 'テスト' }
+    const executor = openaiPlugin.create({
+      modelId: 'gpt-5.4',
+      translationStyle: 'NATURAL_CASUAL',
+    })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    const lastCall = getLastCallArg()
+    expect(lastCall['temperature']).toBe(0.55)
+    expect((lastCall['providerOptions'] as { openai: unknown }).openai).toEqual({
+      reasoningEffort: 'low',
+    })
   })
 })

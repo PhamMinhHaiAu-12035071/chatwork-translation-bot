@@ -68,4 +68,15 @@ export class CursorExecutor implements ILLMExecutor {
       )
     }
   }
+
+  describeExecution() {
+    return {
+      generation: {
+        temperature: null,
+        maxOutputTokens: null,
+        providerOptions: null,
+        providerManaged: true,
+      },
+    }
+  }
 }

@@ -3,6 +3,8 @@ import type { TranslationStyle } from '@chatwork-bot/core'
 import { BASE_TRANSLATOR_ROLE, CORE_DOCTRINE } from '~/sections/core'
 import { CONSTRAINTS } from '~/sections/constraints'
 import { JAPANESE_RULES } from '~/sections/language-layers'
+import { CONTRASTIVE_EXAMPLES } from '~/sections/contrastive-examples'
+import { SELF_VERIFICATION } from '~/sections/verification'
 import {
   buildTranslationStyleSection,
   TRANSLATION_STYLE_PROFILES,
@@ -15,13 +17,20 @@ export interface PromptPair {
   user: string
 }
 
+export const TRANSLATION_PROMPT_BUILD_ID = '2026-03-30-lyra-principle-based-v6'
+
 export { TranslationDraftSchema }
 export { StructuredTranslationDraftSchema }
 export type { StructuredTranslationDraft, TranslationDraft } from '~/schemas/review.schema'
 
-const SHARED_SYSTEM = [BASE_TRANSLATOR_ROLE, CORE_DOCTRINE, JAPANESE_RULES, CONSTRAINTS].join(
-  '\n\n',
-)
+const SHARED_SYSTEM = [
+  BASE_TRANSLATOR_ROLE,
+  CORE_DOCTRINE,
+  CONTRASTIVE_EXAMPLES,
+  JAPANESE_RULES,
+  CONSTRAINTS,
+  SELF_VERIFICATION,
+].join('\n\n')
 
 function buildSingleUserPrompt(text: string, style: TranslationStyle): string {
   return `Task: Translate the text inside <TRANSLATE_TEXT> into Vietnamese.

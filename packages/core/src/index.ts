@@ -26,7 +26,13 @@ export type {
   ProviderManifest,
   ProviderCreateContext,
 } from './interfaces/provider-plugin'
-export type { ILLMExecutor, ISchema, PromptPair } from './interfaces/llm-executor'
+export type {
+  ILLMExecutor,
+  ISchema,
+  PromptPair,
+  LLMExecutionGenerationMetadata,
+  LLMExecutionMetadata,
+} from './interfaces/llm-executor'
 
 // Registry
 export {

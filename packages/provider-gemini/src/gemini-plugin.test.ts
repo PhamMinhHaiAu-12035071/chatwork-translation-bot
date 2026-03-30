@@ -121,6 +121,22 @@ describe('geminiPlugin', () => {
       expect((error as InstanceType<typeof TranslationError>).code).toBe('TIMEOUT')
     }
   })
+
+  it('describes style-aware execution metadata for professional business', () => {
+    const executor = geminiPlugin.create({
+      modelId: 'gemini-2.5-pro',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+    })
+
+    expect(executor.describeExecution()).toEqual({
+      generation: {
+        temperature: 0.15,
+        maxOutputTokens: 4000,
+        providerOptions: { google: { thinkingConfig: { thinkingBudget: 8192 } } },
+        providerManaged: false,
+      },
+    })
+  })
 })
 
 describe('Gemini resolveThinking', () => {
@@ -179,5 +195,14 @@ describe('Gemini resolveThinking', () => {
     const executor = geminiPlugin.create({ modelId: 'gemini-30-flash' })
     await executor.execute({ system: 's', user: 'u' }, schema as never)
     expect(lastGenerateTextCall['providerOptions']).toBeUndefined()
+  })
+
+  it('uses the professional-business temperature policy when that style is selected', async () => {
+    const executor = geminiPlugin.create({
+      modelId: 'gemini-2.5-pro',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+    })
+    await executor.execute({ system: 's', user: 'u' }, schema as never)
+    expect(lastGenerateTextCall['temperature']).toBe(0.15)
   })
 })

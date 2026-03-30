@@ -11,6 +11,16 @@ function makeExecutor(
       callCount++
       return Promise.resolve(result as T)
     },
+    describeExecution() {
+      return {
+        generation: {
+          temperature: 0.35,
+          maxOutputTokens: 4000,
+          providerOptions: null,
+          providerManaged: false,
+        },
+      }
+    },
   }
   return { executor, getCallCount: () => callCount }
 }
@@ -46,6 +56,16 @@ describe('TranslationPipeline', () => {
         captured.prompts = prompts
         return Promise.resolve({ sourceLang: 'Japanese', translated: 'テスト' } as unknown as T)
       },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0.35,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
+      },
     }
     const pipeline = new TranslationPipeline(executor)
     await pipeline.run('リリース予定について')
@@ -62,6 +82,16 @@ describe('TranslationPipeline', () => {
       execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
         captured.prompts = prompts
         return Promise.resolve({ sourceLang: 'Japanese', translated: 'Xin chào' } as T)
+      },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
       },
     }
 
@@ -91,6 +121,16 @@ describe('TranslationPipeline', () => {
     const executor: ILLMExecutor = {
       execute<T>(_prompts: PromptPair, _schema: ISchema<T>) {
         return Promise.reject(new Error('LLM failed'))
+      },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
       },
     }
     const pipeline = new TranslationPipeline(executor)
@@ -141,6 +181,16 @@ describe('TranslationPipeline', () => {
           translatedSegments: ['Xin chào', 'Vui lòng xem tài liệu.'],
         } as T)
       },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0.35,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
+      },
     }
     const pipeline = new TranslationPipeline(executor)
 
@@ -172,5 +222,64 @@ describe('TranslationPipeline', () => {
         message: 'Translation segment count mismatch',
       })
     }
+  })
+
+  it('returns the actual prompt snapshot and prompt mode for structured translation runs', async () => {
+    const { executor } = makeExecutor({
+      sourceLang: 'Japanese',
+      translatedSegments: ['Xin chào', 'Vui lòng xem tài liệu.'],
+    })
+    const pipeline = new TranslationPipeline(executor, {
+      translationStyle: 'NATURAL_CASUAL',
+    })
+
+    const result = await pipeline.runStructured({
+      cleanText: 'こんにちは\n資料をご確認ください。',
+      translationInputs: ['こんにちは', '資料をご確認ください。'],
+    })
+
+    expect(result.debug).toBeDefined()
+    const debug = result.debug
+    expect(debug?.promptMode).toBe('structured_segments')
+    expect(debug?.prompts.user).toContain('<TRANSLATE_SEGMENTS>')
+    expect(debug?.prompts.system).toContain('NATURAL_CASUAL')
+  })
+
+  it('auto-segments a long natural-casual single message into structured translation while preserving paragraph separators', async () => {
+    const captured: { prompts?: PromptPair } = {}
+    const executor: ILLMExecutor = {
+      execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
+        captured.prompts = prompts
+        return Promise.resolve({
+          sourceLang: 'Japanese',
+          translatedSegments: ['Đoạn 1', 'Đoạn 2', 'Đoạn 3'],
+        } as T)
+      },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0.55,
+            maxOutputTokens: 4000,
+            providerOptions: { openai: { reasoningEffort: 'low' } },
+            providerManaged: false,
+          },
+        }
+      },
+    }
+    const pipeline = new TranslationPipeline(executor, {
+      translationStyle: 'NATURAL_CASUAL',
+    })
+    const source =
+      '動画を一定時間のチャンクに分割する\n\n2. 圧縮技術による最適化\nエンコード処理\n\nフレームサンプリング:\nすべてを送る必要はない。'
+
+    const result = await pipeline.runStructured({
+      cleanText: source,
+      translationInputs: [source],
+    })
+
+    expect(captured.prompts?.user).toContain('<TRANSLATE_SEGMENTS>')
+    expect(result.debug?.promptMode).toBe('structured_segments')
+    expect(result.translatedSegments).toEqual(['Đoạn 1\n\nĐoạn 2\n\nĐoạn 3'])
+    expect(result.translation.translatedText).toBe('Đoạn 1\n\nĐoạn 2\n\nĐoạn 3')
   })
 })

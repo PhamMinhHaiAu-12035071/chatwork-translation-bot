@@ -31,6 +31,86 @@ export interface StructuredPipelineInput {
 export interface PipelineTranslationResult {
   translation: TranslationResult
   translatedSegments: string[]
+  debug?: {
+    prompts: PromptPair
+    promptMode: 'single_text' | 'structured_segments'
+  }
+}
+
+interface AutoSegmentedText {
+  segments: string[]
+  separators: string[]
+}
+
+function isHeadingLine(line: string): boolean {
+  return /^\s*\d+\.\s/.test(line) || /^\s*[^:\n]{1,120}:\s*$/.test(line)
+}
+
+function splitParagraphByHeadings(paragraph: string): AutoSegmentedText {
+  const lines = paragraph.split('\n')
+  const segments: string[] = []
+  const separators: string[] = []
+  let currentLines: string[] = []
+
+  for (const line of lines) {
+    if (currentLines.length > 0 && isHeadingLine(line)) {
+      segments.push(currentLines.join('\n'))
+      separators.push('\n')
+      currentLines = [line]
+      continue
+    }
+
+    currentLines.push(line)
+  }
+
+  if (currentLines.length > 0) {
+    segments.push(currentLines.join('\n'))
+  }
+
+  return { segments, separators }
+}
+
+function autoSegmentNaturalCasualText(text: string): AutoSegmentedText | null {
+  if (!text.includes('\n')) return null
+
+  const paragraphTokens = text.split(/(\n{2,})/)
+  const segments: string[] = []
+  const separators: string[] = []
+  let pendingSeparator = ''
+
+  for (const token of paragraphTokens) {
+    if (token === '') continue
+
+    if (/^\n{2,}$/.test(token)) {
+      pendingSeparator = token
+      continue
+    }
+
+    const paragraph = splitParagraphByHeadings(token)
+    paragraph.segments.forEach((segment, index) => {
+      if (segments.length > 0) {
+        separators.push(
+          index === 0 ? pendingSeparator || '\n' : (paragraph.separators[index - 1] ?? '\n'),
+        )
+      }
+      segments.push(segment)
+    })
+    pendingSeparator = ''
+  }
+
+  if (segments.length < 2) return null
+
+  return { segments, separators }
+}
+
+function joinTranslatedSegments(segments: string[], separators: string[]): string {
+  if (segments.length === 0) return ''
+
+  let joined = segments[0] ?? ''
+  for (let index = 1; index < segments.length; index += 1) {
+    joined += `${separators[index - 1] ?? '\n'}${segments[index] ?? ''}`
+  }
+  return joined
 }
 
 export class TranslationPipeline {
@@ -62,12 +142,43 @@ export class TranslationPipeline {
     if (input.translationInputs.length === 1) {
       const [singleInput] = input.translationInputs
       const sourceText = singleInput ?? input.cleanText
+      const autoSegmented =
+        style === 'NATURAL_CASUAL' ? autoSegmentNaturalCasualText(sourceText) : null
 
-      const translation = await this.executeTranslation(
-        buildSingleCallPrompts(sourceText, style),
-        TranslationDraftSchema,
-        options,
-      )
+      if (autoSegmented !== null) {
+        const prompts = buildStructuredTranslationPrompts(autoSegmented.segments, style)
+        const structuredTranslation = await this.executeTranslation(
+          prompts,
+          StructuredTranslationDraftSchema,
+          options,
+        )
+
+        if (structuredTranslation.translatedSegments.length !== autoSegmented.segments.length) {
+          throw new TranslationError('Translation segment count mismatch', 'INVALID_RESPONSE')
+        }
+
+        const joinedTranslation = joinTranslatedSegments(
+          structuredTranslation.translatedSegments,
+          autoSegmented.separators,
+        )
+
+        return {
+          translation: this.buildTranslationResult(
+            input.cleanText,
+            joinedTranslation,
+            structuredTranslation.sourceLang,
+          ),
+          translatedSegments: [joinedTranslation],
+          debug: {
+            prompts,
+            promptMode: 'structured_segments',
+          },
+        }
+      }
+
+      const prompts = buildSingleCallPrompts(sourceText, style)
+
+      const translation = await this.executeTranslation(prompts, TranslationDraftSchema, options)
 
       return {
         translation: this.buildTranslationResult(
@@ -76,11 +187,16 @@ export class TranslationPipeline {
           translation.sourceLang,
         ),
         translatedSegments: [translation.translated],
+        debug: {
+          prompts,
+          promptMode: 'single_text',
+        },
       }
     }
 
+    const prompts = buildStructuredTranslationPrompts(input.translationInputs, style)
     const structuredTranslation = await this.executeTranslation(
-      buildStructuredTranslationPrompts(input.translationInputs, style),
+      prompts,
       StructuredTranslationDraftSchema,
       options,
     )
@@ -96,6 +212,10 @@ export class TranslationPipeline {
         structuredTranslation.sourceLang,
       ),
       translatedSegments: structuredTranslation.translatedSegments,
+      debug: {
+        prompts,
+        promptMode: 'structured_segments',
+      },
     }
   }
 

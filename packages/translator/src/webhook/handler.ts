@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto'
 import { getProviderPlugin, TranslationError } from '@chatwork-bot/core'
 import type { TranslationIngressCommand, ProviderCreateContext } from '@chatwork-bot/core'
+import { TRANSLATION_PROMPT_BUILD_ID } from '@chatwork-bot/translation-prompt'
 import type { RoomConfigStore } from '~/services/room-config-store'
 import { env } from '~/env'
 import { TranslationPipeline } from '~/pipeline/pipeline'
@@ -29,6 +31,10 @@ interface HandleTranslateRequestDeps {
 
 interface TranslateRequestContext {
   traceId?: string
+}
+
+function sha256(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
 }
 
 let translateRequestHandler:
@@ -104,6 +110,7 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     const ctx: ProviderCreateContext = {
       modelId,
       apiKey: aiApiToken,
+      translationStyle,
     }
     const executor = plugin.create(ctx)
     const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
@@ -231,7 +238,24 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
 
       const result = pipelineResult.translation
       const outputBaseDir = process.env['OUTPUT_BASE_DIR']
-      const outputRecord = { command, translation: result, origin }
+      const llm =
+        pipelineResult.debug === undefined
+          ? undefined
+          : {
+              provider: roomConfig.aiProvider,
+              model: modelId,
+              translationStyle,
+              promptMode: pipelineResult.debug.promptMode,
+              promptBuildId: TRANSLATION_PROMPT_BUILD_ID,
+              prompt: {
+                system: pipelineResult.debug.prompts.system,
+                user: pipelineResult.debug.prompts.user,
+                systemSha256: sha256(pipelineResult.debug.prompts.system),
+                userSha256: sha256(pipelineResult.debug.prompts.user),
+              },
+              generation: executor.describeExecution().generation,
+            }
+      const outputRecord = { command, translation: result, origin, ...(llm ? { llm } : {}) }
 
       await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
 
