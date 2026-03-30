@@ -113,3 +113,85 @@ Reference point from the previous implementation:
 - Add one contrastive example for `phần dùng cho AI detect` -> a cleaner casual Vietnamese rendering without hybrid jargon.
 - Tighten the shared rule about English retention so `NATURAL_CASUAL` does not inherit technical English labels too aggressively.
 - If Kagi still wins on rhythm, cut one generic casual bullet and spend those tokens on one stronger long-sentence reflow example instead.
+
+## Revision 4 — Contrastive Style Packs
+
+- Date: 2026-03-30
+- Trigger: V3 improved the architecture but still lacked style-local `bad -> good` anchors strong enough to beat Kagi on spoken mixed-tech prose.
+
+### Prompt Diff
+
+- Trimmed the shared core to keep only translation contract, register mapping, injection isolation, and punctuation normalization.
+- Added an explicit shared rule to normalize Japanese punctuation artifacts such as `（...）` and `「...」` into natural Vietnamese punctuation when they are formatting-only.
+- Added a `Bad -> Good` contrastive block to each style pack instead of relying only on generic instructions.
+- Rewrote `NATURAL_CASUAL` examples around mixed-tech workplace prose, not generic chat.
+- Strengthened `PROFESSIONAL_BUSINESS` against Japanese punctuation artifacts and casual filler.
+- Strengthened `TECHNICAL` against hybrid phrasing such as `detect object` and against business-email cadence.
+- Added a mini eval artifact at `nghiencuu/prompt-v4-mini-eval-pack.json` with `8` Japanese -> Vietnamese mixed-tech cases.
+
+### Approximate Prompt Size
+
+| Style                 | System chars | User chars | Rough total tokens |
+| --------------------- | -----------: | ---------: | -----------------: |
+| NATURAL_CASUAL        |         3326 |        491 |                954 |
+| PROFESSIONAL_BUSINESS |         3054 |        474 |                882 |
+| TECHNICAL             |         3500 |        478 |                995 |
+
+### Tradeoff Note
+
+- `NATURAL_CASUAL` is now shorter than Revision 3 while carrying stronger style-local steering.
+- The added tokens were spent almost entirely on contrastive pairs and mixed-tech examples; low-leverage generic bullets were cut.
+
+### Acceptance Note
+
+- Fresh runtime output is still required for the real Kagi comparison.
+- This revision is designed to move the remaining failure mode from "instruction too generic" to "example quality still not strong enough", which is a better place to iterate from if Kagi still wins.
+
+## Revision 5 — Kagi-Core Doctrine Pivot
+
+- Date: 2026-03-30
+- Trigger: web research and manual review showed the contrastive packs were still too persona-heavy, while Kagi appears to win with a stronger shared translation doctrine and thinner style adapters.
+
+### Prompt Diff
+
+- Rewrote the shared translator role around one doctrine: the output must read like natural Vietnamese originally written for the same context.
+- Added explicit shared rules to:
+  - avoid word-for-word translation
+  - avoid mirroring Japanese sentence structure
+  - restructure sentences when needed
+  - guess implicit context conservatively when that improves natural Vietnamese
+  - preserve punctuation exactly when punctuation itself carries meaning
+- Kept only high-leverage shared constraints: fidelity, formatting, tech-term retention, keigo mapping, tag safety, best-effort handling, and punctuation normalization.
+- Removed persona theater from all three style packs:
+  - `NATURAL_CASUAL` no longer depends on Zalo/Slack teammate framing
+  - `PROFESSIONAL_BUSINESS` no longer depends on PM/internal-role framing
+  - `TECHNICAL` no longer depends on a senior-engineer persona
+- Removed `Bad -> Good` blocks entirely and replaced them with lighter register guidance plus micro examples.
+- Kept only targeted mixed-tech anchors in `NATURAL_CASUAL`, including:
+  - `Đâu cần gửi hết làm gì.`
+  - `Cứ tầm 10 giây cắt một đoạn rồi gửi đi.`
+  - `Frame sampling` -> `Lấy mẫu khung hình.`
+
+### Approximate Prompt Size
+
+| Style                 | System chars | User chars | Rough total tokens |
+| --------------------- | -----------: | ---------: | -----------------: |
+| NATURAL_CASUAL        |         3643 |        391 |               1009 |
+| PROFESSIONAL_BUSINESS |         3433 |        388 |                955 |
+| TECHNICAL             |         3799 |        373 |               1043 |
+
+### Tradeoff Note
+
+- `NATURAL_CASUAL` remains within the locked guardrail while shifting token budget away from persona acting and into shared naturalness doctrine.
+- `PROFESSIONAL_BUSINESS` and `TECHNICAL` are slightly larger than Revision 4 because the shared core now carries more of the real translation logic instead of thin fidelity-only rules.
+- The bet in this revision is that better doctrine density will outperform broader style theater on the Kagi benchmark.
+
+### Verification Snapshot
+
+- Targeted prompt contract tests passed after the pivot: `30 pass, 0 fail`.
+- Full workspace verification was still pending at the time this revision note was written.
+
+### Next Hypothesis If Demo Still Loses
+
+- Trim one or two low-leverage technical/business bullets and spend those tokens on one stronger mixed-tech long-sentence example in `NATURAL_CASUAL`.
+- If the demo still sounds translated, the next change should be in the shared doctrine, not by re-introducing thicker personas.

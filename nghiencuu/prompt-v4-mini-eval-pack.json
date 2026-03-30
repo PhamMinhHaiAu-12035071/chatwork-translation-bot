@@ -1,0 +1,71 @@
+{
+  "version": "2026-03-30-v4",
+  "acceptanceDemo": "nghiencuu/analyze.txt#L76",
+  "criteria": ["Beat Kagi", "Natural/humanizer", "All styles near 10/10", "Token effectiveness"],
+  "cases": [
+    {
+      "id": "v4-001",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "mixed-tech-casual",
+      "focus": "spoken reflow over document scaffolding",
+      "source": "10秒ごとに分けて複数GPUで回せば、1時間の動画でも数分で終わります。"
+    },
+    {
+      "id": "v4-002",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "mixed-tech-casual",
+      "focus": "casual proxy-video explanation without hybrid jargon",
+      "source": "AI用には軽いプロキシ動画にしてクラウドへ送れば十分です。"
+    },
+    {
+      "id": "v4-003",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "mixed-tech-casual",
+      "focus": "frame sampling with spoken rhythm and rhetorical tone",
+      "source": "全部送る必要はありません。10fps程度でも検出精度への影響は小さいです。"
+    },
+    {
+      "id": "v4-004",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "internal-business",
+      "focus": "modern internal-email cadence without bureaucratic phrasing",
+      "source": "4K版は重いため、処理用には軽量版を共有します。"
+    },
+    {
+      "id": "v4-005",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "internal-business",
+      "focus": "clean punctuation and quote normalization",
+      "source": "「最低限の画質」を維持したうえで送信してください。"
+    },
+    {
+      "id": "v4-006",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "technical-terse",
+      "focus": "terse spec prose instead of business cadence",
+      "source": "デプロイ前にステージングで確認し、問題があればロールバックしてください。"
+    },
+    {
+      "id": "v4-007",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "technical-terse",
+      "focus": "standard English technical terms without awkward hybrids",
+      "source": "検出精度を保ったまま、フレームレートを10fpsまで落とせます。"
+    },
+    {
+      "id": "v4-008",
+      "sourceLang": "Japanese",
+      "targetLang": "Vietnamese",
+      "category": "technical-terse",
+      "focus": "proxy video and resolution phrasing in terse engineering style",
+      "source": "軽量なプロキシ動画に変換し、解像度は640x360まで下げます。"
+    }
+  ]
+}
