@@ -20,9 +20,7 @@ export class BrowserAutomationError extends Error {
     super(message)
     this.name = 'BrowserAutomationError'
 
-    // Maintains proper stack trace
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, BrowserAutomationError)
-    }
+    // Maintains proper stack trace (V8/Node.js/Bun)
+    Error.captureStackTrace(this, BrowserAutomationError)
   }
 }

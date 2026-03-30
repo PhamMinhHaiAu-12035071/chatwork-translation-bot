@@ -6,8 +6,6 @@ import { describe, it, expect } from 'bun:test'
 import type {
   ReadingLevel,
   SpeakerGender,
-  AddresseeGender,
-  TranslationStyle,
   Formality,
   TranslationOptions,
 } from './translation.types'

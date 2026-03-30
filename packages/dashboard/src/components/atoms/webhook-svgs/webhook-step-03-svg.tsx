@@ -22,17 +22,31 @@ export function WebhookStep03Svg() {
       <text x="10" y="42" fontFamily="sans-serif" fontSize="7.5" fill="#bbb">
         Webhook Name
       </text>
+      {/* Required badge for Webhook Name */}
       <rect
-        x="90"
+        x="79"
+        y="34"
+        width="34"
+        height="11"
+        rx="1"
+        fill="none"
+        stroke="#e0e0e0"
+        strokeWidth="1"
+      />
+      <text x="96" y="43" fontFamily="sans-serif" fontSize="6.5" fill="#bbb" textAnchor="middle">
+        Required
+      </text>
+      <rect
+        x="118"
         y="30"
-        width="162"
+        width="134"
         height="16"
         rx="2"
         fill="#fafafa"
         stroke="#e0e0e0"
         strokeWidth="1"
       />
-      <text x="96" y="41" fontFamily="sans-serif" fontSize="7.5" fill="#ccc">
+      <text x="124" y="41" fontFamily="sans-serif" fontSize="7.5" fill="#ccc">
         JP Project Demo
       </text>
 

@@ -16,12 +16,10 @@ export class ValidationError extends Error {
     public readonly value: unknown,
     public readonly allowedValues: readonly string[],
   ) {
-    super(`Invalid ${field}: "${value}". Allowed values: ${allowedValues.join(', ')}`)
+    super(`Invalid ${field}: "${String(value)}". Allowed values: ${allowedValues.join(', ')}`)
     this.name = 'ValidationError'
 
-    // Maintains proper stack trace for where error was thrown (V8 engines only)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, ValidationError)
-    }
+    // Maintains proper stack trace (Bun/V8/Node.js)
+    Error.captureStackTrace(this, ValidationError)
   }
 }

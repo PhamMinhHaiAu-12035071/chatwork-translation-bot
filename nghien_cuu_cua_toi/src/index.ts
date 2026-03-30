@@ -9,9 +9,15 @@
  *   bun run start (Docker)
  */
 
-import type { IUrlBuilder, IBrowserService } from '~/services'
-import { KagiUrlBuilder, KagiBrowserService } from '~/services'
-import { DEFAULT_TRANSLATION_CONFIG, getDefaultTranslationOptions } from '~/config'
+// Direct imports to satisfy ESLint strict type checking
+import type { IUrlBuilder } from '~/services/interfaces/url-builder.interface'
+import type { IBrowserService } from '~/services/interfaces/browser.interface'
+import { KagiUrlBuilder } from '~/services/url-builder.service'
+import { KagiBrowserService } from '~/services/browser.service'
+import {
+  DEFAULT_TRANSLATION_CONFIG,
+  getDefaultTranslationOptions,
+} from '~/config/translation.config'
 
 /**
  * Main translation workflow

@@ -1,11 +1,6 @@
 import { z } from 'zod'
 
-export const TRANSLATION_STYLES = [
-  'AUTO_CONTEXT',
-  'NATURAL_CASUAL',
-  'PROFESSIONAL_BUSINESS',
-  'TECHNICAL',
-] as const
+export const TRANSLATION_STYLES = ['NATURAL_CASUAL', 'PROFESSIONAL_BUSINESS', 'TECHNICAL'] as const
 
 export const AI_PROVIDERS = ['openai', 'gemini'] as const
 

@@ -1,8 +1,4 @@
-export type TranslationStyle =
-  | 'AUTO_CONTEXT'
-  | 'NATURAL_CASUAL'
-  | 'PROFESSIONAL_BUSINESS'
-  | 'TECHNICAL'
+export type TranslationStyle = 'NATURAL_CASUAL' | 'PROFESSIONAL_BUSINESS' | 'TECHNICAL'
 
 export type AiProvider = 'openai' | 'gemini'
 

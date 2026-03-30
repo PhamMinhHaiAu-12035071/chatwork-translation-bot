@@ -24,7 +24,6 @@ export const PROVIDER_MODELS: Record<AiProvider, ModelOption[]> = {
 }
 
 export const TRANSLATION_STYLE_LABELS: Record<TranslationStyle, string> = {
-  AUTO_CONTEXT: 'Auto Context',
   NATURAL_CASUAL: 'Natural Casual',
   PROFESSIONAL_BUSINESS: 'Professional Business',
   TECHNICAL: 'Technical',

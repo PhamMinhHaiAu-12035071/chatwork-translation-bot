@@ -14,7 +14,7 @@
     "test:coverage": "bun test --coverage",
     "test:unit": "bun test --exclude tests/e2e",
     "test:e2e": "bun test tests/e2e",
-    "lint": "echo 'ESLint not configured yet'",
+    "lint": "eslint src/ --ext .ts",
     "typecheck": "bunx tsc --noEmit"
   },
   "keywords": [
@@ -32,6 +32,9 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "eslint": "^10.1.0",
     "typescript": "^5.4.0"
   }
 }

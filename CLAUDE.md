@@ -30,18 +30,20 @@ Includes a local-dev dataset-runner sidecar for automated dataset injection and 
 
 ## Environment Variables
 
-Required: `CHATWORK_API_TOKEN`, `CHATWORK_WEBHOOK_SECRET`, `AI_PROVIDER`
-Provider-specific: Each provider requires specific env keys (see manifest.requiredEnvKeys). Run server to see startup banner for full list.
-Optional: `PORT` (default 3000), `NODE_ENV` (default development), `AI_MODEL` (default per provider), `AI_TRANSLATION_STYLE` (default `PROFESSIONAL_BUSINESS`)
+Required: `CHATWORK_API_TOKEN` (removed: `CHATWORK_WEBHOOK_SECRET` - signature verification eliminated)
+Optional: `PORT` (default 3000), `NODE_ENV` (default development)
 
-`AI_TRANSLATION_STYLE` valid values:
+**Translation configuration moved to per-room settings:**
 
-- `AUTO_CONTEXT`
+- `AI_PROVIDER` → per-room via dashboard
+- `AI_MODEL` → per-room via dashboard
+- `AI_TRANSLATION_STYLE` → per-room `translationStyle` (dashboard)
+
+Valid per-room translation styles (3 styles):
+
 - `NATURAL_CASUAL`
 - `PROFESSIONAL_BUSINESS`
 - `TECHNICAL`
-
-Invalid `AI_TRANSLATION_STYLE` values fail startup. Changing the value requires a translator restart to apply.
 
 → Details: `ai_rules/security.md`
 

@@ -16,7 +16,7 @@ describe('room schema', () => {
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-4o',
-      translationStyle: 'AUTO_CONTEXT',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: 'sk-demo',
     })
 
@@ -27,7 +27,7 @@ describe('room schema', () => {
       destinationRoomName: '',
       aiProvider: 'openai',
       aiModel: null,
-      translationStyle: 'AUTO_CONTEXT',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: '',
     })
 
@@ -56,7 +56,7 @@ describe('room schema', () => {
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-5.4-pro',
-      translationStyle: 'AUTO_CONTEXT',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
       aiApiToken: '',
     })
 

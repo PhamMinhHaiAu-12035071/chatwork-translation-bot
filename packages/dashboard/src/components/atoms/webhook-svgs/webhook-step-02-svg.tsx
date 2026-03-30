@@ -5,7 +5,7 @@ export function WebhookStep02Svg() {
       width="260"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="Chatwork Admin — click Add webhook to create a new webhook"
+      aria-label="Chatwork Admin — click Create New to create a new webhook"
     >
       {/* Top nav */}
       <rect width="260" height="30" fill="#1a1f36" />
@@ -24,7 +24,7 @@ export function WebhookStep02Svg() {
 
       {/* 3D shadow — behind button */}
       <rect x="171" y="39" width="84" height="28" rx="4" fill="#1a1a2e" />
-      {/* Add webhook button bg — covers shadow in center */}
+      {/* Create New button bg — covers shadow in center */}
       <rect x="170" y="38" width="78" height="22" rx="3" fill="#1a4080" />
       {/* Highlight rect — thick solid, no dash */}
       <rect
@@ -47,7 +47,7 @@ export function WebhookStep02Svg() {
         fontWeight="bold"
         textAnchor="middle"
       >
-        + Add webhook
+        Create New
       </text>
 
       {/* Label shadow */}

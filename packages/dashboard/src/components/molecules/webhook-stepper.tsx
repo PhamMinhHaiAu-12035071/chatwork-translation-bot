@@ -40,7 +40,7 @@ const STEPS: Step[] = [
   {
     number: '02',
     title: 'Create New Webhook',
-    body: 'Click "Add webhook". Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
+    body: 'Click "Create New". Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
     action: 'none',
     svgFragment: <WebhookStep02Svg />,
   },

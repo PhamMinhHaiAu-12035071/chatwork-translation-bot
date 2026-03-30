@@ -29,7 +29,7 @@ const LIST_ROOMS_RAW: [RoomConfigPublic, RoomConfigPublic] = [
     destinationRoomName: 'Osaka Escalations',
     aiProvider: 'openai',
     aiModel: 'gpt-4o-mini',
-    translationStyle: 'AUTO_CONTEXT',
+    translationStyle: 'NATURAL_CASUAL',
     enabled: false,
     createdAt: '2026-03-26T12:00:00Z',
     updatedAt: '2026-03-26T12:00:00Z',
@@ -62,7 +62,7 @@ const CREATED_ROOM: RoomConfigPublic = {
   destinationRoomName: 'Osaka Escalations',
   aiProvider: 'openai',
   aiModel: 'gpt-4o-mini',
-  translationStyle: 'AUTO_CONTEXT',
+  translationStyle: 'NATURAL_CASUAL',
   enabled: false,
   createdAt: '2026-03-26T12:00:00Z',
   updatedAt: '2026-03-26T12:00:00Z',
@@ -219,7 +219,7 @@ describe('room store', () => {
       destinationRoomName: 'Osaka Escalations',
       aiProvider: 'openai',
       aiModel: 'gpt-4o-mini',
-      translationStyle: 'AUTO_CONTEXT',
+      translationStyle: 'NATURAL_CASUAL',
       aiApiToken: 'sk-new-room',
     })
 

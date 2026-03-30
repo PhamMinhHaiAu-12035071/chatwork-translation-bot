@@ -31,7 +31,7 @@ describe('BrutalSelect', () => {
     const html = renderToStaticMarkup(
       createElement(BrutalSelect, {
         label: 'Translation Style',
-        options: [{ value: 'AUTO_CONTEXT', label: 'Auto Context' }],
+        options: [{ value: 'PROFESSIONAL_BUSINESS', label: 'Professional Business' }],
         error: 'Translation style is required',
       }),
     )

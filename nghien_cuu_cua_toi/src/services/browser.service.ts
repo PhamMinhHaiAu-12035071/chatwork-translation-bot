@@ -6,28 +6,30 @@
  */
 
 import { connect } from 'puppeteer-real-browser'
+import type { Browser, Page } from 'puppeteer-core'
 import type { IBrowserService, IBrowserConnection } from './interfaces/browser.interface'
 import { BrowserAutomationError } from '~/errors'
 import { BROWSER_CONFIG, KAGI_SELECTORS } from '~/config'
 
 /**
  * Browser connection wrapper
+ * @remarks Uses Puppeteer core types for type safety
  */
 class BrowserConnection implements IBrowserConnection {
   constructor(
-    private browser: any, // puppeteer-real-browser uses rebrowser types
-    private page: any,
+    private browser: Browser,
+    private page: Page,
   ) {}
 
   async close(): Promise<void> {
     await this.browser.close()
   }
 
-  getBrowser(): any {
+  getBrowser(): Browser {
     return this.browser
   }
 
-  getPage(): any {
+  getPage(): Page {
     return this.page
   }
 }
@@ -57,15 +59,16 @@ export class KagiBrowserService implements IBrowserService {
    */
   async launch(): Promise<IBrowserConnection> {
     try {
-      const { browser, page } = await connect({
-        headless: BROWSER_CONFIG.HEADLESS,
+      const headless: boolean = BROWSER_CONFIG.HEADLESS
+      const { browser, page } = (await connect({
+        headless,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
         customConfig: {},
         turnstile: true,
         connectOption: {},
         disableXvfb: false,
         ignoreAllFlags: false,
-      })
+      })) as unknown as { browser: Browser; page: Page }
 
       this.connection = new BrowserConnection(browser, page)
       return this.connection
@@ -93,28 +96,34 @@ export class KagiBrowserService implements IBrowserService {
       )
     }
 
-    const page = this.connection.getPage()
+    const page: Page = this.connection.getPage()
 
     try {
+      // Extract config constants with explicit types
+      const timeout: number = BROWSER_CONFIG.TIMEOUT
+      const selectorTimeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
+      const renderDelay: number = BROWSER_CONFIG.POST_RENDER_DELAY
+      const translationSelector: string = KAGI_SELECTORS.TRANSLATION_CONTENT
+
       // Navigate to Kagi Translate
       await page.goto(url, {
         waitUntil: 'networkidle2',
-        timeout: BROWSER_CONFIG.TIMEOUT,
+        timeout,
       })
 
       // Wait for translation content to appear (with timeout)
       try {
-        await page.waitForSelector(KAGI_SELECTORS.TRANSLATION_CONTENT, {
-          timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
+        await page.waitForSelector(translationSelector, {
+          timeout: selectorTimeout,
           visible: true,
         })
 
         // Wait for content to fully render
-        await new Promise((resolve) => setTimeout(resolve, BROWSER_CONFIG.POST_RENDER_DELAY))
+        await new Promise<void>((resolve) => setTimeout(resolve, renderDelay))
       } catch {
         // Selector timeout - will try fallback scraping
         console.warn(
-          `⚠️  Timeout waiting for ${KAGI_SELECTORS.TRANSLATION_CONTENT} - trying fallback selectors...`,
+          `⚠️  Timeout waiting for ${translationSelector} - trying fallback selectors...`,
         )
       }
 
@@ -132,12 +141,25 @@ export class KagiBrowserService implements IBrowserService {
    * @param page - Puppeteer page instance
    * @returns Translated text or error message
    */
-  private async scrapeTranslatedText(page: any): Promise<string> {
-    return await page.evaluate((selectors: typeof KAGI_SELECTORS) => {
+  private async scrapeTranslatedText(page: Page): Promise<string> {
+    // Create typed copy for evaluate context (ESLint strict mode)
+    interface Selectors {
+      TRANSLATION_CONTENT: string
+      TEXT_SPAN: string
+      TEXTAREA_PLACEHOLDER: string
+    }
+
+    const selectors: Selectors = {
+      TRANSLATION_CONTENT: KAGI_SELECTORS.TRANSLATION_CONTENT,
+      TEXT_SPAN: KAGI_SELECTORS.TEXT_SPAN,
+      TEXTAREA_PLACEHOLDER: KAGI_SELECTORS.TEXTAREA_PLACEHOLDER,
+    }
+
+    const result = await page.evaluate((sels: Selectors) => {
       // Strategy 1: Primary selector (.translation-content > span)
-      const translationContent = document.querySelector(selectors.TRANSLATION_CONTENT)
+      const translationContent = document.querySelector(sels.TRANSLATION_CONTENT)
       if (translationContent !== null) {
-        const textSpan = translationContent.querySelector(selectors.TEXT_SPAN)
+        const textSpan = translationContent.querySelector(sels.TEXT_SPAN)
         if (textSpan !== null) {
           const text = textSpan.textContent
           if (text && text.trim() !== '') {
@@ -153,7 +175,7 @@ export class KagiBrowserService implements IBrowserService {
       }
 
       // Strategy 3: Textarea with placeholder
-      const outputArea = document.querySelector<HTMLTextAreaElement>(selectors.TEXTAREA_PLACEHOLDER)
+      const outputArea = document.querySelector<HTMLTextAreaElement>(sels.TEXTAREA_PLACEHOLDER)
       if (outputArea?.value) {
         return outputArea.value
       }
@@ -168,7 +190,9 @@ export class KagiBrowserService implements IBrowserService {
       }
 
       return '[No translation result found - please check DOM structure]'
-    }, KAGI_SELECTORS)
+    }, selectors)
+
+    return result
   }
 
   /**

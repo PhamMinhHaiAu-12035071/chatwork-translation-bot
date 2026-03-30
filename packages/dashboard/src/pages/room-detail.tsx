@@ -94,7 +94,7 @@ export function RoomDetailPage() {
         destinationRoomName: '',
         aiProvider: 'openai',
         aiModel: BEST_MODEL_BY_PROVIDER.openai,
-        translationStyle: 'AUTO_CONTEXT',
+        translationStyle: 'PROFESSIONAL_BUSINESS',
         aiApiToken: '',
       }
 

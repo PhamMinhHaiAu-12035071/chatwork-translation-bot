@@ -245,7 +245,7 @@ bun test --coverage     # With coverage
 
 ```bash
 bun run typecheck       # TypeScript check
-bun run lint            # ESLint (if configured)
+bun run lint            # ESLint check
 ```
 
 ### 4. Test in Docker
