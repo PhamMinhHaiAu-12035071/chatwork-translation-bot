@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   translator:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: kagi-translator
-    restart: unless-stopped
+    restart: 'no' # One-shot script, no restart needed
     environment:
       - DISPLAY=:99
     logging:

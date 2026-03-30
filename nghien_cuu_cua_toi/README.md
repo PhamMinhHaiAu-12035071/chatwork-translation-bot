@@ -19,6 +19,15 @@ bun run start  # Build + Run in Docker
 
 That's it! 🎉
 
+**⚠️ Important:** This is a **one-shot script** (run → translate → exit). The container will:
+
+1. ✅ Run once
+2. ✅ Translate the configured text
+3. ✅ Exit with code 0 (success)
+4. ✅ Stop automatically (no restart loop)
+
+If you see continuous restarts, check `docker-compose.yml` has `restart: "no"`.
+
 **Local development:**
 
 ```bash

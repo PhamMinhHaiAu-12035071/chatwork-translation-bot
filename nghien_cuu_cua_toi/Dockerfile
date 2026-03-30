@@ -32,8 +32,12 @@ RUN bun install --frozen-lockfile
 COPY . .
 
 # Create non-root user for security
+# Also create X11 directory to suppress Xvfb warning
 RUN groupadd -r bunuser && useradd -r -g bunuser bunuser \
-    && chown -R bunuser:bunuser /app
+    && chown -R bunuser:bunuser /app \
+    && mkdir -p /tmp/.X11-unix \
+    && chmod 1777 /tmp/.X11-unix \
+    && chown root:root /tmp/.X11-unix
 
 USER bunuser
 
