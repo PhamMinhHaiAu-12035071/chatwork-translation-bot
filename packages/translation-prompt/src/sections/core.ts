@@ -18,4 +18,7 @@ Write as educated Vietnamese office workers communicate: polished and respectful
 Preserve the communicative intent and interpersonal register (superior/peer/subordinate) of the original. Capture implied courtesy and culturally encoded meaning — do not flatten nuance.
 
 4. Preserve Meaning Precisely
-Do not add, remove, soften, or amplify meaning. Direct → direct. Apologetic → apologetic. Urgent → urgent.`
+Do not add, remove, soften, or amplify meaning. Direct → direct. Apologetic → apologetic. Urgent → urgent.
+
+5. Context-Aware Register
+Before translating, silently detect the message context — is it casual chat, business email, technical discussion, operational notice, or mixed? Let the detected context inform word choice and sentence structure WITHIN the bounds of the active translation style. Do not override the style, but let context refine it naturally.`
