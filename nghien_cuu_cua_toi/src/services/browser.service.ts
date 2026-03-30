@@ -6,7 +6,6 @@
  */
 
 import { connect } from 'puppeteer-real-browser'
-import type { Browser, Page } from 'puppeteer'
 import type { IBrowserService, IBrowserConnection } from './interfaces/browser.interface'
 import { BrowserAutomationError } from '~/errors'
 import { BROWSER_CONFIG, KAGI_SELECTORS } from '~/config'
@@ -16,19 +15,19 @@ import { BROWSER_CONFIG, KAGI_SELECTORS } from '~/config'
  */
 class BrowserConnection implements IBrowserConnection {
   constructor(
-    private browser: Browser,
-    private page: Page,
+    private browser: any, // puppeteer-real-browser uses rebrowser types
+    private page: any,
   ) {}
 
   async close(): Promise<void> {
     await this.browser.close()
   }
 
-  getBrowser(): Browser {
+  getBrowser(): any {
     return this.browser
   }
 
-  getPage(): Page {
+  getPage(): any {
     return this.page
   }
 }
@@ -133,8 +132,8 @@ export class KagiBrowserService implements IBrowserService {
    * @param page - Puppeteer page instance
    * @returns Translated text or error message
    */
-  private async scrapeTranslatedText(page: Page): Promise<string> {
-    return await page.evaluate((selectors) => {
+  private async scrapeTranslatedText(page: any): Promise<string> {
+    return await page.evaluate((selectors: typeof KAGI_SELECTORS) => {
       // Strategy 1: Primary selector (.translation-content > span)
       const translationContent = document.querySelector(selectors.TRANSLATION_CONTENT)
       if (translationContent !== null) {
