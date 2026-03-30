@@ -48,6 +48,12 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).not.toMatch(/elite professional translator|20 years/i)
   })
 
+  it('uses a short translator-first identity anchor without persona theater', () => {
+    const result = buildSingleCallPrompts('Please check this by Friday.', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/translator/i)
+    expect(result.system).not.toMatch(/20 years|elite|roleplay|persona/i)
+  })
+
   it('core doctrine front-loads naturalness as the primary mandate', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
     const naturalIdx = result.system.indexOf('Naturalness')
@@ -76,6 +82,24 @@ describe('buildSingleCallPrompts', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
     expect(result.system).toMatch(/dialect-neutral/i)
     expect(result.system).not.toMatch(/transl_start/i)
+  })
+
+  it('keeps naturalness first but protects force, numbers, deadlines, conditions, and logic', () => {
+    const result = buildSingleCallPrompts('金曜日までに確認してください。', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/natural/i)
+    expect(result.system).toMatch(/force|deadline|condition|logic/i)
+  })
+
+  it('limits context awareness to the local message or segment only', () => {
+    const result = buildSingleCallPrompts('Just checking on this.', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/local message|segment/i)
+    expect(result.system).not.toMatch(/room history|thread history|memory/i)
+  })
+
+  it('distills human-sounding principles without explicit detector-gaming instructions', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).not.toMatch(/AI detector|detector evasion|bypass/i)
+    expect(result.system).not.toMatch(/forbidden-word/i)
   })
 
   it('includes prompt injection protection in system prompt', () => {
