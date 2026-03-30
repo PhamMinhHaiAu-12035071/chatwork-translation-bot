@@ -4,12 +4,8 @@ import type { ISchema, PromptPair } from '@chatwork-bot/core'
 import type { TranslationResult } from '@chatwork-bot/core'
 import type { TranslationStyle } from '@chatwork-bot/core'
 import {
-  buildPolishPrompts,
   buildSingleCallPrompts,
-  buildStructuredPolishPrompts,
   buildStructuredTranslationPrompts,
-  PolishResultSchema,
-  StructuredPolishResultSchema,
   StructuredTranslationDraftSchema,
   TranslationDraftSchema,
 } from '@chatwork-bot/translation-prompt'
@@ -67,59 +63,39 @@ export class TranslationPipeline {
       const [singleInput] = input.translationInputs
       const sourceText = singleInput ?? input.cleanText
 
-      // Step 1: Draft
-      const draft = await this.executeDraft(
+      const translation = await this.executeTranslation(
         buildSingleCallPrompts(sourceText, style),
         TranslationDraftSchema,
         options,
       )
 
-      // Step 2: Polish (fallback to draft on failure)
-      const polished = await this.executePolish(
-        buildPolishPrompts(sourceText, draft.translated, style),
-        PolishResultSchema,
-        options,
-      )
-
-      const finalText = polished?.translated ?? draft.translated
-
       return {
-        translation: this.buildTranslationResult(input.cleanText, finalText, draft.sourceLang),
-        translatedSegments: [finalText],
+        translation: this.buildTranslationResult(
+          input.cleanText,
+          translation.translated,
+          translation.sourceLang,
+        ),
+        translatedSegments: [translation.translated],
       }
     }
 
-    // Step 1: Draft (structured)
-    const structuredDraft = await this.executeDraft(
+    const structuredTranslation = await this.executeTranslation(
       buildStructuredTranslationPrompts(input.translationInputs, style),
       StructuredTranslationDraftSchema,
       options,
     )
 
-    if (structuredDraft.translatedSegments.length !== input.translationInputs.length) {
+    if (structuredTranslation.translatedSegments.length !== input.translationInputs.length) {
       throw new TranslationError('Translation segment count mismatch', 'INVALID_RESPONSE')
     }
-
-    // Step 2: Polish (fallback to draft on failure)
-    const polished = await this.executePolish(
-      buildStructuredPolishPrompts(
-        input.translationInputs,
-        structuredDraft.translatedSegments,
-        style,
-      ),
-      StructuredPolishResultSchema,
-      options,
-    )
-
-    const finalSegments = polished?.translatedSegments ?? structuredDraft.translatedSegments
 
     return {
       translation: this.buildTranslationResult(
         input.cleanText,
-        finalSegments.join('\n'),
-        structuredDraft.sourceLang,
+        structuredTranslation.translatedSegments.join('\n'),
+        structuredTranslation.sourceLang,
       ),
-      translatedSegments: finalSegments,
+      translatedSegments: structuredTranslation.translatedSegments,
     }
   }
 
@@ -173,7 +149,7 @@ export class TranslationPipeline {
     return new TranslationError('Translation pipeline aborted', 'ABORTED', reason)
   }
 
-  private async executeDraft<T>(
+  private async executeTranslation<T>(
     prompts: PromptPair,
     schema: ISchema<T>,
     options: PipelineRunOptions,
@@ -194,20 +170,6 @@ export class TranslationPipeline {
     } catch (error) {
       await options.phaseObserver?.onPhaseFailed?.({ ...phaseParams, error })
       throw error
-    }
-  }
-
-  private async executePolish<T>(
-    prompts: PromptPair,
-    schema: ISchema<T>,
-    options: PipelineRunOptions,
-  ): Promise<T | null> {
-    try {
-      const signal = this.buildSignal(options)
-      return await this.executor.execute(prompts, schema, { signal })
-    } catch {
-      // Polish failure is non-fatal — fall back to draft
-      return null
     }
   }
 

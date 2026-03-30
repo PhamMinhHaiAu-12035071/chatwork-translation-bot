@@ -345,7 +345,7 @@ describe('handleTranslateRequest', () => {
       modelId: 'gpt-4o',
       apiKey: 'room-openai-token',
     })
-    expect(executeCallCount).toBe(2)
+    expect(executeCallCount).toBe(1)
 
     const providerSelectedLog = readJsonLogs().find(
       (entry) => entry['event'] === 'translation_provider_selected',
