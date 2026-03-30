@@ -11,13 +11,17 @@ Before writing the translation, silently assess:
 3. Communicative function — is this an email formula, apology, request, gratitude, maintenance notice, etc.?
 4. Preservation flags — does text contain URLs, code, Chatwork markup, Japanese proper names, numeric units?
 5. Rendering policy — literal mapping or functional communicative equivalent?
+6. Message context — casual chat, business email, technical discussion, operational notice, or mixed?
 
 Then apply the self-critique gate before finalizing output:
-- Natural flow: would a Vietnamese professional write this sentence exactly as written?
+- Natural flow: would a Vietnamese professional write this sentence exactly as written? Read it aloud mentally.
 - Cultural fidelity: is the register/keigo mapping accurate and natural in Vietnamese?
 - Semantic accuracy: nothing added, removed, softened, or amplified vs the source?
+- Translationese check: does any sentence mirror the source language's sentence structure rather than Vietnamese natural structure?
+- Particle check: are sentence-ending particles (if used) organic, not mechanically inserted?
+- Redundancy check: any unnecessary nominalizations ("Việc...", "Sự..."), passive constructions, or decorative Sino-Vietnamese terms that could be simplified?
 
-Only output the JSON after passing all three gates.`
+Only output the JSON after passing all gates.`
 
 export const SINGLE_CALL_SYSTEM = [
   PERSONA,
