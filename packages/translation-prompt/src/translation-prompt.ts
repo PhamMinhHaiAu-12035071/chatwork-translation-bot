@@ -2,8 +2,7 @@ import { DEFAULT_TRANSLATION_STYLE } from '@chatwork-bot/core'
 import type { TranslationStyle } from '@chatwork-bot/core'
 import { BASE_TRANSLATOR_ROLE, CORE_DOCTRINE } from '~/sections/core'
 import { CONSTRAINTS } from '~/sections/constraints'
-import { JAPANESE_RULES } from '~/sections/language-layers'
-import { CONTRASTIVE_EXAMPLES } from '~/sections/contrastive-examples'
+import { ENGLISH_RULES, JAPANESE_RULES } from '~/sections/language-layers'
 import { SELF_VERIFICATION } from '~/sections/verification'
 import {
   buildTranslationStyleSection,
@@ -17,7 +16,7 @@ export interface PromptPair {
   user: string
 }
 
-export const TRANSLATION_PROMPT_BUILD_ID = '2026-03-30-lyra-principle-based-v6'
+export const TRANSLATION_PROMPT_BUILD_ID = '2026-03-30-human-sounding-workplace-v1'
 
 export { TranslationDraftSchema }
 export { StructuredTranslationDraftSchema }
@@ -26,8 +25,8 @@ export type { StructuredTranslationDraft, TranslationDraft } from '~/schemas/rev
 const SHARED_SYSTEM = [
   BASE_TRANSLATOR_ROLE,
   CORE_DOCTRINE,
-  CONTRASTIVE_EXAMPLES,
   JAPANESE_RULES,
+  ENGLISH_RULES,
   CONSTRAINTS,
   SELF_VERIFICATION,
 ].join('\n\n')

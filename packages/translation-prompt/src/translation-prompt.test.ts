@@ -42,38 +42,42 @@ describe('buildSingleCallPrompts', () => {
     }
   })
 
-  it('system prompt uses a strong identity anchor, not a generic role', () => {
-    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/best.*translator/i)
-    expect(result.system).not.toMatch(/elite professional translator|20 years/i)
-  })
-
   it('uses a short translator-first identity anchor without persona theater', () => {
     const result = buildSingleCallPrompts('Please check this by Friday.', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/translator/i)
-    expect(result.system).not.toMatch(/20 years|elite|roleplay|persona/i)
+    expect(result.system).toMatch(/You are a translator/i)
+    expect(result.system).not.toMatch(/world's best|20 years|elite|roleplay|\bpersona\b/i)
   })
 
-  it('core doctrine front-loads naturalness as the primary mandate', () => {
+  it('shared doctrine appears before language layers, verification, and the active style block', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    const naturalIdx = result.system.indexOf('Naturalness')
-    const fidelityIdx = result.system.indexOf('Fidelity')
-    expect(naturalIdx).toBeGreaterThan(-1)
-    expect(fidelityIdx).toBeGreaterThan(-1)
-    expect(naturalIdx).toBeLessThan(fidelityIdx)
+    const doctrineIdx = result.system.indexOf('## Shared Translation Doctrine')
+    const japaneseIdx = result.system.indexOf('## Japanese Source Rules')
+    const englishIdx = result.system.indexOf('## English Source Rules')
+    const verificationIdx = result.system.indexOf('## Self-Verification Checklist')
+    const styleIdx = result.system.indexOf('## Active Style: PROFESSIONAL_BUSINESS')
+
+    expect(doctrineIdx).toBeGreaterThan(-1)
+    expect(japaneseIdx).toBeGreaterThan(-1)
+    expect(englishIdx).toBeGreaterThan(-1)
+    expect(verificationIdx).toBeGreaterThan(-1)
+    expect(styleIdx).toBeGreaterThan(-1)
+    expect(doctrineIdx).toBeLessThan(japaneseIdx)
+    expect(japaneseIdx).toBeLessThan(englishIdx)
+    expect(englishIdx).toBeLessThan(verificationIdx)
+    expect(verificationIdx).toBeLessThan(styleIdx)
   })
 
-  it('core doctrine carries the Kagi-like naturalness mandate', () => {
+  it('core doctrine front-loads naturalness and communicative-function translation', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/Vietnamese MUST sound completely natural/i)
-    expect(result.system).toMatch(/Restructure sentence patterns/i)
-    expect(result.system).toMatch(/Vietnamize completely/i)
-    expect(result.system).toMatch(/native.*speaker/i)
+    expect(result.system).toMatch(/Naturalness first/i)
+    expect(result.system).toMatch(/Vietnamese person would naturally write/i)
+    expect(result.system).toMatch(/communicative function/i)
+    expect(result.system).toMatch(/word-for-word mirroring/i)
   })
 
   it('core doctrine preserves formatting and punctuation rules', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/Preserve formatting.*line breaks/i)
+    expect(result.system).toMatch(/Preserve formatting, line breaks/i)
     expect(result.system).toMatch(/keep hyphens/i)
     expect(result.system).toMatch(/Japanese full-width punctuation/i)
   })
@@ -81,13 +85,12 @@ describe('buildSingleCallPrompts', () => {
   it('core doctrine defaults to dialect-neutral Vietnamese', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
     expect(result.system).toMatch(/dialect-neutral/i)
-    expect(result.system).not.toMatch(/transl_start/i)
   })
 
   it('keeps naturalness first but protects force, numbers, deadlines, conditions, and logic', () => {
     const result = buildSingleCallPrompts('金曜日までに確認してください。', 'PROFESSIONAL_BUSINESS')
     expect(result.system).toMatch(/natural/i)
-    expect(result.system).toMatch(/force|deadline|condition|logic/i)
+    expect(result.system).toMatch(/force|deadline|condition|logic|negation/i)
   })
 
   it('limits context awareness to the local message or segment only', () => {
@@ -121,17 +124,25 @@ describe('buildSingleCallPrompts', () => {
     const result = buildSingleCallPrompts('お世話になっております。', 'PROFESSIONAL_BUSINESS')
     expect(result.system).toMatch(/function/i)
     expect(result.system).toMatch(/お世話になっております/i)
-    expect(result.system).toMatch(/do not invent|unless the source explicitly carries that meaning/i)
+    expect(result.system).toMatch(
+      /do not invent|unless the source explicitly carries that meaning/i,
+    )
     expect(result.system).toMatch(/Trân trọng|xem xét|cảm ơn/i)
   })
 
   it('keeps Japanese-script personal names instead of auto-romanizing them', () => {
-    const result = buildSingleCallPrompts('山田太郎さんに連絡してください。', 'PROFESSIONAL_BUSINESS')
+    const result = buildSingleCallPrompts(
+      '山田太郎さんに連絡してください。',
+      'PROFESSIONAL_BUSINESS',
+    )
     expect(result.system).toMatch(/Japanese-script personal names/i)
   })
 
   it('includes a first-class English workplace layer instead of relying on Japanese fallback rules', () => {
-    const result = buildSingleCallPrompts('Could you check this by Friday?', 'PROFESSIONAL_BUSINESS')
+    const result = buildSingleCallPrompts(
+      'Could you check this by Friday?',
+      'PROFESSIONAL_BUSINESS',
+    )
     expect(result.system).toMatch(/English source rules|English workplace/i)
     expect(result.system).toMatch(/Could you|Just checking|Hope you're well/i)
   })
@@ -149,19 +160,21 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).not.toMatch(/Zalo|Slack|teammate|colleague/i)
   })
 
-  it('natural style instructs coworker-like rewriting and everyday Vietnamese', () => {
+  it('natural style instructs native-feeling workplace Vietnamese without reviving old doctrine baggage', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
-    expect(result.system).toMatch(/Vietnamese person actually say/i)
-    expect(result.system).toMatch(/Three-Step Naturalness Process/i)
-    expect(result.system).toMatch(/B2 Vietnamese.*CEFR/i)
-    expect(result.system).toMatch(/Particle Logic/i)
+    expect(result.system).toMatch(/highest paraphrase budget/i)
+    expect(result.system).toMatch(/native-feeling Vietnamese/i)
+    expect(result.system).toMatch(/everyday workplace or tech speech/i)
+    expect(result.system).not.toMatch(
+      /Three-Step Naturalness Process|B2 Vietnamese|Particle Logic/i,
+    )
   })
 
   it('natural style bans half-English hybrids and literal phrasing', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
-    expect(result.system).toMatch(/AI detect/i)
-    expect(result.system).toMatch(/half-English hybrid/i)
+    expect(result.system).toMatch(/half-English hybrids/i)
     expect(result.system).toMatch(/literal phrasing/i)
+    expect(result.system).not.toMatch(/AI detect/i)
   })
 
   it('natural casual has the highest paraphrase budget and avoids overfamiliar chat slang', () => {
@@ -180,8 +193,8 @@ describe('buildSingleCallPrompts', () => {
 
   it('professional style uses a business register with clear constraints', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
-    expect(result.system).toMatch(/internal business prose/i)
-    expect(result.system).toMatch(/calm professional Vietnamese/i)
+    expect(result.system).toMatch(/stable default workplace style/i)
+    expect(result.system).toMatch(/Modern, respectful, concise internal business prose/i)
     expect(result.system).not.toMatch(/project manager|PM|Zalo/i)
   })
 
@@ -192,18 +205,19 @@ describe('buildSingleCallPrompts', () => {
   })
 
   it('professional business stays the stable default workplace style', () => {
-    const result = buildSingleCallPrompts('Please review the attached file.', 'PROFESSIONAL_BUSINESS')
+    const result = buildSingleCallPrompts(
+      'Please review the attached file.',
+      'PROFESSIONAL_BUSINESS',
+    )
     expect(result.system).toMatch(/stable default/i)
     expect(result.system).toMatch(/modern|respectful|concise/i)
   })
 
   it('technical style keeps engineering terminology and terse register', () => {
     const result = buildSingleCallPrompts('テスト', 'TECHNICAL')
-    expect(result.system).toMatch(/technical.*register|technical prose/i)
-    expect(result.system).toMatch(/proxy video/i)
-    expect(result.system).toMatch(/frame rate/i)
-    expect(result.system).toMatch(/object detection/i)
-    expect(result.system).toMatch(/deploy/i)
+    expect(result.system).toMatch(/technical prose register|technical prose/i)
+    expect(result.system).toMatch(/technical force|industry-standard English/i)
+    expect(result.system).toMatch(/constraints, instructions, and incident notes/i)
     expect(result.system).not.toMatch(/senior engineer|Zalo/i)
   })
 
@@ -302,7 +316,7 @@ describe('StructuredTranslationDraftSchema', () => {
 
 describe('package exports', () => {
   it('exports the prompt build id for runtime logging', () => {
-    expect(TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-lyra-principle-based-v6')
+    expect(TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-human-sounding-workplace-v1')
   })
 
   it('removes polish builders and schemas from the public barrel', async () => {
@@ -317,6 +331,6 @@ describe('package exports', () => {
   it('re-exports the prompt build id from the public barrel', async () => {
     const api = await import('./index')
 
-    expect(api.TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-lyra-principle-based-v6')
+    expect(api.TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-human-sounding-workplace-v1')
   })
 })

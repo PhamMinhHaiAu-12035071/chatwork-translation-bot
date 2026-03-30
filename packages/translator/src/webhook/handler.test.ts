@@ -449,7 +449,7 @@ describe('handleTranslateRequest', () => {
     expect(content.llm?.promptMode).toBe('structured_segments')
     expect(content.llm?.translationStyle).toBe('TECHNICAL')
     expect(content.llm?.generation?.temperature).toBe(0)
-    expect(content.llm?.promptBuildId).toBe('2026-03-30-lyra-principle-based-v6')
+    expect(content.llm?.promptBuildId).toBe('2026-03-30-human-sounding-workplace-v1')
   })
 
   it('writes a structured natural-casual prompt mode and v3 runtime metadata for long single-message input', async () => {
@@ -515,7 +515,7 @@ describe('handleTranslateRequest', () => {
     expect(content.llm?.promptMode).toBe('structured_segments')
     expect(content.llm?.translationStyle).toBe('NATURAL_CASUAL')
     expect(content.llm?.generation?.temperature).toBe(0.55)
-    expect(content.llm?.promptBuildId).toBe('2026-03-30-lyra-principle-based-v6')
+    expect(content.llm?.promptBuildId).toBe('2026-03-30-human-sounding-workplace-v1')
   })
 
   it('emits structured lifecycle logs and records completed request in status snapshot', async () => {
