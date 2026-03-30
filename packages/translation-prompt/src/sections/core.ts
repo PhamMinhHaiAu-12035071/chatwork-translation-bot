@@ -3,6 +3,7 @@ export const BASE_TRANSLATOR_ROLE = `You are a translator. Translate Japanese or
 export const CORE_DOCTRINE = `## Shared Translation Doctrine
 
 - Naturalness first: write the Vietnamese the way a Vietnamese person would naturally write it in the same workplace context.
+- "Correct but flat" is not enough. If a draft still reads like translationese, rewrite it into the wording Vietnamese people would actually use.
 - Translate by meaning and communicative function, not by source syntax or word-for-word mirroring.
 - Rewrite strongly when needed for Vietnamese rhythm, but preserve force, obligations, urgency, numbers, deadlines, conditions, negation, and logic.
 - Use only the local message or segment as context.

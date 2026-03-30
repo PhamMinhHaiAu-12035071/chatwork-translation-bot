@@ -195,11 +195,15 @@ describe('TranslationPipeline', () => {
     const pipeline = new TranslationPipeline(executor)
 
     const result = await pipeline.runStructured({
-      cleanText: 'こんにちは\n資料をご確認ください。',
+      cleanText: '[info][title]こんにちは[/title]資料をご確認ください。[/info]',
       translationInputs: ['こんにちは', '資料をご確認ください。'],
     })
 
     expect(captured.prompts?.user).toContain('<TRANSLATE_SEGMENTS>')
+    expect(captured.prompts?.user).toContain('<MESSAGE_CONTEXT>')
+    expect(captured.prompts?.user).toContain(
+      '[info][title]こんにちは[/title]資料をご確認ください。[/info]',
+    )
     expect(result.translatedSegments).toEqual(['Xin chào', 'Vui lòng xem tài liệu.'])
   })
 
@@ -245,14 +249,14 @@ describe('TranslationPipeline', () => {
     expect(debug?.prompts.system).toContain('NATURAL_CASUAL')
   })
 
-  it('auto-segments a long natural-casual single message into structured translation while preserving paragraph separators', async () => {
+  it('keeps a long natural-casual single message in single_text mode so style can work across the whole note', async () => {
     const captured: { prompts?: PromptPair } = {}
     const executor: ILLMExecutor = {
       execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
         captured.prompts = prompts
         return Promise.resolve({
           sourceLang: 'Japanese',
-          translatedSegments: ['Đoạn 1', 'Đoạn 2', 'Đoạn 3'],
+          translated: 'Bản dịch liền mạch',
         } as T)
       },
       describeExecution() {
@@ -277,9 +281,9 @@ describe('TranslationPipeline', () => {
       translationInputs: [source],
     })
 
-    expect(captured.prompts?.user).toContain('<TRANSLATE_SEGMENTS>')
-    expect(result.debug?.promptMode).toBe('structured_segments')
-    expect(result.translatedSegments).toEqual(['Đoạn 1\n\nĐoạn 2\n\nĐoạn 3'])
-    expect(result.translation.translatedText).toBe('Đoạn 1\n\nĐoạn 2\n\nĐoạn 3')
+    expect(captured.prompts?.user).toContain('<TRANSLATE_TEXT>')
+    expect(result.debug?.promptMode).toBe('single_text')
+    expect(result.translatedSegments).toEqual(['Bản dịch liền mạch'])
+    expect(result.translation.translatedText).toBe('Bản dịch liền mạch')
   })
 })

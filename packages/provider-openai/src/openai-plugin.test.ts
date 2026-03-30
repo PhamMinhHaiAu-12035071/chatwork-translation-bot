@@ -123,9 +123,9 @@ describe('openaiPlugin', () => {
 
     expect(executor.describeExecution()).toEqual({
       generation: {
-        temperature: 0.55,
+        temperature: 0.75,
         maxOutputTokens: 4000,
-        providerOptions: { openai: { reasoningEffort: 'low' } },
+        providerOptions: { openai: { reasoningEffort: 'medium' } },
         providerManaged: false,
       },
     })
@@ -201,9 +201,9 @@ describe('OpenAI resolveThinking', () => {
     })
     await executor.execute({ system: 's', user: 'u' }, schema as never)
     const lastCall = getLastCallArg()
-    expect(lastCall['temperature']).toBe(0.55)
+    expect(lastCall['temperature']).toBe(0.75)
     expect((lastCall['providerOptions'] as { openai: unknown }).openai).toEqual({
-      reasoningEffort: 'low',
+      reasoningEffort: 'medium',
     })
   })
 })

@@ -30,7 +30,7 @@ function isAbortError(error: unknown): error is Error {
 function resolveTemperature(style?: ProviderCreateContext['translationStyle']): number {
   switch (style) {
     case 'NATURAL_CASUAL':
-      return 0.55
+      return 0.75
     case 'PROFESSIONAL_BUSINESS':
       return 0.15
     case 'TECHNICAL':
@@ -69,7 +69,7 @@ class OpenAIExecutor implements ILLMExecutor {
     if (!supportsThinking(modelId)) return null
     const effort =
       style === 'NATURAL_CASUAL'
-        ? 'low'
+        ? 'medium'
         : ((process.env['OPENAI_REASONING_EFFORT'] ?? 'medium') as 'low' | 'medium' | 'high')
     return { openai: { reasoningEffort: effort } }
   }

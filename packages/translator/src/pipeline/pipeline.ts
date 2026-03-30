@@ -37,82 +37,6 @@ export interface PipelineTranslationResult {
   }
 }
 
-interface AutoSegmentedText {
-  segments: string[]
-  separators: string[]
-}
-
-function isHeadingLine(line: string): boolean {
-  return /^\s*\d+\.\s/.test(line) || /^\s*[^:\n]{1,120}:\s*$/.test(line)
-}
-
-function splitParagraphByHeadings(paragraph: string): AutoSegmentedText {
-  const lines = paragraph.split('\n')
-  const segments: string[] = []
-  const separators: string[] = []
-  let currentLines: string[] = []
-
-  for (const line of lines) {
-    if (currentLines.length > 0 && isHeadingLine(line)) {
-      segments.push(currentLines.join('\n'))
-      separators.push('\n')
-      currentLines = [line]
-      continue
-    }
-
-    currentLines.push(line)
-  }
-
-  if (currentLines.length > 0) {
-    segments.push(currentLines.join('\n'))
-  }
-
-  return { segments, separators }
-}
-
-function autoSegmentNaturalCasualText(text: string): AutoSegmentedText | null {
-  if (!text.includes('\n')) return null
-
-  const paragraphTokens = text.split(/(\n{2,})/)
-  const segments: string[] = []
-  const separators: string[] = []
-  let pendingSeparator = ''
-
-  for (const token of paragraphTokens) {
-    if (token === '') continue
-
-    if (/^\n{2,}$/.test(token)) {
-      pendingSeparator = token
-      continue
-    }
-
-    const paragraph = splitParagraphByHeadings(token)
-    paragraph.segments.forEach((segment, index) => {
-      if (segments.length > 0) {
-        separators.push(
-          index === 0 ? pendingSeparator || '\n' : (paragraph.separators[index - 1] ?? '\n'),
-        )
-      }
-      segments.push(segment)
-    })
-    pendingSeparator = ''
-  }
-
-  if (segments.length < 2) return null
-
-  return { segments, separators }
-}
-
-function joinTranslatedSegments(segments: string[], separators: string[]): string {
-  if (segments.length === 0) return ''
-
-  let joined = segments[0] ?? ''
-  for (let index = 1; index < segments.length; index += 1) {
-    joined += `${separators[index - 1] ?? '\n'}${segments[index] ?? ''}`
-  }
-  return joined
-}
-
 export class TranslationPipeline {
   constructor(
     private readonly executor: ILLMExecutor,
@@ -142,40 +66,6 @@ export class TranslationPipeline {
     if (input.translationInputs.length === 1) {
       const [singleInput] = input.translationInputs
       const sourceText = singleInput ?? input.cleanText
-      const autoSegmented =
-        style === 'NATURAL_CASUAL' ? autoSegmentNaturalCasualText(sourceText) : null
-
-      if (autoSegmented !== null) {
-        const prompts = buildStructuredTranslationPrompts(autoSegmented.segments, style)
-        const structuredTranslation = await this.executeTranslation(
-          prompts,
-          StructuredTranslationDraftSchema,
-          options,
-        )
-
-        if (structuredTranslation.translatedSegments.length !== autoSegmented.segments.length) {
-          throw new TranslationError('Translation segment count mismatch', 'INVALID_RESPONSE')
-        }
-
-        const joinedTranslation = joinTranslatedSegments(
-          structuredTranslation.translatedSegments,
-          autoSegmented.separators,
-        )
-
-        return {
-          translation: this.buildTranslationResult(
-            input.cleanText,
-            joinedTranslation,
-            structuredTranslation.sourceLang,
-          ),
-          translatedSegments: [joinedTranslation],
-          debug: {
-            prompts,
-            promptMode: 'structured_segments',
-          },
-        }
-      }
-
       const prompts = buildSingleCallPrompts(sourceText, style)
 
       const translation = await this.executeTranslation(prompts, TranslationDraftSchema, options)
@@ -194,7 +84,11 @@ export class TranslationPipeline {
       }
     }
 
-    const prompts = buildStructuredTranslationPrompts(input.translationInputs, style)
+    const prompts = buildStructuredTranslationPrompts(
+      input.translationInputs,
+      style,
+      input.cleanText,
+    )
     const structuredTranslation = await this.executeTranslation(
       prompts,
       StructuredTranslationDraftSchema,

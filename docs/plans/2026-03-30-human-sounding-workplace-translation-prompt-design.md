@@ -134,6 +134,33 @@ interaction or configuration surface.
 - Vietnamese pronouns and particles are allowed only under a context-gated minimal rule
 - Harsh, rude, or slang source tone is translated faithfully and not auto-sanitized
 
+### Pronoun and particle trigger rules
+
+`Context-gated minimal` means the prompt should prefer no added relationship marker unless the
+local source text clearly supports one.
+
+Allowed triggers:
+
+- the source explicitly contains a request, question, or collaborative framing where a light
+  particle improves natural Vietnamese without changing force
+- the local message already carries a speaker/addressee cue that does not require guessing gender
+  or hierarchy
+- the selected style is `NATURAL_CASUAL` and the sentence is conversational rather than formal,
+  report-like, or purely technical
+
+Disallowed triggers:
+
+- gender, rank, or relationship must be guessed
+- the line is a neutral status update, deadline statement, or technical instruction
+- the added pronoun or particle would imply warmth, deference, or intimacy that the source does
+  not carry
+
+Operational default:
+
+- omit the pronoun if Vietnamese still reads naturally
+- prefer a light particle only when it smooths a local request or question
+- never default to `anh/chị`, `em`, `ông`, or similar role signals on sparse context alone
+
 ## Technical Approach
 
 ## Architecture
@@ -271,6 +298,9 @@ outputs whose style settings collapse into one generic voice.
 - `NATURAL_CASUAL` sounds the least translated while staying workplace-safe
 - Tests assert doctrine-first ordering, preservation invariants, language-layer coverage, and style
   separation anchors
+- A manual smoke matrix using at least one neutral source, one request source, and one technical
+  source shows that `NATURAL_CASUAL` and `PROFESSIONAL_BUSINESS` do not collapse into the same
+  voice on easy inputs
 
 ## Happy Path
 
@@ -322,6 +352,7 @@ outputs whose style settings collapse into one generic voice.
   - naturalness of each style
   - separation between styles
   - Japanese versus English source handling quality
+  - neutral-source differentiation between `NATURAL_CASUAL` and `PROFESSIONAL_BUSINESS`
 
 ## Explicit Decisions Made
 
@@ -359,6 +390,19 @@ outputs whose style settings collapse into one generic voice.
   exist in the layer wording
 - Some models may follow doctrine-level naturalness strongly but under-deliver style separation on
   terse inputs
+
+## Mitigations
+
+- Encode explicit adapter differences in paraphrase budget, particle allowance, and English-term
+  retention so the styles diverge even on neutral workplace inputs
+- Add a manual three-source smoke matrix in implementation and final verification:
+  - one neutral update
+  - one request / ask
+  - one technical instruction
+- Preserve any high-signal anchor from `contrastive-examples.ts` by migrating it into tests or the
+  rewritten doctrine before deleting that file
+- Treat `context-gated minimal` as an operational rule with concrete allow/disallow triggers, not
+  as a loose stylistic preference
 
 ## Future Scope / Deferred Features
 

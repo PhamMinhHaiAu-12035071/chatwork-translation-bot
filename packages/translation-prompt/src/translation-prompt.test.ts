@@ -184,6 +184,22 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).toMatch(/only when local context supports them|prefer no pronoun/i)
   })
 
+  it('natural casual rejects correct-but-flat translationese and pushes toward phrasing Vietnamese teams would actually say', () => {
+    const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
+    expect(result.system).toMatch(/correct-but-flat|translationese/i)
+    expect(result.system).toMatch(
+      /Vietnamese teams would actually say|Vietnamese people would actually say/i,
+    )
+    expect(result.system).toMatch(/de-formalize|stiff business-tech phrasing/i)
+  })
+
+  it('natural casual keeps English technical nouns only when the mixed phrase is genuinely how Vietnamese teams speak', () => {
+    const result = buildSingleCallPrompts('cloud instance proxy', 'NATURAL_CASUAL')
+    expect(result.system).toMatch(/only keep English/i)
+    expect(result.system).toMatch(/mixed phrase|running prose/i)
+    expect(result.system).toMatch(/cloud|instance|proxy/i)
+  })
+
   it('natural style has no micro-examples or contrastive packs', () => {
     const result = buildSingleCallPrompts('テスト', 'NATURAL_CASUAL')
     expect(result.system).not.toMatch(/Bad\s*->\s*Good/i)
@@ -261,6 +277,17 @@ describe('buildStructuredTranslationPrompts', () => {
     for (const segment of segments) {
       expect(result.user).toContain(segment)
     }
+  })
+
+  it('includes the full original message as context for structured translation when provided', () => {
+    const segments = ['Agenda', 'Please review the attached file.']
+    const fullMessage = '[info][title]Agenda[/title]Please review the attached file.[/info]'
+    const result = buildStructuredTranslationPrompts(segments, 'PROFESSIONAL_BUSINESS', fullMessage)
+
+    expect(result.user).toContain('<MESSAGE_CONTEXT>')
+    expect(result.user).toContain('</MESSAGE_CONTEXT>')
+    expect(result.user).toContain(fullMessage)
+    expect(result.user).toMatch(/full original message|context only/i)
   })
 
   it('instructs the model to preserve array length and order', () => {

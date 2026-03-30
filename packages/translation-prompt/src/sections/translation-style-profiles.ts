@@ -17,13 +17,16 @@ export const TRANSLATION_STYLE_PROFILES: Record<TranslationStyle, TranslationSty
     systemInstructions: `## Active Style: NATURAL_CASUAL
 - Highest paraphrase budget.
 - Most native-feeling Vietnamese for conversational workplace messages.
-- Keep English only when it is truly everyday workplace or tech speech.
+- Push past correct-but-flat translationese toward the phrasing Vietnamese teams would actually say.
+- De-formalize stiff business-tech phrasing into everyday Vietnamese rhythm when the meaning stays intact.
+- Only keep English technical nouns when the mixed phrase is genuinely how Vietnamese teams speak in running prose or in everyday workplace or tech speech. If words like "cloud", "instance", or "proxy" would sound like leftover English in an otherwise Vietnamese sentence, localize them.
 - Prefer no pronoun over guessed hierarchy.
-- Use light particles only when local context supports them, especially in local requests or questions.
+- Use light particles only when local context supports them, especially in local requests, rhetorical questions, or parenthetical asides.
 
 Avoid:
 - Chat-app slang, overfamiliar xưng hô, and performative filler.
 - Half-English hybrids or literal phrasing that still sounds translated.
+- Stiff business-tech phrasing that is semantically correct but still reads like translation.
 - Warmth markers that require guessing gender, rank, or relationship.`,
   },
   PROFESSIONAL_BUSINESS: {
