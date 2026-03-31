@@ -13,6 +13,7 @@ import {
   WebhookStep04Svg,
   WebhookStep05Svg,
   WebhookStep06Svg,
+  WebhookStep07Svg,
 } from '~/components/atoms/webhook-svgs'
 
 interface WebhookStepperProps {
@@ -40,38 +41,45 @@ const STEPS: Step[] = [
   {
     number: '02',
     title: 'Create New Webhook',
-    body: 'Click "Create New". Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
+    body: 'Click "Create New" to open the webhook creation form.',
     action: 'none',
     svgFragment: <WebhookStep02Svg />,
   },
   {
     number: '03',
-    title: 'Paste Webhook URL',
-    body: 'Copy the URL below and paste it into the "Webhook URL" field in the Chatwork form.',
-    action: 'copy',
-    actionLabel: 'Copy URL',
+    title: 'Enter Webhook Name',
+    body: 'Give it a descriptive name — for example, the room name you are setting up — so you can recognise it later.',
+    action: 'none',
     svgFragment: <WebhookStep03Svg />,
   },
   {
     number: '04',
-    title: 'Select Events',
-    body: 'Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that room.',
-    action: 'none',
+    title: 'Paste Webhook URL',
+    body: 'Copy the URL below and paste it into the "Webhook URL" field in the Chatwork form.',
+    action: 'copy',
+    actionLabel: 'Copy URL',
     svgFragment: <WebhookStep04Svg />,
   },
   {
     number: '05',
-    title: 'Save Webhook',
-    body: 'Click Save. Chatwork will activate the webhook. No secret needed.',
+    title: 'Select Events',
+    body: 'Select Room Event (not Account Event) — the bot manages one room at a time, not all rooms. Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that specific room. Room ID is the number after #/rid in the chat URL — for example, https://www.chatwork.com/#/rid123 means Room ID is 123.',
     action: 'none',
     svgFragment: <WebhookStep05Svg />,
   },
   {
     number: '06',
+    title: 'Save Webhook',
+    body: 'Click Save. Chatwork will activate the webhook. No secret needed.',
+    action: 'none',
+    svgFragment: <WebhookStep06Svg />,
+  },
+  {
+    number: '07',
     title: 'Note Your Room ID',
     body: 'Enter the Room ID you used in the previous step. You will need it when creating a room in this dashboard.',
     action: 'roomId',
-    svgFragment: <WebhookStep06Svg />,
+    svgFragment: <WebhookStep07Svg />,
   },
 ]
 
@@ -79,9 +87,10 @@ const CARD_THEMES = [
   'theme-card-matcha',
   'theme-card-lilac',
   'theme-card-sky',
-  'theme-card-matcha',
   'theme-card-peach',
+  'theme-card-matcha',
   'theme-card-lilac',
+  'theme-card-sky',
 ] as const
 
 const PILL_COLORS = [
@@ -91,9 +100,10 @@ const PILL_COLORS = [
   'bg-[#d44470]',
   'bg-[#6e77e5]',
   'bg-[#5bb89a]',
+  'bg-[#e8a065]',
 ] as const
 
-const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right', 'left'] as const
+const TILTS_BY_INDEX = ['left', 'right', 'flat', 'left', 'right', 'flat', 'left'] as const
 const DEFAULT_PILL_COLOR = 'bg-[var(--accent)]'
 
 export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
@@ -199,7 +209,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
                 </a>
               ) : null}
 
-              {activeStep === 2 ? (
+              {activeStep === 3 ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5 shadow-[3px_3px_0_var(--border)]">
                     <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
@@ -224,7 +234,7 @@ export function WebhookStepper({ webhookUrl }: WebhookStepperProps) {
                 </div>
               ) : null}
 
-              {activeStep === 5 ? (
+              {activeStep === 6 ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 rounded-[14px] border-[3px] border-[var(--border)] bg-white/80 px-4 py-2.5 shadow-[3px_3px_0_var(--border)]">
                     <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
