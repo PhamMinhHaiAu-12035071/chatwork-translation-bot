@@ -286,4 +286,59 @@ describe('TranslationPipeline', () => {
     expect(result.translatedSegments).toEqual(['Bản dịch liền mạch'])
     expect(result.translation.translatedText).toBe('Bản dịch liền mạch')
   })
+
+  it('passes roomContext to the prompt so the system prompt contains ## Room Context', async () => {
+    const captured: { prompts?: PromptPair } = {}
+    const executor: ILLMExecutor = {
+      execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
+        captured.prompts = prompts
+        return Promise.resolve({ sourceLang: 'Japanese', translated: 'Xin chào' } as T)
+      },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
+      },
+    }
+
+    const pipeline = new TranslationPipeline(executor, {
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      roomContext: 'Room type: Client.\nMembers: Khoa (PM, male).',
+    })
+
+    await pipeline.run('テスト')
+    expect(captured.prompts?.system).toContain('## Room Context')
+    expect(captured.prompts?.system).toContain('Khoa (PM, male)')
+  })
+
+  it('does not include ## Room Context when roomContext is not set', async () => {
+    const captured: { prompts?: PromptPair } = {}
+    const executor: ILLMExecutor = {
+      execute<T>(prompts: PromptPair, _schema: ISchema<T>) {
+        captured.prompts = prompts
+        return Promise.resolve({ sourceLang: 'Japanese', translated: 'Xin chào' } as T)
+      },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
+      },
+    }
+
+    const pipeline = new TranslationPipeline(executor, {
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+    })
+    await pipeline.run('テスト')
+    expect(captured.prompts?.system).not.toContain('## Room Context\nApply this context')
+  })
 })

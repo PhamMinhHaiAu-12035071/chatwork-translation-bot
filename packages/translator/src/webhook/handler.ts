@@ -212,10 +212,18 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     }
 
     try {
-      const pipeline = new TranslationPipeline(executor, {
+      const pipelineOpts: {
+        timeoutMs: number
+        translationStyle: typeof translationStyle
+        roomContext?: string
+      } = {
         timeoutMs: effectiveTimeoutMs,
         translationStyle,
-      })
+      }
+      if (roomConfig.context) {
+        pipelineOpts.roomContext = roomConfig.context
+      }
+      const pipeline = new TranslationPipeline(executor, pipelineOpts)
       const pipelineResult = await pipeline.runStructured(
         {
           cleanText,

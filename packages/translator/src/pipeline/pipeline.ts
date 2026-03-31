@@ -40,7 +40,11 @@ export interface PipelineTranslationResult {
 export class TranslationPipeline {
   constructor(
     private readonly executor: ILLMExecutor,
-    private readonly opts: { timeoutMs?: number; translationStyle?: TranslationStyle } = {},
+    private readonly opts: {
+      timeoutMs?: number
+      translationStyle?: TranslationStyle
+      roomContext?: string
+    } = {},
   ) {}
 
   async run(text: string, options: PipelineRunOptions = {}): Promise<TranslationResult> {
@@ -66,7 +70,7 @@ export class TranslationPipeline {
     if (input.translationInputs.length === 1) {
       const [singleInput] = input.translationInputs
       const sourceText = singleInput ?? input.cleanText
-      const prompts = buildSingleCallPrompts(sourceText, style)
+      const prompts = buildSingleCallPrompts(sourceText, style, this.opts.roomContext)
 
       const translation = await this.executeTranslation(prompts, TranslationDraftSchema, options)
 
@@ -88,6 +92,7 @@ export class TranslationPipeline {
       input.translationInputs,
       style,
       input.cleanText,
+      this.opts.roomContext,
     )
     const structuredTranslation = await this.executeTranslation(
       prompts,
