@@ -1,11 +1,13 @@
 import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import type { MotionStyle } from 'framer-motion'
 
 interface BrutalCardProps {
   children: ReactNode
   className?: string
   tilt?: 'left' | 'right' | 'flat'
   animated?: boolean
+  style?: CSSProperties
 }
 
 const rotateByTilt: Record<NonNullable<BrutalCardProps['tilt']>, number> = {
@@ -19,17 +21,21 @@ export function BrutalCard({
   className,
   tilt = 'flat',
   animated = true,
+  style,
 }: BrutalCardProps) {
   const rotate = rotateByTilt[tilt]
-  const sharedProps = {
-    style: {
-      transformOrigin: rotate < 0 ? 'top left' : rotate > 0 ? 'top right' : 'center top',
-    },
-    className: ['brutal-surface p-5 md:p-6', className ?? ''].join(' ').trim(),
+  const baseStyle: CSSProperties = {
+    transformOrigin: rotate < 0 ? 'top left' : rotate > 0 ? 'top right' : 'center top',
   }
+  const mergedStyle: CSSProperties = style ? { ...baseStyle, ...style } : baseStyle
+  const classNames = ['brutal-surface p-5 md:p-6', className ?? ''].join(' ').trim()
 
   if (!animated) {
-    return <section {...sharedProps}>{children}</section>
+    return (
+      <section style={mergedStyle} className={classNames}>
+        {children}
+      </section>
+    )
   }
 
   return (
@@ -37,7 +43,8 @@ export function BrutalCard({
       initial={{ opacity: 0, y: 16, rotate }}
       animate={{ opacity: 1, y: 0, rotate }}
       transition={{ duration: 0.22, ease: 'easeOut' }}
-      {...sharedProps}
+      style={mergedStyle as MotionStyle}
+      className={classNames}
     >
       {children}
     </motion.section>

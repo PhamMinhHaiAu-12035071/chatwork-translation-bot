@@ -85,6 +85,8 @@ export function RoomListPage() {
   const deleteRoom = useRoomStore(selectDeleteRoom)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [spotlightRoomId, setSpotlightRoomId] = useState<string | null>(null)
+  const [spotlightPosition, setSpotlightPosition] = useState({ x: 50, y: 50 })
+  const [spotlightBoxShadow, setSpotlightBoxShadow] = useState('4px 4px 0 var(--border)')
   const roomToggleAction = useAsyncAction<undefined>({
     fallbackErrorMessage: 'Toggle failed',
     getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Toggle failed'),
@@ -111,16 +113,46 @@ export function RoomListPage() {
   }, [location.pathname, location.state, navigate])
 
   useEffect(() => {
-    if (!spotlightRoomId) {
+    if (!spotlightRoomId || reducedMotion) {
       return
     }
 
+    // Orbital spotlight animation (Approach 3: Orbital Glare Sweep)
+    let angle = 0
+    const spotlightInterval = window.setInterval(() => {
+      angle += 6 // 6° per frame = 360° in 1.5s at 25ms interval
+
+      // Calculate orbital position (40% radius from center)
+      const x = 50 + 40 * Math.cos((angle * Math.PI) / 180)
+      const y = 50 + 40 * Math.sin((angle * Math.PI) / 180)
+      setSpotlightPosition({ x, y })
+
+      // Shadow rotation choreography (4 cardinal transitions)
+      if (angle >= 0 && angle < 90) {
+        setSpotlightBoxShadow('8px 8px 0 var(--border)')
+      } else if (angle >= 90 && angle < 180) {
+        setSpotlightBoxShadow('8px -8px 0 var(--border)')
+      } else if (angle >= 180 && angle < 270) {
+        setSpotlightBoxShadow('-8px -8px 0 var(--border)')
+      } else {
+        setSpotlightBoxShadow('-8px 8px 0 var(--border)')
+      }
+
+      if (angle >= 360) {
+        window.clearInterval(spotlightInterval)
+        setSpotlightBoxShadow('4px 4px 0 var(--border)')
+      }
+    }, 25) // 40 FPS
+
     const timeoutId = window.setTimeout(() => {
       setSpotlightRoomId(null)
+      window.clearInterval(spotlightInterval)
+      setSpotlightBoxShadow('4px 4px 0 var(--border)')
     }, SPOTLIGHT_DURATION_MS)
 
     return () => {
       window.clearTimeout(timeoutId)
+      window.clearInterval(spotlightInterval)
     }
   }, [reducedMotion, spotlightRoomId])
 
@@ -307,16 +339,9 @@ export function RoomListPage() {
                         boxShadow: '8px 8px 0 rgba(212, 68, 112, 0.92)',
                       }
                     : {
-                        backgroundColor: [
-                          'rgba(255, 225, 154, 0)',
-                          'rgba(255, 225, 154, 0.96)',
-                          'rgba(255, 225, 154, 0.28)',
-                        ],
-                        boxShadow: [
-                          '0px 0px 0 rgba(212, 68, 112, 0)',
-                          '8px 8px 0 rgba(212, 68, 112, 0.96)',
-                          '4px 4px 0 rgba(212, 68, 112, 0.34)',
-                        ],
+                        // Approach 3: 3D tilt animation
+                        rotateX: [0, 8, 8, 0],
+                        rotateY: [0, -5, -5, 0],
                       }
                   : {
                       backgroundColor: 'rgba(255, 225, 154, 0)',
@@ -326,7 +351,6 @@ export function RoomListPage() {
                 return (
                   <motion.div
                     key={room.id}
-                    layout
                     initial={{ opacity: 0, y: 12 }}
                     animate={{
                       opacity: 1,
@@ -338,7 +362,24 @@ export function RoomListPage() {
                       duration: reducedMotion ? 0 : isSpotlighted ? 2.2 : 0.18,
                       delay: index * 0.04,
                       ease: 'easeOut',
+                      rotateX:
+                        isSpotlighted && !reducedMotion
+                          ? { times: [0, 0.2, 0.85, 1], ease: 'easeOut' }
+                          : undefined,
+                      rotateY:
+                        isSpotlighted && !reducedMotion
+                          ? { times: [0, 0.2, 0.85, 1], ease: 'easeOut' }
+                          : undefined,
                     }}
+                    {...(isSpotlighted && !reducedMotion
+                      ? {
+                          style: {
+                            perspective: '1200px',
+                            transformStyle: 'preserve-3d' as const,
+                            willChange: 'transform',
+                          },
+                        }
+                      : {})}
                     className="rounded-[24px] p-1"
                   >
                     {(() => {
@@ -346,75 +387,101 @@ export function RoomListPage() {
                       const cardTheme = cardThemeByIndex[roomIdx] ?? 'theme-card-lilac'
                       const tilt = tiltByIndex[roomIdx] ?? 'flat'
                       const spotlightTheme = isSpotlighted
-                        ? 'theme-card-butter border-[var(--pink-accent)] shadow-[8px_8px_0_var(--pink-accent)]'
+                        ? 'theme-card-butter border-[var(--pink-accent)]'
                         : cardTheme
 
                       return (
-                        <BrutalCard
-                          className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
-                          tilt={tilt}
-                        >
-                          <div className="space-y-2">
-                            <div className="flex min-w-0 items-start justify-between gap-4">
-                              <StatusRibbon enabled={room.enabled} />
-                              <RoomStatusToggle
-                                enabled={room.enabled}
-                                loading={roomToggleAction.loading}
-                                onToggle={() => {
-                                  void handleToggle(room.id, room.destinationRoomName, room.enabled)
+                        <div className="relative">
+                          {isSpotlighted && !reducedMotion ? (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.3, delay: 0.5 }}
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                borderRadius: '18px',
+                                background: `radial-gradient(circle at ${String(spotlightPosition.x)}% ${String(spotlightPosition.y)}%, rgba(255, 225, 154, 0.9), transparent 40%)`,
+                                mixBlendMode: 'overlay',
+                                pointerEvents: 'none',
+                                zIndex: 1,
+                              }}
+                            />
+                          ) : null}
+                          <BrutalCard
+                            className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
+                            tilt={tilt}
+                            {...(isSpotlighted && !reducedMotion
+                              ? { style: { boxShadow: spotlightBoxShadow } }
+                              : {})}
+                          >
+                            <div className="space-y-2">
+                              <div className="flex min-w-0 items-start justify-between gap-4">
+                                <StatusRibbon enabled={room.enabled} />
+                                <RoomStatusToggle
+                                  enabled={room.enabled}
+                                  loading={roomToggleAction.loading}
+                                  onToggle={() => {
+                                    void handleToggle(
+                                      room.id,
+                                      room.destinationRoomName,
+                                      room.enabled,
+                                    )
+                                  }}
+                                />
+                              </div>
+                              <div className="min-w-0 space-y-1">
+                                {isSpotlighted ? (
+                                  <StickerLabel tone="warning" tilt="right">
+                                    New
+                                  </StickerLabel>
+                                ) : null}
+                                <div className="font-heading text-lg font-bold leading-tight">
+                                  {room.destinationRoomName}
+                                </div>
+                                <div className="font-ui-body text-xs text-[var(--text-secondary)]">
+                                  {`Room ID: ${String(room.originalRoomId)}`}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
+                              <div>
+                                <span className="font-semibold">Provider: </span>
+                                {PROVIDER_LABELS[room.aiProvider]}
+                                {room.aiModel ? ` · ${room.aiModel}` : ' · default model'}
+                              </div>
+                              <div>
+                                <span className="font-semibold">Style: </span>
+                                {TRANSLATION_STYLE_LABELS[room.translationStyle]}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void navigate(`/rooms/${room.id}`)
                                 }}
-                              />
+                                className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
+                              >
+                                <Icon name="pencil" variant="clay" size={20} aria-hidden />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRoom(room)
+                                }}
+                                className="brutal-button theme-button-pink inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
+                              >
+                                <Icon name="trash" variant="clay" size={20} aria-hidden />
+                                Delete
+                              </button>
                             </div>
-                            <div className="min-w-0 space-y-1">
-                              {isSpotlighted ? (
-                                <StickerLabel tone="warning" tilt="right">
-                                  New
-                                </StickerLabel>
-                              ) : null}
-                              <div className="font-heading text-lg font-bold leading-tight">
-                                {room.destinationRoomName}
-                              </div>
-                              <div className="font-ui-body text-xs text-[var(--text-secondary)]">
-                                {`Room ID: ${String(room.originalRoomId)}`}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
-                            <div>
-                              <span className="font-semibold">Provider: </span>
-                              {PROVIDER_LABELS[room.aiProvider]}
-                              {room.aiModel ? ` · ${room.aiModel}` : ' · default model'}
-                            </div>
-                            <div>
-                              <span className="font-semibold">Style: </span>
-                              {TRANSLATION_STYLE_LABELS[room.translationStyle]}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void navigate(`/rooms/${room.id}`)
-                              }}
-                              className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[var(--border)]"
-                            >
-                              <Icon name="pencil" variant="clay" size={20} aria-hidden />
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedRoom(room)
-                              }}
-                              className="brutal-button theme-button-pink inline-flex items-center gap-2 px-4 py-1.5 font-heading text-xs font-bold text-[#fff7ed]"
-                            >
-                              <Icon name="trash" variant="clay" size={20} aria-hidden />
-                              Delete
-                            </button>
-                          </div>
-                        </BrutalCard>
+                          </BrutalCard>
+                        </div>
                       )
                     })()}
                   </motion.div>
