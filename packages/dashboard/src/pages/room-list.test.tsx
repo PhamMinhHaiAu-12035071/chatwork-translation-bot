@@ -125,8 +125,9 @@ describe('RoomListPage', () => {
     expect(source).toMatch(/spotlightRoomId[\s\S]*setTimeout[\s\S]*clearTimeout/)
     expect(source).toContain('setSpotlightRoomId(null)')
     expect(source).toContain('replace: true')
-    expect(source).toContain('<StickerLabel tone="warning" tilt="right">')
+    expect(source).toContain('<StickerLabel tone="warning" tilt="flat">')
     expect(source).toContain('New')
+    expect(source).toContain("rotate: '45deg'") // Badge rotated 45deg at corner
     expect(source).toContain('spotlightPosition') // Orbital spotlight state
     expect(source).toContain('radial-gradient') // Spotlight gradient overlay
   })
