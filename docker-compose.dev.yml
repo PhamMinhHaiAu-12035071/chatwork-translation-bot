@@ -11,7 +11,7 @@ services:
     command:
       - sh
       - -c
-      - bun install --frozen-lockfile && bun --hot packages/translator/src/index.ts
+      - bun install && bun --hot packages/translator/src/index.ts
     working_dir: /app
     volumes:
       - .:/app
@@ -56,7 +56,7 @@ services:
     command:
       - sh
       - -c
-      - bun install --frozen-lockfile && bun --hot packages/webhook-logger/src/index.ts
+      - bun install && bun --hot packages/webhook-logger/src/index.ts
     working_dir: /app
     volumes:
       - .:/app
@@ -99,7 +99,7 @@ services:
     command:
       - sh
       - -c
-      - bun install --frozen-lockfile && sleep ${DATASET_RUNNER_START_DELAY:-35} && bun --hot packages/dataset-runner/src/index.ts
+      - bun install && sleep ${DATASET_RUNNER_START_DELAY:-35} && bun --hot packages/dataset-runner/src/index.ts
     working_dir: /app
     volumes:
       - .:/app
@@ -139,7 +139,7 @@ services:
     command:
       - sh
       - -c
-      - bun install --frozen-lockfile && bun run --cwd packages/dashboard dev --host 0.0.0.0
+      - bun install && bun run --cwd packages/dashboard dev --host 0.0.0.0
     working_dir: /app
     volumes:
       - .:/app
