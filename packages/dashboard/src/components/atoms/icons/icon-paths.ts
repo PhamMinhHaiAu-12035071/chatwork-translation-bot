@@ -4,6 +4,7 @@ export type StrokeIconName =
   | 'chevron-down'
   | 'close'
   | 'external-link'
+  | 'menu'
 
 export type ClayIconName =
   | 'plus'
@@ -63,5 +64,11 @@ export const STROKE_PATHS: Record<StrokeIconName, StrokePathDef> = {
     viewBox: '0 0 20 20',
     strokeWidth: 2.8,
     animClass: 'icon-anim-slide-right',
+  },
+  menu: {
+    d: 'M3 5H17 M3 10H17 M3 15H17',
+    viewBox: '0 0 20 20',
+    strokeWidth: 3.5,
+    animClass: 'icon-anim-wiggle',
   },
 }
