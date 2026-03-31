@@ -1,5 +1,17 @@
 # Use specific Bun version for reproducibility (not latest)
-FROM oven/bun:1.1.38 AS base
+FROM oven/bun:1.1.38 AS deps
+
+# Install Bun dependencies on a lean base image so this layer does not inherit
+# the large Chromium/Xvfb filesystem and become slow to snapshot.
+WORKDIR /app
+
+# Copy package files first (better caching - only reinstall if these change)
+COPY package.json bun.lock* ./
+
+# Install dependencies (cached if package.json unchanged)
+RUN bun install --frozen-lockfile
+
+FROM oven/bun:1.1.38 AS runtime
 
 # Install system dependencies (cached layer)
 RUN apt-get update && apt-get install -y \
@@ -22,22 +34,18 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy package files first (better caching - only reinstall if these change)
-COPY package.json bun.lockb* ./
-
-# Install dependencies (cached if package.json unchanged)
-RUN bun install --frozen-lockfile
-
-# Copy source code (this layer changes more frequently)
-COPY . .
-
 # Create non-root user for security
 # Also create X11 directory to suppress Xvfb warning
 RUN groupadd -r bunuser && useradd -r -g bunuser bunuser \
-    && chown -R bunuser:bunuser /app \
     && mkdir -p /tmp/.X11-unix \
     && chmod 1777 /tmp/.X11-unix \
     && chown root:root /tmp/.X11-unix
+
+COPY --from=deps --chown=bunuser:bunuser /app/package.json ./package.json
+COPY --from=deps --chown=bunuser:bunuser /app/node_modules ./node_modules
+
+# Copy source code (this layer changes more frequently)
+COPY --chown=bunuser:bunuser . .
 
 USER bunuser
 
