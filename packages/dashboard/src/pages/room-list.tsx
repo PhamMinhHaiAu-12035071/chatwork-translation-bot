@@ -352,6 +352,13 @@ export function RoomListPage() {
                               }}
                             />
                           ) : null}
+                          {isSpotlighted ? (
+                            <div className="absolute z-10" style={{ top: '-10px', right: '20px' }}>
+                              <StickerLabel tone="warning" tilt="right">
+                                New
+                              </StickerLabel>
+                            </div>
+                          ) : null}
                           <BrutalCard
                             className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
                             tilt={tilt}
@@ -372,11 +379,6 @@ export function RoomListPage() {
                                 />
                               </div>
                               <div className="min-w-0 space-y-1">
-                                {isSpotlighted ? (
-                                  <StickerLabel tone="warning" tilt="right">
-                                    New
-                                  </StickerLabel>
-                                ) : null}
                                 <div className="font-heading text-lg font-bold leading-tight">
                                   {room.destinationRoomName}
                                 </div>
