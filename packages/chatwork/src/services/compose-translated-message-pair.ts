@@ -1,11 +1,9 @@
 import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import type { ChatworkWebhookPayload } from '~/types/webhook'
 import type {
-  MessageDecorationContext,
   MessageDecorationSnapshot,
   MessageRenderNode,
   QuoteMeta,
-  ReplyToData,
 } from '~/types/message-decoration'
 import { resolveRoomDisplayName } from './resolve-room-display-name'
 import { resolveRoomMemberDisplayName } from './resolve-room-member-display-name'
@@ -50,66 +48,7 @@ export async function composeTranslatedMessagePair(
     metadataLines.push(`Updated: ${formatUtcTimestamp(command.updateTime)}`)
   }
 
-  if (snapshot.metadata.toAccountIds.length > 0) {
-    metadataLines.push(
-      `To: ${(
-        await Promise.all(
-          snapshot.metadata.toAccountIds.map((accountId) =>
-            resolveMemberDisplayNameSafe(
-              command.sourceRoomId,
-              accountId,
-              params.apiToken,
-              memberCache,
-            ),
-          ),
-        )
-      ).join(', ')}`,
-    )
-  }
-
-  if (snapshot.metadata.ccAccountIds.length > 0) {
-    metadataLines.push(
-      `Cc: ${(
-        await Promise.all(
-          snapshot.metadata.ccAccountIds.map((accountId) =>
-            resolveMemberDisplayNameSafe(
-              command.sourceRoomId,
-              accountId,
-              params.apiToken,
-              memberCache,
-            ),
-          ),
-        )
-      ).join(', ')}`,
-    )
-  }
-
-  if (snapshot.metadata.replyToData !== undefined) {
-    const replySender = await resolveMemberDisplayNameSafe(
-      command.sourceRoomId,
-      snapshot.metadata.replyToData.replyAccountId,
-      params.apiToken,
-      memberCache,
-    )
-    const replyRoom = await resolveRoomDisplayName(
-      snapshot.metadata.replyToData.replyRoomId,
-      params.apiToken,
-      roomCache,
-    )
-    metadataLines.push(
-      `Reply to: ${replySender} | ${replyRoom} | ${snapshot.metadata.replyToData.replyMessageId}`,
-    )
-  }
-
-  metadataLines.push(
-    ...(await buildQuoteChainSummaries(
-      snapshot.renderTemplate,
-      command,
-      params.apiToken,
-      memberCache,
-      roomCache,
-    )),
-  )
+  // To/Cc/Reply/Quote summaries removed - body message now preserves full structure with [rp] and [qtmeta] tags
 
   let nextTranslationIndex = 0
 
@@ -207,167 +146,6 @@ function buildQtmetaTag(quoteMeta: QuoteMeta): string {
     parts.push(`time=${String(quoteMeta.timestamp)}`)
   }
   return parts.length > 0 ? `[qtmeta ${parts.join(' ')}]` : ''
-}
-
-interface QuoteSummaryEntry {
-  context: MessageDecorationContext
-  quoteMeta: QuoteMeta | undefined
-}
-
-function collectQuoteSummaryEntries(
-  nodes: MessageRenderNode[],
-  entries: QuoteSummaryEntry[] = [],
-): QuoteSummaryEntry[] {
-  for (const node of nodes) {
-    if (node.type === 'quote' || node.type === 'qt') {
-      entries.push({
-        context: node.context,
-        quoteMeta: node.type === 'qt' ? node.quoteMeta : undefined,
-      })
-      collectQuoteSummaryEntries(node.children, entries)
-      continue
-    }
-
-    if ('children' in node) {
-      collectQuoteSummaryEntries(node.children, entries)
-    }
-  }
-
-  return entries
-}
-
-async function buildQuoteChainSummaries(
-  nodes: MessageRenderNode[],
-  command: TranslationIngressCommand,
-  apiToken: string,
-  memberCache: Map<number, string>,
-  roomCache: Map<number, string>,
-): Promise<string[]> {
-  const entries = collectQuoteSummaryEntries(nodes)
-  const lines: string[] = []
-
-  for (const [index, entry] of entries.entries()) {
-    const segments = await buildQuoteSummarySegments(
-      entry,
-      command,
-      apiToken,
-      memberCache,
-      roomCache,
-    )
-    if (segments.length === 0) continue
-    lines.push(`Quote ${String(index + 1)}: ${segments.join(' | ')}`)
-  }
-
-  return lines
-}
-
-async function buildQuoteSummarySegments(
-  entry: QuoteSummaryEntry,
-  command: TranslationIngressCommand,
-  apiToken: string,
-  memberCache: Map<number, string>,
-  roomCache: Map<number, string>,
-): Promise<string[]> {
-  const segments: string[] = []
-  const quoteSummary = await buildQuoteSummary(entry.quoteMeta, command, apiToken, memberCache)
-  if (quoteSummary !== undefined) {
-    segments.push(quoteSummary)
-  }
-
-  const replySummary = await buildReplySummary(
-    entry.context.replyToData,
-    command,
-    apiToken,
-    memberCache,
-    roomCache,
-  )
-  if (replySummary !== undefined) {
-    segments.push(`Reply to: ${replySummary}`)
-  }
-
-  const toSummary = await buildAccountListSummary(
-    entry.context.toAccountIds,
-    command,
-    apiToken,
-    memberCache,
-  )
-  if (toSummary !== undefined) {
-    segments.push(`To: ${toSummary}`)
-  }
-
-  const ccSummary = await buildAccountListSummary(
-    entry.context.ccAccountIds,
-    command,
-    apiToken,
-    memberCache,
-  )
-  if (ccSummary !== undefined) {
-    segments.push(`Cc: ${ccSummary}`)
-  }
-
-  return segments
-}
-
-async function buildQuoteSummary(
-  quoteMeta: QuoteMeta | undefined,
-  command: TranslationIngressCommand,
-  apiToken: string,
-  memberCache: Map<number, string>,
-): Promise<string | undefined> {
-  if (quoteMeta === undefined) return undefined
-
-  const sender =
-    quoteMeta.senderAccountId !== undefined
-      ? await resolveMemberDisplayNameSafe(
-          command.sourceRoomId,
-          quoteMeta.senderAccountId,
-          apiToken,
-          memberCache,
-        )
-      : undefined
-  const time =
-    quoteMeta.timestamp !== undefined ? formatUtcTimestamp(quoteMeta.timestamp) : undefined
-
-  if (sender !== undefined && time !== undefined) return `${sender} | ${time}`
-  if (sender !== undefined) return sender
-  if (time !== undefined) return time
-  return undefined
-}
-
-async function buildReplySummary(
-  replyToData: ReplyToData | undefined,
-  command: TranslationIngressCommand,
-  apiToken: string,
-  memberCache: Map<number, string>,
-  roomCache: Map<number, string>,
-): Promise<string | undefined> {
-  if (replyToData === undefined) return undefined
-
-  const replySender = await resolveMemberDisplayNameSafe(
-    command.sourceRoomId,
-    replyToData.replyAccountId,
-    apiToken,
-    memberCache,
-  )
-  const replyRoom = await resolveRoomDisplayName(replyToData.replyRoomId, apiToken, roomCache)
-  return `${replySender} | ${replyRoom} | ${replyToData.replyMessageId}`
-}
-
-async function buildAccountListSummary(
-  accountIds: number[],
-  command: TranslationIngressCommand,
-  apiToken: string,
-  memberCache: Map<number, string>,
-): Promise<string | undefined> {
-  if (accountIds.length === 0) return undefined
-
-  return (
-    await Promise.all(
-      accountIds.map((accountId) =>
-        resolveMemberDisplayNameSafe(command.sourceRoomId, accountId, apiToken, memberCache),
-      ),
-    )
-  ).join(', ')
 }
 
 async function resolveMemberDisplayNameSafe(

@@ -61,7 +61,7 @@ describe('composeTranslatedMessagePair', () => {
     fetchSpy.mockRestore()
   })
 
-  it('includes event, sender, room, timestamps, To/Cc names, and quote context in metadata while removing source-only tags from body', async () => {
+  it('includes event, sender, room, timestamps in metadata while removing source-only tags from body', async () => {
     const sendTime = 1711271400
     const updateTime = 1711275000
     const quoteTime = 1711267800
@@ -94,9 +94,7 @@ describe('composeTranslatedMessagePair', () => {
     expect(result.metadataMessage).toContain('JP Project Demo')
     expect(result.metadataMessage).toContain(formatUtc(sendTime))
     expect(result.metadataMessage).toContain(formatUtc(updateTime))
-    expect(result.metadataMessage).toContain('Bob')
-    expect(result.metadataMessage).toContain('Carol')
-    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(quoteTime)}`)
+    // To/Cc/Quote summaries no longer in metadata - body preserves full structure
 
     expect(result.bodyMessage).toContain('Vui long xem')
     expect(result.bodyMessage).toContain(
@@ -149,7 +147,7 @@ describe('composeTranslatedMessagePair', () => {
     expect(result.bodyMessage).toBe('[quote]Noi dung da trich[/quote]')
   })
 
-  it('renders nested qt recursively and reports quote chain metadata outer to inner', async () => {
+  it('renders nested qt recursively', async () => {
     const outerTime = 1711267800
     const innerTime = 1711267000
     const command = makeCommand(
@@ -167,8 +165,8 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(outerTime)}`)
-    expect(result.metadataMessage).toContain(`Quote 2: Erin | ${formatUtc(innerTime)}`)
+    // Quote summaries removed - body preserves full nested structure
+    expect(result.metadataMessage).toContain('Event: created')
     expect(result.bodyMessage).toBe(
       `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}]Noi dung da trich[/qt][/qt]`,
     )
@@ -190,8 +188,8 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(outerTime)}`)
-    expect(result.metadataMessage).not.toContain('Quote 2:')
+    // Quote summaries removed - body preserves structure
+    expect(result.metadataMessage).toContain('Event: created')
     expect(result.bodyMessage).toBe(
       `[qt][qtmeta aid=400 time=${outerTime.toString()}][quote]Noi dung da trich[/quote][/qt]`,
     )
@@ -221,12 +219,10 @@ describe('composeTranslatedMessagePair', () => {
       ]),
     })
 
-    expect(result.metadataMessage).toContain(`Quote 1: Dana | ${formatUtc(outerTime)}`)
-    expect(result.metadataMessage).toContain(`Quote 2: Erin | ${formatUtc(innerTime)}`)
-    expect(result.metadataMessage).toContain('To: Gina')
-    expect(result.metadataMessage).toContain('Cc: Hank')
-    expect(result.metadataMessage).toContain('Reply to: Ivy')
-    expect(result.metadataMessage).toContain('Nested Room')
+    // Metadata no longer includes Quote/To/Cc/Reply summaries (body preserves full structure)
+    expect(result.metadataMessage).toContain('Event: created')
+    expect(result.metadataMessage).toContain('Sender: Alice')
+    expect(result.metadataMessage).toContain('Room: JP Project Demo')
     expect(result.bodyMessage).toBe(
       `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}][rp aid=800 to=999-123]Noi dung da trich[/qt][/qt]`,
     )
