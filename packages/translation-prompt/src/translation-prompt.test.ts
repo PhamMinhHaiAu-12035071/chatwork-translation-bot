@@ -361,3 +361,89 @@ describe('package exports', () => {
     expect(api.TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-human-sounding-workplace-v1')
   })
 })
+
+describe('roomContext injection', () => {
+  it('injects ## Room Context section between SHARED_SYSTEM and style when roomContext is provided', () => {
+    const result = buildSingleCallPrompts(
+      'テスト',
+      'PROFESSIONAL_BUSINESS',
+      'Room type: Client project.',
+    )
+    const ctxIdx = result.system.indexOf('## Room Context')
+    const styleIdx = result.system.indexOf('## Active Style: PROFESSIONAL_BUSINESS')
+    const doctrineIdx = result.system.indexOf('## Shared Translation Doctrine')
+
+    expect(ctxIdx).toBeGreaterThan(-1)
+    expect(doctrineIdx).toBeLessThan(ctxIdx)
+    expect(ctxIdx).toBeLessThan(styleIdx)
+  })
+
+  it('context section contains the enforcement header with honorific directives', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS', 'Room: Client.')
+    const ctxSection = result.system.slice(result.system.indexOf('## Room Context'))
+
+    expect(ctxSection).toMatch(/Apply this context to every translation/i)
+    expect(ctxSection).toMatch(/anh\/chị\/ông\/bà/i)
+    expect(ctxSection).toMatch(/honorifics/i)
+    expect(ctxSection).toMatch(/calibrate terminology/i)
+  })
+
+  it('context section contains the user-supplied context body', () => {
+    const ctx = 'Room type: Client-facing project.\nMembers: Khoa (PM, male).'
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS', ctx)
+    expect(result.system).toContain(ctx)
+  })
+
+  it('omits ## Room Context section entirely when roomContext is undefined', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    const doctrineIdx = result.system.indexOf('## Shared Translation Doctrine')
+    const styleIdx = result.system.indexOf('## Active Style: PROFESSIONAL_BUSINESS')
+    const ctxSectionIdx = result.system.indexOf('## Room Context\nApply this context')
+
+    expect(ctxSectionIdx).toBe(-1)
+    expect(doctrineIdx).toBeGreaterThan(-1)
+    expect(styleIdx).toBeGreaterThan(-1)
+  })
+
+  it('omits ## Room Context section when roomContext is empty string', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS', '')
+    const ctxSectionIdx = result.system.indexOf('## Room Context\nApply this context')
+    expect(ctxSectionIdx).toBe(-1)
+  })
+
+  it('omits ## Room Context section when roomContext is whitespace only', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS', '   ')
+    const ctxSectionIdx = result.system.indexOf('## Room Context\nApply this context')
+    expect(ctxSectionIdx).toBe(-1)
+  })
+
+  it('structured prompt also injects context section when roomContext provided', () => {
+    const ctx = 'Room type: Internal team.'
+    const result = buildStructuredTranslationPrompts(
+      ['一つ目', '二つ目'],
+      'PROFESSIONAL_BUSINESS',
+      undefined,
+      ctx,
+    )
+    expect(result.system).toContain('## Room Context')
+    expect(result.system).toContain(ctx)
+  })
+
+  it('structured prompt omits context section when roomContext is absent', () => {
+    const result = buildStructuredTranslationPrompts(['一つ目'], 'PROFESSIONAL_BUSINESS')
+    const ctxSectionIdx = result.system.indexOf('## Room Context\nApply this context')
+    expect(ctxSectionIdx).toBe(-1)
+  })
+
+  it('CORE_DOCTRINE still passes local message/segment test after fix', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/local message|segment/i)
+    expect(result.system).not.toMatch(/room history|thread history/i)
+  })
+
+  it('CORE_DOCTRINE conditional clause mentions ## Room Context for honorifics', () => {
+    const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
+    expect(result.system).toMatch(/## Room Context/i)
+    expect(result.system).toMatch(/honorifics|honorific/i)
+  })
+})

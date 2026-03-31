@@ -31,6 +31,16 @@ const SHARED_SYSTEM = [
   SELF_VERIFICATION,
 ].join('\n\n')
 
+const CONTEXT_ENFORCEMENT_HEADER = `Apply this context to every translation in this room:
+- Use member names and roles to determine correct honorifics (anh/chị/ông/bà/em/tôi).
+- Use the domain and project description to calibrate terminology and register.
+- When a member's gender or seniority is stated, always apply it in pronouns and address forms.`
+
+function buildContextSection(roomContext?: string): string {
+  if (!roomContext?.trim()) return ''
+  return `## Room Context\n${CONTEXT_ENFORCEMENT_HEADER}\n\n${roomContext.trim()}`
+}
+
 function buildSingleUserPrompt(text: string, style: TranslationStyle): string {
   return `Task: Translate the text inside <TRANSLATE_TEXT> into Vietnamese.
 Style reminder: ${TRANSLATION_STYLE_PROFILES[style].userInstruction}
@@ -78,9 +88,14 @@ export function buildStructuredTranslationPrompts(
   segments: string[],
   style: TranslationStyle = DEFAULT_TRANSLATION_STYLE,
   fullMessageContext?: string,
+  roomContext?: string,
 ): PromptPair {
+  const contextSection = buildContextSection(roomContext)
+  const systemParts = [SHARED_SYSTEM, contextSection, buildTranslationStyleSection(style)]
+    .filter(Boolean)
+    .join('\n\n')
   return {
-    system: [SHARED_SYSTEM, buildTranslationStyleSection(style)].join('\n\n'),
+    system: systemParts,
     user: buildStructuredUserPrompt(segments, style, fullMessageContext),
   }
 }
@@ -88,9 +103,14 @@ export function buildStructuredTranslationPrompts(
 export function buildSingleCallPrompts(
   text: string,
   style: TranslationStyle = DEFAULT_TRANSLATION_STYLE,
+  roomContext?: string,
 ): PromptPair {
+  const contextSection = buildContextSection(roomContext)
+  const systemParts = [SHARED_SYSTEM, contextSection, buildTranslationStyleSection(style)]
+    .filter(Boolean)
+    .join('\n\n')
   return {
-    system: [SHARED_SYSTEM, buildTranslationStyleSection(style)].join('\n\n'),
+    system: systemParts,
     user: buildSingleUserPrompt(text, style),
   }
 }
