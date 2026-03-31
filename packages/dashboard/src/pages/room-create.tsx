@@ -190,7 +190,7 @@ export function RoomCreatePage() {
               />
             </div>
 
-            <div className="page-divider-brutal" />
+            <div className="page-divider-brutal my-6" />
             {(() => {
               const contextFieldProps: {
                 value: string
