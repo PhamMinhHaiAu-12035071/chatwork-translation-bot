@@ -7,7 +7,6 @@ import type { ProviderPlugin, ProviderCreateContext } from '@chatwork-bot/core'
 export const OPENAI_MODEL_VALUES = [
   // GPT-5.x (2026 frontier)
   'gpt-5.4',
-  'gpt-5.4-pro',
   'gpt-5.2',
   'gpt-5-mini',
   'gpt-5-nano',
@@ -128,7 +127,7 @@ export const openaiPlugin: ProviderPlugin = {
   manifest: {
     id: 'openai',
     supportedModels: OPENAI_MODEL_VALUES,
-    defaultModel: 'gpt-5.4-pro',
+    defaultModel: 'gpt-5.4',
     capabilities: { streaming: false },
     timeoutMs: DEFAULT_OPENAI_TIMEOUT_MS,
   },

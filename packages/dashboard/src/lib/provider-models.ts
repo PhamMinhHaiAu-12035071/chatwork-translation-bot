@@ -8,7 +8,6 @@ export interface ModelOption {
 export const PROVIDER_MODELS: Record<AiProvider, ModelOption[]> = {
   openai: [
     { value: 'gpt-5.4', label: 'GPT-5.4 ⚡ Latest' },
-    { value: 'gpt-5.4-pro', label: 'GPT-5.4 Pro (Deep Reasoning)' },
     { value: 'gpt-5.2', label: 'GPT-5.2' },
     { value: 'gpt-5.1', label: 'GPT-5.1' },
     { value: 'gpt-5-mini', label: 'GPT-5 Mini (Cost-efficient)' },
@@ -36,7 +35,7 @@ export const PROVIDER_LABELS: Record<AiProvider, string> = {
 
 /** Default when switching provider or when stored model is not in the current provider list. */
 export const BEST_MODEL_BY_PROVIDER: Record<AiProvider, string> = {
-  openai: 'gpt-5.4-pro',
+  openai: 'gpt-5.4',
   gemini: 'gemini-3.1-pro-preview',
 }
 

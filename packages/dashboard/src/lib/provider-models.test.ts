@@ -13,7 +13,6 @@ describe('provider model metadata', () => {
     expect(providerModule.PROVIDER_LABELS.gemini).toBe('Google Gemini')
     expect(providerModule.PROVIDER_MODELS.openai.map((model) => model.value)).toEqual([
       'gpt-5.4',
-      'gpt-5.4-pro',
       'gpt-5.2',
       'gpt-5.1',
       'gpt-5-mini',

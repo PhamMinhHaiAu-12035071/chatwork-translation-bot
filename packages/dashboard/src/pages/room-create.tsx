@@ -65,7 +65,7 @@ export function RoomCreatePage() {
       ...(prefillRoomId !== undefined ? { originalRoomId: Number(prefillRoomId) } : {}),
       aiProvider: 'openai',
       translationStyle: 'PROFESSIONAL_BUSINESS',
-      aiModel: 'gpt-5.4-pro',
+      aiModel: 'gpt-5.4',
       destinationRoomName: '',
       aiApiToken: '',
     } as RoomCreateInput,
