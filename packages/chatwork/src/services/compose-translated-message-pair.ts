@@ -149,6 +149,12 @@ export async function composeTranslatedMessagePair(
       return `[code]${node.content}[/code]`
     }
 
+    if (node.type === 'rp') {
+      const { replyAccountId, replyRoomId, replyMessageId } = node.replyToData
+      // Chatwork API requires '-' delimiter, not ':'
+      return `[rp aid=${String(replyAccountId)} to=${String(replyRoomId)}-${replyMessageId}]`
+    }
+
     const children = await renderNodes(node.children)
 
     if (node.type === 'info' || node.type === 'title' || node.type === 'quote') {

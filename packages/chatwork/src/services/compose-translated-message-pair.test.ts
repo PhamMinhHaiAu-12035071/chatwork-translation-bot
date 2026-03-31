@@ -197,7 +197,7 @@ describe('composeTranslatedMessagePair', () => {
     )
   })
 
-  it('includes node-local nested quote context in metadata and strips it from the body', async () => {
+  it('includes node-local nested quote context in metadata, strips To/Cc from body, and preserves [rp] tag', async () => {
     const outerTime = 1711267800
     const innerTime = 1711267000
     const command = makeCommand(
@@ -228,11 +228,12 @@ describe('composeTranslatedMessagePair', () => {
     expect(result.metadataMessage).toContain('Reply to: Ivy')
     expect(result.metadataMessage).toContain('Nested Room')
     expect(result.bodyMessage).toBe(
-      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}]Noi dung da trich[/qt][/qt]`,
+      `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}][rp aid=800 to=999-123]Noi dung da trich[/qt][/qt]`,
     )
     expect(result.bodyMessage).not.toContain('[To:600]')
     expect(result.bodyMessage).not.toContain('[cc:700]')
-    expect(result.bodyMessage).not.toContain('[rp ')
+    // [rp] tag is now preserved (needed for Chatwork UI to render "Re: Đã trả lời cho")
+    expect(result.bodyMessage).toContain('[rp aid=800 to=999-123]')
   })
 
   it('uses fallback account and room names when lookups cannot resolve', async () => {

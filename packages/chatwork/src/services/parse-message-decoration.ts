@@ -214,11 +214,15 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
           }
         } else if (tag.name === 'rp') {
           if (tag.attributes.type === 'rp') {
-            context.replyToData = {
+            const replyToData = {
               replyAccountId: tag.attributes.aid,
               replyRoomId: tag.attributes.toRoom,
               replyMessageId: tag.attributes.toMessage,
             }
+            // Store in context for metadata message
+            context.replyToData = replyToData
+            // Also create node to render [rp] tag in body message (needed for Chatwork UI)
+            nodes.push({ type: 'rp', replyToData })
           }
         } else {
           const children = parseBody(context, tag.name)
