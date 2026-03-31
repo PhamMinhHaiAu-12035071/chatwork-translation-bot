@@ -248,16 +248,14 @@ export function RoomDetailPage() {
         </StatusPill>
       }
     >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <form
-          onSubmit={(event) => {
-            void editForm.handleSubmit(onEditSubmit)(event)
-          }}
-          noValidate
-        >
-          <BrutalCard className="theme-card-sky space-y-5" tilt="left">
-            <StickerLabel tone="accent">Room Config</StickerLabel>
-
+      <form
+        onSubmit={(event) => {
+          void editForm.handleSubmit(onEditSubmit)(event)
+        }}
+        noValidate
+      >
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">
               <BrutalInput
                 label="Original Room ID"
@@ -305,7 +303,36 @@ export function RoomDetailPage() {
                 {...editForm.register('aiApiToken')}
               />
             </div>
+          </div>
 
+          <div className="space-y-5 self-start">
+            <BrutalCard className="theme-card-cream space-y-4">
+              <StickerLabel tone={room.enabled ? 'success' : 'warning'}>Room Status</StickerLabel>
+              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
+                {room.enabled
+                  ? 'Room is enabled. Translation is active for incoming webhooks.'
+                  : 'Room is disabled. Enable to start receiving translations.'}
+              </p>
+              <button
+                type="button"
+                disabled={roomStatusAction.loading}
+                onClick={() => {
+                  void handleRoomStatusToggle()
+                }}
+                className={[
+                  'brutal-button w-full py-3 font-heading text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
+                  room.enabled ? 'theme-button-warm text-white' : 'theme-button-violet text-white',
+                ].join(' ')}
+              >
+                <PixelScatterText
+                  value={room.enabled ? 'Disable Room' : 'Enable Room'}
+                  reserveText="Disable Room"
+                />
+              </button>
+            </BrutalCard>
+          </div>
+
+          <div className="xl:col-span-2">
             <div className="page-divider-brutal my-6" />
             {(() => {
               const contextFieldProps: {
@@ -324,7 +351,7 @@ export function RoomDetailPage() {
               return <ContextField {...contextFieldProps} />
             })()}
 
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2 mt-4">
               <button
                 type="button"
                 onClick={() => {
@@ -342,36 +369,9 @@ export function RoomDetailPage() {
                 Save Changes
               </button>
             </div>
-          </BrutalCard>
-        </form>
-
-        <div className="space-y-5">
-          <BrutalCard className="theme-card-cream space-y-4">
-            <StickerLabel tone={room.enabled ? 'success' : 'warning'}>Room Status</StickerLabel>
-            <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-              {room.enabled
-                ? 'Room is enabled. Translation is active for incoming webhooks.'
-                : 'Room is disabled. Enable to start receiving translations.'}
-            </p>
-            <button
-              type="button"
-              disabled={roomStatusAction.loading}
-              onClick={() => {
-                void handleRoomStatusToggle()
-              }}
-              className={[
-                'brutal-button w-full py-3 font-heading text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60',
-                room.enabled ? 'theme-button-warm text-white' : 'theme-button-violet text-white',
-              ].join(' ')}
-            >
-              <PixelScatterText
-                value={room.enabled ? 'Disable Room' : 'Enable Room'}
-                reserveText="Disable Room"
-              />
-            </button>
-          </BrutalCard>
+          </div>
         </div>
-      </div>
+      </form>
     </PageShell>
   )
 }

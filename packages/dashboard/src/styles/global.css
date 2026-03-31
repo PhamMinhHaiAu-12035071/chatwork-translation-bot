@@ -160,6 +160,226 @@ html::-webkit-scrollbar-thumb:hover {
     2px 2px 0 var(--border);
 }
 
+.context-candy-progress-track {
+  position: relative;
+  min-height: 18px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff9ef 0%, #f7e7d3 100%);
+  box-shadow:
+    inset 2px 2px 5px rgba(255, 255, 255, 0.84),
+    inset -2px -2px 6px rgba(212, 151, 110, 0.2),
+    2px 2px 0 var(--border);
+}
+
+.context-candy-progress-track::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent 55%);
+  pointer-events: none;
+}
+
+.context-candy-progress-layer {
+  position: absolute;
+  inset: 2px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  align-items: stretch;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.context-candy-progress-layer--filled {
+  clip-path: inset(0 calc(100% - var(--context-candy-progress, 0%)) 0 0 round 999px);
+}
+
+.context-candy-progress-layer--ghost .context-candy-progress-segment {
+  opacity: 0.26;
+  filter: saturate(0.6) brightness(1.08);
+}
+
+.context-candy-progress-segment {
+  min-width: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(26, 26, 46, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.12) 46%, rgba(0, 0, 0, 0.05) 100%),
+    repeating-linear-gradient(
+      135deg,
+      var(--candy-base) 0px,
+      var(--candy-base) 8px,
+      var(--candy-stripe) 8px,
+      var(--candy-stripe) 16px
+    );
+  background-size: 100% 100%, 24px 24px;
+  box-shadow:
+    inset 1px 1px 2px rgba(255, 255, 255, 0.7),
+    inset -1px -1px 3px var(--candy-shadow);
+}
+
+.context-editor-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.context-editor-shell textarea.brutal-input-error,
+.context-editor-shell textarea.brutal-input-error:focus {
+  border-color: var(--error);
+  box-shadow: 5px 5px 0 var(--error);
+}
+
+
+.context-template-list-wrap {
+  position: relative;
+}
+
+.context-template-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.context-template-card {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  overflow: hidden;
+  width: 100%;
+  min-height: 86px;
+  padding: 0.9rem 0.95rem 0.9rem 0.85rem;
+  border: 3px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 5px 5px 0 var(--border);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.context-template-card::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: 0;
+  border-radius: 18px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.context-template-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.context-template-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--border);
+}
+
+.context-template-card[data-template-active='true'] {
+  transform: translate(-4px, -4px);
+  border-color: var(--template-accent);
+  background: var(--template-soft);
+  box-shadow: 9px 9px 0 var(--border);
+}
+
+
+.context-template-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 2.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--template-soft);
+  box-shadow: 3px 3px 0 var(--border);
+  font-size: 1rem;
+}
+
+.context-template-copy {
+  min-width: 0;
+}
+
+.context-template-check {
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  padding: 0.4rem 0.55rem;
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  background: var(--warning);
+  box-shadow: 2px 2px 0 var(--border);
+  color: var(--text-primary);
+  font-family: 'Shantell Sans', cursive;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.brutal-clear-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border: 2.5px solid var(--border);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffb3c1 0%, #ff8fa3 100%);
+  box-shadow: 3px 3px 0 var(--border);
+  color: var(--border);
+  font-family: 'Shantell Sans', cursive;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 140ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 140ms ease;
+}
+
+.brutal-clear-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--border);
+  background: linear-gradient(180deg, #ffc9d4 0%, #ffb3c1 100%);
+}
+
+.brutal-clear-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brutal-clear-button {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-editor-shell::before,
+  .context-editor-shell textarea,
+  .context-template-card {
+    transition: none;
+  }
+}
+
 .font-heading {
   font-family: 'Shantell Sans', cursive;
 }
@@ -492,7 +712,7 @@ html::-webkit-scrollbar-thumb:hover {
 /* ── PageShell ruling divider ── */
 .page-divider-brutal {
   height: 3px;
-  margin: 0;
+  margin-inline: 0;
   background:
     repeating-linear-gradient(
       90deg,

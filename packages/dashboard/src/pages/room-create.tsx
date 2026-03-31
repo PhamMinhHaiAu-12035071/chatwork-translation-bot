@@ -135,8 +135,7 @@ export function RoomCreatePage() {
         noValidate
       >
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.8fr)]">
-          <BrutalCard className="theme-card-cream space-y-5">
-            <StickerLabel tone="accent">Room Configuration</StickerLabel>
+          <div className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">
               <BrutalInput
                 label="Original Room ID"
@@ -189,7 +188,29 @@ export function RoomCreatePage() {
                 {...register('aiApiToken')}
               />
             </div>
+          </div>
 
+          <div className="space-y-6 self-start">
+            <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
+              <StickerLabel tone="warning">Before You Start</StickerLabel>
+              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
+                Before creating a room, set up a Chatwork webhook with this server&#39;s URL. Follow
+                the Webhook Guide for step-by-step instructions.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigate('/guide')
+                }}
+                className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
+              >
+                <Icon name="bookSky" variant="clay" size={20} aria-hidden />
+                Open Webhook Guide
+              </button>
+            </BrutalCard>
+          </div>
+
+          <div className="xl:col-span-2">
             <div className="page-divider-brutal my-6" />
             {(() => {
               const contextFieldProps: {
@@ -208,7 +229,7 @@ export function RoomCreatePage() {
               return <ContextField {...contextFieldProps} />
             })()}
 
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2 mt-4">
               <button
                 type="button"
                 onClick={() => {
@@ -226,36 +247,6 @@ export function RoomCreatePage() {
                 {isSubmitting ? 'Creating…' : 'Create Room'}
               </button>
             </div>
-          </BrutalCard>
-
-          <div className="space-y-6">
-            <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
-              <StickerLabel tone="warning">Before You Start</StickerLabel>
-              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                Before creating a room, set up a Chatwork webhook with this server&#39;s URL. Follow
-                the Webhook Guide for step-by-step instructions.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate('/guide')
-                }}
-                className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
-              >
-                <Icon name="bookSky" variant="clay" size={20} aria-hidden />
-                Open Webhook Guide
-              </button>
-            </BrutalCard>
-
-            <BrutalCard className="theme-card-lilac space-y-3" tilt="right">
-              <StickerLabel tone="success" tilt="right">
-                Tip
-              </StickerLabel>
-              <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-                Switching provider resets the model to that provider&apos;s recommended default; you
-                can pick another model anytime.
-              </p>
-            </BrutalCard>
           </div>
         </div>
       </form>

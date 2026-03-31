@@ -30,7 +30,6 @@ describe('RoomCreatePage', () => {
     const html = renderRoomCreatePage()
 
     expect(html).toContain('Set up a translation room')
-    expect(html).toContain('Room Configuration')
     expect(html).toContain('Original Room ID')
     expect(html).toContain('Destination Room Name')
     expect(html).toContain('AI Provider')

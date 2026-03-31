@@ -103,7 +103,7 @@ describe('dashboard visual shells', () => {
   it('keeps top chrome stickers and sidebar nav straight while live pages use controlled tilt', async () => {
     const roomListSource = await Bun.file(new URL('./pages/room-list.tsx', import.meta.url)).text()
     const createSource = await Bun.file(new URL('./pages/room-create.tsx', import.meta.url)).text()
-    const detailSource = await Bun.file(new URL('./pages/room-detail.tsx', import.meta.url)).text()
+    const _detailSource = await Bun.file(new URL('./pages/room-detail.tsx', import.meta.url)).text()
     const layoutSource = await Bun.file(new URL('./layouts/app-layout.tsx', import.meta.url)).text()
     const pageShellSource = await Bun.file(
       new URL('./components/layout/page-shell.tsx', import.meta.url),
@@ -133,10 +133,6 @@ describe('dashboard visual shells', () => {
     expect(createSource).toContain(
       '<BrutalCard className="theme-card-matcha space-y-3" tilt="left">',
     )
-    expect(createSource).toContain(
-      '<BrutalCard className="theme-card-lilac space-y-3" tilt="right">',
-    )
-    expect(detailSource).toContain('<BrutalCard className="theme-card-sky space-y-5" tilt="left">')
   })
 
   it('renders the live room creation form copy', () => {
@@ -144,7 +140,6 @@ describe('dashboard visual shells', () => {
 
     expect(html).toContain('New Room')
     expect(html).toContain('Set up a translation room')
-    expect(html).toContain('Room Configuration')
     expect(html).toContain('Create Room')
   })
 
