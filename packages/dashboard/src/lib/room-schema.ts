@@ -21,6 +21,7 @@ export const roomCreateSchema = z.object({
   aiApiToken: z
     .string({ required_error: 'AI API token is required' })
     .min(1, 'AI API token is required'),
+  context: z.string().max(500, 'Max 500 characters').optional().default(''),
 })
 
 export type RoomCreateInput = z.infer<typeof roomCreateSchema>
@@ -40,6 +41,7 @@ export const roomEditSchema = z.object({
     required_error: 'Translation style is required',
   }),
   aiApiToken: z.string().optional().default(''),
+  context: z.string().max(500, 'Max 500 characters').optional().default(''),
 })
 
 export type RoomEditInput = z.infer<typeof roomEditSchema>

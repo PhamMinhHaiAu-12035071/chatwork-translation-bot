@@ -88,6 +88,7 @@ export function RoomDetailPage() {
         aiModel: room.aiModel ?? BEST_MODEL_BY_PROVIDER[room.aiProvider],
         translationStyle: room.translationStyle,
         aiApiToken: '',
+        context: room.context ?? '',
       }
     : {
         originalRoomId: 0,
@@ -96,6 +97,7 @@ export function RoomDetailPage() {
         aiModel: BEST_MODEL_BY_PROVIDER.openai,
         translationStyle: 'PROFESSIONAL_BUSINESS',
         aiApiToken: '',
+        context: '',
       }
 
   const editForm = useForm<RoomEditInput>({

@@ -59,6 +59,7 @@ describe('apiClient', () => {
       aiProvider: 'openai',
       aiModel: 'gpt-4o',
       translationStyle: 'PROFESSIONAL_BUSINESS',
+      context: null,
       enabled: true,
       createdAt: '2026-03-20T09:00:00Z',
       updatedAt: '2026-03-20T09:00:00Z',

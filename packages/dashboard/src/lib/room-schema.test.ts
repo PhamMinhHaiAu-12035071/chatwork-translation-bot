@@ -73,4 +73,48 @@ describe('room schema', () => {
 
     expect(removedWebhookActivationSchema in schemaModule).toBe(false)
   })
+
+  it('allows context up to 500 characters on create schema', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+    if (!schemaModule) return
+
+    const valid = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      destinationRoomName: 'Tokyo Support',
+      aiProvider: 'openai',
+      aiModel: 'gpt-4o',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-demo',
+      context: 'Room type: Internal team.',
+    })
+    expect(valid.success).toBe(true)
+
+    const tooLong = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      destinationRoomName: 'Tokyo Support',
+      aiProvider: 'openai',
+      aiModel: 'gpt-4o',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-demo',
+      context: 'a'.repeat(501),
+    })
+    expect(tooLong.success).toBe(false)
+    expect(tooLong.error?.flatten().fieldErrors.context?.[0]).toMatch(/500/)
+  })
+
+  it('allows context to be omitted on create schema (defaults to empty string)', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+    if (!schemaModule) return
+
+    const result = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      destinationRoomName: 'Tokyo Support',
+      aiProvider: 'openai',
+      aiModel: 'gpt-4o',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-demo',
+    })
+    expect(result.success).toBe(true)
+    expect(result.data?.context).toBe('')
+  })
 })

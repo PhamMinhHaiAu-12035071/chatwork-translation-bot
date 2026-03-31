@@ -11,6 +11,7 @@ const TEST_ROOM = {
   aiProvider: 'openai' as const,
   aiModel: 'gpt-4o',
   translationStyle: 'PROFESSIONAL_BUSINESS' as const,
+  context: null,
   enabled: true,
   createdAt: '2026-03-20T09:00:00Z',
   updatedAt: '2026-03-20T09:00:00Z',
