@@ -7,6 +7,7 @@ import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
+import { ContextField } from '~/components/molecules/context-field'
 import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
@@ -68,6 +69,7 @@ export function RoomCreatePage() {
       aiModel: 'gpt-5.4',
       destinationRoomName: '',
       aiApiToken: '',
+      context: '',
     } as RoomCreateInput,
   })
 
@@ -93,7 +95,12 @@ export function RoomCreatePage() {
   })
 
   const onSubmit = async (data: RoomCreateInput) => {
-    const result = await createRoomAction.execute(() => createRoom(data))
+    const result = await createRoomAction.execute(() =>
+      createRoom({
+        ...data,
+        context: data.context.trim() || null,
+      }),
+    )
 
     if (!result.ok) {
       if (result.cause instanceof ApiError && result.cause.status === 409) {
@@ -182,6 +189,24 @@ export function RoomCreatePage() {
                 {...register('aiApiToken')}
               />
             </div>
+
+            <div className="page-divider-brutal" />
+            {(() => {
+              const contextFieldProps: {
+                value: string
+                onChange: (v: string) => void
+                error?: string
+              } = {
+                value: watch('context'),
+                onChange: (v: string) => {
+                  setValue('context', v, { shouldValidate: true })
+                },
+              }
+              if (errors.context?.message) {
+                contextFieldProps.error = errors.context.message
+              }
+              return <ContextField {...contextFieldProps} />
+            })()}
 
             <div className="flex flex-wrap gap-3 pt-2">
               <button

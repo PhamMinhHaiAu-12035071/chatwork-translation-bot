@@ -90,4 +90,11 @@ describe('RoomDetailPage', () => {
 
     expect(source).not.toContain('<span className="opacity-60">#</span>')
   })
+
+  it('includes the ContextField component in the form source code', async () => {
+    const source = await Bun.file(new URL('./room-detail.tsx', import.meta.url)).text()
+
+    expect(source).toContain('ContextField')
+    expect(source).toContain("editForm.watch('context')")
+  })
 })

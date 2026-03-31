@@ -7,6 +7,7 @@ import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
+import { ContextField } from '~/components/molecules/context-field'
 import { PageShell } from '~/components/layout/page-shell'
 import { PixelScatterText } from '~/components/animation/pixel-scatter-text'
 import { RoomSkeletonCard } from '~/components/organisms/room-skeleton'
@@ -123,6 +124,7 @@ export function RoomDetailPage() {
       aiModel: room.aiModel ?? BEST_MODEL_BY_PROVIDER[room.aiProvider],
       translationStyle: room.translationStyle,
       aiApiToken: '',
+      context: room.context ?? '',
     })
   }, [editForm, room])
 
@@ -199,6 +201,7 @@ export function RoomDetailPage() {
         aiModel: data.aiModel,
         translationStyle: data.translationStyle,
         ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
+        context: data.context.trim() || null,
       }),
     )
 
@@ -313,6 +316,24 @@ export function RoomDetailPage() {
                 {...editForm.register('aiApiToken')}
               />
             </div>
+
+            <div className="page-divider-brutal" />
+            {(() => {
+              const contextFieldProps: {
+                value: string
+                onChange: (v: string) => void
+                error?: string
+              } = {
+                value: editForm.watch('context'),
+                onChange: (v: string) => {
+                  editForm.setValue('context', v, { shouldValidate: true })
+                },
+              }
+              if (editForm.formState.errors.context?.message) {
+                contextFieldProps.error = editForm.formState.errors.context.message
+              }
+              return <ContextField {...contextFieldProps} />
+            })()}
 
             <div className="flex flex-wrap gap-3 pt-2">
               <button

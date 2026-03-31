@@ -85,4 +85,10 @@ describe('RoomCreatePage', () => {
     // the field must not contain a pre-filled number when arriving without state
     expect(html).not.toContain('424846369')
   })
+
+  it('renders the Translation Context collapsible section', () => {
+    const html = renderRoomCreatePage()
+    expect(html).toContain('Translation Context')
+    expect(html).toContain('Optional')
+  })
 })
