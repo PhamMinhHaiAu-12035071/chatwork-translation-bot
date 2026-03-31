@@ -353,11 +353,51 @@ export function RoomListPage() {
                             />
                           ) : null}
                           {isSpotlighted ? (
-                            <div className="absolute z-10" style={{ top: '-10px', right: '20px' }}>
+                            <motion.div
+                              className="absolute"
+                              style={{
+                                top: '-10px',
+                                right: '20px',
+                                zIndex: 10,
+                                transformOrigin: 'center center',
+                              }}
+                              initial={
+                                reducedMotion
+                                  ? { opacity: 1 }
+                                  : {
+                                      opacity: 0,
+                                      y: 40,
+                                      scale: 0.7,
+                                    }
+                              }
+                              animate={
+                                reducedMotion
+                                  ? { opacity: 1 }
+                                  : {
+                                      opacity: 1,
+                                      y: 0,
+                                      scale: 1,
+                                    }
+                              }
+                              exit={
+                                reducedMotion
+                                  ? { opacity: 0 }
+                                  : {
+                                      opacity: 0,
+                                      y: 40,
+                                      scale: 0.7,
+                                    }
+                              }
+                              transition={{
+                                duration: reducedMotion ? 0 : 0.6,
+                                delay: reducedMotion ? 0 : 0.3,
+                                ease: [0.34, 1.56, 0.64, 1],
+                              }}
+                            >
                               <StickerLabel tone="warning" tilt="right">
                                 New
                               </StickerLabel>
-                            </div>
+                            </motion.div>
                           ) : null}
                           <BrutalCard
                             className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
