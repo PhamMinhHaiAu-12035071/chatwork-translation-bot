@@ -86,7 +86,6 @@ export function RoomListPage() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [spotlightRoomId, setSpotlightRoomId] = useState<string | null>(null)
   const [spotlightPosition, setSpotlightPosition] = useState({ x: 50, y: 50 })
-  const [spotlightBoxShadow, setSpotlightBoxShadow] = useState('4px 4px 0 var(--border)')
   const roomToggleAction = useAsyncAction<undefined>({
     fallbackErrorMessage: 'Toggle failed',
     getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Toggle failed'),
@@ -117,7 +116,7 @@ export function RoomListPage() {
       return
     }
 
-    // Orbital spotlight animation (Approach 3: Orbital Glare Sweep)
+    // Simplified spotlight sweep - continuous shine effect only
     let angle = 0
     const spotlightInterval = window.setInterval(() => {
       angle += 6 // 6° per frame = 360° in 1.5s at 25ms interval
@@ -127,27 +126,14 @@ export function RoomListPage() {
       const y = 50 + 40 * Math.sin((angle * Math.PI) / 180)
       setSpotlightPosition({ x, y })
 
-      // Shadow rotation choreography (4 cardinal transitions)
-      if (angle >= 0 && angle < 90) {
-        setSpotlightBoxShadow('8px 8px 0 var(--border)')
-      } else if (angle >= 90 && angle < 180) {
-        setSpotlightBoxShadow('8px -8px 0 var(--border)')
-      } else if (angle >= 180 && angle < 270) {
-        setSpotlightBoxShadow('-8px -8px 0 var(--border)')
-      } else {
-        setSpotlightBoxShadow('-8px 8px 0 var(--border)')
-      }
-
       if (angle >= 360) {
         window.clearInterval(spotlightInterval)
-        setSpotlightBoxShadow('4px 4px 0 var(--border)')
       }
     }, 25) // 40 FPS
 
     const timeoutId = window.setTimeout(() => {
       setSpotlightRoomId(null)
       window.clearInterval(spotlightInterval)
-      setSpotlightBoxShadow('4px 4px 0 var(--border)')
     }, SPOTLIGHT_DURATION_MS)
 
     return () => {
@@ -338,11 +324,7 @@ export function RoomListPage() {
                         backgroundColor: 'rgba(255, 225, 154, 0.92)',
                         boxShadow: '8px 8px 0 rgba(212, 68, 112, 0.92)',
                       }
-                    : {
-                        // Approach 3: 3D tilt animation
-                        rotateX: [0, 8, 8, 0],
-                        rotateY: [0, -5, -5, 0],
-                      }
+                    : {}
                   : {
                       backgroundColor: 'rgba(255, 225, 154, 0)',
                       boxShadow: '0px 0px 0 rgba(212, 68, 112, 0)',
@@ -412,9 +394,6 @@ export function RoomListPage() {
                           <BrutalCard
                             className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
                             tilt={tilt}
-                            {...(isSpotlighted && !reducedMotion
-                              ? { style: { boxShadow: spotlightBoxShadow } }
-                              : {})}
                           >
                             <div className="space-y-2">
                               <div className="flex min-w-0 items-start justify-between gap-4">
