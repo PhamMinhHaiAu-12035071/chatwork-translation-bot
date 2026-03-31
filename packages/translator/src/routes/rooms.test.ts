@@ -638,4 +638,88 @@ describe('POST /api/rooms/:id/enable and /disable', () => {
 
     expect(response.status).toBe(404)
   })
+
+  it('stores and returns context when provided on create', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'rooms-ctx-test-'))
+    try {
+      const app = await buildApp(tmpDir)
+      const res = await app.handle(
+        new Request('http://localhost/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...VALID_BODY,
+            originalRoomId: 7001,
+            context: 'Room type: Client project.\nMembers: Khoa (PM, male).',
+          }),
+        }),
+      )
+      expect(res.status).toBe(201)
+      const body = (await res.json()) as { success: boolean; data: { context: string | null } }
+      expect(body.success).toBe(true)
+      expect(body.data.context).toBe('Room type: Client project.\nMembers: Khoa (PM, male).')
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('returns null context when context is omitted on create', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'rooms-noctx-test-'))
+    try {
+      const app = await buildApp(tmpDir)
+      const res = await app.handle(
+        new Request('http://localhost/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...VALID_BODY, originalRoomId: 7002 }),
+        }),
+      )
+      const body = (await res.json()) as { data: { context: unknown } }
+      expect(body.data.context).toBeNull()
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects context longer than 500 characters', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'rooms-longctx-test-'))
+    try {
+      const app = await buildApp(tmpDir)
+      const res = await app.handle(
+        new Request('http://localhost/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...VALID_BODY,
+            originalRoomId: 7003,
+            context: 'a'.repeat(501),
+          }),
+        }),
+      )
+      expect(res.status).toBe(400)
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('updates context via PUT and returns updated value', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'rooms-updctx-test-'))
+    try {
+      const app = await buildApp(tmpDir)
+      const { id } = await createRoomForTest(app)
+
+      const res = await app.handle(
+        new Request(`http://localhost/api/rooms/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context: 'Updated context text.' }),
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = (await res.json()) as { data: { context: string | null } }
+      expect(body.data.context).toBe('Updated context text.')
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true })
+    }
+  })
 })

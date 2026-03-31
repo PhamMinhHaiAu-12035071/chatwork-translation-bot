@@ -20,8 +20,9 @@ export class RoomConfigStoreError extends Error {
   }
 }
 
-interface CreateRoomStoreParams extends CreateRoomRequest {
+interface CreateRoomStoreParams extends Omit<CreateRoomRequest, 'context'> {
   destinationRoomId: number
+  context?: string | null
 }
 
 interface RoomConfigStoreOptions {
@@ -84,6 +85,7 @@ export class RoomConfigStore {
         aiProvider: params.aiProvider,
         aiModel: params.aiModel,
         translationStyle: params.translationStyle,
+        context: params.context ?? null,
         encryptedAiApiToken: await encrypt(params.aiApiToken, this.encryptionKeyHex),
         enabled: true,
         createdAt: now,
@@ -122,6 +124,7 @@ export class RoomConfigStore {
         ...(patch.translationStyle !== undefined
           ? { translationStyle: patch.translationStyle }
           : {}),
+        ...(patch.context !== undefined ? { context: patch.context } : {}),
         encryptedAiApiToken,
         updatedAt: new Date().toISOString(),
       }

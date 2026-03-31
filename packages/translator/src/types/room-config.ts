@@ -18,6 +18,7 @@ export const RoomConfigSchema = z.object({
   aiProvider: z.enum(AI_PROVIDER_VALUES),
   aiModel: z.string().min(1).nullable(),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM),
+  context: z.string().max(500).nullable().optional().default(null),
   encryptedAiApiToken: z.string().min(1),
   enabled: z.boolean(),
   createdAt: z.iso.datetime(),
@@ -59,6 +60,7 @@ export const CreateRoomRequestSchema = z.object({
   aiProvider: z.enum(AI_PROVIDER_VALUES),
   aiModel: z.string().min(1).nullable().default(null),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM).default('PROFESSIONAL_BUSINESS'),
+  context: z.string().max(500).nullable().optional().default(null),
   aiApiToken: z.string().min(1),
 })
 
@@ -70,6 +72,7 @@ export const UpdateRoomRequestSchema = z.object({
   aiModel: z.string().min(1).nullable().optional(),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM).optional(),
   aiApiToken: z.string().min(1).optional(),
+  context: z.string().max(500).nullable().optional(),
 })
 
 export type UpdateRoomRequest = z.infer<typeof UpdateRoomRequestSchema>
