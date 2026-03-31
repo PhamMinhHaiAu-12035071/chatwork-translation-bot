@@ -15,7 +15,6 @@ import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { useAsyncAction } from '~/hooks/use-async-action'
-import { useCopyClipboard } from '~/hooks/use-copy-clipboard'
 import { ApiError } from '~/lib/api-client'
 import {
   BEST_MODEL_BY_PROVIDER,
@@ -49,13 +48,6 @@ const styleOptions = TRANSLATION_STYLES.map((style) => ({
 
 const roomEditResolver = zodResolver(roomEditSchema as never) as Resolver<RoomEditInput>
 
-function generateWebhookUrl(): string {
-  const base =
-    typeof window !== 'undefined' ? window.location.origin : 'https://your-server.example.com'
-
-  return `${base}/webhook`
-}
-
 export function getRoomUpdatedToastMessage(roomName: string): string {
   return `"${roomName}" was updated successfully`
 }
@@ -71,7 +63,6 @@ export function RoomDetailPage() {
   const updateRoom = useRoomStore(selectUpdateRoom)
   const enableRoom = useRoomStore(selectEnableRoom)
   const disableRoom = useRoomStore(selectDisableRoom)
-  const { copied, copy } = useCopyClipboard()
   const updateRoomAction = useAsyncAction<Room>({
     fallbackErrorMessage: 'Update failed',
     getErrorMessage: (error) => (error instanceof ApiError ? error.message : 'Update failed'),
@@ -185,8 +176,6 @@ export function RoomDetailPage() {
       </PageShell>
     )
   }
-
-  const webhookUrl = generateWebhookUrl()
 
   const headerRoomTitle =
     destinationRoomNameWatch.trim() !== ''
@@ -357,60 +346,6 @@ export function RoomDetailPage() {
         </form>
 
         <div className="space-y-5">
-          <BrutalCard className="theme-card-peach space-y-4" tilt="right">
-            <StickerLabel tone={room.enabled ? 'success' : 'warning'} tilt="right">
-              <PixelScatterText
-                value={room.enabled ? 'Webhook Live' : 'Webhook Ready'}
-                reserveText="Webhook Ready"
-              />
-            </StickerLabel>
-
-            <div className="space-y-2">
-              <div className="font-ui-body text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
-                Webhook URL
-              </div>
-              <div className="brutal-input flex items-center gap-3 px-4 py-3">
-                <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
-                  <Icon name="link" variant="clay" size={24} aria-hidden />
-                </span>
-                <code
-                  className="min-w-0 flex-1 truncate font-mono text-sm font-medium text-[var(--text-primary)]"
-                  title={webhookUrl}
-                >
-                  {webhookUrl}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void copy(webhookUrl)
-                  }}
-                  className={[
-                    'brutal-button shrink-0 min-w-[80px] px-4 py-1.5 text-center font-heading text-xs font-bold',
-                    copied ? 'theme-button-matcha text-white' : 'theme-button-violet text-white',
-                  ].join(' ')}
-                >
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </div>
-
-            <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">
-              Copy this URL into Chatwork when configuring the webhook, then use the room status
-              controls below to pause or resume translation delivery.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                void navigate('/guide')
-              }}
-              className="brutal-button theme-button-sky inline-flex items-center gap-2 px-4 py-2 font-heading text-xs font-bold text-[var(--border)]"
-            >
-              <Icon name="bookSky" variant="clay" size={20} aria-hidden />
-              View Webhook Guide
-            </button>
-          </BrutalCard>
-
           <BrutalCard className="theme-card-cream space-y-4">
             <StickerLabel tone={room.enabled ? 'success' : 'warning'}>Room Status</StickerLabel>
             <p className="font-ui-body text-sm leading-7 text-[var(--text-secondary)]">

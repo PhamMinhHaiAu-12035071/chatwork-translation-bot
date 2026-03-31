@@ -137,9 +137,6 @@ describe('dashboard visual shells', () => {
       '<BrutalCard className="theme-card-lilac space-y-3" tilt="right">',
     )
     expect(detailSource).toContain('<BrutalCard className="theme-card-sky space-y-5" tilt="left">')
-    expect(detailSource).toContain(
-      '<BrutalCard className="theme-card-peach space-y-4" tilt="right">',
-    )
   })
 
   it('renders the live room creation form copy', () => {
