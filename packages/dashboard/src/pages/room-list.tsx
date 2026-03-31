@@ -315,54 +315,15 @@ export function RoomListPage() {
           </BrutalCard>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {rooms.map((room, index) =>
+            {rooms.map((room) =>
               (() => {
                 const isSpotlighted = room.id === spotlightRoomId
-                const spotlightAnimate = isSpotlighted
-                  ? reducedMotion
-                    ? {
-                        backgroundColor: 'rgba(255, 225, 154, 0.92)',
-                        boxShadow: '8px 8px 0 rgba(212, 68, 112, 0.92)',
-                      }
-                    : {}
-                  : {
-                      backgroundColor: 'rgba(255, 225, 154, 0)',
-                      boxShadow: '0px 0px 0 rgba(212, 68, 112, 0)',
-                    }
 
                 return (
-                  <motion.div
+                  <div
                     key={room.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      ...spotlightAnimate,
-                    }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{
-                      duration: reducedMotion ? 0 : isSpotlighted ? 2.2 : 0.18,
-                      delay: index * 0.04,
-                      ease: 'easeOut',
-                      rotateX:
-                        isSpotlighted && !reducedMotion
-                          ? { times: [0, 0.2, 0.85, 1], ease: 'easeOut' }
-                          : undefined,
-                      rotateY:
-                        isSpotlighted && !reducedMotion
-                          ? { times: [0, 0.2, 0.85, 1], ease: 'easeOut' }
-                          : undefined,
-                    }}
-                    {...(isSpotlighted && !reducedMotion
-                      ? {
-                          style: {
-                            perspective: '1200px',
-                            transformStyle: 'preserve-3d' as const,
-                            willChange: 'transform',
-                          },
-                        }
-                      : {})}
                     className="rounded-[24px] p-1"
+                    style={{ position: 'relative' }}
                   >
                     {(() => {
                       const roomIdx = getRoomCardIndex(room.id)
@@ -463,7 +424,7 @@ export function RoomListPage() {
                         </div>
                       )
                     })()}
-                  </motion.div>
+                  </div>
                 )
               })(),
             )}

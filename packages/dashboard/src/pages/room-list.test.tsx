@@ -127,8 +127,8 @@ describe('RoomListPage', () => {
     expect(source).toContain('replace: true')
     expect(source).toContain('<StickerLabel tone="warning" tilt="right">')
     expect(source).toContain('New')
-    expect(source).toContain('backgroundColor')
-    expect(source).toContain('boxShadow')
+    expect(source).toContain('spotlightPosition') // Orbital spotlight state
+    expect(source).toContain('radial-gradient') // Spotlight gradient overlay
   })
 })
 
