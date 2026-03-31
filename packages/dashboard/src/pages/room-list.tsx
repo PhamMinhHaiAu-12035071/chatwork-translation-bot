@@ -329,7 +329,6 @@ export function RoomListPage() {
                       const roomIdx = getRoomCardIndex(room.id)
                       const cardTheme = cardThemeByIndex[roomIdx] ?? 'theme-card-lilac'
                       const tilt = tiltByIndex[roomIdx] ?? 'flat'
-                      const spotlightTheme = cardTheme
 
                       return (
                         <div className="relative">
@@ -352,19 +351,19 @@ export function RoomListPage() {
                           ) : null}
                           {isSpotlighted ? (
                             <motion.div
-                              className="absolute overflow-hidden"
+                              className="absolute"
                               style={{
-                                top: 0,
-                                right: 0,
+                                top: '-10px',
+                                right: '20px',
                                 zIndex: 10,
-                                transformOrigin: 'top right',
-                                rotate: '45deg',
+                                transformOrigin: 'center center',
                               }}
                               initial={
                                 reducedMotion
                                   ? { opacity: 1 }
                                   : {
                                       opacity: 0,
+                                      y: 40,
                                       scale: 0.7,
                                     }
                               }
@@ -373,6 +372,7 @@ export function RoomListPage() {
                                   ? { opacity: 1 }
                                   : {
                                       opacity: 1,
+                                      y: 0,
                                       scale: 1,
                                     }
                               }
@@ -381,6 +381,7 @@ export function RoomListPage() {
                                   ? { opacity: 0 }
                                   : {
                                       opacity: 0,
+                                      y: 40,
                                       scale: 0.7,
                                     }
                               }
@@ -390,13 +391,13 @@ export function RoomListPage() {
                                 ease: [0.34, 1.56, 0.64, 1],
                               }}
                             >
-                              <StickerLabel tone="warning" tilt="flat">
+                              <StickerLabel tone="warning" tilt="right">
                                 New
                               </StickerLabel>
                             </motion.div>
                           ) : null}
                           <BrutalCard
-                            className={[spotlightTheme, 'flex flex-col gap-4'].join(' ')}
+                            className={[cardTheme, 'flex flex-col gap-4'].join(' ')}
                             tilt={tilt}
                           >
                             <div className="space-y-2">
