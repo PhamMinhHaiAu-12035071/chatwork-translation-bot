@@ -903,4 +903,90 @@ describe('handleTranslateRequest', () => {
       pipelineTimeoutSource: 'env',
     })
   })
+
+  it('full flow: message with sensitive keyword → AI call never contains original → Chatwork reply has original restored', async () => {
+    // Arrange: create a custom executor that captures prompts
+    let capturedPromptUser = ''
+
+    const mockExecutor = {
+      execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
+        capturedPromptUser = _prompts.user
+
+        // For single segment, schema expects { sourceLang, translated }
+        const response = {
+          sourceLang: 'English',
+          translated: 'Báo cáo từ [COMPANY_1] đã sẵn sàng',
+        }
+        return Promise.resolve(schema.parse(response))
+      },
+      describeExecution() {
+        return {
+          generation: {
+            temperature: 0,
+            maxOutputTokens: 4000,
+            providerOptions: null,
+            providerManaged: false,
+          },
+        }
+      },
+    } as ILLMExecutor
+
+    // Create a custom store with protected keywords
+    const customRoomConfig = {
+      id: 'room-keyword-test',
+      originalRoomId: 123456,
+      destinationRoomId: DEFAULT_DESTINATION_ROOM_ID,
+      destinationRoomName: 'Keyword Test Room',
+      aiProvider: 'openai' as const,
+      aiModel: 'gpt-4o',
+      translationStyle: 'PROFESSIONAL_BUSINESS' as const,
+      context: null,
+      protectedKeywords: [
+        { keyword: 'Asia Vion', category: 'company' as const },
+      ],
+      encryptedAiApiToken: 'encrypted-token',
+      enabled: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+
+    const customStore = {
+      getByOriginalRoomId: (id: number) => (id === 123456 ? customRoomConfig : null),
+      decryptApiToken: async (token: string) => {
+        // In tests, assume tokens are not encrypted
+        return token
+      },
+    } as unknown as RoomConfigStore
+
+    // Create handler with custom store
+    const { default: handleTranslateRequestFromCustomStore } =
+      await import('~/webhook/handler').then((m) =>
+        Promise.resolve({
+          default: m.createHandleTranslateRequest({ store: customStore, chatworkApiToken: 'token' }),
+        }),
+      )
+
+    mockGetProviderPlugin.mockImplementationOnce(() => createMockProvider('openai', mockExecutor))
+
+    // Act
+    await handleTranslateRequestFromCustomStore(
+      makeCommand({
+        sourceRoomId: 123456,
+        translatableText: 'Report from Asia Vion is ready',
+        translationInputs: ['Report from Asia Vion is ready'],
+      }),
+    )
+
+    // Assert: AI never sees the original keyword in the text to translate
+    expect(capturedPromptUser).not.toContain('Asia Vion')
+    expect(capturedPromptUser).toContain('[COMPANY_1]')
+
+    // Assert: Chatwork message has original keyword restored
+    const sentMessages = mockComposeTranslatedMessagePair.mock.calls
+    const lastCall = sentMessages.at(-1)
+    const params = lastCall?.[1] as { translatedSegments: string[] } | undefined
+
+    expect(params?.translatedSegments?.[0]).toContain('Asia Vion')
+    expect(params?.translatedSegments?.[0]).not.toContain('[COMPANY_1]')
+  })
 })
