@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/url-builder.ts"
+    ".": "./src/index.ts"
   },
-  "main": "./src/url-builder.ts",
+  "main": "./src/index.ts",
   "scripts": {
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
@@ -14,5 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
-  "dependencies": {}
+  "dependencies": {
+    "elysia": "^1.4.27",
+    "puppeteer-real-browser": "^1.4.4"
+  }
 }
