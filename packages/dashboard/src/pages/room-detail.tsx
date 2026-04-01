@@ -8,6 +8,7 @@ import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
 import { ContextField } from '~/components/molecules/context-field'
+import { KeywordProtectionField } from '~/components/molecules/keyword-protection-field'
 import { PageShell } from '~/components/layout/page-shell'
 import { PixelScatterText } from '~/components/animation/pixel-scatter-text'
 import { RoomSkeletonCard } from '~/components/organisms/room-skeleton'
@@ -81,6 +82,7 @@ export function RoomDetailPage() {
         translationStyle: room.translationStyle,
         aiApiToken: '',
         context: room.context ?? '',
+        protectedKeywords: (room.protectedKeywords ?? []) as any,
       }
     : {
         originalRoomId: 0,
@@ -90,6 +92,7 @@ export function RoomDetailPage() {
         translationStyle: 'PROFESSIONAL_BUSINESS',
         aiApiToken: '',
         context: '',
+        protectedKeywords: [],
       }
 
   const editForm = useForm<RoomEditInput>({
@@ -116,6 +119,7 @@ export function RoomDetailPage() {
       translationStyle: room.translationStyle,
       aiApiToken: '',
       context: room.context ?? '',
+      protectedKeywords: (room.protectedKeywords ?? []) as any,
     })
   }, [editForm, room])
 
@@ -191,6 +195,9 @@ export function RoomDetailPage() {
         translationStyle: data.translationStyle,
         ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
         context: data.context.trim() || null,
+        protectedKeywords: data.protectedKeywords?.length
+          ? (data.protectedKeywords as any)
+          : null,
       }),
     )
 
@@ -350,6 +357,14 @@ export function RoomDetailPage() {
               }
               return <ContextField {...contextFieldProps} />
             })()}
+
+            <div className="page-divider-brutal my-4" />
+            <KeywordProtectionField
+              value={editForm.watch('protectedKeywords') ?? []}
+              onChange={(v) => {
+                editForm.setValue('protectedKeywords', v, { shouldValidate: true })
+              }}
+            />
 
             <div className="flex flex-wrap gap-3 pt-2 mt-4">
               <button

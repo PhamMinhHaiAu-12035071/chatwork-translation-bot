@@ -8,6 +8,7 @@ import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
 import { ContextField } from '~/components/molecules/context-field'
+import { KeywordProtectionField } from '~/components/molecules/keyword-protection-field'
 import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
@@ -70,6 +71,7 @@ export function RoomCreatePage() {
       destinationRoomName: '',
       aiApiToken: '',
       context: '',
+      protectedKeywords: [] as any,
     } as RoomCreateInput,
   })
 
@@ -99,6 +101,9 @@ export function RoomCreatePage() {
       createRoom({
         ...data,
         context: data.context.trim() || null,
+        protectedKeywords: data.protectedKeywords?.length
+          ? (data.protectedKeywords as any)
+          : undefined,
       }),
     )
 
@@ -228,6 +233,14 @@ export function RoomCreatePage() {
               }
               return <ContextField {...contextFieldProps} />
             })()}
+
+            <div className="page-divider-brutal my-4" />
+            <KeywordProtectionField
+              value={watch('protectedKeywords') ?? []}
+              onChange={(v) => {
+                setValue('protectedKeywords', v, { shouldValidate: true })
+              }}
+            />
 
             <div className="flex flex-wrap gap-3 pt-2 mt-4">
               <button
