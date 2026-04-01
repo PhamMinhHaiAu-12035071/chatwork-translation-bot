@@ -35,6 +35,7 @@ const config: UserConfig = {
         'provider-gemini',
         'provider-openai',
         'provider-cursor',
+        'kagi',
         'repo',
       ],
     ],
