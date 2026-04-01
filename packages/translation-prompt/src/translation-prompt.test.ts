@@ -447,3 +447,40 @@ describe('roomContext injection', () => {
     expect(result.system).toMatch(/honorifics|honorific/i)
   })
 })
+
+describe('buildSingleCallPrompts — keywordSystemHint', () => {
+  it('appends keywordSystemHint to system prompt when provided', () => {
+    const { system } = buildSingleCallPrompts(
+      'hello',
+      'PROFESSIONAL_BUSINESS',
+      undefined,
+      '## Sensitive Term Placeholders\n- [COMPANY_1]: company or organization name',
+    )
+    expect(system).toContain('## Sensitive Term Placeholders')
+    expect(system).toContain('[COMPANY_1]')
+  })
+
+  it('system prompt unchanged when keywordSystemHint is absent', () => {
+    const { system: withHint } = buildSingleCallPrompts(
+      'hello',
+      'PROFESSIONAL_BUSINESS',
+      undefined,
+      '## Hint',
+    )
+    const { system: withoutHint } = buildSingleCallPrompts('hello', 'PROFESSIONAL_BUSINESS')
+    expect(withHint.length).toBeGreaterThan(withoutHint.length)
+  })
+})
+
+describe('buildStructuredTranslationPrompts — keywordSystemHint', () => {
+  it('appends keywordSystemHint to system prompt when provided', () => {
+    const { system } = buildStructuredTranslationPrompts(
+      ['hello'],
+      'PROFESSIONAL_BUSINESS',
+      undefined,
+      undefined,
+      '## Sensitive Term Placeholders\n- [PERSON_1]: person name',
+    )
+    expect(system).toContain('[PERSON_1]')
+  })
+})

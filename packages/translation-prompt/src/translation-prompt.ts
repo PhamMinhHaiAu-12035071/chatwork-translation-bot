@@ -89,9 +89,15 @@ export function buildStructuredTranslationPrompts(
   style: TranslationStyle = DEFAULT_TRANSLATION_STYLE,
   fullMessageContext?: string,
   roomContext?: string,
+  keywordSystemHint?: string,
 ): PromptPair {
   const contextSection = buildContextSection(roomContext)
-  const systemParts = [SHARED_SYSTEM, contextSection, buildTranslationStyleSection(style)]
+  const systemParts = [
+    SHARED_SYSTEM,
+    contextSection,
+    buildTranslationStyleSection(style),
+    keywordSystemHint ?? '',
+  ]
     .filter(Boolean)
     .join('\n\n')
   return {
@@ -104,9 +110,15 @@ export function buildSingleCallPrompts(
   text: string,
   style: TranslationStyle = DEFAULT_TRANSLATION_STYLE,
   roomContext?: string,
+  keywordSystemHint?: string,
 ): PromptPair {
   const contextSection = buildContextSection(roomContext)
-  const systemParts = [SHARED_SYSTEM, contextSection, buildTranslationStyleSection(style)]
+  const systemParts = [
+    SHARED_SYSTEM,
+    contextSection,
+    buildTranslationStyleSection(style),
+    keywordSystemHint ?? '',
+  ]
     .filter(Boolean)
     .join('\n\n')
   return {
