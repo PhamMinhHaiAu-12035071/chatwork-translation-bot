@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { KeywordEntrySchema } from '~/types/keyword-entry'
 
 export const AI_PROVIDER_VALUES = ['openai', 'gemini'] as const
 export type RoomAiProvider = (typeof AI_PROVIDER_VALUES)[number]
@@ -19,6 +20,7 @@ export const RoomConfigSchema = z.object({
   aiModel: z.string().min(1).nullable(),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM),
   context: z.string().max(500).nullable().optional().default(null),
+  protectedKeywords: z.array(KeywordEntrySchema).max(50).optional(),
   encryptedAiApiToken: z.string().min(1),
   enabled: z.boolean(),
   createdAt: z.iso.datetime(),
@@ -61,6 +63,7 @@ export const CreateRoomRequestSchema = z.object({
   aiModel: z.string().min(1).nullable().default(null),
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM).default('PROFESSIONAL_BUSINESS'),
   context: z.string().max(500).nullable().optional().default(null),
+  protectedKeywords: z.array(KeywordEntrySchema).max(50).optional(),
   aiApiToken: z.string().min(1),
 })
 
@@ -73,6 +76,9 @@ export const UpdateRoomRequestSchema = z.object({
   translationStyle: z.enum(TRANSLATION_STYLE_VALUES_ROOM).optional(),
   aiApiToken: z.string().min(1).optional(),
   context: z.string().max(500).nullable().optional(),
+  protectedKeywords: z.array(KeywordEntrySchema).max(50).optional(),
 })
 
 export type UpdateRoomRequest = z.infer<typeof UpdateRoomRequestSchema>
+
+export type { KeywordEntry, KeywordCategory } from '~/types/keyword-entry'

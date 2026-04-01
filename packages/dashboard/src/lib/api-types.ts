@@ -11,6 +11,7 @@ export interface RoomConfigPublic {
   aiModel: string | null
   translationStyle: TranslationStyle
   context: string | null
+  protectedKeywords?: { keyword: string; category: string; placeholder?: string }[]
   enabled: boolean
   createdAt: string
   updatedAt: string
@@ -39,6 +40,7 @@ export interface CreateRoomInput {
   translationStyle: TranslationStyle
   aiApiToken: string
   context?: string | null
+  protectedKeywords?: { keyword: string; category: string; placeholder?: string }[]
 }
 
 export interface DeleteRoomResult {
@@ -52,4 +54,5 @@ export interface UpdateRoomInput {
   translationStyle?: TranslationStyle
   aiApiToken?: string
   context?: string | null
+  protectedKeywords?: { keyword: string; category: string; placeholder?: string }[] | null
 }
