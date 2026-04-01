@@ -97,13 +97,20 @@ export function mask(text: string, keywords: KeywordEntry[]): RedactionResult {
     maskedText = maskedText.replace(pattern, placeholder)
   }
 
-  // Build restoreMap: placeholder → original keyword
+  // Build restoreMap: placeholder → original keyword (only for keywords that matched)
   const restoreMap = new Map<string, string>()
   for (const { placeholder, original } of entries) {
-    restoreMap.set(placeholder, original)
+    if (maskedText.includes(placeholder)) {
+      restoreMap.set(placeholder, original)
+    }
   }
 
-  return { maskedText, restoreMap, systemHint: buildSystemHint(entries) }
+  // Build systemHint only for keywords that actually matched
+  const matchedEntries = entries
+    .filter(({ placeholder }) => restoreMap.has(placeholder))
+    .map(({ placeholder, category }) => ({ placeholder, category }))
+
+  return { maskedText, restoreMap, systemHint: buildSystemHint(matchedEntries) }
 }
 
 /**
