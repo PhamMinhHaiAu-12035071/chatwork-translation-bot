@@ -1,12 +1,24 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import type { Room } from '~/stores/room-store'
+import type { AiProvider, TranslationStyle } from '~/lib/api-types'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import { StatusPill } from '~/components/atoms/status-pill'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 
+interface DeleteRoomPreview {
+  id: string
+  originalRoomId: number
+  destinationRoomId: number
+  destinationRoomName: string
+  enabled: boolean
+  aiProvider?: AiProvider
+  aiModel?: string | null
+  translationStyle?: TranslationStyle
+  kagiStyle?: string
+}
+
 interface DeleteRoomConfirmModalProps {
-  room: Room
+  room: DeleteRoomPreview
   isOpen: boolean
   isDeleting: boolean
   onCancel: () => void
@@ -49,6 +61,17 @@ export function DeleteRoomConfirmModal({
   }, [isOpen, onCancel])
 
   if (!isOpen) return null
+
+  const providerLabel =
+    room.kagiStyle !== undefined
+      ? 'Kagi Translate Free'
+      : room.aiProvider !== undefined
+        ? PROVIDER_LABELS[room.aiProvider]
+        : 'Unknown'
+
+  const styleLabel =
+    room.kagiStyle ??
+    (room.translationStyle ? TRANSLATION_STYLE_LABELS[room.translationStyle] : 'Unknown')
 
   const overlay = (
     <div className="delete-modal-overlay" onClick={onCancel}>
@@ -118,11 +141,11 @@ export function DeleteRoomConfirmModal({
             </div>
             <div>
               <span className="font-semibold">Provider: </span>
-              {PROVIDER_LABELS[room.aiProvider]}
+              {providerLabel}
             </div>
             <div>
               <span className="font-semibold">Style: </span>
-              {TRANSLATION_STYLE_LABELS[room.translationStyle]}
+              {styleLabel}
             </div>
           </div>
         </div>

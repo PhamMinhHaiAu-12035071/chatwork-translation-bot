@@ -1,5 +1,8 @@
 import { createBrowserRouter } from 'react-router'
 import { AppLayout } from '~/layouts/app-layout'
+import { FreeRoomCreatePage } from '~/pages/free-room-create'
+import { FreeRoomDetailPage } from '~/pages/free-room-detail'
+import { FreeRoomListPage } from '~/pages/free-rooms'
 import { RoomListPage } from '~/pages/room-list'
 import { RoomCreatePage } from '~/pages/room-create'
 import { RoomDetailPage } from '~/pages/room-detail'
@@ -12,6 +15,9 @@ export const router = createBrowserRouter([
       { path: '/', element: <RoomListPage /> },
       { path: '/rooms/new', element: <RoomCreatePage /> },
       { path: '/rooms/:id', element: <RoomDetailPage /> },
+      { path: '/free-rooms', element: <FreeRoomListPage /> },
+      { path: '/free-rooms/new', element: <FreeRoomCreatePage /> },
+      { path: '/free-rooms/:id', element: <FreeRoomDetailPage /> },
       { path: '/guide', element: <WebhookGuidePage /> },
     ],
   },

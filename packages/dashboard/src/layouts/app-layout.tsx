@@ -26,6 +26,18 @@ const navItems: readonly {
     icon: 'plus',
   },
   {
+    to: '/free-rooms',
+    label: 'Free Rooms',
+    surfaceClassName: 'theme-card-cream',
+    icon: 'dashboard',
+  },
+  {
+    to: '/free-rooms/new',
+    label: 'New Free Room',
+    surfaceClassName: 'theme-card-matcha',
+    icon: 'plus',
+  },
+  {
     to: '/guide',
     label: 'Webhook Guide',
     surfaceClassName: 'theme-card-sky',
