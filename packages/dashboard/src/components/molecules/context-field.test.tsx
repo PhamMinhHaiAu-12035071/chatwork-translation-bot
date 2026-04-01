@@ -22,13 +22,6 @@ function render(props: { value?: string; onChange?: (v: string) => void; error?:
 }
 
 describe('ContextField', () => {
-  it('animates the chevron icon with spring rotation on open/close', async () => {
-    const source = await Bun.file(new URL('./context-field.tsx', import.meta.url)).text()
-
-    expect(source).toContain('animate={{ rotate: isOpen ? 180 : 0 }}')
-    expect(source).toContain("type: 'spring', stiffness: 520, damping: 34, mass: 0.55")
-  })
-
   it('keeps the candy progress meter fully static', async () => {
     const css = await Bun.file(new URL('../../styles/global.css', import.meta.url)).text()
 

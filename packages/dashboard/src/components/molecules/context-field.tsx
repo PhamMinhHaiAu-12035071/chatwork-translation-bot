@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import type { ChangeEvent, CSSProperties } from 'react'
 import type { MotionStyle } from 'framer-motion'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { Icon } from '~/components/atoms/icons'
 import { CONTEXT_TEMPLATES } from '~/lib/context-templates'
 
 interface ContextFieldProps {
@@ -168,7 +167,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
           'cursor-pointer',
         ].join(' ')}
         style={{
-          background: isOpen ? '#b8c5ff' : '#f0f4ff',
+          background: isOpen ? '#b4d4a8' : '#e8f5e3',
           transition: 'all 0.12s ease',
           ...(isOpen
             ? {
@@ -227,20 +226,6 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
               Optional
             </span>
           )}
-          <span className="brutal-dropdown-chevron" data-open={isOpen ? 'true' : undefined}>
-            <motion.span
-              className="inline-flex will-change-transform"
-              style={{ transformOrigin: '50% 55%' }}
-              animate={{ rotate: isOpen ? 180 : 0 }}
-              transition={
-                shouldReduceMotion
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 520, damping: 34, mass: 0.55 }
-              }
-            >
-              <Icon name="chevron-down" variant="stroke" size={14} aria-hidden />
-            </motion.span>
-          </span>
         </div>
       </button>
 
