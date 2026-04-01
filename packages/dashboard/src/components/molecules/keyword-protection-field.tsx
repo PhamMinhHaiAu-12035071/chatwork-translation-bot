@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { KeywordEntryFormInput } from '~/lib/room-schema'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
+import { Icon } from '~/components/atoms/icons'
 
 type KeywordCategory = 'company' | 'person' | 'project' | 'code' | 'other'
 
@@ -493,6 +494,9 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 type="button"
                 onClick={handleAdd}
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
                   padding: '8px 16px',
                   border: '2px solid #1a1a2e',
                   borderRadius: 8,
@@ -517,7 +521,8 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                   el.style.boxShadow = '3px 3px 0 #1a1a2e'
                 }}
               >
-                + Add
+                <Icon name="plus" variant="clay" size={18} aria-hidden />
+                Add
               </button>
             </div>
 
