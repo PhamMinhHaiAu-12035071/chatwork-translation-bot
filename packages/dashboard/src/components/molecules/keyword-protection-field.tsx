@@ -505,6 +505,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                   fontFamily: 'var(--font-heading, inherit)',
                   fontSize: '0.8rem',
                   fontWeight: 800,
+                  lineHeight: 1,
                   color: '#fff',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
