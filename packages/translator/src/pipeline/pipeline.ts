@@ -44,6 +44,7 @@ export class TranslationPipeline {
       timeoutMs?: number
       translationStyle?: TranslationStyle
       roomContext?: string
+      keywordSystemHint?: string
     } = {},
   ) {}
 
@@ -70,7 +71,12 @@ export class TranslationPipeline {
     if (input.translationInputs.length === 1) {
       const [singleInput] = input.translationInputs
       const sourceText = singleInput ?? input.cleanText
-      const prompts = buildSingleCallPrompts(sourceText, style, this.opts.roomContext)
+      const prompts = buildSingleCallPrompts(
+        sourceText,
+        style,
+        this.opts.roomContext,
+        this.opts.keywordSystemHint,
+      )
 
       const translation = await this.executeTranslation(prompts, TranslationDraftSchema, options)
 
@@ -93,6 +99,7 @@ export class TranslationPipeline {
       style,
       input.cleanText,
       this.opts.roomContext,
+      this.opts.keywordSystemHint,
     )
     const structuredTranslation = await this.executeTranslation(
       prompts,
