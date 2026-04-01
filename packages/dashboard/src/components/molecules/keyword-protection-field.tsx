@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { KeywordEntryFormInput } from '~/lib/room-schema'
+import { BrutalSelect } from '~/components/atoms/brutal-select'
 
 type KeywordCategory = 'company' | 'person' | 'project' | 'code' | 'other'
 
@@ -417,12 +418,12 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 color: '#6b7280',
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
-                marginBottom: 8,
+                marginBottom: 12,
               }}
             >
               Add Keyword
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px auto', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12 }}>
               {/* Keyword input */}
               <input
                 type="text"
@@ -452,34 +453,35 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 }}
               />
 
-              {/* Category dropdown */}
-              <select
-                value={addCategory}
-                onChange={(e) => {
-                  setAddCategory(e.target.value as KeywordCategory)
-                }}
-                style={{
-                  padding: '8px 10px',
-                  border: '2px solid #1a1a2e',
-                  borderRadius: 8,
-                  background: '#ffe19a',
-                  boxShadow: '3px 3px 0 #1a1a2e',
-                  fontFamily: 'var(--font-heading, inherit)',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: '#1a1a2e',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  appearance: 'none',
-                }}
-              >
-                <option value="company">Company</option>
-                <option value="person">Person</option>
-                <option value="project">Project</option>
-                <option value="code">Code</option>
-                <option value="other">Other</option>
-              </select>
+              {/* Category dropdown with BrutalSelect */}
+              <div style={{ minWidth: 0 }}>
+                <BrutalSelect
+                  label="Category"
+                  options={[
+                    { value: 'company', label: 'Company' },
+                    { value: 'person', label: 'Person' },
+                    { value: 'project', label: 'Project' },
+                    { value: 'code', label: 'Code' },
+                    { value: 'other', label: 'Other' },
+                  ]}
+                  value={addCategory}
+                  onChange={(e) => {
+                    setAddCategory(e.target.value as KeywordCategory)
+                  }}
+                  colorVariant="peach"
+                />
+              </div>
+            </div>
 
+            {/* Second row: Placeholder and Add button */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: 12,
+                marginTop: 12,
+              }}
+            >
               {/* Custom placeholder input (optional, dashed) */}
               <input
                 type="text"
@@ -496,12 +498,13 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 placeholder={previewPlaceholder}
                 maxLength={50}
                 style={{
-                  padding: '8px 10px',
+                  padding: '8px 12px',
                   border: '2px dashed #1a1a2e',
                   borderRadius: 8,
                   background: '#fff',
+                  boxShadow: '3px 3px 0 #1a1a2e',
                   fontFamily: 'monospace',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   color: '#1a1a2e',
                   outline: 'none',
                 }}
