@@ -5,6 +5,7 @@ import type {
   ProviderCreateContext,
   TranslationResult,
 } from '@chatwork-bot/core'
+import type { TranslatorLogEntry } from '~/types/observability'
 import { TRANSLATION_PROMPT_BUILD_ID } from '@chatwork-bot/translation-prompt'
 import type { RoomConfigStore } from '~/services/room-config-store'
 import { mask as maskKeywords, restore as restoreKeywords } from '~/services/keyword-redactor'
@@ -217,12 +218,37 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     }
 
     try {
+      // Derive trimmed context once for logging and pipeline
+      const trimmedRoomContext = roomConfig.context?.trim()
+      const hasRoomContextForPipeline =
+        trimmedRoomContext !== undefined && trimmedRoomContext.length > 0
+
+      if (hasRoomContextForPipeline) {
+        observer.logEvent('info', 'translation_context_applied', {
+          roomContextApplied: true,
+          roomContextLength: Array.from(trimmedRoomContext).length,
+        } as Partial<TranslatorLogEntry>)
+      }
+
       // Mask sensitive keywords before any AI call
       const keywords = roomConfig.protectedKeywords ?? []
       const { maskedText, restoreMap, systemHint } = maskKeywords(cleanText, keywords)
       const maskedTranslationInputs = command.translationInputs.map(
         (segment) => maskKeywords(segment, keywords).maskedText,
       )
+
+      const primaryTextChangedByMask = cleanText.normalize('NFC') !== maskedText
+      const segmentsChangedByMaskCount = command.translationInputs.filter(
+        (seg, idx) => seg.normalize('NFC') !== maskedTranslationInputs[idx],
+      ).length
+
+      observer.logEvent('info', 'translation_keywords_masked', {
+        configuredKeywordCount: keywords.length,
+        primaryTextChangedByMask,
+        translationInputSegmentCount: command.translationInputs.length,
+        segmentsChangedByMaskCount,
+        hasSystemHint: systemHint.length > 0,
+      } as Partial<TranslatorLogEntry>)
 
       const pipelineOpts: {
         timeoutMs: number
@@ -233,8 +259,8 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
         timeoutMs: effectiveTimeoutMs,
         translationStyle,
       }
-      if (roomConfig.context) {
-        pipelineOpts.roomContext = roomConfig.context
+      if (hasRoomContextForPipeline) {
+        pipelineOpts.roomContext = trimmedRoomContext
       }
       if (systemHint) {
         pipelineOpts.keywordSystemHint = systemHint
@@ -269,6 +295,19 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       const restoredTranslatedSegments = pipelineResult.translatedSegments.map((seg) =>
         restoreKeywords(seg, restoreMap),
       )
+
+      const primaryTranslationChangedByRestore =
+        pipelineResult.translation.translatedText !== result.translatedText
+      const segmentsChangedByRestoreCount = pipelineResult.translatedSegments.filter(
+        (seg, idx) => seg !== restoredTranslatedSegments[idx],
+      ).length
+
+      observer.logEvent('info', 'translation_keywords_restored', {
+        configuredKeywordCount: keywords.length,
+        primaryTranslationChangedByRestore,
+        segmentsChangedByRestoreCount,
+      } as Partial<TranslatorLogEntry>)
+
       const outputBaseDir = process.env['OUTPUT_BASE_DIR']
       const llm =
         pipelineResult.debug === undefined
