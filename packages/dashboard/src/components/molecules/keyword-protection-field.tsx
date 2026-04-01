@@ -160,26 +160,11 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
           >
             🛡️
           </span>
-          <span>
-            <span
-              style={{
-                display: 'block',
-                fontFamily: 'var(--font-heading, inherit)',
-                fontSize: '0.875rem',
-                fontWeight: 800,
-                color: '#1a1a2e',
-              }}
-            >
+          <span className="flex flex-col">
+            <span className="font-heading text-sm font-extrabold text-[var(--text-primary)]">
               Keyword Protection
             </span>
-            <span
-              style={{
-                display: 'block',
-                fontFamily: 'var(--font-ui-body, inherit)',
-                fontSize: '0.72rem',
-                color: '#4b5563',
-              }}
-            >
+            <span className="font-ui-body text-xs text-[var(--text-secondary)]">
               {isOpen
                 ? `${internalKeywords.length.toString()} keyword${internalKeywords.length === 1 ? '' : 's'} protected`
                 : 'Mask sensitive terms before sending to AI'}
@@ -187,42 +172,35 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* keyword count badge */}
-          {internalKeywords.length > 0 && (
+        <div className="flex items-center gap-2">
+          {isOpen && internalKeywords.length > 0 ? (
             <span
+              className="font-heading text-[0.62rem] font-extrabold uppercase tracking-wide"
               style={{
                 padding: '2px 8px',
-                border: '2px solid #1a1a2e',
+                border: '1.5px solid #5c8b52',
                 borderRadius: 999,
-                background: '#ffe19a',
-                boxShadow: '2px 2px 0 #1a1a2e',
-                fontFamily: 'var(--font-heading, inherit)',
-                fontSize: '0.65rem',
-                fontWeight: 800,
-                color: '#1a1a2e',
+                background: 'linear-gradient(180deg,#a1cf8e,#79a766)',
+                color: 'var(--border)',
+                boxShadow: '1.5px 1.5px 0 #5c8b52',
               }}
             >
               {internalKeywords.length} / 50
             </span>
+          ) : (
+            <span
+              className="font-heading text-[0.62rem] font-extrabold uppercase tracking-wide text-[var(--text-secondary)]"
+              style={{
+                padding: '2px 8px',
+                border: '2px solid var(--border)',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.9)',
+                boxShadow: '1.5px 1.5px 0 var(--border)',
+              }}
+            >
+              Optional
+            </span>
           )}
-          {/* enabled/disabled pill */}
-          <span
-            style={{
-              padding: '3px 10px',
-              border: '2px solid #1a1a2e',
-              borderRadius: 999,
-              background: isOpen ? '#a1cf8e' : '#f3f4f6',
-              boxShadow: '2px 2px 0 #1a1a2e',
-              fontFamily: 'var(--font-heading, inherit)',
-              fontSize: '0.65rem',
-              fontWeight: 800,
-              color: '#1a1a2e',
-              letterSpacing: '0.08em',
-            }}
-          >
-            {isOpen ? 'ENABLED' : 'DISABLED'}
-          </span>
         </div>
       </button>
 
