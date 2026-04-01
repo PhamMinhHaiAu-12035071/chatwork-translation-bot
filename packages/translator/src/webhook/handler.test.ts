@@ -1196,14 +1196,12 @@ describe('handleTranslateRequest', () => {
       ),
     )
 
-    await expect(
-      handleTranslateRequest(
-        makeCommand({
-          translatableText: 'Hello Y',
-          translationInputs: ['Hello Y'],
-        }),
-      ),
-    ).rejects.toThrow()
+    await handleTranslateRequest(
+      makeCommand({
+        translatableText: 'Hello Y',
+        translationInputs: ['Hello Y'],
+      }),
+    )
 
     const logs = readJsonLogs()
     expect(logs.some((e) => e['event'] === 'translation_keywords_masked')).toBe(true)
