@@ -167,22 +167,18 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
           'cursor-pointer',
         ].join(' ')}
         style={{
-          background: isOpen ? '#b4d4a8' : '#e8f5e3',
+          background: isOpen ? '#b4d4a8' : '#fffbeb',
           borderColor: '#1a1a2e',
+          boxShadow: isOpen ? '5px 5px 0 #1a1a2e' : '3px 3px 0 #1a1a2e',
+          transform: isOpen ? 'translate(-1px, -1px)' : 'none',
           transition: 'all 0.12s ease',
-          ...(isOpen
-            ? {
-                boxShadow: '5px 5px 0 #1a1a2e',
-                transform: 'translate(-1px, -1px)',
-              }
-            : {}),
         }}
       >
         <div className="flex items-center gap-2.5">
           <span
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border-2 border-[var(--border)] text-sm"
             style={{
-              background: '#b4d4a8',
+              background: isOpen ? '#b4d4a8' : '#fffbeb',
               boxShadow: '2px 2px 0 var(--border)',
             }}
             aria-hidden
