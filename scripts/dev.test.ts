@@ -391,10 +391,69 @@ describe('scripts/dev.sh orchestration', () => {
   it('keeps TTY enabled for Bun services in docker-compose.dev.yml', () => {
     const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
 
-    for (const serviceName of ['translator', 'webhook-logger', 'dataset-runner']) {
+    for (const serviceName of [
+      'translator',
+      'webhook-logger',
+      'dataset-runner',
+      'kagi-translator',
+    ]) {
       const serviceBlock = getComposeServiceBlock(composeContent, serviceName)
       expect(serviceBlock).toContain('tty: true')
     }
+  })
+
+  it('wires translator to the kagi sidecar URL and free payload limits in docker-compose.dev.yml', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const translatorBlock = getComposeServiceBlock(composeContent, 'translator')
+
+    expect(translatorBlock).toContain('KAGI_TRANSLATOR_URL=http://kagi-translator:3002')
+    expect(translatorBlock).toContain(
+      'KAGI_MAX_ENCODED_PAYLOAD_CHARS=${KAGI_MAX_ENCODED_PAYLOAD_CHARS:-12000}',
+    )
+    expect(translatorBlock).toContain('KAGI_MAX_SEGMENT_COUNT=${KAGI_MAX_SEGMENT_COUNT:-50}')
+  })
+
+  it('configures the kagi sidecar guardrails in docker-compose.dev.yml', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const kagiBlock = getComposeServiceBlock(composeContent, 'kagi-translator')
+
+    expect(kagiBlock).toContain('bun install && bun --hot packages/kagi-sidecar/src/index.ts')
+    expect(kagiBlock).toContain('KAGI_PORT=3002')
+    expect(kagiBlock).toContain('KAGI_MIN_INTERVAL_MS=${KAGI_MIN_INTERVAL_MS:-1500}')
+    expect(kagiBlock).toContain('KAGI_MAX_RETRIES=${KAGI_MAX_RETRIES:-2}')
+    expect(kagiBlock).toContain('KAGI_RETRY_BASE_MS=${KAGI_RETRY_BASE_MS:-1000}')
+    expect(kagiBlock).toContain('KAGI_REQUEST_TIMEOUT_MS=${KAGI_REQUEST_TIMEOUT_MS:-30000}')
+    expect(kagiBlock).toContain('KAGI_MAX_QUEUE_DEPTH=${KAGI_MAX_QUEUE_DEPTH:-10}')
+    expect(kagiBlock).toContain('KAGI_MAX_QUEUE_WAIT_MS=${KAGI_MAX_QUEUE_WAIT_MS:-15000}')
+    expect(kagiBlock).toContain("fetch('http://localhost:3002/health')")
+  })
+
+  it('ships a dedicated production Dockerfile and compose service for kagi translation', () => {
+    const dockerfileContent = readFileSync(join(repoRoot, 'Dockerfile.kagi'), 'utf8')
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.yml'), 'utf8')
+    const translatorBlock = getComposeServiceBlock(composeContent, 'translator')
+    const kagiBlock = getComposeServiceBlock(composeContent, 'kagi-translator')
+
+    expect(dockerfileContent).toContain('packages/kagi-sidecar/package.json')
+    expect(dockerfileContent).toContain('packages/kagi-sidecar/src')
+    expect(dockerfileContent).toContain('CMD ["bun", "packages/kagi-sidecar/src/index.ts"]')
+    expect(kagiBlock).toContain('dockerfile: Dockerfile.kagi')
+    expect(kagiBlock).toContain('KAGI_PORT: 3002')
+    expect(translatorBlock).toContain('KAGI_TRANSLATOR_URL: http://kagi-translator:3002')
+  })
+
+  it('documents translator and sidecar kagi env vars in .env.example', () => {
+    const envExample = readFileSync(join(repoRoot, '.env.example'), 'utf8')
+
+    expect(envExample).toContain('KAGI_TRANSLATOR_URL=http://kagi-translator:3002')
+    expect(envExample).toContain('KAGI_MAX_ENCODED_PAYLOAD_CHARS=12000')
+    expect(envExample).toContain('KAGI_MAX_SEGMENT_COUNT=50')
+    expect(envExample).toContain('KAGI_MIN_INTERVAL_MS=1500')
+    expect(envExample).toContain('KAGI_MAX_RETRIES=2')
+    expect(envExample).toContain('KAGI_RETRY_BASE_MS=1000')
+    expect(envExample).toContain('KAGI_REQUEST_TIMEOUT_MS=30000')
+    expect(envExample).toContain('KAGI_MAX_QUEUE_DEPTH=10')
+    expect(envExample).toContain('KAGI_MAX_QUEUE_WAIT_MS=15000')
   })
 
   it('wires webhook-logger to the translator service URL only in docker-compose.dev.yml', () => {

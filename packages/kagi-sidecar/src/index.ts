@@ -1,14 +1,19 @@
 export * from './browser-service'
+export * from './runtime-config'
 export * from './server'
 export * from './url-builder'
 
+import { KagiBrowserService } from './browser-service'
+import { resolveKagiRuntimeConfig } from './runtime-config'
 import { createKagiServer } from './server'
 
 if (import.meta.main) {
-  const port = Number.parseInt(process.env['KAGI_PORT'] ?? '3002', 10)
-  const app = createKagiServer()
+  const config = resolveKagiRuntimeConfig(process.env)
+  const app = createKagiServer({
+    service: new KagiBrowserService(config.browser),
+  })
 
-  app.listen(port)
+  app.listen(config.port)
 
   console.log(
     JSON.stringify({
@@ -16,7 +21,7 @@ if (import.meta.main) {
       service: 'kagi-sidecar',
       event: 'kagi_sidecar_started',
       timestamp: new Date().toISOString(),
-      port,
+      port: config.port,
     }),
   )
 }

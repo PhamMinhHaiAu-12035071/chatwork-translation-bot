@@ -37,6 +37,8 @@ initFreeTranslateHandler({
   chatworkApiToken: env.CHATWORK_API_TOKEN,
   backend: new FreeTranslationBackend({
     client: new KagiClient(env.KAGI_TRANSLATOR_URL),
+    defaultMaxEncodedPayloadChars: env.KAGI_MAX_ENCODED_PAYLOAD_CHARS,
+    defaultMaxSegmentCount: env.KAGI_MAX_SEGMENT_COUNT,
   }),
 })
 

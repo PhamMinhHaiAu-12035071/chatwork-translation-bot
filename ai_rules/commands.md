@@ -6,7 +6,7 @@
 # First-time setup (for IDE type-checking only — Docker doesn't need this):
 bun install
 
-# Start all services (translator + webhook-logger + zrok + dataset-runner):
+# Start all services (translator + kagi-translator + webhook-logger + zrok + dataset-runner):
 bun run dev
 
 # Stop all services:
@@ -16,8 +16,9 @@ bun run dev:down
 bun run dev:logs
 ```
 
-> `bun run dev` now includes the `dataset-runner` sidecar. It starts idle by default
-> (`DATASET_AUTORUN=false`). Set `DATASET_AUTORUN=true` in `.env` to activate.
+> `bun run dev` now includes the `kagi-translator` and `dataset-runner` sidecars.
+> `dataset-runner` starts idle by default (`DATASET_AUTORUN=false`). Set
+> `DATASET_AUTORUN=true` in `.env` to activate replay processing.
 > Copy seed batches: `cp input/samples/*.jsonl input/pending/`
 
 ### Dataset Replay / Reset

@@ -42,6 +42,35 @@ describe('translator env', () => {
     expect(env.TRANSLATOR_PIPELINE_TIMEOUT_MS).toBe(45_000)
   })
 
+  it('applies free-room Kagi safety defaults when optional vars are absent', async () => {
+    process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
+    process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
+
+    const { parseTranslatorEnv } = await import('./env-schema')
+    const env = parseTranslatorEnv(process.env)
+
+    expect(env.KAGI_TRANSLATOR_URL).toBe('http://kagi-translator:3002')
+    expect(env.KAGI_MAX_ENCODED_PAYLOAD_CHARS).toBe(12_000)
+    expect(env.KAGI_MAX_SEGMENT_COUNT).toBe(50)
+  })
+
+  it('allows overriding free-room Kagi safety limits', async () => {
+    process.env['CHATWORK_API_TOKEN'] = 'token'
+    process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
+    process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = 'a'.repeat(64)
+    process.env['KAGI_TRANSLATOR_URL'] = 'http://localhost:3999'
+    process.env['KAGI_MAX_ENCODED_PAYLOAD_CHARS'] = '9000'
+    process.env['KAGI_MAX_SEGMENT_COUNT'] = '24'
+
+    const { parseTranslatorEnv } = await import('./env-schema')
+    const env = parseTranslatorEnv(process.env)
+
+    expect(env.KAGI_TRANSLATOR_URL).toBe('http://localhost:3999')
+    expect(env.KAGI_MAX_ENCODED_PAYLOAD_CHARS).toBe(9_000)
+    expect(env.KAGI_MAX_SEGMENT_COUNT).toBe(24)
+  })
+
   it('accepts a valid custom room config data directory override', async () => {
     process.env['CHATWORK_API_TOKEN'] = 'token'
     process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'

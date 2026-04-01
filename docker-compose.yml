@@ -7,6 +7,9 @@ services:
       - .env
     environment:
       ROOM_CONFIG_ENCRYPTION_KEY: ${ROOM_CONFIG_ENCRYPTION_KEY}
+      KAGI_TRANSLATOR_URL: http://kagi-translator:3002
+      KAGI_MAX_ENCODED_PAYLOAD_CHARS: ${KAGI_MAX_ENCODED_PAYLOAD_CHARS:-12000}
+      KAGI_MAX_SEGMENT_COUNT: ${KAGI_MAX_SEGMENT_COUNT:-50}
     ports:
       - '${PORT:-3000}:3000'
     volumes:
@@ -23,6 +26,36 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  kagi-translator:
+    build:
+      context: .
+      dockerfile: Dockerfile.kagi
+    env_file:
+      - .env
+    environment:
+      KAGI_PORT: 3002
+      KAGI_MIN_INTERVAL_MS: ${KAGI_MIN_INTERVAL_MS:-1500}
+      KAGI_MAX_RETRIES: ${KAGI_MAX_RETRIES:-2}
+      KAGI_RETRY_BASE_MS: ${KAGI_RETRY_BASE_MS:-1000}
+      KAGI_REQUEST_TIMEOUT_MS: ${KAGI_REQUEST_TIMEOUT_MS:-30000}
+      KAGI_MAX_QUEUE_DEPTH: ${KAGI_MAX_QUEUE_DEPTH:-10}
+      KAGI_MAX_QUEUE_WAIT_MS: ${KAGI_MAX_QUEUE_WAIT_MS:-15000}
+      DISPLAY: :99
+    ports:
+      - '${KAGI_PORT:-3002}:3002'
+    restart: unless-stopped
+    networks: [chatwork-net]
+    healthcheck:
+      test:
+        - 'CMD'
+        - 'bun'
+        - '--eval'
+        - "const r = await fetch('http://localhost:3002/health'); if (!r.ok) process.exit(1)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   webhook-logger:
     build:
