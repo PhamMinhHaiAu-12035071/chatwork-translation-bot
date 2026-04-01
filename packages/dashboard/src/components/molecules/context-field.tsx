@@ -168,6 +168,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
         ].join(' ')}
         style={{
           background: isOpen ? '#b4d4a8' : '#e8f5e3',
+          borderColor: '#1a1a2e',
           transition: 'all 0.12s ease',
           ...(isOpen
             ? {
