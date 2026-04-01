@@ -34,14 +34,15 @@ function getAutoPlaceholder(category: KeywordCategory, index: number): string {
 
 function getEffectivePlaceholder(entry: KeywordEntryFormInput, indexInCategory: number): string {
   return (
-    entry.placeholder?.trim() || getAutoPlaceholder(entry.category as KeywordCategory, indexInCategory)
+    entry.placeholder?.trim() ??
+    getAutoPlaceholder(entry.category as KeywordCategory, indexInCategory)
   )
 }
 
 // ── Component ─────────────────────────────────────────────────────
 export function KeywordProtectionField({ value, onChange }: KeywordProtectionFieldProps) {
   const [isOpen, setIsOpen] = useState(value.length > 0)
-  const [internalKeywords, setInternalKeywords] = useState<KeywordEntryFormInput[]>(value)
+  const [internalKeywords, setInternalKeywords] = useState(value)
 
   // Add-form state
   const [addKeyword, setAddKeyword] = useState('')

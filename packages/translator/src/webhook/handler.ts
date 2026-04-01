@@ -1,9 +1,13 @@
 import { createHash } from 'node:crypto'
 import { getProviderPlugin, TranslationError } from '@chatwork-bot/core'
-import type { TranslationIngressCommand, ProviderCreateContext, TranslationResult } from '@chatwork-bot/core'
+import type {
+  TranslationIngressCommand,
+  ProviderCreateContext,
+  TranslationResult,
+} from '@chatwork-bot/core'
 import { TRANSLATION_PROMPT_BUILD_ID } from '@chatwork-bot/translation-prompt'
 import type { RoomConfigStore } from '~/services/room-config-store'
-import { KeywordRedactor } from '~/services/keyword-redactor'
+import { mask as maskKeywords, restore as restoreKeywords } from '~/services/keyword-redactor'
 import { env } from '~/env'
 import { TranslationPipeline } from '~/pipeline/pipeline'
 import { writeTranslationOutput } from '~/utils/output-writer'
@@ -215,9 +219,9 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     try {
       // Mask sensitive keywords before any AI call
       const keywords = roomConfig.protectedKeywords ?? []
-      const { maskedText, restoreMap, systemHint } = KeywordRedactor.mask(cleanText, keywords)
+      const { maskedText, restoreMap, systemHint } = maskKeywords(cleanText, keywords)
       const maskedTranslationInputs = command.translationInputs.map(
-        (segment) => KeywordRedactor.mask(segment, keywords).maskedText,
+        (segment) => maskKeywords(segment, keywords).maskedText,
       )
 
       const pipelineOpts: {
@@ -259,14 +263,11 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       // Restore original keywords in translated output
       const result: TranslationResult = {
         ...pipelineResult.translation,
-        cleanText,  // restore unmasked original
-        translatedText: KeywordRedactor.restore(
-          pipelineResult.translation.translatedText,
-          restoreMap,
-        ),
+        cleanText, // restore unmasked original
+        translatedText: restoreKeywords(pipelineResult.translation.translatedText, restoreMap),
       }
       const restoredTranslatedSegments = pipelineResult.translatedSegments.map((seg) =>
-        KeywordRedactor.restore(seg, restoreMap),
+        restoreKeywords(seg, restoreMap),
       )
       const outputBaseDir = process.env['OUTPUT_BASE_DIR']
       const llm =

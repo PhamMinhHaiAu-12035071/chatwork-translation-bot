@@ -43,9 +43,7 @@ function buildPattern(normalizedKeyword: string): RegExp {
   return new RegExp(`(?:${variants.join('|')})`, 'gi')
 }
 
-function buildSystemHint(
-  entries: Array<{ placeholder: string; category: KeywordCategory }>,
-): string {
+function buildSystemHint(entries: { placeholder: string; category: KeywordCategory }[]): string {
   if (entries.length === 0) return ''
   const lines = entries.map(
     ({ placeholder, category }) => `- ${placeholder}: ${CATEGORY_DESCRIPTION[category]}`,
@@ -58,66 +56,64 @@ function buildSystemHint(
   ].join('\n')
 }
 
-export class KeywordRedactor {
-  /**
-   * Masks sensitive keywords in `text` with typed placeholders.
-   *
-   * Placeholder assignment is deterministic (based on position in sorted keyword
-   * array, not order of first occurrence in text). This means calling mask() on
-   * any text with the same keyword list produces identical restoreMap entries —
-   * safe to use a single restoreMap for restoring multiple segments.
-   */
-  static mask(text: string, keywords: KeywordEntry[]): RedactionResult {
-    if (keywords.length === 0) {
-      return { maskedText: text, restoreMap: new Map(), systemHint: '' }
-    }
-
-    // Sort longest-first to prevent partial-overlap bugs
-    const sorted = [...keywords].sort(
-      (a, b) => b.keyword.normalize('NFC').length - a.keyword.normalize('NFC').length,
-    )
-
-    // Assign placeholders by position in sorted array (deterministic)
-    const counters: Partial<Record<string, number>> = {}
-    const entries = sorted.map((entry) => {
-      const prefix = CATEGORY_PREFIX[entry.category]
-      counters[prefix] = (counters[prefix] ?? 0) + 1
-      const placeholder = entry.placeholder
-        ? `[${entry.placeholder}]`
-        : `[${prefix}_${counters[prefix]}]`
-      return {
-        placeholder,
-        original: entry.keyword, // preserve original (pre-normalization) for restore
-        category: entry.category,
-        pattern: buildPattern(entry.keyword.normalize('NFC')),
-      }
-    })
-
-    // Apply masking on NFC-normalized text
-    const normalizedText = text.normalize('NFC')
-    let maskedText = normalizedText
-    for (const { pattern, placeholder } of entries) {
-      maskedText = maskedText.replace(pattern, placeholder)
-    }
-
-    // Build restoreMap: placeholder → original keyword
-    const restoreMap = new Map<string, string>()
-    for (const { placeholder, original } of entries) {
-      restoreMap.set(placeholder, original)
-    }
-
-    return { maskedText, restoreMap, systemHint: buildSystemHint(entries) }
+/**
+ * Masks sensitive keywords in `text` with typed placeholders.
+ *
+ * Placeholder assignment is deterministic (based on position in sorted keyword
+ * array, not order of first occurrence in text). This means calling mask() on
+ * any text with the same keyword list produces identical restoreMap entries —
+ * safe to use a single restoreMap for restoring multiple segments.
+ */
+export function mask(text: string, keywords: KeywordEntry[]): RedactionResult {
+  if (keywords.length === 0) {
+    return { maskedText: text, restoreMap: new Map(), systemHint: '' }
   }
 
-  /**
-   * Restores all placeholders in `text` back to their original keywords.
-   */
-  static restore(text: string, restoreMap: Map<string, string>): string {
-    if (restoreMap.size === 0) return text
-    let result = text
-    for (const [placeholder, original] of restoreMap) {
-      result = result.replaceAll(placeholder, original)
+  // Sort longest-first to prevent partial-overlap bugs
+  const sorted = [...keywords].sort(
+    (a, b) => b.keyword.normalize('NFC').length - a.keyword.normalize('NFC').length,
+  )
+
+  // Assign placeholders by position in sorted array (deterministic)
+  const counters: Partial<Record<string, number>> = {}
+  const entries = sorted.map((entry) => {
+    const prefix = CATEGORY_PREFIX[entry.category]
+    counters[prefix] = (counters[prefix] ?? 0) + 1
+    const placeholder = entry.placeholder
+      ? `[${entry.placeholder}]`
+      : `[${prefix}_${(counters[prefix] ?? 0).toString()}]`
+    return {
+      placeholder,
+      original: entry.keyword, // preserve original (pre-normalization) for restore
+      category: entry.category,
+      pattern: buildPattern(entry.keyword.normalize('NFC')),
     }
-    return result
+  })
+
+  // Apply masking on NFC-normalized text
+  const normalizedText = text.normalize('NFC')
+  let maskedText = normalizedText
+  for (const { pattern, placeholder } of entries) {
+    maskedText = maskedText.replace(pattern, placeholder)
   }
+
+  // Build restoreMap: placeholder → original keyword
+  const restoreMap = new Map<string, string>()
+  for (const { placeholder, original } of entries) {
+    restoreMap.set(placeholder, original)
+  }
+
+  return { maskedText, restoreMap, systemHint: buildSystemHint(entries) }
+}
+
+/**
+ * Restores all placeholders in `text` back to their original keywords.
+ */
+export function restore(text: string, restoreMap: Map<string, string>): string {
+  if (restoreMap.size === 0) return text
+  let result = text
+  for (const [placeholder, original] of restoreMap) {
+    result = result.replaceAll(placeholder, original)
+  }
+  return result
 }

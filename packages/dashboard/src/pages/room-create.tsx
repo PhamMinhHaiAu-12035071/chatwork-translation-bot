@@ -71,7 +71,7 @@ export function RoomCreatePage() {
       destinationRoomName: '',
       aiApiToken: '',
       context: '',
-      protectedKeywords: [] as any,
+      protectedKeywords: [],
     } as RoomCreateInput,
   })
 
@@ -97,15 +97,22 @@ export function RoomCreatePage() {
   })
 
   const onSubmit = async (data: RoomCreateInput) => {
-    const result = await createRoomAction.execute(() =>
-      createRoom({
+    const result = await createRoomAction.execute(() => {
+      const serializedKeywords =
+        data.protectedKeywords.length > 0
+          ? data.protectedKeywords.map((k) => ({
+              keyword: k.keyword,
+              category: k.category,
+              placeholder: k.placeholder,
+            }))
+          : undefined
+
+      return createRoom({
         ...data,
         context: data.context.trim() || null,
-        protectedKeywords: data.protectedKeywords?.length
-          ? (data.protectedKeywords as any)
-          : undefined,
-      }),
-    )
+        protectedKeywords: serializedKeywords,
+      })
+    })
 
     if (!result.ok) {
       if (result.cause instanceof ApiError && result.cause.status === 409) {
@@ -236,7 +243,7 @@ export function RoomCreatePage() {
 
             <div className="page-divider-brutal my-4" />
             <KeywordProtectionField
-              value={watch('protectedKeywords') ?? []}
+              value={watch('protectedKeywords')}
               onChange={(v) => {
                 setValue('protectedKeywords', v, { shouldValidate: true })
               }}

@@ -941,9 +941,7 @@ describe('handleTranslateRequest', () => {
       aiModel: 'gpt-4o',
       translationStyle: 'PROFESSIONAL_BUSINESS' as const,
       context: null,
-      protectedKeywords: [
-        { keyword: 'Asia Vion', category: 'company' as const },
-      ],
+      protectedKeywords: [{ keyword: 'Asia Vion', category: 'company' as const }],
       encryptedAiApiToken: 'encrypted-token',
       enabled: true,
       createdAt: new Date().toISOString(),
@@ -952,9 +950,9 @@ describe('handleTranslateRequest', () => {
 
     const customStore = {
       getByOriginalRoomId: (id: number) => (id === 123456 ? customRoomConfig : null),
-      decryptApiToken: async (token: string) => {
+      decryptApiToken: (token: string) => {
         // In tests, assume tokens are not encrypted
-        return token
+        return Promise.resolve(token)
       },
     } as unknown as RoomConfigStore
 
@@ -962,7 +960,10 @@ describe('handleTranslateRequest', () => {
     const { default: handleTranslateRequestFromCustomStore } =
       await import('~/webhook/handler').then((m) =>
         Promise.resolve({
-          default: m.createHandleTranslateRequest({ store: customStore, chatworkApiToken: 'token' }),
+          default: m.createHandleTranslateRequest({
+            store: customStore,
+            chatworkApiToken: 'token',
+          }),
         }),
       )
 
@@ -986,7 +987,7 @@ describe('handleTranslateRequest', () => {
     const lastCall = sentMessages.at(-1)
     const params = lastCall?.[1] as { translatedSegments: string[] } | undefined
 
-    expect(params?.translatedSegments?.[0]).toContain('Asia Vion')
-    expect(params?.translatedSegments?.[0]).not.toContain('[COMPANY_1]')
+    expect(params?.translatedSegments[0]).toContain('Asia Vion')
+    expect(params?.translatedSegments[0]).not.toContain('[COMPANY_1]')
   })
 })

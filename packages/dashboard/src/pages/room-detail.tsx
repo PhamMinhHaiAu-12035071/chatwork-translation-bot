@@ -82,7 +82,7 @@ export function RoomDetailPage() {
         translationStyle: room.translationStyle,
         aiApiToken: '',
         context: room.context ?? '',
-        protectedKeywords: (room.protectedKeywords ?? []) as any,
+        protectedKeywords: room.protectedKeywords ?? [],
       }
     : {
         originalRoomId: 0,
@@ -119,7 +119,7 @@ export function RoomDetailPage() {
       translationStyle: room.translationStyle,
       aiApiToken: '',
       context: room.context ?? '',
-      protectedKeywords: (room.protectedKeywords ?? []) as any,
+      protectedKeywords: room.protectedKeywords ?? [],
     })
   }, [editForm, room])
 
@@ -187,6 +187,15 @@ export function RoomDetailPage() {
       : room.destinationRoomName
 
   const onEditSubmit = async (data: RoomEditInput) => {
+    const serializedKeywords =
+      data.protectedKeywords.length > 0
+        ? data.protectedKeywords.map((k) => ({
+            keyword: k.keyword,
+            category: k.category,
+            placeholder: k.placeholder,
+          }))
+        : null
+
     const result = await updateRoomAction.execute(() =>
       updateRoom(room.id, {
         destinationRoomName: data.destinationRoomName,
@@ -195,9 +204,7 @@ export function RoomDetailPage() {
         translationStyle: data.translationStyle,
         ...(data.aiApiToken !== '' ? { aiApiToken: data.aiApiToken } : {}),
         context: data.context.trim() || null,
-        protectedKeywords: data.protectedKeywords?.length
-          ? (data.protectedKeywords as any)
-          : null,
+        protectedKeywords: serializedKeywords,
       }),
     )
 
@@ -360,7 +367,7 @@ export function RoomDetailPage() {
 
             <div className="page-divider-brutal my-4" />
             <KeywordProtectionField
-              value={editForm.watch('protectedKeywords') ?? []}
+              value={editForm.watch('protectedKeywords')}
               onChange={(v) => {
                 editForm.setValue('protectedKeywords', v, { shouldValidate: true })
               }}

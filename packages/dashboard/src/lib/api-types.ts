@@ -2,6 +2,14 @@ export type TranslationStyle = 'NATURAL_CASUAL' | 'PROFESSIONAL_BUSINESS' | 'TEC
 
 export type AiProvider = 'openai' | 'gemini'
 
+export type KeywordCategory = 'company' | 'person' | 'project' | 'code' | 'other'
+
+export interface ProtectedKeyword {
+  keyword: string
+  category: KeywordCategory
+  placeholder?: string
+}
+
 export interface RoomConfigPublic {
   id: string
   originalRoomId: number
@@ -11,7 +19,7 @@ export interface RoomConfigPublic {
   aiModel: string | null
   translationStyle: TranslationStyle
   context: string | null
-  protectedKeywords?: { keyword: string; category: string; placeholder?: string }[]
+  protectedKeywords?: ProtectedKeyword[]
   enabled: boolean
   createdAt: string
   updatedAt: string
@@ -40,7 +48,7 @@ export interface CreateRoomInput {
   translationStyle: TranslationStyle
   aiApiToken: string
   context?: string | null
-  protectedKeywords?: { keyword: string; category: string; placeholder?: string }[]
+  protectedKeywords?: ProtectedKeyword[]
 }
 
 export interface DeleteRoomResult {
@@ -54,5 +62,5 @@ export interface UpdateRoomInput {
   translationStyle?: TranslationStyle
   aiApiToken?: string
   context?: string | null
-  protectedKeywords?: { keyword: string; category: string; placeholder?: string }[] | null
+  protectedKeywords?: ProtectedKeyword[] | null
 }
