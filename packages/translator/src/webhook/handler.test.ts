@@ -990,4 +990,43 @@ describe('handleTranslateRequest', () => {
     expect(params?.translatedSegments[0]).toContain('Asia Vion')
     expect(params?.translatedSegments[0]).not.toContain('[COMPANY_1]')
   })
+
+  it('logs translation_context_applied when room has non-empty context', async () => {
+    const traceId = 'trace-context-1'
+    await store.update(enabledRoomId, {
+      context: 'Room type: Client briefing',
+    })
+
+    await handleTranslateRequest(makeCommand(), { traceId })
+
+    const entry = readJsonLogs().find((e) => e['event'] === 'translation_context_applied')
+    expect(entry).toBeDefined()
+    expect(entry).toMatchObject({
+      level: 'info',
+      service: 'translator',
+      traceId,
+      sourceMessageId: '2081046619322847232',
+      roomId: 424846369,
+      roomContextApplied: true,
+      roomContextLength: Array.from('Room type: Client briefing'.trim()).length,
+    })
+  })
+
+  it('does not log translation_context_applied when context is null', async () => {
+    await store.update(enabledRoomId, { context: null })
+
+    await handleTranslateRequest(makeCommand())
+
+    const entry = readJsonLogs().find((e) => e['event'] === 'translation_context_applied')
+    expect(entry).toBeUndefined()
+  })
+
+  it('does not log translation_context_applied when context is whitespace only', async () => {
+    await store.update(enabledRoomId, { context: '   \n\t  ' })
+
+    await handleTranslateRequest(makeCommand())
+
+    const entry = readJsonLogs().find((e) => e['event'] === 'translation_context_applied')
+    expect(entry).toBeUndefined()
+  })
 })
