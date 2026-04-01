@@ -105,6 +105,13 @@
         "ai": "^6.0.111",
       },
     },
+    "packages/provider-kagi": {
+      "name": "@chatwork-bot/provider-kagi",
+      "version": "1.0.0",
+      "dependencies": {
+        "@chatwork-bot/kagi-sidecar": "workspace:*",
+      },
+    },
     "packages/provider-openai": {
       "name": "@chatwork-bot/provider-openai",
       "version": "1.0.0",
@@ -220,6 +227,8 @@
     "@chatwork-bot/provider-cursor": ["@chatwork-bot/provider-cursor@workspace:packages/provider-cursor"],
 
     "@chatwork-bot/provider-gemini": ["@chatwork-bot/provider-gemini@workspace:packages/provider-gemini"],
+
+    "@chatwork-bot/provider-kagi": ["@chatwork-bot/provider-kagi@workspace:packages/provider-kagi"],
 
     "@chatwork-bot/provider-openai": ["@chatwork-bot/provider-openai@workspace:packages/provider-openai"],
 
