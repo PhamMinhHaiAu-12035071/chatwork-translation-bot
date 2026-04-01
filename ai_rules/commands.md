@@ -75,7 +75,8 @@ bun run format       # Prettier (formats .ts, .json, .md, .yml)
 ## Testing
 
 ```bash
-bun test                                                    # Run all tests
+bun run test                                                # Run monorepo quality-gate tests (packages/ + scripts/)
+bun test                                                    # Run Bun's raw recursive discovery across the whole repo
 bun test packages/core/src/utils/parse-command.test.ts     # Run single file
 ```
 
@@ -111,7 +112,7 @@ bun run verify:standards     # Verify all packages have required scripts
 Run this before creating any pull request:
 
 ```bash
-bun test && bun run typecheck && bun run lint
+bun run test && bun run typecheck && bun run lint
 ```
 
 All three must pass with zero errors.

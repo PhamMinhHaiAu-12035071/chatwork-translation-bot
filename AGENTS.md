@@ -36,7 +36,7 @@ Nine packages:
 Pre-PR validation (must all pass):
 
 ```bash
-bun test && bun run typecheck && bun run lint
+bun run test && bun run typecheck && bun run lint
 ```
 
 ## AI Rules — Read before working on related tasks

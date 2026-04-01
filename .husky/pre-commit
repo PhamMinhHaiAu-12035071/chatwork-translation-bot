@@ -13,5 +13,5 @@ bun run typecheck || exit 1
 echo "[✓] typecheck"
 
 echo "[↻] tests..."
-bun test || exit 1
+bun run test || exit 1
 echo "[✓] tests"
