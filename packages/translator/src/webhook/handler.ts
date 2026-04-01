@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto'
 import { getProviderPlugin, TranslationError } from '@chatwork-bot/core'
-import type { TranslationIngressCommand, ProviderCreateContext } from '@chatwork-bot/core'
+import type { TranslationIngressCommand, ProviderCreateContext, TranslationResult } from '@chatwork-bot/core'
 import { TRANSLATION_PROMPT_BUILD_ID } from '@chatwork-bot/translation-prompt'
 import type { RoomConfigStore } from '~/services/room-config-store'
+import { KeywordRedactor } from '~/services/keyword-redactor'
 import { env } from '~/env'
 import { TranslationPipeline } from '~/pipeline/pipeline'
 import { writeTranslationOutput } from '~/utils/output-writer'
@@ -212,10 +213,18 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
     }
 
     try {
+      // Mask sensitive keywords before any AI call
+      const keywords = roomConfig.protectedKeywords ?? []
+      const { maskedText, restoreMap, systemHint } = KeywordRedactor.mask(cleanText, keywords)
+      const maskedTranslationInputs = command.translationInputs.map(
+        (segment) => KeywordRedactor.mask(segment, keywords).maskedText,
+      )
+
       const pipelineOpts: {
         timeoutMs: number
         translationStyle: typeof translationStyle
         roomContext?: string
+        keywordSystemHint?: string
       } = {
         timeoutMs: effectiveTimeoutMs,
         translationStyle,
@@ -223,11 +232,14 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       if (roomConfig.context) {
         pipelineOpts.roomContext = roomConfig.context
       }
+      if (systemHint) {
+        pipelineOpts.keywordSystemHint = systemHint
+      }
       const pipeline = new TranslationPipeline(executor, pipelineOpts)
       const pipelineResult = await pipeline.runStructured(
         {
-          cleanText,
-          translationInputs: command.translationInputs,
+          cleanText: maskedText,
+          translationInputs: maskedTranslationInputs,
         },
         {
           phaseObserver: {
@@ -244,7 +256,18 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
         },
       )
 
-      const result = pipelineResult.translation
+      // Restore original keywords in translated output
+      const result: TranslationResult = {
+        ...pipelineResult.translation,
+        cleanText,  // restore unmasked original
+        translatedText: KeywordRedactor.restore(
+          pipelineResult.translation.translatedText,
+          restoreMap,
+        ),
+      }
+      const restoredTranslatedSegments = pipelineResult.translatedSegments.map((seg) =>
+        KeywordRedactor.restore(seg, restoreMap),
+      )
       const outputBaseDir = process.env['OUTPUT_BASE_DIR']
       const llm =
         pipelineResult.debug === undefined
@@ -275,7 +298,7 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
         const deliveryResult = await sendTranslatedMessage(command, result, {
           apiToken: deps.chatworkApiToken,
           destinationRoomId: roomConfig.destinationRoomId,
-          translatedSegments: pipelineResult.translatedSegments,
+          translatedSegments: restoredTranslatedSegments,
         })
 
         if (deliveryResult.status === 'failed') {
