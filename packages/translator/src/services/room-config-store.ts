@@ -86,7 +86,9 @@ export class RoomConfigStore {
         aiModel: params.aiModel,
         translationStyle: params.translationStyle,
         context: params.context ?? null,
-        protectedKeywords: params.protectedKeywords,
+        ...(params.protectedKeywords !== undefined
+          ? { protectedKeywords: params.protectedKeywords }
+          : {}),
         encryptedAiApiToken: await encrypt(params.aiApiToken, this.encryptionKeyHex),
         enabled: true,
         createdAt: now,

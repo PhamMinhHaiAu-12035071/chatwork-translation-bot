@@ -1,6 +1,7 @@
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
+import { TipCard } from '~/components/atoms/tip-card'
 import { WebhookStepper } from '~/components/molecules/webhook-stepper'
 
 function getWebhookUrl(): string {
@@ -35,13 +36,10 @@ export function WebhookGuidePage() {
             </p>
           </BrutalCard>
 
-          <BrutalCard className="theme-card-matcha space-y-3" tilt="left">
-            <StickerLabel tone="success">One-time setup</StickerLabel>
-            <p className="text-sm leading-7 text-[var(--text-secondary)]">
-              Once the webhook URL is saved in Chatwork and the room is enabled, translation runs
-              automatically.
-            </p>
-          </BrutalCard>
+          <TipCard tilt="left" theme="theme-card-butter">
+            Room ID is the number after #/rid in the chat URL — for example,
+            https://www.chatwork.com/#/rid123 means Room ID is 123.
+          </TipCard>
         </div>
       </div>
     </PageShell>

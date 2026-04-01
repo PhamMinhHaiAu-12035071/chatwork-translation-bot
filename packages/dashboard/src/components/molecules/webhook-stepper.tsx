@@ -63,7 +63,7 @@ const STEPS: Step[] = [
   {
     number: '05',
     title: 'Select Events',
-    body: 'Select Room Event (not Account Event) — the bot manages one room at a time, not all rooms. Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that specific room. Room ID is the number after #/rid in the chat URL — for example, https://www.chatwork.com/#/rid123 means Room ID is 123.',
+    body: 'Select Room Event (not Account Event). Tick "Message created" and "Message updated". Enter the original Room ID in the room filter so Chatwork only fires events for that specific room.',
     action: 'none',
     svgFragment: <WebhookStep05Svg />,
   },

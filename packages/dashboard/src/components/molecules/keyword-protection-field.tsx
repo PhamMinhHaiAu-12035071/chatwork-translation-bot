@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { KeywordEntryFormInput } from '~/lib/room-schema'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
 import { Icon } from '~/components/atoms/icons'
 
@@ -11,15 +13,27 @@ interface KeywordProtectionFieldProps {
 }
 
 // ── Category config ────────────────────────────────────────────────
+// Colors aligned with dashboard design system using CSS variables:
+// company → --sky-accent, person → --pink-accent, project → --success, code → --warning
 const CATEGORY_CONFIG: Record<
   KeywordCategory,
   { label: string; bg: string; accent: string; number: string }
 > = {
-  company: { label: 'COMPANY', bg: '#dbeafe', accent: '#61b7e8', number: '#1d6c9f' },
-  person: { label: 'PERSON', bg: '#fce7f3', accent: '#d44470', number: '#9b2556' },
-  project: { label: 'PROJECT', bg: '#dcfce7', accent: '#a1cf8e', number: '#3d8a50' },
-  code: { label: 'CODE', bg: '#fef9c3', accent: '#d4ac0d', number: '#7a6200' },
-  other: { label: 'OTHER', bg: '#f3f4f6', accent: '#9ca3af', number: '#4b5563' },
+  company: {
+    label: 'COMPANY',
+    bg: 'rgba(97, 183, 232, 0.12)',
+    accent: '#61b7e8',
+    number: '#1d6c9f',
+  },
+  person: { label: 'PERSON', bg: 'rgba(212, 68, 112, 0.11)', accent: '#d44470', number: '#9b2556' },
+  project: {
+    label: 'PROJECT',
+    bg: 'rgba(161, 207, 142, 0.14)',
+    accent: '#a1cf8e',
+    number: '#3d8a50',
+  },
+  code: { label: 'CODE', bg: 'rgba(255, 225, 154, 0.28)', accent: '#ffe19a', number: '#d4ac0d' },
+  other: { label: 'OTHER', bg: 'rgba(156, 163, 175, 0.11)', accent: '#9ca3af', number: '#6b7280' },
 }
 
 const CATEGORY_PREFIX: Record<KeywordCategory, string> = {
@@ -45,18 +59,29 @@ function getEffectivePlaceholder(entry: KeywordEntryFormInput, indexInCategory: 
 export function KeywordProtectionField({ value, onChange }: KeywordProtectionFieldProps) {
   const [isOpen, setIsOpen] = useState(value.length > 0)
   const [internalKeywords, setInternalKeywords] = useState(value)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Add-form state
   const [addKeyword, setAddKeyword] = useState('')
   const [addCategory, setAddCategory] = useState<KeywordCategory>('company')
   const [addPlaceholder, setAddPlaceholder] = useState('')
   const [addError, setAddError] = useState('')
+  const shouldReduceMotion = useReducedMotion()
 
   function handleToggle() {
     const next = !isOpen
     setIsOpen(next)
     if (next) {
       onChange(internalKeywords)
+      // Auto-scroll khi user nhấn mở để nhìn thấy toàn bộ expanded panel
+      // Delay để animation expand hoàn tất trước khi scroll
+      setTimeout(() => {
+        panelRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'end',
+          inline: 'nearest',
+        })
+      }, 350)
     } else {
       onChange([])
     }
@@ -128,34 +153,25 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
       <button
         type="button"
         onClick={handleToggle}
+        className={[
+          'brutal-input w-full px-4 py-3',
+          'flex items-center justify-between gap-3 text-left',
+          'cursor-pointer',
+        ].join(' ')}
         style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
           background: isOpen ? '#ffe19a' : '#fffbeb',
-          border: '3px solid #1a1a2e',
-          borderRadius: 12,
-          boxShadow: isOpen ? '4px 4px 0 #1a1a2e' : '3px 3px 0 #1a1a2e',
-          cursor: 'pointer',
-          transform: isOpen ? 'translate(-1px,-1px)' : 'none',
+          borderColor: '#1a1a2e',
+          boxShadow: isOpen ? '5px 5px 0 #1a1a2e' : '3px 3px 0 #1a1a2e',
+          transform: isOpen ? 'translate(-1px, -1px)' : 'none',
           transition: 'all 0.12s ease',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <span
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border-2 border-[var(--border)] text-sm"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 34,
-              height: 34,
-              borderRadius: 10,
-              border: '2px solid #1a1a2e',
-              background: '#ffe19a',
-              boxShadow: '2px 2px 0 #1a1a2e',
-              fontSize: '1rem',
+              background: isOpen ? '#ffe19a' : '#fffbeb',
+              boxShadow: '2px 2px 0 var(--border)',
             }}
             aria-hidden
           >
@@ -208,6 +224,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
       {/* ── Expanded Panel ────────────────────────────────────────── */}
       {isOpen && (
         <div
+          ref={panelRef}
           style={{
             marginTop: 10,
             border: '2px dashed rgba(26,26,46,0.35)',
@@ -223,11 +240,11 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '32px 1fr 120px 120px 32px',
-                  gap: 8,
-                  padding: '4px 8px 6px',
-                  borderBottom: '2px solid #1a1a2e',
-                  marginBottom: 4,
+                  gridTemplateColumns: '36px 1fr 126px 126px 36px',
+                  gap: 10,
+                  padding: '6px 12px 8px',
+                  borderBottom: '2.5px solid var(--border)',
+                  marginBottom: 6,
                 }}
               >
                 {['#', 'SENSITIVE TERM', 'CATEGORY', 'AI SEES', ''].map((col) => (
@@ -248,135 +265,165 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
               </div>
 
               {/* Rows */}
-              {keywordsWithPlaceholder.map((entry, index) => {
-                const cat = entry.category as KeywordCategory
-                const cfg = CATEGORY_CONFIG[cat]
-                return (
-                  <div
-                    key={`${entry.keyword}-${index.toString()}`}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '32px 1fr 120px 120px 32px',
-                      gap: 8,
-                      alignItems: 'center',
-                      padding: '7px 8px',
-                      background: cfg.bg,
-                      borderRadius: 8,
-                      border: '1.5px solid rgba(26,26,46,0.12)',
-                      marginBottom: 4,
-                    }}
-                  >
-                    {/* Row number */}
-                    <span
+              <AnimatePresence initial={false}>
+                {keywordsWithPlaceholder.map((entry, index) => {
+                  const cat = entry.category as KeywordCategory
+                  const cfg = CATEGORY_CONFIG[cat]
+                  return (
+                    <motion.div
+                      key={entry.keyword}
+                      layout
+                      initial={
+                        shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: -24, scale: 0.97 }
+                      }
+                      animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0, scale: 1 }}
+                      exit={
+                        shouldReduceMotion ? { opacity: 0 } : { opacity: 0, x: 32, scale: 0.95 }
+                      }
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0.15 }
+                          : {
+                              layout: { type: 'spring', stiffness: 400, damping: 32 },
+                              opacity: { duration: 0.18 },
+                              x: { type: 'spring', stiffness: 380, damping: 28 },
+                              scale: { type: 'spring', stiffness: 380, damping: 28 },
+                            }
+                      }
                       style={{
-                        display: 'inline-flex',
+                        display: 'grid',
+                        gridTemplateColumns: '36px 1fr 126px 126px 36px',
+                        gap: 10,
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        border: '2px solid #1a1a2e',
-                        background: cfg.number,
-                        color: '#fff',
-                        fontSize: '0.65rem',
-                        fontWeight: 800,
-                        boxShadow: '2px 2px 0 #1a1a2e',
-                        flexShrink: 0,
+                        padding: '11px 12px',
+                        background: cfg.bg,
+                        borderRadius: 10,
+                        border: '2px solid rgba(26,26,46,0.14)',
+                        marginBottom: 5,
                       }}
                     >
-                      {index + 1}
-                    </span>
+                      {/* Row number */}
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          border: '2.5px solid var(--border)',
+                          background: cfg.number,
+                          color: '#fff',
+                          fontFamily: "'Shantell Sans', cursive",
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          boxShadow: '2px 2px 0 var(--border)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {index + 1}
+                      </span>
 
-                    {/* Keyword */}
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-heading, inherit)',
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        color: '#1a1a2e',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {entry.keyword}
-                    </span>
+                      {/* Keyword */}
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-heading, inherit)',
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {entry.keyword}
+                      </span>
 
-                    {/* Category pill */}
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '2px 8px',
-                        border: '2px solid #1a1a2e',
-                        borderRadius: 999,
-                        background: cfg.accent,
-                        boxShadow: '2px 2px 0 #1a1a2e',
-                        fontFamily: 'var(--font-heading, inherit)',
-                        fontSize: '0.6rem',
-                        fontWeight: 800,
-                        color: '#1a1a2e',
-                        letterSpacing: '0.08em',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: 110,
-                      }}
-                    >
-                      {cfg.label}
-                    </span>
+                      {/* Category pill */}
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '4px 10px',
+                          border: '2.5px solid var(--border)',
+                          borderRadius: 999,
+                          background: cfg.accent,
+                          boxShadow: '2px 2px 0 var(--border)',
+                          fontFamily: 'var(--font-heading, inherit)',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          color: 'var(--border)',
+                          letterSpacing: '0.08em',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: 110,
+                        }}
+                      >
+                        {cfg.label}
+                      </span>
 
-                    {/* Placeholder badge */}
-                    <span
-                      style={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        color: '#1a1a2e',
-                        padding: '2px 6px',
-                        border: '2px solid #1a1a2e',
-                        borderRadius: 6,
-                        background: '#fff',
-                        boxShadow: '2px 2px 0 #1a1a2e',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: 110,
-                      }}
-                      title={entry.effectivePlaceholder}
-                    >
-                      {entry.effectivePlaceholder}
-                    </span>
+                      {/* Placeholder badge */}
+                      <span
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          padding: '4px 8px',
+                          border: '2.5px solid var(--border)',
+                          borderRadius: 8,
+                          background: '#fff',
+                          boxShadow: '2px 2px 0 var(--border)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: 110,
+                        }}
+                        title={entry.effectivePlaceholder}
+                      >
+                        {entry.effectivePlaceholder}
+                      </span>
 
-                    {/* Delete */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleRemove(index)
-                      }}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 24,
-                        height: 24,
-                        border: '2px solid #1a1a2e',
-                        borderRadius: 6,
-                        background: '#fff',
-                        boxShadow: '2px 2px 0 #1a1a2e',
-                        cursor: 'pointer',
-                        color: '#d44470',
-                        fontWeight: 800,
-                        fontSize: '0.75rem',
-                        flexShrink: 0,
-                      }}
-                      aria-label={`Remove keyword ${entry.keyword}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )
-              })}
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleRemove(index)
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 26,
+                          height: 26,
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          padding: 0,
+                          transition: 'transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.15)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)'
+                        }}
+                        onMouseDown={(e) => {
+                          e.currentTarget.style.transform = 'scale(0.95)'
+                        }}
+                        onMouseUp={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.15)'
+                        }}
+                        aria-label={`Remove keyword ${entry.keyword}`}
+                      >
+                        <Icon name="clear" variant="clay" size={20} aria-hidden />
+                      </button>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
             </div>
           )}
 
@@ -389,22 +436,10 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
               background: '#fffbeb',
             }}
           >
-            <p
-              style={{
-                fontFamily: 'var(--font-heading, inherit)',
-                fontSize: '0.65rem',
-                fontWeight: 800,
-                color: '#6b7280',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                marginBottom: 12,
-              }}
-            >
-              Add Keyword
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12 }}>
-              {/* Keyword input */}
-              <input
+            {/* Row 1: Keyword + Category — same height because both have labels via BrutalInput/BrutalSelect */}
+            <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 160px' }}>
+              <BrutalInput
+                label="Keyword Term"
                 type="text"
                 value={addKeyword}
                 onChange={(e) => {
@@ -419,50 +454,30 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 }}
                 placeholder="e.g. Asia Vion"
                 maxLength={100}
-                style={{
-                  padding: '10px 16px',
-                  border: '2px solid #1a1a2e',
-                  borderRadius: 8,
-                  background: '#fff',
-                  boxShadow: '3px 3px 0 #1a1a2e',
-                  fontFamily: 'var(--font-ui-body, inherit)',
-                  fontSize: '0.8rem',
-                  color: '#1a1a2e',
-                  outline: 'none',
-                }}
               />
 
-              {/* Category dropdown with BrutalSelect */}
-              <div style={{ minWidth: 0 }}>
-                <BrutalSelect
-                  label="Category"
-                  options={[
-                    { value: 'company', label: 'Company' },
-                    { value: 'person', label: 'Person' },
-                    { value: 'project', label: 'Project' },
-                    { value: 'code', label: 'Code' },
-                    { value: 'other', label: 'Other' },
-                  ]}
-                  value={addCategory}
-                  onChange={(e) => {
-                    setAddCategory(e.target.value as KeywordCategory)
-                  }}
-                  colorVariant="peach"
-                />
-              </div>
+              <BrutalSelect
+                label="Category"
+                options={[
+                  { value: 'company', label: 'Company' },
+                  { value: 'person', label: 'Person' },
+                  { value: 'project', label: 'Project' },
+                  { value: 'code', label: 'Code' },
+                  { value: 'other', label: 'Other' },
+                ]}
+                value={addCategory}
+                onChange={(e) => {
+                  setAddCategory(e.target.value as KeywordCategory)
+                }}
+                colorVariant="rose"
+                className="bg-[#ffe4e6]"
+              />
             </div>
 
-            {/* Second row: Placeholder and Add button */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                gap: 12,
-                marginTop: 12,
-              }}
-            >
-              {/* Custom placeholder input (optional, dashed) */}
-              <input
+            {/* Row 2: Custom placeholder + Add button (aligned to bottom) */}
+            <div className="grid items-end gap-3 mt-3" style={{ gridTemplateColumns: '1fr auto' }}>
+              <BrutalInput
+                label="Custom Placeholder (optional)"
                 type="text"
                 value={addPlaceholder}
                 onChange={(e) => {
@@ -476,54 +491,17 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 }}
                 placeholder={previewPlaceholder}
                 maxLength={50}
-                style={{
-                  padding: '10px 16px',
-                  border: '2px dashed #1a1a2e',
-                  borderRadius: 8,
-                  background: '#fff',
-                  boxShadow: '3px 3px 0 #1a1a2e',
-                  fontFamily: 'monospace',
-                  fontSize: '0.72rem',
-                  color: '#1a1a2e',
-                  outline: 'none',
-                }}
+                style={{ fontFamily: 'monospace' }}
               />
 
-              {/* Add button */}
+              {/* Add button — matches dashboard button pattern */}
               <button
                 type="button"
                 onClick={handleAdd}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 16px',
-                  border: '2px solid #1a1a2e',
-                  borderRadius: 8,
-                  background: '#6e77e5',
-                  boxShadow: '3px 3px 0 #1a1a2e',
-                  fontFamily: 'var(--font-heading, inherit)',
-                  fontSize: '0.8rem',
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  color: '#fff',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'transform 0.1s ease, box-shadow 0.1s ease',
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget
-                  el.style.transform = 'translate(-2px,-2px)'
-                  el.style.boxShadow = '5px 5px 0 #1a1a2e'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget
-                  el.style.transform = 'none'
-                  el.style.boxShadow = '3px 3px 0 #1a1a2e'
-                }}
+                className="brutal-button theme-button-violet inline-flex items-center gap-1.5 px-5 py-2.5 font-heading text-sm font-bold text-white"
               >
                 <Icon name="plus" variant="clay" size={18} aria-hidden />
-                Add
+                <span style={{ lineHeight: 1, display: 'inline-block' }}>Add</span>
               </button>
             </div>
 

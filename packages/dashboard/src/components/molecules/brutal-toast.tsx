@@ -42,14 +42,16 @@ export function BrutalToast({ item, onDismiss }: BrutalToastProps) {
         variantStyles[item.variant],
       ].join(' ')}
     >
-      <span className="font-heading text-base font-extrabold">{variantIcon[item.variant]}</span>
-      <span>{item.message}</span>
+      <span className="flex size-5 shrink-0 items-center justify-center font-heading text-base font-extrabold leading-none">
+        {variantIcon[item.variant]}
+      </span>
+      <span className="flex flex-1 items-center leading-none">{item.message}</span>
       <button
         type="button"
         onClick={() => {
           onDismiss(item.id)
         }}
-        className="ml-auto opacity-60 hover:opacity-100"
+        className="ml-auto flex size-5 shrink-0 items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
         aria-label="Dismiss"
       >
         <Icon name="close" variant="stroke" size={14} aria-hidden />

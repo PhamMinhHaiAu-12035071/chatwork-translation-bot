@@ -230,4 +230,49 @@ export const CLAY_SYMBOLS: Record<ClayIconName, () => React.JSX.Element> = {
       <path d="M30 14L14 30" stroke="#1a1a2e" strokeWidth="4.5" strokeLinecap="round" />
     </>
   ),
+
+  grid: () => (
+    <>
+      <rect
+        x="13"
+        y="13"
+        width="7.5"
+        height="7.5"
+        rx="2"
+        fill="white"
+        stroke="#1a1a2e"
+        strokeWidth="2"
+      />
+      <rect
+        x="23.5"
+        y="13"
+        width="7.5"
+        height="7.5"
+        rx="2"
+        fill="white"
+        stroke="#1a1a2e"
+        strokeWidth="2"
+      />
+      <rect
+        x="13"
+        y="23.5"
+        width="7.5"
+        height="7.5"
+        rx="2"
+        fill="white"
+        stroke="#1a1a2e"
+        strokeWidth="2"
+      />
+      <rect
+        x="23.5"
+        y="23.5"
+        width="7.5"
+        height="7.5"
+        rx="2"
+        fill="white"
+        stroke="#1a1a2e"
+        strokeWidth="2"
+      />
+    </>
+  ),
 }

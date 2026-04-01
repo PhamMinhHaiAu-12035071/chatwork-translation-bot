@@ -34,7 +34,7 @@ describe('Icon stroke — arrow-right', () => {
     const html = renderToStaticMarkup(
       createElement(Icon, { name: 'arrow-right', variant: 'stroke' }),
     )
-    expect(html).toContain('M3 10H17')
+    expect(html).toContain('M3 8H17')
     expect(html).toContain('icon-anim-slide-right')
   })
 })

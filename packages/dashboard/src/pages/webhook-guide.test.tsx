@@ -20,7 +20,8 @@ describe('WebhookGuidePage', () => {
     expect(html).toContain('Access Chatwork Admin')
     expect(html).toContain('Open Chatwork Admin')
     expect(html).toContain('Why manual?')
-    expect(html).toContain('One-time setup')
+    expect(html).toContain('Tip')
+    expect(html).toContain('Room ID is the number after #/rid')
     expect(html).toContain('Next')
   })
 
@@ -37,8 +38,9 @@ describe('WebhookGuidePage', () => {
   it('keeps the supporting rationale cards aligned with the simplified webhook setup flow', async () => {
     const source = await Bun.file(new URL('./webhook-guide.tsx', import.meta.url)).text()
 
-    expect(source).toContain('webhook URL is saved in Chatwork')
-    expect(source).toContain('room is enabled')
+    expect(source).toContain('Room ID is the number after #/rid')
+    expect(source).toContain('Why manual?')
+    expect(source).toContain('Tip')
     expect(source).not.toContain('webhook token')
     expect(source).not.toContain('Activation section')
   })

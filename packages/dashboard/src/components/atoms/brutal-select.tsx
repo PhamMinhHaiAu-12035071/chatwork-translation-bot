@@ -10,7 +10,7 @@ interface SelectOption {
   label: string
 }
 
-type DropdownColor = 'accent' | 'mint' | 'peach'
+type DropdownColor = 'accent' | 'mint' | 'peach' | 'rose'
 
 interface BrutalSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label: string

@@ -188,19 +188,16 @@ export function RoomDetailPage() {
       : room.destinationRoomName
 
   const onEditSubmit = async (data: RoomEditInput) => {
-    const keywords: ProtectedKeyword[] | null =
-      data.protectedKeywords.length > 0
-        ? data.protectedKeywords.map((k) => {
-            const item: ProtectedKeyword = {
-              keyword: k.keyword,
-              category: k.category,
-            }
-            if (k.placeholder) {
-              item.placeholder = k.placeholder
-            }
-            return item
-          })
-        : null
+    const keywords: ProtectedKeyword[] = data.protectedKeywords.map((k) => {
+      const item: ProtectedKeyword = {
+        keyword: k.keyword,
+        category: k.category,
+      }
+      if (k.placeholder) {
+        item.placeholder = k.placeholder
+      }
+      return item
+    })
 
     const result = await updateRoomAction.execute(() =>
       updateRoom(room.id, {

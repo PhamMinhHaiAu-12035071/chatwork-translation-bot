@@ -106,18 +106,28 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
   const shouldReduceMotion = useReducedMotion()
   const activeTemplate = findTemplateForValue(value)
   const activeTone = getTemplateMotionTone(activeTemplate?.key ?? null)
+  const isInitialMount = useRef(true)
+  const shouldScrollRef = useRef(false)
 
-  // Auto-scroll khi mở để nhìn thấy toàn bộ expanded card (bao gồm mt-2.5)
+  // Auto-scroll khi user toggle mở (không scroll khi initial mount)
   useEffect(() => {
-    if (isOpen && panelRef.current) {
-      // Delay để animation expand hoàn tất trước khi scroll
+    // Skip scroll trên initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+
+    // Chỉ scroll khi user toggle mở và panel đã mounted
+    if (shouldScrollRef.current && isOpen && panelRef.current) {
+      shouldScrollRef.current = false
+      // Delay cho AnimatePresence + motion animation
       const timer = setTimeout(() => {
         panelRef.current?.scrollIntoView({
           behavior: 'smooth',
           block: 'end',
           inline: 'nearest',
         })
-      }, 350)
+      }, 400)
       return () => {
         clearTimeout(timer)
       }
@@ -143,6 +153,15 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
     ? { duration: 0 }
     : { type: 'spring' as const, stiffness: 360, damping: 30, mass: 0.84 }
 
+  function handleToggle() {
+    const next = !isOpen
+    setIsOpen(next)
+    // Set flag để useEffect biết cần scroll khi user mở
+    if (next) {
+      shouldScrollRef.current = true
+    }
+  }
+
   function handleLoadTemplate(_key: string, body: string) {
     onChange(body)
   }
@@ -159,9 +178,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
     <div ref={wrapperRef}>
       <button
         type="button"
-        onClick={() => {
-          setIsOpen(!isOpen)
-        }}
+        onClick={handleToggle}
         className={[
           'brutal-input w-full px-4 py-3',
           'flex items-center justify-between gap-3 text-left',

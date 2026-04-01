@@ -19,6 +19,7 @@ export type ClayIconName =
   | 'play'
   | 'check'
   | 'clear'
+  | 'grid'
 
 export type IconName = StrokeIconName | ClayIconName
 export type IconVariant = 'stroke' | 'clay'
@@ -44,7 +45,7 @@ export const STROKE_PATHS: Record<StrokeIconName, StrokePathDef> = {
     animClass: 'icon-anim-slide-left',
   },
   'arrow-right': {
-    d: 'M3 10H17 M12 4L18 10L12 16',
+    d: 'M3 8H17 M12 2L18 8L12 14',
     viewBox: '0 0 20 20',
     strokeWidth: 3.5,
     animClass: 'icon-anim-slide-right',

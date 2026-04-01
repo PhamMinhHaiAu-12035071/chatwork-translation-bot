@@ -61,7 +61,7 @@ export function AppLayout() {
           <motion.button
             type="button"
             onClick={toggleSidebar}
-            className="absolute -left-3 top-4 z-50 brutal-button theme-button-violet size-10 rounded-full p-0 flex items-center justify-center shadow-[4px_4px_0_rgba(0,0,0,0.25)] hover:shadow-[6px_6px_0_rgba(0,0,0,0.25)] hover:scale-110 transition-all"
+            className="absolute -left-6 top-4 z-50 brutal-button theme-button-violet size-10 rounded-full p-0 flex items-center justify-center shadow-[4px_4px_0_rgba(0,0,0,0.25)] hover:shadow-[6px_6px_0_rgba(0,0,0,0.25)] hover:scale-110 transition-all"
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             whileHover={{ x: -2, y: -2 }}
             whileTap={{ x: 1, y: 1, scale: 0.95 }}
@@ -74,37 +74,97 @@ export function AppLayout() {
             </motion.div>
           </motion.button>
 
-          <BrutalCard className="theme-card-lilac overflow-hidden">
-            <AnimatePresence mode="wait">
+          <motion.div
+            layout
+            className="brutal-surface theme-card-lilac overflow-hidden"
+            style={{
+              borderRadius: '24px',
+            }}
+            animate={{
+              padding: sidebarCollapsed ? '8px' : '1.5rem',
+            }}
+            transition={{
+              padding: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+            }}
+          >
+            {/* Single sticker element that morphs between text and icon */}
+            <motion.div
+              layout
+              className="sticker-label bg-[var(--accent)] text-white sticker-tilt-flat relative overflow-hidden"
+              animate={{
+                width: sidebarCollapsed ? '48px' : 'auto',
+                height: sidebarCollapsed ? '48px' : 'auto',
+                borderRadius: sidebarCollapsed ? '14px' : '999px',
+                paddingLeft: sidebarCollapsed ? '0px' : '16px',
+                paddingRight: sidebarCollapsed ? '0px' : '16px',
+                paddingTop: sidebarCollapsed ? '0px' : '4px',
+                paddingBottom: sidebarCollapsed ? '0px' : '4px',
+                marginLeft: sidebarCollapsed ? '10px' : '12px',
+              }}
+              transition={{
+                layout: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+                width: { duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+                height: { duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+                borderRadius: { duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+                padding: { duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+                marginLeft: { duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.15 },
+              }}
+            >
+              {/* Text content - fades out first */}
+              <motion.span
+                animate={{
+                  opacity: sidebarCollapsed ? 0 : 1,
+                  scale: sidebarCollapsed ? 0.8 : 1,
+                }}
+                transition={{
+                  duration: 0.15,
+                  ease: 'easeOut',
+                }}
+                style={{
+                  display: sidebarCollapsed ? 'none' : 'inline',
+                }}
+              >
+                Multi-Room Setup
+              </motion.span>
+
+              {/* Grid icon - fades in mid-transition */}
+              <motion.span
+                animate={{
+                  opacity: sidebarCollapsed ? 1 : 0,
+                  scale: sidebarCollapsed ? 1 : 0.8,
+                }}
+                transition={{
+                  duration: 0.15,
+                  ease: 'easeIn',
+                  delay: 0.15,
+                }}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: sidebarCollapsed ? 'flex' : 'none',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="grid" variant="clay" size={28} aria-hidden />
+              </motion.span>
+            </motion.div>
+
+            {/* Translation Bot Title - only visible when expanded */}
+            <AnimatePresence>
               {!sidebarCollapsed ? (
                 <motion.div
-                  key="expanded"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, delay: 0.1 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.2, delay: 0.2 }}
+                  className="mt-4"
                 >
-                  <StickerLabel tone="accent" tilt="flat">
-                    Multi-Room Setup
-                  </StickerLabel>
-                  <div className="mt-4">
-                    <h1 className="font-heading text-3xl font-extrabold">Translation Bot</h1>
-                  </div>
+                  <h1 className="font-heading text-3xl font-extrabold">Translation Bot</h1>
                 </motion.div>
-              ) : (
-                <motion.div
-                  key="collapsed"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, delay: 0.1 }}
-                  className="flex items-center justify-center py-3"
-                >
-                  <Icon name="dashboard" variant="clay" size={32} aria-hidden />
-                </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
-          </BrutalCard>
+          </motion.div>
 
           <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:space-y-2 lg:overflow-visible lg:pb-0">
             {navItems.map((item) => (

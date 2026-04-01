@@ -242,7 +242,7 @@ html::-webkit-scrollbar-thumb:hover {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.875rem;
 }
 
 .context-template-card {
@@ -501,6 +501,14 @@ html::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #f0b07a 0%, #e8a065 100%);
   border-color: #d08b4e;
   box-shadow: 3px 3px 0 #b87840;
+}
+
+.brutal-dropdown[data-color="rose"] .brutal-dropdown-option:hover,
+.brutal-dropdown[data-color="rose"] .brutal-dropdown-option[data-active="true"] {
+  background: linear-gradient(180deg, #fda4af 0%, #fb7185 100%);
+  border-color: #f43f5e;
+  box-shadow: 3px 3px 0 #e11d48;
+  color: #ffffff;
 }
 
 .brutal-dropdown-option[data-selected="true"]::before {
