@@ -17,6 +17,7 @@ export type ClayIconName =
   | 'webhook'
   | 'pause'
   | 'play'
+  | 'check'
 
 export type IconName = StrokeIconName | ClayIconName
 export type IconVariant = 'stroke' | 'clay'

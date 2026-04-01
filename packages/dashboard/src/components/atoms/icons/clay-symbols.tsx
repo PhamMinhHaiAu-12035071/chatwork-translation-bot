@@ -212,4 +212,15 @@ export const CLAY_SYMBOLS: Record<ClayIconName, () => React.JSX.Element> = {
       strokeLinejoin="round"
     />
   ),
+
+  check: () => (
+    <path
+      d="M14 22L19.5 28L31 15"
+      stroke="#1a1a2e"
+      strokeWidth="4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    />
+  ),
 }

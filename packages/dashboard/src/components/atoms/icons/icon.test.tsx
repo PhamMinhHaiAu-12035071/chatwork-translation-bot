@@ -186,3 +186,12 @@ describe('Icon clay — link', () => {
     expect(html).toContain('14.5 22')
   })
 })
+
+describe('Icon clay — check', () => {
+  it('renders soft mint gradient and checkmark path', () => {
+    const html = renderToStaticMarkup(createElement(Icon, { name: 'check', variant: 'clay' }))
+    expect(html).toContain('#d4edc8')
+    expect(html).toContain('#8fc777')
+    expect(html).toContain('M14 22L19.5 28L31 15')
+  })
+})

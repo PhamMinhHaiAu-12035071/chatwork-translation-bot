@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { ChangeEvent, CSSProperties } from 'react'
 import type { MotionStyle } from 'framer-motion'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { Icon } from '~/components/atoms/icons'
 import { CONTEXT_TEMPLATES } from '~/lib/context-templates'
 
 interface ContextFieldProps {
@@ -375,7 +376,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
                                       : { duration: 0.34, ease: [0.22, 1, 0.36, 1] }
                                   }
                                 >
-                                  ✓
+                                  <Icon name="check" variant="clay" size={24} aria-hidden />
                                 </motion.span>
                               ) : null}
                             </AnimatePresence>

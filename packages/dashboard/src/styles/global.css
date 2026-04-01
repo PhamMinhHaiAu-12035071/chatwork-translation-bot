@@ -319,12 +319,6 @@ html::-webkit-scrollbar-thumb:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  padding: 0.4rem 0.55rem;
-  border: 2px solid var(--border);
-  border-radius: 999px;
-  background: var(--warning);
-  box-shadow: 2px 2px 0 var(--border);
   color: var(--text-primary);
   font-family: 'Shantell Sans', cursive;
   font-size: 0.7rem;

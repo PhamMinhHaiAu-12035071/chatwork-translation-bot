@@ -16,4 +16,5 @@ export const CLAY_COLORS: Record<ClayIconName, ClayColorDef> = {
   webhook: { from: '#d5e8ff', to: '#6eaaec' }, // sky accent  → --sky-accent
   pause: { from: '#fef9d0', to: '#f9d44a' }, // butter      → --warning
   play: { from: '#c8f5e0', to: '#4dd8a0' }, // mint        → --success
+  check: { from: '#d4edc8', to: '#8fc777' }, // soft mint   → Translation Context accent
 }
