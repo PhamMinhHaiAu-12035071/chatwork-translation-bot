@@ -165,14 +165,19 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
         className={[
           'brutal-input w-full px-4 py-3',
           'flex items-center justify-between gap-3 text-left',
-          'cursor-pointer transition-colors',
-          isOpen ? 'bg-[var(--card-lilac)]' : 'bg-white',
+          'cursor-pointer',
         ].join(' ')}
-        style={
-          isOpen
-            ? { borderColor: 'var(--accent)', boxShadow: '5px 5px 0 var(--accent)' }
-            : undefined
-        }
+        style={{
+          background: isOpen ? '#b8c5ff' : '#f0f4ff',
+          transition: 'all 0.12s ease',
+          ...(isOpen
+            ? {
+                borderColor: '#6b7ae8',
+                boxShadow: '5px 5px 0 #6b7ae8',
+                transform: 'translate(-1px, -1px)',
+              }
+            : {}),
+        }}
       >
         <div className="flex items-center gap-2.5">
           <span
