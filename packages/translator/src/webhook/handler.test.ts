@@ -1029,4 +1029,184 @@ describe('handleTranslateRequest', () => {
     const entry = readJsonLogs().find((e) => e['event'] === 'translation_context_applied')
     expect(entry).toBeUndefined()
   })
+
+  it('logs translation_keywords_masked and translation_keywords_restored when keywords match text', async () => {
+    const traceId = 'trace-kw-1'
+    await store.update(enabledRoomId, {
+      protectedKeywords: [{ keyword: 'AcmeCorp', category: 'company' }],
+    })
+
+    mockGetProviderPlugin.mockImplementationOnce(() =>
+      createMockProvider('openai', {
+        execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
+          return Promise.resolve(
+            schema.parse({
+              sourceLang: 'English',
+              translated: 'Xin chào từ [COMPANY_1]',
+            }),
+          )
+        },
+        describeExecution() {
+          return {
+            generation: {
+              temperature: 0,
+              maxOutputTokens: 4000,
+              providerOptions: null,
+              providerManaged: false,
+            },
+          }
+        },
+      }),
+    )
+
+    await handleTranslateRequest(
+      makeCommand({
+        translatableText: 'Hello from AcmeCorp',
+        translationInputs: ['Hello from AcmeCorp'],
+      }),
+      { traceId },
+    )
+
+    const logs = readJsonLogs()
+    const masked = logs.find((e) => e['event'] === 'translation_keywords_masked')
+    const restored = logs.find((e) => e['event'] === 'translation_keywords_restored')
+
+    expect(masked).toMatchObject({
+      level: 'info',
+      traceId,
+      configuredKeywordCount: 1,
+      primaryTextChangedByMask: true,
+      translationInputSegmentCount: 1,
+      segmentsChangedByMaskCount: 1,
+      hasSystemHint: true,
+    })
+    expect(restored).toMatchObject({
+      level: 'info',
+      traceId,
+      configuredKeywordCount: 1,
+      primaryTranslationChangedByRestore: true,
+      segmentsChangedByRestoreCount: 1,
+    })
+  })
+
+  it('always logs translation_keywords_masked when keywords configured but text does not match', async () => {
+    await store.update(enabledRoomId, {
+      protectedKeywords: [{ keyword: 'UnusedBrand', category: 'company' }],
+    })
+
+    await handleTranslateRequest(makeCommand())
+
+    const masked = readJsonLogs().find((e) => e['event'] === 'translation_keywords_masked')
+    expect(masked).toBeDefined()
+    expect(masked).toMatchObject({
+      configuredKeywordCount: 1,
+      primaryTextChangedByMask: false,
+      translationInputSegmentCount: 3,
+      segmentsChangedByMaskCount: 0,
+      hasSystemHint: false,
+    })
+  })
+
+  it('logs translation_keywords_masked with configuredKeywordCount 0 when no keywords configured', async () => {
+    await store.update(enabledRoomId, { protectedKeywords: [] })
+
+    await handleTranslateRequest(makeCommand())
+
+    const masked = readJsonLogs().find((e) => e['event'] === 'translation_keywords_masked')
+    expect(masked).toMatchObject({
+      configuredKeywordCount: 0,
+      primaryTextChangedByMask: false,
+      hasSystemHint: false,
+    })
+  })
+
+  it('orders translation_context_applied before translation_keywords_masked before translation_keywords_restored', async () => {
+    await store.update(enabledRoomId, {
+      context: 'Sales room',
+      protectedKeywords: [{ keyword: 'X', category: 'company' }],
+    })
+
+    mockGetProviderPlugin.mockImplementationOnce(() =>
+      createMockProvider('openai', {
+        execute<T>(_prompts: PromptPair, schema: ISchema<T>): Promise<T> {
+          return Promise.resolve(
+            schema.parse({
+              sourceLang: 'English',
+              translated: 'Thư từ [COMPANY_1]',
+            }),
+          )
+        },
+        describeExecution() {
+          return {
+            generation: {
+              temperature: 0,
+              maxOutputTokens: 4000,
+              providerOptions: null,
+              providerManaged: false,
+            },
+          }
+        },
+      }),
+    )
+
+    await handleTranslateRequest(
+      makeCommand({
+        translatableText: 'Mail from X',
+        translationInputs: ['Mail from X'],
+      }),
+    )
+
+    const logs = readJsonLogs()
+    const idx = (name: string) => logs.findIndex((e) => e['event'] === name)
+    const iCtx = idx('translation_context_applied')
+    const iMask = idx('translation_keywords_masked')
+    const iRestore = idx('translation_keywords_restored')
+
+    expect(iCtx).toBeGreaterThanOrEqual(0)
+    expect(iMask).toBeGreaterThanOrEqual(0)
+    expect(iRestore).toBeGreaterThanOrEqual(0)
+    expect(iCtx).toBeLessThan(iMask)
+    expect(iMask).toBeLessThan(iRestore)
+  })
+
+  it('does not log translation_keywords_restored when pipeline fails before restore', async () => {
+    await store.update(enabledRoomId, {
+      protectedKeywords: [{ keyword: 'Y', category: 'company' }],
+    })
+
+    mockGetProviderPlugin.mockImplementationOnce(() =>
+      createMockProvider(
+        'openai',
+        {
+          execute<T>(_prompts: PromptPair, _schema: ISchema<T>): Promise<T> {
+            return Promise.reject(new MockTranslationError('bad', 'INVALID_RESPONSE'))
+          },
+          describeExecution() {
+            return {
+              generation: {
+                temperature: 0,
+                maxOutputTokens: 4000,
+                providerOptions: null,
+                providerManaged: false,
+              },
+            }
+          },
+        },
+        50,
+      ),
+    )
+
+    await expect(
+      handleTranslateRequest(
+        makeCommand({
+          translatableText: 'Hello Y',
+          translationInputs: ['Hello Y'],
+        }),
+      ),
+    ).rejects.toThrow()
+
+    const logs = readJsonLogs()
+    expect(logs.some((e) => e['event'] === 'translation_keywords_masked')).toBe(true)
+    expect(logs.some((e) => e['event'] === 'translation_keywords_restored')).toBe(false)
+  })
 })
