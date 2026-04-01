@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import type { Resolver } from 'react-hook-form'
 import { useNavigate, useLocation } from 'react-router'
+import type { ProtectedKeyword } from '~/lib/api-types'
 import { Icon } from '~/components/atoms/icons'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { BrutalInput } from '~/components/atoms/brutal-input'
@@ -98,20 +99,39 @@ export function RoomCreatePage() {
 
   const onSubmit = async (data: RoomCreateInput) => {
     const result = await createRoomAction.execute(() => {
-      const serializedKeywords =
-        data.protectedKeywords.length > 0
-          ? data.protectedKeywords.map((k) => ({
-              keyword: k.keyword,
-              category: k.category,
-              placeholder: k.placeholder,
-            }))
-          : undefined
-
-      return createRoom({
-        ...data,
+      const keywordData: {
+        originalRoomId: number
+        destinationRoomName: string
+        aiProvider: 'openai' | 'gemini'
+        aiModel: string | null
+        translationStyle: 'NATURAL_CASUAL' | 'PROFESSIONAL_BUSINESS' | 'TECHNICAL'
+        aiApiToken: string
+        context: string | null
+        protectedKeywords?: ProtectedKeyword[]
+      } = {
+        originalRoomId: data.originalRoomId,
+        destinationRoomName: data.destinationRoomName,
+        aiProvider: data.aiProvider,
+        aiModel: data.aiModel,
+        translationStyle: data.translationStyle,
+        aiApiToken: data.aiApiToken,
         context: data.context.trim() || null,
-        protectedKeywords: serializedKeywords,
-      })
+      }
+
+      if (data.protectedKeywords.length > 0) {
+        keywordData.protectedKeywords = data.protectedKeywords.map((k) => {
+          const item: ProtectedKeyword = {
+            keyword: k.keyword,
+            category: k.category,
+          }
+          if (k.placeholder) {
+            item.placeholder = k.placeholder
+          }
+          return item
+        })
+      }
+
+      return createRoom(keywordData)
     })
 
     if (!result.ok) {
