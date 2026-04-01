@@ -182,7 +182,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
           <span
             className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[10px] border-2 border-[var(--border)] text-sm"
             style={{
-              background: 'var(--warning)',
+              background: '#b4d4a8',
               boxShadow: '2px 2px 0 var(--border)',
             }}
             aria-hidden
