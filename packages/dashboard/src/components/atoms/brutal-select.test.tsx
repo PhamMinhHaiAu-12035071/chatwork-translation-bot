@@ -104,4 +104,21 @@ describe('BrutalSelect', () => {
 
     expect(html).not.toContain('clay-icon-wrap')
   })
+
+  it('renders disabled state on both trigger and hidden select', () => {
+    const html = renderToStaticMarkup(
+      createElement(BrutalSelect, {
+        label: 'Free Provider',
+        options: [{ value: 'free', label: 'Free' }],
+        disabled: true,
+      }),
+    )
+
+    expect(html).toContain('disabled=""')
+  })
+
+  it('guards against opening the dropdown when disabled in the source', () => {
+    expect(SOURCE).toContain('if (disabled) return')
+    expect(SOURCE).toContain('disabled={disabled}')
+  })
 })

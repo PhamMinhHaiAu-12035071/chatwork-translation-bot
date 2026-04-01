@@ -8,7 +8,9 @@ import { CONTEXT_TEMPLATES } from '~/lib/context-templates'
 interface ContextFieldProps {
   value: string
   onChange: (value: string) => void
-  error?: string
+  error?: string | undefined
+  maxLength?: number
+  note?: string | undefined
 }
 
 const CANDY_PROGRESS_SEGMENTS = [
@@ -99,7 +101,16 @@ function renderCandyProgressSegments(layer: 'ghost' | 'filled') {
   ))
 }
 
-export function ContextField({ value, onChange, error }: ContextFieldProps) {
+const DEFAULT_CONTEXT_NOTE =
+  'This context will be included in the system prompt for every translation in this room.'
+
+export function ContextField({
+  value,
+  onChange,
+  error,
+  maxLength = 500,
+  note = DEFAULT_CONTEXT_NOTE,
+}: ContextFieldProps) {
   const [isOpen, setIsOpen] = useState(value.length > 0)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -135,8 +146,8 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
   }, [isOpen])
 
   const charCount = value.length
-  const charPct = Math.min((charCount / 500) * 100, 100)
-  const isNearLimit = charCount > 450
+  const charPct = Math.min((charCount / maxLength) * 100, 100)
+  const isNearLimit = charCount >= Math.max(Math.floor(maxLength * 0.9), maxLength - 50)
   const progressStyle = {
     '--context-candy-progress': `${charPct.toString()}%`,
   } as CSSProperties
@@ -225,7 +236,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
                 boxShadow: '1.5px 1.5px 0 #5c8b52',
               }}
             >
-              {charCount} / 500
+              {charCount} / {maxLength}
             </span>
           ) : (
             <span
@@ -280,7 +291,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
                       ].join(' ')}
                       value={value}
                       onChange={handleTextareaChange}
-                      maxLength={500}
+                      maxLength={maxLength}
                       placeholder="Select a template → or write directly here…"
                     />
                   </div>
@@ -291,7 +302,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
                       role="progressbar"
                       aria-label="Translation context character usage"
                       aria-valuemin={0}
-                      aria-valuemax={500}
+                      aria-valuemax={maxLength}
                       aria-valuenow={charCount}
                     >
                       <div
@@ -310,7 +321,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
                     <span
                       className={`font-metric w-[5.75rem] shrink-0 tabular-nums text-right text-xs font-medium whitespace-nowrap ${isNearLimit ? 'text-[var(--error)]' : 'text-[var(--text-secondary)]'}`}
                     >
-                      {charCount} / 500
+                      {charCount} / {maxLength}
                     </span>
                   </div>
                   {charCount > 0 && (
@@ -407,10 +418,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
 
               <p className="font-ui-body mt-3 flex items-start gap-2 rounded-xl border-2 border-dashed border-[rgba(110,119,229,0.4)] bg-[rgba(228,219,255,0.4)] px-3 py-2 text-xs leading-relaxed text-[var(--text-secondary)]">
                 <span aria-hidden>💡</span>
-                <span>
-                  This context will be included in the system prompt for every translation in this
-                  room.
-                </span>
+                <span>{note}</span>
               </p>
             </div>
           </motion.div>

@@ -4,19 +4,37 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { ContextField } from '~/components/molecules/context-field'
 import { CONTEXT_TEMPLATES } from '~/lib/context-templates'
 
-function render(props: { value?: string; onChange?: (v: string) => void; error?: string }) {
+function render(props: {
+  value?: string
+  onChange?: (v: string) => void
+  error?: string
+  maxLength?: number
+  note?: string
+}) {
   const handleChange =
     props.onChange ??
     ((v: string) => {
       // noop
       void v
     })
-  const propsToPass: { value: string; onChange: (v: string) => void; error?: string } = {
+  const propsToPass: {
+    value: string
+    onChange: (v: string) => void
+    error?: string
+    maxLength?: number
+    note?: string
+  } = {
     value: props.value ?? '',
     onChange: handleChange,
   }
   if (props.error !== undefined) {
     propsToPass.error = props.error
+  }
+  if (props.maxLength !== undefined) {
+    propsToPass.maxLength = props.maxLength
+  }
+  if (props.note !== undefined) {
+    propsToPass.note = props.note
   }
   return renderToStaticMarkup(createElement(ContextField, propsToPass))
 }
@@ -118,5 +136,23 @@ describe('ContextField', () => {
   it('renders the context note about system prompt', () => {
     const html = render({ value: 'some context' })
     expect(html).toContain('system prompt')
+  })
+
+  it('honors a custom maxLength in both textarea and counter', () => {
+    const html = render({ value: 'hello world', maxLength: 100 })
+
+    expect(html).toContain('maxLength="100"')
+    expect(html).toContain('11 / 100')
+    expect(html).not.toContain('11 / 500')
+  })
+
+  it('renders a configurable note string when provided', () => {
+    const html = render({
+      value: 'some context',
+      note: 'This context is sent to Kagi as request context.',
+    })
+
+    expect(html).toContain('This context is sent to Kagi as request context.')
+    expect(html).not.toContain('This context will be included in the system prompt')
   })
 })

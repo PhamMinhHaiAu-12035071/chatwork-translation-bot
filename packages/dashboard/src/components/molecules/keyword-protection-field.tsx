@@ -1,22 +1,27 @@
 import { useState, useRef } from 'react'
-import type { KeywordEntryFormInput } from '~/lib/room-schema'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { BrutalInput } from '~/components/atoms/brutal-input'
 import { BrutalSelect } from '~/components/atoms/brutal-select'
 import { Icon } from '~/components/atoms/icons'
 
-type KeywordCategory = 'company' | 'person' | 'project' | 'code' | 'other'
+export type KeywordProtectionCategory = 'company' | 'person' | 'project' | 'code' | 'other'
+
+export interface KeywordProtectionEntry {
+  keyword: string
+  category: KeywordProtectionCategory
+  placeholder?: string | undefined
+}
 
 interface KeywordProtectionFieldProps {
-  value: KeywordEntryFormInput[]
-  onChange: (value: KeywordEntryFormInput[]) => void
+  value: KeywordProtectionEntry[]
+  onChange: (value: KeywordProtectionEntry[]) => void
 }
 
 // ── Category config ────────────────────────────────────────────────
 // Colors aligned with dashboard design system using CSS variables:
 // company → --sky-accent, person → --pink-accent, project → --success, code → --warning
 const CATEGORY_CONFIG: Record<
-  KeywordCategory,
+  KeywordProtectionCategory,
   { label: string; bg: string; accent: string; number: string }
 > = {
   company: {
@@ -36,7 +41,7 @@ const CATEGORY_CONFIG: Record<
   other: { label: 'OTHER', bg: 'rgba(156, 163, 175, 0.11)', accent: '#9ca3af', number: '#6b7280' },
 }
 
-const CATEGORY_PREFIX: Record<KeywordCategory, string> = {
+const CATEGORY_PREFIX: Record<KeywordProtectionCategory, string> = {
   company: 'COMPANY',
   person: 'PERSON',
   project: 'PROJECT',
@@ -44,15 +49,12 @@ const CATEGORY_PREFIX: Record<KeywordCategory, string> = {
   other: 'TERM',
 }
 
-function getAutoPlaceholder(category: KeywordCategory, index: number): string {
+function getAutoPlaceholder(category: KeywordProtectionCategory, index: number): string {
   return `[${CATEGORY_PREFIX[category]}_${(index + 1).toString()}]`
 }
 
-function getEffectivePlaceholder(entry: KeywordEntryFormInput, indexInCategory: number): string {
-  return (
-    entry.placeholder?.trim() ??
-    getAutoPlaceholder(entry.category as KeywordCategory, indexInCategory)
-  )
+function getEffectivePlaceholder(entry: KeywordProtectionEntry, indexInCategory: number): string {
+  return entry.placeholder?.trim() ?? getAutoPlaceholder(entry.category, indexInCategory)
 }
 
 // ── Component ─────────────────────────────────────────────────────
@@ -63,7 +65,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
 
   // Add-form state
   const [addKeyword, setAddKeyword] = useState('')
-  const [addCategory, setAddCategory] = useState<KeywordCategory>('company')
+  const [addCategory, setAddCategory] = useState<KeywordProtectionCategory>('company')
   const [addPlaceholder, setAddPlaceholder] = useState('')
   const [addError, setAddError] = useState('')
   const shouldReduceMotion = useReducedMotion()
@@ -109,7 +111,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
       return
     }
 
-    const entry: KeywordEntryFormInput = {
+    const entry: KeywordProtectionEntry = {
       keyword: trimmed,
       category: addCategory,
       ...(addPlaceholder.trim() ? { placeholder: addPlaceholder.trim() } : {}),
@@ -131,9 +133,9 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
   }
 
   // Compute category-indexed placeholders for display
-  const categoryCounts: Partial<Record<KeywordCategory, number>> = {}
+  const categoryCounts: Partial<Record<KeywordProtectionCategory, number>> = {}
   const keywordsWithPlaceholder = internalKeywords.map((entry) => {
-    const cat = entry.category as KeywordCategory
+    const cat = entry.category
     categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1
     return {
       ...entry,
@@ -267,7 +269,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
               {/* Rows */}
               <AnimatePresence initial={false}>
                 {keywordsWithPlaceholder.map((entry, index) => {
-                  const cat = entry.category as KeywordCategory
+                  const cat = entry.category
                   const cfg = CATEGORY_CONFIG[cat]
                   return (
                     <motion.div
@@ -467,7 +469,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 ]}
                 value={addCategory}
                 onChange={(e) => {
-                  setAddCategory(e.target.value as KeywordCategory)
+                  setAddCategory(e.target.value as KeywordProtectionCategory)
                 }}
                 colorVariant="rose"
                 className="bg-[#ffe4e6]"

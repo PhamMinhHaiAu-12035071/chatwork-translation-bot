@@ -37,6 +37,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
       onChange,
       value: valueProp,
       defaultValue,
+      disabled,
       ...rest
     },
     ref,
@@ -71,6 +72,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
     const displayLabel = selectedOption?.label ?? placeholder ?? ''
 
     const openDropdown = () => {
+      if (disabled) return
       if (!triggerRef.current) return
       const rect = triggerRef.current.getBoundingClientRect()
       setPanelPos({
@@ -86,10 +88,13 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
     const closeDropdown = () => {
       setIsOpen(false)
       setActiveIndex(-1)
-      triggerRef.current?.focus()
+      if (!disabled) {
+        triggerRef.current?.focus()
+      }
     }
 
     const selectOption = (value: string) => {
+      if (disabled) return
       const select = hiddenSelectRef.current
       if (!select) return
 
@@ -106,6 +111,7 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
     }
 
     const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
+      if (disabled) return
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
         openDropdown()
@@ -140,6 +146,13 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
           break
       }
     }
+
+    useEffect(() => {
+      if (disabled && isOpen) {
+        setIsOpen(false)
+        setActiveIndex(-1)
+      }
+    }, [disabled, isOpen])
 
     useEffect(() => {
       if (!isOpen || !panelRef.current) return
@@ -228,16 +241,19 @@ export const BrutalSelect = forwardRef<HTMLSelectElement, BrutalSelectProps>(
           className={[
             'brutal-input flex w-full min-w-0 items-center justify-between px-4 py-2.5',
             'font-ui-body text-sm text-[var(--text-primary)]',
-            'cursor-pointer text-left',
+            disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+            'text-left',
             error ? 'brutal-input-error' : '',
             className ?? '',
           ]
             .filter(Boolean)
             .join(' ')}
+          disabled={disabled}
           onClick={openDropdown}
           onKeyDown={handleTriggerKeyDown}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
+          aria-disabled={disabled}
           aria-label={label}
         >
           <span className="flex min-w-0 flex-1 items-center gap-x-2">
