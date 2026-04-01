@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,9 +8,15 @@ import type { translateRoutes as TranslateRoutesType } from './router'
 const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
 process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
 const mockHandleTranslateRequest = mock((_command: unknown, _context: unknown) => Promise.resolve())
+const mockHandleFreeTranslateRequest = mock((_command: unknown, _context: unknown) =>
+  Promise.resolve(),
+)
 
 void mock.module('./handler', () => ({
   handleTranslateRequest: mockHandleTranslateRequest,
+}))
+void mock.module('./free-handler', () => ({
+  handleFreeTranslateRequest: mockHandleFreeTranslateRequest,
 }))
 
 describe('translateRoutes', () => {
@@ -37,6 +43,17 @@ describe('translateRoutes', () => {
   afterAll(() => {
     delete process.env['OUTPUT_BASE_DIR']
     rmSync(routerTestOutputDir, { recursive: true, force: true })
+  })
+
+  beforeEach(() => {
+    mockHandleTranslateRequest.mockClear()
+    mockHandleFreeTranslateRequest.mockClear()
+    mockHandleTranslateRequest.mockImplementation((_command: unknown, _context: unknown) =>
+      Promise.resolve(),
+    )
+    mockHandleFreeTranslateRequest.mockImplementation((_command: unknown, _context: unknown) =>
+      Promise.resolve(),
+    )
   })
 
   const validPayload = {
@@ -79,13 +96,17 @@ describe('translateRoutes', () => {
         body: JSON.stringify(validPayload),
       }),
     )
+    await Bun.sleep(0)
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('OK')
+    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(1)
+    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('forwards x-trace-id into the handler context wrapper', async () => {
+  it('forwards x-trace-id into both handler context wrappers', async () => {
     const traceId = 'trace-123-for-router-test'
     const callCountBefore = mockHandleTranslateRequest.mock.calls.length
+    const freeCallCountBefore = mockHandleFreeTranslateRequest.mock.calls.length
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
         method: 'POST',
@@ -96,12 +117,34 @@ describe('translateRoutes', () => {
         body: JSON.stringify(validPayload),
       }),
     )
+    await Bun.sleep(0)
 
     expect(res.status).toBe(200)
     expect(mockHandleTranslateRequest.mock.calls.length).toBe(callCountBefore + 1)
+    expect(mockHandleFreeTranslateRequest.mock.calls.length).toBe(freeCallCountBefore + 1)
     expect(mockHandleTranslateRequest.mock.calls.at(-1)?.[1]).toMatchObject({
       traceId,
     })
+    expect(mockHandleFreeTranslateRequest.mock.calls.at(-1)?.[1]).toMatchObject({
+      traceId,
+    })
+  })
+
+  it('continues dispatching the Standard handler when the Free handler rejects', async () => {
+    mockHandleFreeTranslateRequest.mockImplementationOnce(() => Promise.reject(new Error('boom')))
+
+    const res = await app.handle(
+      new Request('http://localhost/internal/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validPayload),
+      }),
+    )
+    await Bun.sleep(0)
+
+    expect(res.status).toBe(200)
+    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(1)
+    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(1)
   })
 
   it('POST /internal/translate with missing command returns 422', async () => {

@@ -13,6 +13,7 @@ export const translatorEnvSchema = z.object({
     .string()
     .length(64, 'ROOM_CONFIG_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)'),
   ROOM_CONFIG_DATA_DIR: z.string().default('./data'),
+  KAGI_TRANSLATOR_URL: z.url().default('http://kagi-translator:3002'),
   TRANSLATOR_PHASE_HEARTBEAT_MS: z.coerce.number().int().positive().default(30_000),
   TRANSLATOR_TRANSLATION_BUDGET_MS: z.coerce.number().int().positive().default(60_000),
   TRANSLATOR_DELIVERY_BUDGET_MS: z.coerce.number().int().positive().default(45_000),

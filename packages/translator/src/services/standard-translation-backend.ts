@@ -13,6 +13,16 @@ export interface StandardTranslationRuntimeConfig {
 
 interface StandardTranslationBackendDeps {
   decryptApiToken: (encryptedAiApiToken: string) => Promise<string>
+  resolveProviderPlugin?: typeof getProviderPlugin
+  createPipeline?: (
+    executor: ReturnType<ProviderPlugin['create']>,
+    options: {
+      timeoutMs: number
+      translationStyle: RoomConfig['translationStyle']
+      roomContext?: string
+      keywordSystemHint?: string
+    },
+  ) => Pick<TranslationPipeline, 'runStructured'>
 }
 
 export class StandardTranslationBackend implements RoomTranslationBackend<StandardTranslationRuntimeConfig> {
@@ -34,7 +44,8 @@ export class StandardTranslationBackend implements RoomTranslationBackend<Standa
   }): Promise<RoomTranslationBackendResult> {
     const { roomConfig, timeoutMs } = input.runtimeConfig
     const aiApiToken = await this.deps.decryptApiToken(roomConfig.encryptedAiApiToken)
-    const plugin = input.runtimeConfig.plugin ?? getProviderPlugin(roomConfig.aiProvider)
+    const resolveProviderPlugin = this.deps.resolveProviderPlugin ?? getProviderPlugin
+    const plugin = input.runtimeConfig.plugin ?? resolveProviderPlugin(roomConfig.aiProvider)
     const modelId =
       input.runtimeConfig.modelId ?? roomConfig.aiModel ?? plugin.manifest.defaultModel
     const ctx: ProviderCreateContext = {
@@ -61,7 +72,10 @@ export class StandardTranslationBackend implements RoomTranslationBackend<Standa
       pipelineOpts.keywordSystemHint = input.keywordSystemHint
     }
 
-    const pipeline = new TranslationPipeline(executor, pipelineOpts)
+    const createPipeline =
+      this.deps.createPipeline ??
+      ((createdExecutor, options) => new TranslationPipeline(createdExecutor, options))
+    const pipeline = createPipeline(executor, pipelineOpts)
     const pipelineResult = await pipeline.runStructured(
       {
         cleanText: input.cleanText,

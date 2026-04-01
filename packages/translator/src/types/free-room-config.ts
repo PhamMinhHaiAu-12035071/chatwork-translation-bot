@@ -36,7 +36,6 @@ export type FreeRoomConfigFile = z.infer<typeof FreeRoomConfigFileSchema>
 
 export const CreateFreeRoomRequestSchema = z.object({
   originalRoomId: z.number().int().positive(),
-  destinationRoomId: z.number().int().positive(),
   destinationRoomName: z.string().min(1).max(128),
   kagiStyle: z.enum(FREE_ROOM_KAGI_STYLE_VALUES).default('Clear'),
   context: z.string().max(100).nullable().optional().default(null),

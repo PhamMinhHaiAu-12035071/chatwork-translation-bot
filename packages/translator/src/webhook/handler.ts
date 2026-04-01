@@ -18,6 +18,13 @@ import {
 interface HandleTranslateRequestDeps {
   store: RoomConfigStore
   chatworkApiToken: string
+  resolveProviderPlugin?: typeof getProviderPlugin
+  standardBackend?: StandardTranslationBackend
+  orchestrateRoomTranslation?: ReturnType<typeof createRoomTranslationOrchestrator>
+  pipelineTimeoutMs?: number
+  getPipelineTimeoutMs?: () => number
+  hasExplicitPipelineTimeoutOverride?: () => boolean
+  resolvePipelineTimeout?: typeof resolvePipelineTimeout
 }
 
 interface TranslateRequestContext {
@@ -37,12 +44,26 @@ export function initTranslateHandler(deps: HandleTranslateRequestDeps): void {
 }
 
 export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
-  const orchestrateRoomTranslation = createRoomTranslationOrchestrator({
-    chatworkApiToken: deps.chatworkApiToken,
-  })
-  const standardBackend = new StandardTranslationBackend({
-    decryptApiToken: (encryptedAiApiToken) => deps.store.decryptApiToken(encryptedAiApiToken),
-  })
+  const orchestrateRoomTranslation =
+    deps.orchestrateRoomTranslation ??
+    createRoomTranslationOrchestrator({
+      chatworkApiToken: deps.chatworkApiToken,
+    })
+  const standardBackend =
+    deps.standardBackend ??
+    new StandardTranslationBackend({
+      decryptApiToken: (encryptedAiApiToken) => deps.store.decryptApiToken(encryptedAiApiToken),
+      ...(deps.resolveProviderPlugin !== undefined
+        ? { resolveProviderPlugin: deps.resolveProviderPlugin }
+        : {}),
+    })
+  const resolveProviderPlugin = deps.resolveProviderPlugin ?? getProviderPlugin
+  const resolveTimeout = deps.resolvePipelineTimeout ?? resolvePipelineTimeout
+  const hasExplicitTimeoutOverride =
+    deps.hasExplicitPipelineTimeoutOverride ?? hasExplicitPipelineTimeoutOverride
+  const getPipelineTimeoutMs =
+    deps.getPipelineTimeoutMs ??
+    (() => deps.pipelineTimeoutMs ?? env.TRANSLATOR_PIPELINE_TIMEOUT_MS)
 
   return async function handleTranslateRequest(
     command: TranslationIngressCommand,
@@ -100,12 +121,12 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       return
     }
 
-    const plugin = getProviderPlugin(roomConfig.aiProvider)
+    const plugin = resolveProviderPlugin(roomConfig.aiProvider)
     const modelId = roomConfig.aiModel ?? plugin.manifest.defaultModel
     const translationStyle = roomConfig.translationStyle
-    const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
-      envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,
-      hasEnvOverride: hasExplicitPipelineTimeoutOverride(),
+    const { effectiveTimeoutMs, timeoutSource } = resolveTimeout({
+      envTimeoutMs: getPipelineTimeoutMs(),
+      hasEnvOverride: hasExplicitTimeoutOverride(),
       providerTimeoutMs: plugin.manifest.timeoutMs,
     })
 

@@ -2,11 +2,14 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, mock 
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { TranslationIngressCommand } from '@chatwork-bot/core'
+import { TranslationError } from '@chatwork-bot/core'
+import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
 import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
 import type * as OutputWriter from '~/utils/output-writer'
+import type { createRoomTranslationOrchestrator as CreateRoomTranslationOrchestrator } from '~/services/room-translation-orchestrator'
 import type { RoomConfigStore } from '~/services/room-config-store'
-import type { OutputRecord } from '~/types/output'
+import type { OutputDelivery, OutputDeliveryMessage, OutputRecord } from '~/types/output'
+import type { StandardTranslationBackend } from '~/services/standard-translation-backend'
 
 // ── Pipeline fixtures (single executor call) ─────────────────────────────────
 
@@ -43,6 +46,8 @@ const mockWriteTranslationOutput = mock((_record: OutputRecord, _baseDir?: strin
   Promise.resolve(),
 )
 let realWriteTranslationOutput: (record: OutputRecord, baseDir?: string) => Promise<void>
+let createRoomTranslationOrchestrator: typeof CreateRoomTranslationOrchestrator | null = null
+let StandardTranslationBackendCtor: typeof StandardTranslationBackend | null = null
 
 function createMockExecutor(): ILLMExecutor {
   return {
@@ -86,8 +91,6 @@ function createMockProvider(id: string, executor: ILLMExecutor, timeoutMs = 1_80
   }
 }
 
-// ── Module mocks ───────────────────────────────────────────────────────────────
-
 const _mockPluginCreate = mock((_ctx: unknown) => createMockExecutor())
 const mockGetProviderPlugin = mock((_id: string) => ({
   ...createMockProvider('openai', createMockExecutor()),
@@ -110,20 +113,157 @@ const mockEnv = {
 const testOutputDir = mkdtempSync(join(tmpdir(), 'handler-test-'))
 process.env['OUTPUT_BASE_DIR'] = testOutputDir
 
-class MockTranslationError extends Error {
-  constructor(
-    message: string,
-    public readonly code:
-      | 'API_ERROR'
-      | 'QUOTA_EXCEEDED'
-      | 'INVALID_RESPONSE'
-      | 'UNKNOWN'
-      | 'ABORTED'
-      | 'TIMEOUT',
-    public override readonly cause?: unknown,
-  ) {
-    super(message)
-    this.name = 'TranslationError'
+function toDeliveryError(error: unknown): { errorCode: string; errorMessage: string } {
+  if (error instanceof Error) {
+    return {
+      errorCode: error.constructor.name,
+      errorMessage: error.message,
+    }
+  }
+
+  return {
+    errorCode: 'UnknownError',
+    errorMessage: String(error),
+  }
+}
+
+async function fakeSendTranslatedMessage(
+  command: TranslationIngressCommand,
+  result: TranslationResult,
+  config: {
+    apiToken: string
+    destinationRoomId: number
+    translatedSegments?: string[]
+  },
+): Promise<OutputDelivery> {
+  const sentAt = new Date().toISOString()
+
+  try {
+    const translatedSegments =
+      config.translatedSegments ??
+      (command.translationInputs.length === 0 ? [] : [result.translatedText])
+    const { metadataMessage, bodyMessage } = await mockComposeTranslatedMessagePair(command, {
+      apiToken: config.apiToken,
+      translatedSegments,
+    })
+
+    let metadataDelivery: OutputDeliveryMessage
+    try {
+      const response = await mockSendRoomMessage(
+        config.destinationRoomId,
+        metadataMessage,
+        config.apiToken,
+      )
+      metadataDelivery = {
+        kind: 'metadata',
+        status: 'sent',
+        destinationMessageId: response.message_id,
+      }
+    } catch (error) {
+      const { errorCode, errorMessage } = toDeliveryError(error)
+      return {
+        status: 'failed',
+        destinationRoomId: config.destinationRoomId,
+        sentAt,
+        messages: [
+          {
+            kind: 'metadata',
+            status: 'failed',
+            errorCode,
+            errorMessage,
+          },
+        ],
+        errorCode,
+        errorMessage,
+      }
+    }
+
+    try {
+      const response = await mockSendRoomMessage(
+        config.destinationRoomId,
+        bodyMessage,
+        config.apiToken,
+      )
+      return {
+        status: 'sent',
+        destinationRoomId: config.destinationRoomId,
+        sentAt,
+        destinationMessageId: response.message_id,
+        messages: [
+          metadataDelivery,
+          {
+            kind: 'body',
+            status: 'sent',
+            destinationMessageId: response.message_id,
+          },
+        ],
+      }
+    } catch (error) {
+      const { errorCode, errorMessage } = toDeliveryError(error)
+      return {
+        status: 'partial',
+        destinationRoomId: config.destinationRoomId,
+        sentAt,
+        messages: [
+          metadataDelivery,
+          {
+            kind: 'body',
+            status: 'failed',
+            errorCode,
+            errorMessage,
+          },
+        ],
+        errorCode,
+        errorMessage,
+      }
+    }
+  } catch (error) {
+    const { errorCode, errorMessage } = toDeliveryError(error)
+    return {
+      status: 'failed',
+      destinationRoomId: config.destinationRoomId,
+      sentAt,
+      errorCode,
+      errorMessage,
+    }
+  }
+}
+
+function buildDatasetRunnerAckPayload(params: {
+  sourceMessageId: string
+  delivery: {
+    status: 'sent' | 'partial' | 'failed'
+    destinationRoomId: number
+    destinationMessageId?: string
+    errorCode?: string
+    errorMessage?: string
+  }
+  ackedAt: string
+}) {
+  if (params.delivery.status === 'partial') {
+    return {
+      sourceMessageId: params.sourceMessageId,
+      status: 'failed' as const,
+      destinationRoomId: params.delivery.destinationRoomId,
+      errorCode: 'PARTIAL_DELIVERY',
+      errorMessage:
+        params.delivery.errorMessage ?? 'Metadata message sent but body delivery failed',
+      ackedAt: params.ackedAt,
+    }
+  }
+
+  return {
+    sourceMessageId: params.sourceMessageId,
+    status: params.delivery.status,
+    destinationRoomId: params.delivery.destinationRoomId,
+    ...(params.delivery.destinationMessageId !== undefined
+      ? { destinationMessageId: params.delivery.destinationMessageId }
+      : {}),
+    ...(params.delivery.errorCode !== undefined ? { errorCode: params.delivery.errorCode } : {}),
+    ...(params.delivery.errorMessage !== undefined
+      ? { errorMessage: params.delivery.errorMessage }
+      : {}),
+    ackedAt: params.ackedAt,
   }
 }
 
@@ -165,6 +305,11 @@ describe('handleTranslateRequest', () => {
   let createHandleTranslateRequest: (deps: {
     store: RoomConfigStore
     chatworkApiToken: string
+    resolveProviderPlugin?: typeof mockGetProviderPlugin
+    standardBackend?: StandardTranslationBackend
+    orchestrateRoomTranslation?: ReturnType<NonNullable<typeof createRoomTranslationOrchestrator>>
+    getPipelineTimeoutMs?: () => number
+    hasExplicitPipelineTimeoutOverride?: () => boolean
   }) => (command: TranslationIngressCommand, context?: { traceId?: string }) => Promise<void>
   let handleTranslateRequest: (
     command: TranslationIngressCommand,
@@ -175,82 +320,32 @@ describe('handleTranslateRequest', () => {
   let enabledRoomId: string
 
   beforeAll(async () => {
-    const realCore = await import('@chatwork-bot/core')
-    const realChatwork = await import('@chatwork-bot/chatwork')
+    process.env['CHATWORK_API_TOKEN'] = 'test-token'
+    process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
+    process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = ROOM_CONFIG_KEY_HEX
+    process.env['ROOM_CONFIG_DATA_DIR'] = testOutputDir
     const outputWriterModuleUnknown: unknown = await import(
       `~/utils/output-writer?real=${crypto.randomUUID()}`
     )
     const realOutputWriter = outputWriterModuleUnknown as OutputWriterModule
     realWriteTranslationOutput = (record: OutputRecord, baseDir?: string) =>
       realOutputWriter.writeTranslationOutput(record, baseDir)
-
-    void mock.module('@chatwork-bot/core', () => ({
-      ...realCore,
-      getProviderPlugin: mockGetProviderPlugin,
-      TranslationError: MockTranslationError,
-    }))
-
-    void mock.module('@chatwork-bot/chatwork', () => ({
-      ...realChatwork,
-      composeTranslatedMessagePair: mockComposeTranslatedMessagePair,
-      sendRoomMessage: mockSendRoomMessage,
-    }))
-
-    void mock.module('~/services/dataset-runner-callback', () => ({
-      buildDatasetRunnerAckPayload: (params: {
-        sourceMessageId: string
-        delivery: {
-          status: 'sent' | 'partial' | 'failed'
-          destinationRoomId: number
-          destinationMessageId?: string
-          errorCode?: string
-          errorMessage?: string
-        }
-        ackedAt: string
-      }) => {
-        if (params.delivery.status === 'partial') {
-          return {
-            sourceMessageId: params.sourceMessageId,
-            status: 'failed' as const,
-            destinationRoomId: params.delivery.destinationRoomId,
-            errorCode: 'PARTIAL_DELIVERY',
-            errorMessage:
-              params.delivery.errorMessage ?? 'Metadata message sent but body delivery failed',
-            ackedAt: params.ackedAt,
-          }
-        }
-
-        return {
-          sourceMessageId: params.sourceMessageId,
-          status: params.delivery.status,
-          destinationRoomId: params.delivery.destinationRoomId,
-          ...(params.delivery.destinationMessageId !== undefined
-            ? { destinationMessageId: params.delivery.destinationMessageId }
-            : {}),
-          ...(params.delivery.errorCode !== undefined
-            ? { errorCode: params.delivery.errorCode }
-            : {}),
-          ...(params.delivery.errorMessage !== undefined
-            ? { errorMessage: params.delivery.errorMessage }
-            : {}),
-          ackedAt: params.ackedAt,
-        }
-      },
-      notifyDatasetRunner: mockNotifyDatasetRunner,
-    }))
-
-    void mock.module('../env', () => ({
-      env: mockEnv,
-    }))
-    void mock.module('~/utils/output-writer', () => ({
-      ...realOutputWriter,
-      writeTranslationOutput: mockWriteTranslationOutput,
-    }))
-
     const mod = (await import(`./handler?${crypto.randomUUID()}`)) as {
       createHandleTranslateRequest: typeof createHandleTranslateRequest
     }
     createHandleTranslateRequest = mod.createHandleTranslateRequest
+    const orchestratorMod = (await import(
+      `~/services/room-translation-orchestrator?test=${crypto.randomUUID()}`
+    )) as {
+      createRoomTranslationOrchestrator: typeof CreateRoomTranslationOrchestrator
+    }
+    createRoomTranslationOrchestrator = orchestratorMod.createRoomTranslationOrchestrator
+    const standardBackendModule = (await import(
+      `~/services/standard-translation-backend?test=${crypto.randomUUID()}`
+    )) as {
+      StandardTranslationBackend: typeof StandardTranslationBackend
+    }
+    StandardTranslationBackendCtor = standardBackendModule.StandardTranslationBackend
   })
 
   afterAll(() => {
@@ -315,6 +410,9 @@ describe('handleTranslateRequest', () => {
 
   beforeEach(async () => {
     const { RoomConfigStore } = await import('~/services/room-config-store')
+    if (createRoomTranslationOrchestrator === null || StandardTranslationBackendCtor === null) {
+      throw new Error('Handler test dependencies not initialized')
+    }
 
     storeDataDir = mkdtempSync(join(tmpdir(), 'room-config-store-'))
     store = new RoomConfigStore({
@@ -335,9 +433,26 @@ describe('handleTranslateRequest', () => {
     enabledRoomId = room.id
     await store.setEnabled(room.id, true)
 
+    const orchestrateRoomTranslation = createRoomTranslationOrchestrator({
+      chatworkApiToken: mockEnv.CHATWORK_API_TOKEN,
+      writeTranslationOutput: mockWriteTranslationOutput,
+      sendTranslatedMessage: fakeSendTranslatedMessage,
+      notifyDatasetRunner: mockNotifyDatasetRunner,
+      buildDatasetRunnerAckPayload,
+    })
+    const standardBackend = new StandardTranslationBackendCtor({
+      decryptApiToken: (encryptedAiApiToken) => store.decryptApiToken(encryptedAiApiToken),
+      resolveProviderPlugin: mockGetProviderPlugin,
+    })
     handleTranslateRequest = createHandleTranslateRequest({
       store,
       chatworkApiToken: mockEnv.CHATWORK_API_TOKEN,
+      resolveProviderPlugin: mockGetProviderPlugin,
+      standardBackend,
+      orchestrateRoomTranslation,
+      getPipelineTimeoutMs: () => mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS,
+      hasExplicitPipelineTimeoutOverride: () =>
+        process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] !== undefined,
     })
   })
 
@@ -600,7 +715,7 @@ describe('handleTranslateRequest', () => {
 
     mockGetProviderPlugin.mockImplementation(() =>
       createMockProvider('openai', {
-        execute: () => Promise.reject(new MockTranslationError('translate failed', 'API_ERROR')),
+        execute: () => Promise.reject(new TranslationError('translate failed', 'API_ERROR')),
         describeExecution: () => ({
           generation: {
             temperature: 0,
@@ -905,6 +1020,12 @@ describe('handleTranslateRequest', () => {
   })
 
   it('full flow: message with sensitive keyword → AI call never contains original → Chatwork reply has original restored', async () => {
+    if (StandardTranslationBackendCtor === null || createRoomTranslationOrchestrator === null) {
+      throw new Error('Handler test dependencies not initialized')
+    }
+    const standardTranslationBackendCtor = StandardTranslationBackendCtor
+    const makeRoomTranslationOrchestrator = createRoomTranslationOrchestrator
+
     // Arrange: create a custom executor that captures prompts
     let capturedPromptUser = ''
 
@@ -963,6 +1084,21 @@ describe('handleTranslateRequest', () => {
           default: m.createHandleTranslateRequest({
             store: customStore,
             chatworkApiToken: 'token',
+            resolveProviderPlugin: mockGetProviderPlugin,
+            standardBackend: new standardTranslationBackendCtor({
+              decryptApiToken: (token) => Promise.resolve(token),
+              resolveProviderPlugin: mockGetProviderPlugin,
+            }),
+            orchestrateRoomTranslation: makeRoomTranslationOrchestrator({
+              chatworkApiToken: 'token',
+              writeTranslationOutput: mockWriteTranslationOutput,
+              sendTranslatedMessage: fakeSendTranslatedMessage,
+              notifyDatasetRunner: mockNotifyDatasetRunner,
+              buildDatasetRunnerAckPayload,
+            }),
+            getPipelineTimeoutMs: () => mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS,
+            hasExplicitPipelineTimeoutOverride: () =>
+              process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] !== undefined,
           }),
         }),
       )
@@ -1179,7 +1315,7 @@ describe('handleTranslateRequest', () => {
         'openai',
         {
           execute<T>(_prompts: PromptPair, _schema: ISchema<T>): Promise<T> {
-            return Promise.reject(new MockTranslationError('bad', 'INVALID_RESPONSE'))
+            return Promise.reject(new TranslationError('bad', 'INVALID_RESPONSE'))
           },
           describeExecution() {
             return {

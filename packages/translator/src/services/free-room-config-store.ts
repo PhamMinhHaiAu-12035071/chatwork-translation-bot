@@ -23,6 +23,7 @@ interface FreeRoomConfigStoreOptions {
 }
 
 interface CreateFreeRoomStoreParams extends Omit<CreateFreeRoomRequest, 'context'> {
+  destinationRoomId: number
   context?: string | null
 }
 

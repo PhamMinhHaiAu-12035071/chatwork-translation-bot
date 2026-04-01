@@ -108,9 +108,6 @@
     "packages/provider-kagi": {
       "name": "@chatwork-bot/provider-kagi",
       "version": "1.0.0",
-      "dependencies": {
-        "@chatwork-bot/kagi-sidecar": "workspace:*",
-      },
     },
     "packages/provider-openai": {
       "name": "@chatwork-bot/provider-openai",
@@ -138,6 +135,7 @@
         "@chatwork-bot/core": "workspace:*",
         "@chatwork-bot/provider-cursor": "workspace:*",
         "@chatwork-bot/provider-gemini": "workspace:*",
+        "@chatwork-bot/provider-kagi": "workspace:*",
         "@chatwork-bot/provider-openai": "workspace:*",
         "@chatwork-bot/translation-prompt": "workspace:*",
         "@elysiajs/cors": "^1.3.3",

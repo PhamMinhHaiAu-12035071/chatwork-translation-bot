@@ -5,19 +5,22 @@ import logixlysia from 'logixlysia'
 import { healthRoutes } from './routes/health'
 import { providerHealthRoute } from './routes/provider-health'
 import { providersRoute } from './routes/providers'
+import { createFreeRoomsRoutes } from './routes/free-rooms'
 import { createRoomsRoutes } from './routes/rooms'
 import { createStatusRoute } from './routes/status'
 import { staticRoutes, spaCatchAll } from './routes/static'
 import { getTranslatorStatusSnapshot } from './services/translator-observability-runtime'
 import { translateRoutes } from './webhook/router'
 import { env } from './env'
+import type { FreeRoomConfigStore } from './services/free-room-config-store'
 import type { RoomConfigStore } from './services/room-config-store'
 
 interface AppOptions {
   store: RoomConfigStore
+  freeStore: FreeRoomConfigStore
 }
 
-export function createApp({ store }: AppOptions) {
+export function createApp({ store, freeStore }: AppOptions) {
   const app = new Elysia({ name: 'translator' })
 
   // Guard: không chạy logixlysia trong test — tránh log noise trong test runner.
@@ -56,6 +59,13 @@ export function createApp({ store }: AppOptions) {
     .use(
       createRoomsRoutes({
         store,
+        chatworkApiToken: env.CHATWORK_API_TOKEN,
+        chatworkBotAccountId: env.CHATWORK_BOT_ACCOUNT_ID,
+      }),
+    )
+    .use(
+      createFreeRoomsRoutes({
+        store: freeStore,
         chatworkApiToken: env.CHATWORK_API_TOKEN,
         chatworkBotAccountId: env.CHATWORK_BOT_ACCOUNT_ID,
       }),

@@ -18,6 +18,7 @@
     "@chatwork-bot/core": "workspace:*",
     "@chatwork-bot/provider-cursor": "workspace:*",
     "@chatwork-bot/provider-gemini": "workspace:*",
+    "@chatwork-bot/provider-kagi": "workspace:*",
     "@chatwork-bot/provider-openai": "workspace:*",
     "@chatwork-bot/translation-prompt": "workspace:*",
     "@elysiajs/cors": "^1.3.3",
