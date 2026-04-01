@@ -172,8 +172,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
           transition: 'all 0.12s ease',
           ...(isOpen
             ? {
-                borderColor: '#6b7ae8',
-                boxShadow: '5px 5px 0 #6b7ae8',
+                boxShadow: '5px 5px 0 #1a1a2e',
                 transform: 'translate(-1px, -1px)',
               }
             : {}),
