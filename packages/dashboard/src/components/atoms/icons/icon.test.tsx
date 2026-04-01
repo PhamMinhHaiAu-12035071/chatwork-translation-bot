@@ -195,3 +195,13 @@ describe('Icon clay — check', () => {
     expect(html).toContain('M14 22L19.5 28L31 15')
   })
 })
+
+describe('Icon clay — clear', () => {
+  it('renders coral pink gradient and X paths', () => {
+    const html = renderToStaticMarkup(createElement(Icon, { name: 'clear', variant: 'clay' }))
+    expect(html).toContain('#ffcfd9')
+    expect(html).toContain('#ff8fa3')
+    expect(html).toContain('M14 14L30 30')
+    expect(html).toContain('M30 14L14 30')
+  })
+})

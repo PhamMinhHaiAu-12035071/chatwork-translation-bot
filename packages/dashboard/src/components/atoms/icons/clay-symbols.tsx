@@ -223,4 +223,11 @@ export const CLAY_SYMBOLS: Record<ClayIconName, () => React.JSX.Element> = {
       fill="none"
     />
   ),
+
+  clear: () => (
+    <>
+      <path d="M14 14L30 30" stroke="#1a1a2e" strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M30 14L14 30" stroke="#1a1a2e" strokeWidth="4.5" strokeLinecap="round" />
+    </>
+  ),
 }

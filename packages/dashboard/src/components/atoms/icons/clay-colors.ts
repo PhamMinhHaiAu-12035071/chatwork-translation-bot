@@ -17,4 +17,5 @@ export const CLAY_COLORS: Record<ClayIconName, ClayColorDef> = {
   pause: { from: '#fef9d0', to: '#f9d44a' }, // butter      → --warning
   play: { from: '#c8f5e0', to: '#4dd8a0' }, // mint        → --success
   check: { from: '#d4edc8', to: '#8fc777' }, // soft mint   → Translation Context accent
+  clear: { from: '#ffcfd9', to: '#ff8fa3' }, // coral pink  → Clear button accent
 }

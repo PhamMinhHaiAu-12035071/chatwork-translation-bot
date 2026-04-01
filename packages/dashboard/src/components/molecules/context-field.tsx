@@ -303,7 +303,7 @@ export function ContextField({ value, onChange, error }: ContextFieldProps) {
                       className="brutal-clear-button self-start"
                       aria-label="Clear context"
                     >
-                      <span style={{ fontSize: '0.85rem', lineHeight: 1 }}>✕</span>
+                      <Icon name="clear" variant="clay" size={16} aria-hidden />
                       Clear
                     </button>
                   )}

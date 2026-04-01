@@ -18,6 +18,7 @@ export type ClayIconName =
   | 'pause'
   | 'play'
   | 'check'
+  | 'clear'
 
 export type IconName = StrokeIconName | ClayIconName
 export type IconVariant = 'stroke' | 'clay'
