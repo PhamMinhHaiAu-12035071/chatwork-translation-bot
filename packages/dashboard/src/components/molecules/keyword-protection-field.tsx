@@ -420,7 +420,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 placeholder="e.g. Asia Vion"
                 maxLength={100}
                 style={{
-                  padding: '8px 12px',
+                  padding: '10px 16px',
                   border: '2px solid #1a1a2e',
                   borderRadius: 8,
                   background: '#fff',
@@ -477,7 +477,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
                 placeholder={previewPlaceholder}
                 maxLength={50}
                 style={{
-                  padding: '8px 12px',
+                  padding: '10px 16px',
                   border: '2px dashed #1a1a2e',
                   borderRadius: 8,
                   background: '#fff',
