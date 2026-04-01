@@ -1,0 +1,186 @@
+import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import type { RoomConfig } from '~/types/room-config'
+
+const mockGetProviderPlugin = mock((_providerId: string) => ({
+  manifest: {
+    id: 'openai',
+    defaultModel: 'gpt-4o',
+    supportedModels: ['gpt-4o'],
+    capabilities: { streaming: false },
+    timeoutMs: 1_800_000,
+  },
+  create: mock((_ctx: unknown) => ({
+    execute: mock((_prompts: unknown, _schema: unknown) => Promise.resolve({})),
+    describeExecution: () => ({
+      generation: {
+        temperature: 0,
+        maxOutputTokens: 4000,
+        providerOptions: null,
+        providerManaged: false,
+      },
+    }),
+  })),
+}))
+
+const mockPipelineConstructor = mock((_executor: unknown, _opts: unknown) => undefined)
+const mockRunStructured = mock((_input: unknown, _options: unknown) =>
+  Promise.resolve({
+    translation: {
+      cleanText: 'Hello\nBye',
+      translatedText: 'Xin chao\nTam biet',
+      sourceLang: 'English',
+      targetLang: 'Vietnamese',
+      timestamp: '2026-04-01T00:00:00.000Z',
+    },
+    translatedSegments: ['Xin chao', 'Tam biet'],
+    debug: {
+      prompts: {
+        system: 'system prompt',
+        user: 'user prompt',
+      },
+      promptMode: 'structured_segments' as const,
+    },
+  }),
+)
+
+describe('StandardTranslationBackend', () => {
+  let StandardTranslationBackend:
+    | (new (deps: { decryptApiToken: (encryptedAiApiToken: string) => Promise<string> }) => {
+        translate(input: {
+          cleanText: string
+          translationInputs: string[]
+          roomContext?: string
+          keywordSystemHint?: string
+          runtimeConfig: {
+            roomConfig: RoomConfig
+            timeoutMs: number
+          }
+        }): Promise<{
+          sourceLang: string
+          translatedText: string
+          translatedSegments: string[]
+        }>
+      })
+    | null = null
+
+  beforeAll(async () => {
+    const realCore = await import('@chatwork-bot/core')
+
+    void mock.module('@chatwork-bot/core', () => ({
+      ...realCore,
+      getProviderPlugin: mockGetProviderPlugin,
+    }))
+
+    class MockTranslationPipeline {
+      constructor(executor: unknown, opts: unknown) {
+        mockPipelineConstructor(executor, opts)
+      }
+
+      runStructured(input: unknown, options: unknown) {
+        return mockRunStructured(input, options)
+      }
+    }
+
+    void mock.module('~/pipeline/pipeline', () => ({
+      TranslationPipeline: MockTranslationPipeline,
+    }))
+    void mock.module('../pipeline/pipeline', () => ({
+      TranslationPipeline: MockTranslationPipeline,
+    }))
+
+    const backendModule = (await import(
+      `./standard-translation-backend?test=${crypto.randomUUID()}`
+    )) as {
+      StandardTranslationBackend: NonNullable<typeof StandardTranslationBackend>
+    }
+
+    StandardTranslationBackend = backendModule.StandardTranslationBackend
+  })
+
+  beforeEach(() => {
+    mockGetProviderPlugin.mockClear()
+    mockPipelineConstructor.mockClear()
+    mockRunStructured.mockClear()
+  })
+
+  it('resolves provider plugin, decrypts the token, and passes runtime options into the pipeline', async () => {
+    if (StandardTranslationBackend === null) {
+      throw new Error('StandardTranslationBackend not initialized')
+    }
+
+    const decryptApiToken = mock((_encrypted: string) => Promise.resolve('room-openai-token'))
+    const mockExecutor = {
+      execute: mock((_prompts: unknown, _schema: unknown) => Promise.resolve({})),
+      describeExecution: () => ({
+        generation: {
+          temperature: 0,
+          maxOutputTokens: 4000,
+          providerOptions: null,
+          providerManaged: false,
+        },
+      }),
+    }
+    const pluginCreate = mock((_ctx: unknown) => mockExecutor)
+
+    mockGetProviderPlugin.mockReturnValue({
+      manifest: {
+        id: 'openai',
+        defaultModel: 'gpt-4o',
+        supportedModels: ['gpt-4o', 'gpt-5.4'],
+        capabilities: { streaming: false },
+        timeoutMs: 1_800_000,
+      },
+      create: pluginCreate,
+    })
+
+    const backend = new StandardTranslationBackend({ decryptApiToken })
+    const roomConfig: RoomConfig = {
+      id: 'room-1',
+      originalRoomId: 1001,
+      destinationRoomId: 2001,
+      destinationRoomName: 'Output Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-5.4',
+      translationStyle: 'TECHNICAL',
+      context: null,
+      encryptedAiApiToken: 'encrypted-token',
+      enabled: true,
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+    }
+
+    const result = await backend.translate({
+      cleanText: 'Hello\nBye',
+      translationInputs: ['Hello', 'Bye'],
+      roomContext: 'project room',
+      keywordSystemHint: 'Preserve [COMPANY_1]',
+      runtimeConfig: {
+        roomConfig,
+        timeoutMs: 12_345,
+      },
+    })
+
+    expect(decryptApiToken.mock.calls).toEqual([['encrypted-token']])
+    expect(mockGetProviderPlugin.mock.calls).toEqual([['openai']])
+    expect(pluginCreate.mock.calls[0]?.[0]).toMatchObject({
+      modelId: 'gpt-5.4',
+      apiKey: 'room-openai-token',
+      translationStyle: 'TECHNICAL',
+    })
+    expect(mockPipelineConstructor.mock.calls[0]?.[1]).toMatchObject({
+      timeoutMs: 12_345,
+      translationStyle: 'TECHNICAL',
+      roomContext: 'project room',
+      keywordSystemHint: 'Preserve [COMPANY_1]',
+    })
+    expect(mockRunStructured.mock.calls[0]?.[0]).toEqual({
+      cleanText: 'Hello\nBye',
+      translationInputs: ['Hello', 'Bye'],
+    })
+    expect(result).toMatchObject({
+      sourceLang: 'English',
+      translatedText: 'Xin chao\nTam biet',
+      translatedSegments: ['Xin chao', 'Tam biet'],
+    })
+  })
+})

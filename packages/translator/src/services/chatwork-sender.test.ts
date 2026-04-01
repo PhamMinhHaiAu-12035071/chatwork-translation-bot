@@ -276,6 +276,26 @@ describe('sendTranslatedMessage', () => {
     })
   })
 
+  it('returns failed and sends nothing when compose validation fails before delivery starts', async () => {
+    mockComposeTranslatedMessagePair.mockImplementationOnce(() =>
+      Promise.reject(new Error('Composed translated body changed the original message structure')),
+    )
+
+    const delivery = await sendTranslatedMessage(makeCommand(), makeResult(), {
+      apiToken: 'test-token',
+      destinationRoomId: 55555,
+      translatedSegments: ['[info]Injected[/info]'],
+    })
+
+    expect(mockSendRoomMessage.mock.calls).toHaveLength(0)
+    expect(delivery).toMatchObject({
+      status: 'failed',
+      destinationRoomId: 55555,
+      errorCode: 'Error',
+      errorMessage: 'Composed translated body changed the original message structure',
+    })
+  })
+
   it('still delivers both messages when translatedSegments is empty but the body has meaningful literal structure', async () => {
     const literalBodyMessage = '[code]const x = 1[/code]'
 

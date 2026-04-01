@@ -1,34 +1,19 @@
 import { createHash } from 'node:crypto'
-import { getProviderPlugin, TranslationError } from '@chatwork-bot/core'
-import type {
-  TranslationIngressCommand,
-  ProviderCreateContext,
-  TranslationResult,
-} from '@chatwork-bot/core'
-import type { TranslatorLogEntry } from '~/types/observability'
+import { getProviderPlugin } from '@chatwork-bot/core'
+import type { TranslationIngressCommand } from '@chatwork-bot/core'
 import { TRANSLATION_PROMPT_BUILD_ID } from '@chatwork-bot/translation-prompt'
+import { hasMeaningfulLiteralStructure } from '~/services/message-structure'
 import type { RoomConfigStore } from '~/services/room-config-store'
-import { mask as maskKeywords, restore as restoreKeywords } from '~/services/keyword-redactor'
 import { env } from '~/env'
-import { TranslationPipeline } from '~/pipeline/pipeline'
-import { writeTranslationOutput } from '~/utils/output-writer'
-import { sendTranslatedMessage } from '~/services/chatwork-sender'
-import { resolveOutputOrigin } from '~/services/output-origin'
-import {
-  buildDatasetRunnerAckPayload,
-  notifyDatasetRunner,
-} from '~/services/dataset-runner-callback'
-import type { OutputDelivery } from '~/types/output'
-import {
-  getTranslatorObservabilityConfig,
-  getTranslatorStatusStore,
-  logTranslatorEvent,
-} from '~/services/translator-observability-runtime'
 import {
   hasExplicitPipelineTimeoutOverride,
   resolvePipelineTimeout,
 } from '~/services/pipeline-timeout'
-import { createPhaseObserver } from '~/services/phase-observer'
+import { createRoomTranslationOrchestrator } from '~/services/room-translation-orchestrator'
+import {
+  StandardTranslationBackend,
+  type StandardTranslationRuntimeConfig,
+} from '~/services/standard-translation-backend'
 
 interface HandleTranslateRequestDeps {
   store: RoomConfigStore
@@ -52,6 +37,13 @@ export function initTranslateHandler(deps: HandleTranslateRequestDeps): void {
 }
 
 export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
+  const orchestrateRoomTranslation = createRoomTranslationOrchestrator({
+    chatworkApiToken: deps.chatworkApiToken,
+  })
+  const standardBackend = new StandardTranslationBackend({
+    decryptApiToken: (encryptedAiApiToken) => deps.store.decryptApiToken(encryptedAiApiToken),
+  })
+
   return async function handleTranslateRequest(
     command: TranslationIngressCommand,
     context: TranslateRequestContext = {},
@@ -108,335 +100,78 @@ export function createHandleTranslateRequest(deps: HandleTranslateRequestDeps) {
       return
     }
 
-    const cleanText = command.translatableText
-    const aiApiToken = await deps.store.decryptApiToken(roomConfig.encryptedAiApiToken)
     const plugin = getProviderPlugin(roomConfig.aiProvider)
     const modelId = roomConfig.aiModel ?? plugin.manifest.defaultModel
     const translationStyle = roomConfig.translationStyle
-    const ctx: ProviderCreateContext = {
-      modelId,
-      apiKey: aiApiToken,
-      translationStyle,
-    }
-    const executor = plugin.create(ctx)
     const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
       envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,
       hasEnvOverride: hasExplicitPipelineTimeoutOverride(),
       providerTimeoutMs: plugin.manifest.timeoutMs,
     })
 
-    console.log(
-      JSON.stringify({
-        level: 'info',
-        service: 'translator',
-        event: 'translation_room_resolved',
-        timestamp: new Date().toISOString(),
-        traceId,
-        sourceMessageId: command.sourceMessageId,
-        sourceRoomId: command.sourceRoomId,
-        roomConfigId: roomConfig.id,
-        destinationRoomId: roomConfig.destinationRoomId,
+    await orchestrateRoomTranslation({
+      command,
+      traceId,
+      room: {
+        id: roomConfig.id,
         enabled: roomConfig.enabled,
-      }),
-    )
-
-    const requestId = crypto.randomUUID()
-    const origin = await resolveOutputOrigin(
-      command.sourceMessageId,
-      process.env['DATASET_INPUT_DIR'] ?? './input',
-    )
-    const observer = createPhaseObserver({
-      logger: logTranslatorEvent,
-      statusStore: getTranslatorStatusStore(),
-      ...getTranslatorObservabilityConfig(),
-      request: {
-        requestId,
-        traceId,
-        sourceMessageId: command.sourceMessageId,
-        originType: origin.type,
+        destinationRoomId: roomConfig.destinationRoomId,
+        context: roomConfig.context,
+        ...(roomConfig.protectedKeywords !== undefined
+          ? { protectedKeywords: roomConfig.protectedKeywords }
+          : {}),
+      },
+      backend: standardBackend,
+      runtimeConfig: {
+        roomConfig,
+        timeoutMs: effectiveTimeoutMs,
+        plugin,
+        modelId,
+      } satisfies StandardTranslationRuntimeConfig,
+      metadata: {
         provider: roomConfig.aiProvider,
         model: modelId,
         translationStyle,
-        roomId: command.sourceRoomId,
-        inputLength: Array.from(cleanText).length,
         pipelineTimeoutMs: effectiveTimeoutMs,
         pipelineTimeoutSource: timeoutSource,
-        ...(origin.datasetFile !== undefined ? { datasetFile: origin.datasetFile } : {}),
-        ...(origin.datasetItemId !== undefined ? { datasetItemId: origin.datasetItemId } : {}),
-        ...(origin.datasetLineNumber !== undefined
-          ? { datasetLineNumber: origin.datasetLineNumber }
-          : {}),
+        buildOutputLlm: ({ backendResult }) => {
+          const debug = backendResult.debug as
+            | {
+                prompts?: { system: string; user: string }
+                promptMode?: 'single_text' | 'structured_segments'
+                generation?: {
+                  temperature: number | null
+                  maxOutputTokens: number | null
+                  providerOptions: Record<string, unknown> | null
+                  providerManaged: boolean
+                }
+              }
+            | undefined
+          if (
+            debug?.prompts === undefined ||
+            debug.promptMode === undefined ||
+            debug.generation === undefined
+          ) {
+            return undefined
+          }
+
+          return {
+            provider: roomConfig.aiProvider,
+            model: modelId,
+            translationStyle,
+            promptMode: debug.promptMode,
+            promptBuildId: TRANSLATION_PROMPT_BUILD_ID,
+            prompt: {
+              system: debug.prompts.system,
+              user: debug.prompts.user,
+              systemSha256: sha256(debug.prompts.system),
+              userSha256: sha256(debug.prompts.user),
+            },
+            generation: debug.generation,
+          }
+        },
       },
     })
-
-    observer.markRequestReceived()
-    observer.logEvent('info', 'translation_provider_selected', {
-      aiProvider: roomConfig.aiProvider,
-      resolvedModel: modelId,
-      translationStyle,
-    })
-    observer.logEvent('info', 'translation_pipeline_started', {
-      sourceMessageId: command.sourceMessageId,
-    })
-
-    const callbackUrl =
-      process.env['DATASET_RUNNER_CALLBACK_URL'] ??
-      'http://dataset-runner:3002/internal/delivery-acks'
-
-    const notifyDatasetRunnerAck = async (delivery: OutputDelivery): Promise<void> => {
-      if (origin.type !== 'automation') return
-
-      await observer.runPhase('ack_callback', async () => {
-        observer.logEvent('info', 'translation_ack_callback_started', {
-          phase: 'ack_callback',
-          ackStatus: 'sent',
-        })
-
-        try {
-          await notifyDatasetRunner(
-            buildDatasetRunnerAckPayload({
-              sourceMessageId: command.sourceMessageId,
-              delivery,
-              ackedAt: new Date().toISOString(),
-            }),
-            { callbackUrl },
-          )
-          observer.logEvent('info', 'translation_ack_callback_completed', {
-            phase: 'ack_callback',
-            ackStatus: 'sent',
-          })
-        } catch (error) {
-          observer.logEvent('error', 'translation_ack_callback_failed', {
-            phase: 'ack_callback',
-            ackStatus: 'failed',
-            errorCode: error instanceof Error ? error.name : 'UnknownError',
-            errorMessage: error instanceof Error ? error.message : String(error),
-          })
-          throw error
-        }
-      })
-    }
-
-    try {
-      // Derive trimmed context once for logging and pipeline
-      const trimmedRoomContext = roomConfig.context?.trim()
-      const hasRoomContextForPipeline =
-        trimmedRoomContext !== undefined && trimmedRoomContext.length > 0
-
-      if (hasRoomContextForPipeline) {
-        observer.logEvent('info', 'translation_context_applied', {
-          roomContextApplied: true,
-          roomContextLength: Array.from(trimmedRoomContext).length,
-        } as Partial<TranslatorLogEntry>)
-      }
-
-      // Mask sensitive keywords before any AI call
-      const keywords = roomConfig.protectedKeywords ?? []
-      const { maskedText, restoreMap, systemHint } = maskKeywords(cleanText, keywords)
-      const maskedTranslationInputs = command.translationInputs.map(
-        (segment) => maskKeywords(segment, keywords).maskedText,
-      )
-
-      const primaryTextChangedByMask = cleanText.normalize('NFC') !== maskedText
-      const segmentsChangedByMaskCount = command.translationInputs.filter(
-        (seg, idx) => seg.normalize('NFC') !== maskedTranslationInputs[idx],
-      ).length
-
-      observer.logEvent('info', 'translation_keywords_masked', {
-        configuredKeywordCount: keywords.length,
-        primaryTextChangedByMask,
-        translationInputSegmentCount: command.translationInputs.length,
-        segmentsChangedByMaskCount,
-        hasSystemHint: systemHint.length > 0,
-      } as Partial<TranslatorLogEntry>)
-
-      const pipelineOpts: {
-        timeoutMs: number
-        translationStyle: typeof translationStyle
-        roomContext?: string
-        keywordSystemHint?: string
-      } = {
-        timeoutMs: effectiveTimeoutMs,
-        translationStyle,
-      }
-      if (hasRoomContextForPipeline) {
-        pipelineOpts.roomContext = trimmedRoomContext
-      }
-      if (systemHint) {
-        pipelineOpts.keywordSystemHint = systemHint
-      }
-      const pipeline = new TranslationPipeline(executor, pipelineOpts)
-      const pipelineResult = await pipeline.runStructured(
-        {
-          cleanText: maskedText,
-          translationInputs: maskedTranslationInputs,
-        },
-        {
-          phaseObserver: {
-            onPhaseStarted: ({ phase }) => {
-              observer.markPhaseStarted(phase, {})
-            },
-            onPhaseCompleted: () => {
-              observer.markPhaseCompleted()
-            },
-            onPhaseFailed: ({ error }) => {
-              observer.markPhaseFailed(error)
-            },
-          },
-        },
-      )
-
-      // Restore original keywords in translated output
-      const result: TranslationResult = {
-        ...pipelineResult.translation,
-        cleanText, // restore unmasked original
-        translatedText: restoreKeywords(pipelineResult.translation.translatedText, restoreMap),
-      }
-      const restoredTranslatedSegments = pipelineResult.translatedSegments.map((seg) =>
-        restoreKeywords(seg, restoreMap),
-      )
-
-      const primaryTranslationChangedByRestore =
-        pipelineResult.translation.translatedText !== result.translatedText
-      const segmentsChangedByRestoreCount = pipelineResult.translatedSegments.filter(
-        (seg, idx) => seg !== restoredTranslatedSegments[idx],
-      ).length
-
-      observer.logEvent('info', 'translation_keywords_restored', {
-        configuredKeywordCount: keywords.length,
-        primaryTranslationChangedByRestore,
-        segmentsChangedByRestoreCount,
-      } as Partial<TranslatorLogEntry>)
-
-      const outputBaseDir = process.env['OUTPUT_BASE_DIR']
-      const llm =
-        pipelineResult.debug === undefined
-          ? undefined
-          : {
-              provider: roomConfig.aiProvider,
-              model: modelId,
-              translationStyle,
-              promptMode: pipelineResult.debug.promptMode,
-              promptBuildId: TRANSLATION_PROMPT_BUILD_ID,
-              prompt: {
-                system: pipelineResult.debug.prompts.system,
-                user: pipelineResult.debug.prompts.user,
-                systemSha256: sha256(pipelineResult.debug.prompts.system),
-                userSha256: sha256(pipelineResult.debug.prompts.user),
-              },
-              generation: executor.describeExecution().generation,
-            }
-      const outputRecord = { command, translation: result, origin, ...(llm ? { llm } : {}) }
-
-      await writeTranslationOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
-
-      const delivery = await observer.runPhase('delivery', async () => {
-        observer.logEvent('info', 'translation_delivery_started', {
-          phase: 'delivery',
-        })
-
-        const deliveryResult = await sendTranslatedMessage(command, result, {
-          apiToken: deps.chatworkApiToken,
-          destinationRoomId: roomConfig.destinationRoomId,
-          translatedSegments: restoredTranslatedSegments,
-        })
-
-        if (deliveryResult.status === 'failed') {
-          observer.logEvent('error', 'translation_delivery_failed', {
-            phase: 'delivery',
-            deliveryStatus: deliveryResult.status,
-            ...(deliveryResult.errorCode !== undefined
-              ? { errorCode: deliveryResult.errorCode }
-              : {}),
-            ...(deliveryResult.errorMessage !== undefined
-              ? { errorMessage: deliveryResult.errorMessage }
-              : {}),
-          })
-        } else {
-          observer.logEvent('info', 'translation_delivery_completed', {
-            phase: 'delivery',
-            deliveryStatus: deliveryResult.status,
-          })
-        }
-
-        return deliveryResult
-      })
-
-      try {
-        await writeTranslationOutput(
-          { ...outputRecord, delivery },
-          ...(outputBaseDir ? [outputBaseDir] : []),
-        )
-        observer.logEvent('info', 'translation_output_persisted', {
-          deliveryStatus: delivery.status,
-        })
-      } catch (error) {
-        const messageId = command.sourceMessageId
-        console.error(
-          JSON.stringify({
-            level: 'error',
-            service: 'translator',
-            event: 'output-rewrite-failed',
-            timestamp: new Date().toISOString(),
-            traceId,
-            messageId,
-            errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
-            error: error instanceof Error ? error.message : String(error),
-            context: { origin: outputRecord.origin, deliveryStatus: delivery.status },
-          }),
-        )
-        throw error
-      }
-
-      await notifyDatasetRunnerAck(delivery)
-
-      observer.completeRequest({
-        finalPhase: origin.type === 'automation' ? 'ack_callback' : 'delivery',
-        deliveryStatus: delivery.status,
-        ...(origin.type === 'automation' ? { ackStatus: 'sent' as const } : {}),
-      })
-    } catch (error) {
-      const errorCode =
-        error instanceof TranslationError
-          ? error.code
-          : error instanceof Error
-            ? error.name
-            : 'UnknownError'
-      const errorMessage = error instanceof Error ? error.message : String(error)
-
-      if (origin.type === 'automation') {
-        const failedDelivery: OutputDelivery = {
-          status: 'failed',
-          destinationRoomId: roomConfig.destinationRoomId,
-          sentAt: new Date().toISOString(),
-          errorCode,
-          errorMessage,
-        }
-
-        try {
-          await notifyDatasetRunnerAck(failedDelivery)
-        } catch {
-          // Ack callback failure is intentionally logged inside notifyDatasetRunnerAck.
-          // Fallthrough to report the original translation error to keep error visibility.
-        }
-      }
-
-      if (error instanceof TranslationError) {
-        observer.failRequest({
-          finalStatus: error.code === 'ABORTED' ? 'aborted' : 'failed',
-          errorCode: error.code,
-          errorMessage: error.message,
-        })
-        return
-      }
-
-      observer.failRequest({
-        finalStatus: 'failed',
-        errorCode: error instanceof Error ? error.name : 'UnknownError',
-        errorMessage: error instanceof Error ? error.message : String(error),
-      })
-      throw error
-    }
   }
 }
 
@@ -449,36 +184,4 @@ export async function handleTranslateRequest(
   }
 
   return translateRequestHandler(command, context)
-}
-
-interface DecorationSnapshotEnvelope {
-  snapshot?: {
-    renderTemplate?: MessageRenderNodeLike[]
-  }
-}
-
-type MessageRenderNodeLike =
-  | { type: 'literal'; content?: string }
-  | { type: 'translationSlot' }
-  | { type: 'hr' }
-  | { type: 'code'; content?: string }
-  | { type: 'info' | 'title' | 'quote' | 'qt'; children?: MessageRenderNodeLike[] }
-
-function hasMeaningfulLiteralStructure(command: TranslationIngressCommand): boolean {
-  const rawSnapshot = command.audit.rawSourceSnapshot as DecorationSnapshotEnvelope
-  const renderTemplate = rawSnapshot.snapshot?.renderTemplate
-  if (renderTemplate === undefined) return false
-  return renderNodesHaveMeaningfulLiteralStructure(renderTemplate)
-}
-
-function renderNodesHaveMeaningfulLiteralStructure(nodes: MessageRenderNodeLike[]): boolean {
-  return nodes.some((node) => renderNodeHasMeaningfulLiteralStructure(node))
-}
-
-function renderNodeHasMeaningfulLiteralStructure(node: MessageRenderNodeLike): boolean {
-  if (node.type === 'translationSlot') return false
-  if (node.type === 'hr') return true
-  if (node.type === 'literal') return (node.content?.trim().length ?? 0) > 0
-  if (node.type === 'code') return (node.content?.trim().length ?? 0) > 0
-  return renderNodesHaveMeaningfulLiteralStructure(node.children ?? [])
 }

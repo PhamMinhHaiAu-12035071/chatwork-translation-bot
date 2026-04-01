@@ -257,4 +257,25 @@ describe('composeTranslatedMessagePair', () => {
 
     expect(result.bodyMessage).toBe('[code]const x = 1[/code]')
   })
+
+  it('fails closed when translated content injects unexpected Chatwork structure', async () => {
+    const command = makeCommand('Hello world')
+
+    await composeTranslatedMessagePair(command, {
+      translatedSegments: ['[info]Injected[/info]'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Alice']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    }).then(
+      () => {
+        throw new Error('Expected structure validation to fail')
+      },
+      (error: unknown) => {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).message).toBe(
+          'Composed translated body changed the original message structure',
+        )
+      },
+    )
+  })
 })

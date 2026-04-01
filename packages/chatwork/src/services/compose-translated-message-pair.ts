@@ -5,6 +5,7 @@ import type {
   MessageRenderNode,
   QuoteMeta,
 } from '~/types/message-decoration'
+import { parseMessageDecoration } from './parse-message-decoration'
 import { resolveRoomDisplayName } from './resolve-room-display-name'
 import { resolveRoomMemberDisplayName } from './resolve-room-member-display-name'
 
@@ -106,6 +107,8 @@ export async function composeTranslatedMessagePair(
 
   const bodyMessage = await renderNodes(snapshot.renderTemplate)
 
+  validateComposedBodyStructure(snapshot.renderTemplate, bodyMessage)
+
   if (nextTranslationIndex !== params.translatedSegments.length) {
     throw new Error('Unused translated segments remained after composing message body')
   }
@@ -146,6 +149,53 @@ function buildQtmetaTag(quoteMeta: QuoteMeta): string {
     parts.push(`time=${String(quoteMeta.timestamp)}`)
   }
   return parts.length > 0 ? `[qtmeta ${parts.join(' ')}]` : ''
+}
+
+function validateComposedBodyStructure(
+  originalRenderTemplate: MessageRenderNode[],
+  composedBody: string,
+): void {
+  const reparsedTemplate = parseMessageDecoration(composedBody).renderTemplate
+  const originalSignature = createStructureSignature(originalRenderTemplate)
+  const reparsedSignature = createStructureSignature(reparsedTemplate)
+
+  if (originalSignature !== reparsedSignature) {
+    throw new Error('Composed translated body changed the original message structure')
+  }
+}
+
+function createStructureSignature(nodes: MessageRenderNode[]): string {
+  return nodes.map((node) => createNodeStructureSignature(node)).join('|')
+}
+
+function createNodeStructureSignature(node: MessageRenderNode): string {
+  if (node.type === 'literal') {
+    return node.content.trim().length === 0
+      ? `literal:whitespace:${JSON.stringify(node.content)}`
+      : 'literal:text'
+  }
+
+  if (node.type === 'translationSlot') {
+    return 'literal:text'
+  }
+
+  if (node.type === 'hr') {
+    return 'hr'
+  }
+
+  if (node.type === 'code') {
+    return `code:${JSON.stringify(node.content)}`
+  }
+
+  if (node.type === 'rp') {
+    return `rp:${node.replyToData.replyAccountId.toString()}:${node.replyToData.replyRoomId.toString()}:${node.replyToData.replyMessageId}`
+  }
+
+  if (node.type === 'info' || node.type === 'title' || node.type === 'quote') {
+    return `${node.type}(${createStructureSignature(node.children)})`
+  }
+
+  return `qt:${node.quoteMeta.senderAccountId?.toString() ?? ''}:${node.quoteMeta.timestamp?.toString() ?? ''}(${createStructureSignature(node.children)})`
 }
 
 async function resolveMemberDisplayNameSafe(
