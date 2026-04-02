@@ -8,7 +8,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '~': resolve(__dirname, 'src'),
+      'next/navigation': resolve(__dirname, 'src/mocks/next-navigation.ts'),
     },
+  },
+  ssr: {
+    noExternal: ['nextstepjs', 'motion'],
   },
   server: {
     port: 5173,
