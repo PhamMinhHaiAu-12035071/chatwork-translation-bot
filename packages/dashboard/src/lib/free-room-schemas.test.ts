@@ -32,13 +32,13 @@ describe('free-room-schemas', () => {
     const parsed = freeRoomEditSchema.parse({
       originalRoomId: 424846369,
       destinationRoomName: 'Sakura Desk JP Free',
-      kagiStyle: 'Smart',
+      kagiStyle: 'Polite',
       context: '',
       protectedKeywords: [],
     })
 
     expect(parsed.originalRoomId).toBe(424846369)
-    expect(parsed.kagiStyle).toBe('Smart')
+    expect(parsed.kagiStyle).toBe('Polite')
     expect(parsed.context).toBe('')
   })
 
@@ -60,6 +60,19 @@ describe('free-room-schemas', () => {
   })
 
   it('exposes all supported Kagi styles for UI options', () => {
-    expect(FREE_ROOM_KAGI_STYLES).toEqual(['Wild', 'Easy', 'Clear', 'Smart', 'Fine', 'True'])
+    expect(FREE_ROOM_KAGI_STYLES).toEqual([
+      'Wild',
+      'Warm',
+      'Easy',
+      'Clear',
+      'Smart',
+      'Deep',
+      'Fine',
+      'Polite',
+      'Elegant',
+      'True',
+      'Precise',
+      'Exact',
+    ])
   })
 })

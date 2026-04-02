@@ -1,17 +1,11 @@
+import { KAGI_STYLE_LABELS, KAGI_STYLE_VALUES } from '@chatwork-bot/provider-kagi'
 import { z } from 'zod'
 
-export const FREE_ROOM_KAGI_STYLES = ['Wild', 'Easy', 'Clear', 'Smart', 'Fine', 'True'] as const
+export const FREE_ROOM_KAGI_STYLES = KAGI_STYLE_VALUES
 
 export type FreeRoomKagiStyle = (typeof FREE_ROOM_KAGI_STYLES)[number]
 
-export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = {
-  Wild: 'Wild',
-  Easy: 'Easy',
-  Clear: 'Clear',
-  Smart: 'Smart',
-  Fine: 'Fine',
-  True: 'True',
-}
+export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = KAGI_STYLE_LABELS
 
 export const FREE_ROOM_PROVIDER_OPTIONS = [
   {

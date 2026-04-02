@@ -133,7 +133,7 @@ describe('free room routes', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           destinationRoomName: 'Renamed Free Room',
-          kagiStyle: 'Wild',
+          kagiStyle: 'Polite',
         }),
       }),
     )
@@ -143,7 +143,7 @@ describe('free room routes', () => {
     expect(body.success).toBe(true)
     expect(body.data).toMatchObject({
       destinationRoomName: 'Renamed Free Room',
-      kagiStyle: 'Wild',
+      kagiStyle: 'Polite',
     })
     expect(mockUpdateChatworkRoom).toHaveBeenCalledTimes(1)
   })

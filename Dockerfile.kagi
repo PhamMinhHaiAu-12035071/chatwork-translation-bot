@@ -4,6 +4,20 @@ FROM oven/bun:1.3 AS deps
 WORKDIR /app
 
 COPY package.json bun.lock* ./
+COPY tsconfig.base.json ./
+
+# All workspace package.json files (required for workspace resolution)
+COPY packages/core/package.json packages/core/
+COPY packages/chatwork/package.json packages/chatwork/
+COPY packages/translation-prompt/package.json packages/translation-prompt/
+COPY packages/provider-gemini/package.json packages/provider-gemini/
+COPY packages/provider-openai/package.json packages/provider-openai/
+COPY packages/provider-cursor/package.json packages/provider-cursor/
+COPY packages/provider-kagi/package.json packages/provider-kagi/
+COPY packages/translator/package.json packages/translator/
+COPY packages/webhook-logger/package.json packages/webhook-logger/
+COPY packages/dataset-runner/package.json packages/dataset-runner/
+COPY packages/dashboard/package.json packages/dashboard/
 COPY packages/kagi-sidecar/package.json packages/kagi-sidecar/
 
 RUN bun install --frozen-lockfile
@@ -18,7 +32,7 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     fonts-noto-color-emoji \
     fonts-thai-tlwg \
-    fonts-kacst \
+    fonts-kacst-one \
     fonts-freefont-ttf \
     libnss3 \
     libatk-bridge2.0-0 \

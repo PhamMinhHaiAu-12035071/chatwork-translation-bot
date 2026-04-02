@@ -15,7 +15,7 @@ services:
     working_dir: /app
     volumes:
       - .:/app
-      # Shared named volume so bun install runs once (translator) and is reused by other services
+      # Shared named volume so translator primes dependencies once for Alpine Bun dev services.
       - node_modules:/app/node_modules
       # Named volume for bun cache — keeps it on fast Linux FS inside Docker (avoids re-downloading on container recreate)
       - bun_cache:/root/.bun/install/cache
@@ -64,9 +64,10 @@ services:
       - bun install && bun --hot packages/kagi-sidecar/src/index.ts
     working_dir: /app
     volumes:
+      # Dedicated Debian-side install so Chromium-sidecar deps never fight the Alpine services.
       - .:/app
-      - node_modules:/app/node_modules
-      - bun_cache:/root/.bun/install/cache
+      - kagi_node_modules:/app/node_modules
+      - kagi_bun_cache:/root/.bun/install/cache
     env_file:
       - .env
     environment:
@@ -77,9 +78,9 @@ services:
       - KAGI_REQUEST_TIMEOUT_MS=${KAGI_REQUEST_TIMEOUT_MS:-30000}
       - KAGI_MAX_QUEUE_DEPTH=${KAGI_MAX_QUEUE_DEPTH:-10}
       - KAGI_MAX_QUEUE_WAIT_MS=${KAGI_MAX_QUEUE_WAIT_MS:-15000}
+      - DISPLAY=:99
       - HUSKY=0
       - BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache
-      - DISPLAY=:99
     ports:
       - '${KAGI_PORT:-3002}:3002'
     tty: true
@@ -105,7 +106,7 @@ services:
     command:
       - sh
       - -c
-      - bun install && bun --hot packages/webhook-logger/src/index.ts
+      - bun --hot packages/webhook-logger/src/index.ts
     working_dir: /app
     volumes:
       - .:/app
@@ -148,7 +149,7 @@ services:
     command:
       - sh
       - -c
-      - bun install && sleep ${DATASET_RUNNER_START_DELAY:-35} && bun --hot packages/dataset-runner/src/index.ts
+      - sleep ${DATASET_RUNNER_START_DELAY:-35} && bun --hot packages/dataset-runner/src/index.ts
     working_dir: /app
     volumes:
       - .:/app
@@ -188,7 +189,7 @@ services:
     command:
       - sh
       - -c
-      - bun install && bun run --cwd packages/dashboard dev --host 0.0.0.0
+      - bun run --cwd packages/dashboard dev --host 0.0.0.0
     working_dir: /app
     volumes:
       - .:/app
@@ -204,6 +205,9 @@ services:
       - '5173:5173'
     tty: true
     networks: [chatwork-net]
+    depends_on:
+      translator:
+        condition: service_healthy
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:5173']
       interval: 30s
@@ -440,7 +444,11 @@ networks:
     driver: bridge
 
 volumes:
-  # Shared node_modules: translator installs once, other services reuse instantly
+  # Shared node_modules for Alpine Bun dev services.
   node_modules:
+  # Dedicated Debian-side node_modules for kagi-translator to avoid ABI and symlink conflicts.
+  kagi_node_modules:
   # Bun package cache on fast Linux FS — survives container recreations, avoids re-downloading packages
   bun_cache:
+  # Dedicated bun cache for kagi-translator to avoid cross-version cache races with Alpine services.
+  kagi_bun_cache:

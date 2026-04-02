@@ -1,41 +1,157 @@
 const KAGI_TRANSLATE_BASE_URL = 'https://translate.kagi.com/'
 
-export const KAGI_STYLE_VALUES = ['Wild', 'Easy', 'Clear', 'Smart', 'Fine', 'True'] as const
+type KagiTranslationType = 'natural' | 'literal'
+type KagiFormality = 'standard' | 'vietnamese_formal' | 'vietnamese_casual'
+type KagiReadingLevel = 'standard' | 'a2' | 'b2' | 'c1' | 'c2'
+
+export const KAGI_STYLE_VALUES = [
+  'Wild',
+  'Warm',
+  'Easy',
+  'Clear',
+  'Smart',
+  'Deep',
+  'Fine',
+  'Polite',
+  'Elegant',
+  'True',
+  'Precise',
+  'Exact',
+] as const
+
 export type KagiStyle = (typeof KAGI_STYLE_VALUES)[number]
 
+type KagiStylePreset = Readonly<{
+  translationType: KagiTranslationType
+  formality: KagiFormality
+  readingLevel: KagiReadingLevel
+}>
+
+const KAGI_STYLE_PRESETS: Record<KagiStyle, KagiStylePreset> = {
+  Wild: {
+    translationType: 'natural',
+    formality: 'vietnamese_casual',
+    readingLevel: 'c2',
+  },
+  Warm: {
+    translationType: 'natural',
+    formality: 'vietnamese_casual',
+    readingLevel: 'standard',
+  },
+  Easy: {
+    translationType: 'natural',
+    formality: 'standard',
+    readingLevel: 'a2',
+  },
+  Clear: {
+    translationType: 'natural',
+    formality: 'standard',
+    readingLevel: 'standard',
+  },
+  Smart: {
+    translationType: 'natural',
+    formality: 'standard',
+    readingLevel: 'c1',
+  },
+  Deep: {
+    translationType: 'natural',
+    formality: 'standard',
+    readingLevel: 'c2',
+  },
+  Fine: {
+    translationType: 'natural',
+    formality: 'vietnamese_formal',
+    readingLevel: 'standard',
+  },
+  Polite: {
+    translationType: 'natural',
+    formality: 'vietnamese_formal',
+    readingLevel: 'b2',
+  },
+  Elegant: {
+    translationType: 'natural',
+    formality: 'vietnamese_formal',
+    readingLevel: 'c2',
+  },
+  True: {
+    translationType: 'literal',
+    formality: 'standard',
+    readingLevel: 'b2',
+  },
+  Precise: {
+    translationType: 'literal',
+    formality: 'standard',
+    readingLevel: 'standard',
+  },
+  Exact: {
+    translationType: 'literal',
+    formality: 'standard',
+    readingLevel: 'c2',
+  },
+}
+
 type KagiStyleQuery = Readonly<{
-  formality?: 'more' | 'less'
+  formality?: 'more'
   formalityContext?: string
-  languageComplexity?: 'a1' | 'a2' | 'b1' | 'b2' | 'c1' | 'c2'
+  languageComplexity?: Exclude<KagiReadingLevel, 'standard'>
   style?: 'literal'
 }>
 
-const KAGI_STYLE_QUERY_MAP: Record<KagiStyle, KagiStyleQuery> = {
-  Wild: {
-    formality: 'more',
-    formalityContext: 'vi_casual',
-    languageComplexity: 'c2',
-  },
-  Easy: {
-    languageComplexity: 'a2',
-  },
-  Clear: {},
-  Smart: {
-    languageComplexity: 'c1',
-  },
-  Fine: {
-    formality: 'more',
-    formalityContext: 'vi_formal',
-  },
-  True: {
-    style: 'literal',
-    languageComplexity: 'b2',
-  },
+function mapFormality(
+  formality: KagiFormality,
+): Pick<KagiStyleQuery, 'formality' | 'formalityContext'> {
+  if (formality === 'vietnamese_formal') {
+    return {
+      formality: 'more',
+      formalityContext: 'vi_formal',
+    }
+  }
+
+  if (formality === 'vietnamese_casual') {
+    return {
+      formality: 'more',
+      formalityContext: 'vi_casual',
+    }
+  }
+
+  return {}
+}
+
+function mapReadingLevel(
+  readingLevel: KagiReadingLevel,
+): Pick<KagiStyleQuery, 'languageComplexity'> {
+  if (readingLevel === 'standard') {
+    return {}
+  }
+
+  return {
+    languageComplexity: readingLevel,
+  }
+}
+
+function mapTranslationType(translationType: KagiTranslationType): Pick<KagiStyleQuery, 'style'> {
+  if (translationType === 'literal') {
+    return {
+      style: 'literal',
+    }
+  }
+
+  return {}
+}
+
+function getStyleQuery(style: KagiStyle): KagiStyleQuery {
+  const preset = KAGI_STYLE_PRESETS[style]
+
+  return {
+    ...mapFormality(preset.formality),
+    ...mapReadingLevel(preset.readingLevel),
+    ...mapTranslationType(preset.translationType),
+  }
 }
 
 export function buildKagiUrl(text: string, style: KagiStyle, context?: string): string {
   const params = new URLSearchParams()
-  const styleParams = KAGI_STYLE_QUERY_MAP[style]
+  const styleParams = getStyleQuery(style)
   const trimmedContext = context?.trim()
 
   params.set('from', 'auto')

@@ -47,6 +47,7 @@
       "name": "@chatwork-bot/dashboard",
       "version": "1.0.0",
       "dependencies": {
+        "@chatwork-bot/provider-kagi": "workspace:*",
         "@hookform/resolvers": "^3.9.0",
         "framer-motion": "^12.6.3",
         "react": "^19.0.0",

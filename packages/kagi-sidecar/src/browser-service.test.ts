@@ -137,7 +137,9 @@ describe('KagiBrowserService', () => {
   })
 
   it('surfaces anti-abuse detection as a typed failure', async () => {
-    mockPage.content.mockResolvedValueOnce('<html><body>captcha challenge</body></html>')
+    mockPage.evaluate
+      .mockResolvedValueOnce('')
+      .mockResolvedValueOnce('Verify you are human before continuing')
 
     const service = createService()
     const translation = service.translate({ text: 'Agenda', style: 'Clear' })
@@ -152,6 +154,43 @@ describe('KagiBrowserService', () => {
         status: 429,
       })
     }
+  })
+
+  it('does not classify regular Kagi html with turnstile bootstrap markup as anti-abuse', async () => {
+    mockPage.content.mockResolvedValueOnce(
+      '<html><body><!-- Ensure Cloudflare Turnstile is loaded --></body></html>',
+    )
+
+    const service = createService()
+    const result = await service.translate({ text: 'Hello', style: 'Clear' })
+
+    expect(result.translated).toBe('Xin chao')
+  })
+
+  it('launches the browser in headful mode without resource interception', async () => {
+    const service = createService()
+
+    await service.translate({ text: 'Hello', style: 'Clear' })
+
+    expect(mockConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headless: false,
+      }),
+    )
+    expect(mockPage.setRequestInterception).not.toHaveBeenCalled()
+    expect(mockPage.on).not.toHaveBeenCalled()
+  })
+
+  it('waits for rendered translation output to stabilize before returning it', async () => {
+    mockPage.evaluate
+      .mockResolvedValueOnce('Bản dịch đang render dang dở')
+      .mockResolvedValueOnce('Bản dịch hoàn chỉnh')
+      .mockResolvedValueOnce('Bản dịch hoàn chỉnh')
+
+    const service = createService()
+    const result = await service.translate({ text: 'Hello world', style: 'Clear' })
+
+    expect(result.translated).toBe('Bản dịch hoàn chỉnh')
   })
 })
 

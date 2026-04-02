@@ -16,6 +16,34 @@ function translatePayload(
 }
 
 describe('FreeTranslationBackend', () => {
+  it('bypasses marker batching for a single-segment message', async () => {
+    const translate = mock((request: KagiTranslateRequest) =>
+      Promise.resolve({
+        translated: request.text === 'Agenda' ? 'Chương trình' : `unexpected:${request.text}`,
+      }),
+    )
+    const backend = new FreeTranslationBackend({
+      client: { translate },
+      generateToken: () => '123e4567e89b12d3a456426614174000',
+    })
+
+    const result = await backend.translate({
+      cleanText: 'Agenda',
+      translationInputs: ['Agenda'],
+      runtimeConfig: {
+        kagiStyle: 'Clear',
+        context: null,
+        maxEncodedPayloadChars: 10_000,
+        maxSegmentCount: 10,
+      },
+    })
+
+    expect(translate).toHaveBeenCalledTimes(1)
+    expect(translate.mock.calls[0]?.[0]?.text).toBe('Agenda')
+    expect(result.translatedText).toBe('Chương trình')
+    expect(result.translatedSegments).toEqual(['Chương trình'])
+  })
+
   it('makes one KagiClient.translate() call for a multi-segment message', async () => {
     const translate = mock((request: KagiTranslateRequest) =>
       Promise.resolve(
@@ -96,6 +124,7 @@ describe('FreeTranslationBackend', () => {
       Promise.resolve(
         translatePayload(request.text, {
           Agenda: 'Chương trình [[CW_SEG_123e4567e89b12d3a456426614174000_9999]]',
+          'Please review': 'Vui lòng xem',
         }),
       ),
     )
@@ -105,8 +134,8 @@ describe('FreeTranslationBackend', () => {
     })
 
     const promise = backend.translate({
-      cleanText: 'Agenda',
-      translationInputs: ['Agenda'],
+      cleanText: 'Agenda\nPlease review',
+      translationInputs: ['Agenda', 'Please review'],
       runtimeConfig: {
         kagiStyle: 'Clear',
         context: null,

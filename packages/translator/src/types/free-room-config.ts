@@ -1,16 +1,10 @@
+import { KAGI_STYLE_VALUES, type KagiStyle } from '@chatwork-bot/provider-kagi'
 import { z } from 'zod'
 import { KeywordEntrySchema } from '~/types/keyword-entry'
 
-export const FREE_ROOM_KAGI_STYLE_VALUES = [
-  'Wild',
-  'Easy',
-  'Clear',
-  'Smart',
-  'Fine',
-  'True',
-] as const
+export const FREE_ROOM_KAGI_STYLE_VALUES = KAGI_STYLE_VALUES
 
-export type FreeRoomKagiStyle = (typeof FREE_ROOM_KAGI_STYLE_VALUES)[number]
+export type FreeRoomKagiStyle = KagiStyle
 
 export const FreeRoomConfigSchema = z.object({
   id: z.uuid(),

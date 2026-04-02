@@ -418,6 +418,10 @@ describe('scripts/dev.sh orchestration', () => {
     const kagiBlock = getComposeServiceBlock(composeContent, 'kagi-translator')
 
     expect(kagiBlock).toContain('bun install && bun --hot packages/kagi-sidecar/src/index.ts')
+    expect(kagiBlock).not.toContain('- node_modules:/app/node_modules')
+    expect(kagiBlock).toContain('- .:/app')
+    expect(kagiBlock).toContain('- kagi_node_modules:/app/node_modules')
+    expect(kagiBlock).toContain('- kagi_bun_cache:/root/.bun/install/cache')
     expect(kagiBlock).toContain('KAGI_PORT=3002')
     expect(kagiBlock).toContain('KAGI_MIN_INTERVAL_MS=${KAGI_MIN_INTERVAL_MS:-1500}')
     expect(kagiBlock).toContain('KAGI_MAX_RETRIES=${KAGI_MAX_RETRIES:-2}')
@@ -425,7 +429,28 @@ describe('scripts/dev.sh orchestration', () => {
     expect(kagiBlock).toContain('KAGI_REQUEST_TIMEOUT_MS=${KAGI_REQUEST_TIMEOUT_MS:-30000}')
     expect(kagiBlock).toContain('KAGI_MAX_QUEUE_DEPTH=${KAGI_MAX_QUEUE_DEPTH:-10}')
     expect(kagiBlock).toContain('KAGI_MAX_QUEUE_WAIT_MS=${KAGI_MAX_QUEUE_WAIT_MS:-15000}')
+    expect(kagiBlock).toContain('HUSKY=0')
+    expect(kagiBlock).toContain('BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache')
     expect(kagiBlock).toContain("fetch('http://localhost:3002/health')")
+  })
+
+  it('serializes shared node_modules installs through translator only in docker-compose.dev.yml', () => {
+    const composeContent = readFileSync(join(repoRoot, 'docker-compose.dev.yml'), 'utf8')
+    const translatorBlock = getComposeServiceBlock(composeContent, 'translator')
+    const dashboardBlock = getComposeServiceBlock(composeContent, 'dashboard')
+    const webhookLoggerBlock = getComposeServiceBlock(composeContent, 'webhook-logger')
+    const datasetRunnerBlock = getComposeServiceBlock(composeContent, 'dataset-runner')
+
+    expect(translatorBlock).toContain('bun install && bun --hot packages/translator/src/index.ts')
+
+    for (const serviceBlock of [dashboardBlock, webhookLoggerBlock, datasetRunnerBlock]) {
+      expect(serviceBlock).not.toContain('bun install &&')
+      expect(serviceBlock).toContain('- node_modules:/app/node_modules')
+    }
+
+    expect(dashboardBlock).toContain('depends_on:')
+    expect(dashboardBlock).toContain('translator:')
+    expect(dashboardBlock).toContain('condition: service_healthy')
   })
 
   it('ships a dedicated production Dockerfile and compose service for kagi translation', () => {
@@ -435,11 +460,34 @@ describe('scripts/dev.sh orchestration', () => {
     const kagiBlock = getComposeServiceBlock(composeContent, 'kagi-translator')
 
     expect(dockerfileContent).toContain('packages/kagi-sidecar/package.json')
+    expect(dockerfileContent).toContain('packages/provider-kagi/package.json')
+    expect(dockerfileContent).toContain('packages/translator/package.json')
+    expect(dockerfileContent).toContain('RUN bun install --frozen-lockfile')
+    expect(dockerfileContent).toContain('fonts-kacst-one')
+    expect(dockerfileContent).not.toContain('fonts-kacst \\\n')
     expect(dockerfileContent).toContain('packages/kagi-sidecar/src')
     expect(dockerfileContent).toContain('CMD ["bun", "packages/kagi-sidecar/src/index.ts"]')
     expect(kagiBlock).toContain('dockerfile: Dockerfile.kagi')
     expect(kagiBlock).toContain('KAGI_PORT: 3002')
     expect(translatorBlock).toContain('KAGI_TRANSLATOR_URL: http://kagi-translator:3002')
+  })
+
+  it('keeps Docker workspace manifest copies aligned with the monorepo for frozen installs', () => {
+    const translatorDockerfile = readFileSync(join(repoRoot, 'Dockerfile'), 'utf8')
+    const loggerDockerfile = readFileSync(join(repoRoot, 'Dockerfile.logger'), 'utf8')
+    const kagiDockerfile = readFileSync(join(repoRoot, 'Dockerfile.kagi'), 'utf8')
+
+    for (const dockerfileContent of [translatorDockerfile, loggerDockerfile, kagiDockerfile]) {
+      expect(dockerfileContent).toContain('packages/provider-kagi/package.json')
+      expect(dockerfileContent).toContain('packages/kagi-sidecar/package.json')
+    }
+
+    expect(translatorDockerfile).toContain(
+      'COPY packages/provider-kagi/src packages/provider-kagi/src',
+    )
+    expect(kagiDockerfile).not.toContain(
+      'COPY packages/provider-kagi/src packages/provider-kagi/src',
+    )
   })
 
   it('documents translator and sidecar kagi env vars in .env.example', () => {

@@ -1,12 +1,6 @@
 import { buildKagiUrl } from './url-builder'
 import type { KagiStyle } from './url-builder'
 
-interface RequestLike {
-  abort(): Promise<void> | void
-  continue(): Promise<void> | void
-  resourceType(): string
-}
-
 interface PageLike {
   goto(
     url: string,
@@ -23,9 +17,6 @@ interface PageLike {
     },
   ): Promise<unknown>
   evaluate<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg): Promise<TResult>
-  content(): Promise<string>
-  setRequestInterception(enabled: boolean): Promise<void>
-  on(event: 'request', handler: (request: RequestLike) => void): void
 }
 
 interface BrowserLike {
@@ -49,7 +40,6 @@ interface BrowserAutomationConnectOptions {
 
 type BrowserConnect = (options: BrowserAutomationConnectOptions) => Promise<BrowserSession>
 
-const BLOCKED_RESOURCE_TYPES = new Set<string>(['image', 'media', 'font'])
 const TRANSLATION_SELECTOR = '.translation-content'
 const TRANSLATION_SELECTORS = [
   '.translation-content .font-universal',
@@ -59,8 +49,9 @@ const TRANSLATION_SELECTORS = [
   'textarea[placeholder*="translation"]',
   'textarea[placeholder*="Translation"]',
 ] as const
-const ANTI_ABUSE_PATTERN =
-  /captcha|verify you are human|turnstile|attention required|too many requests/i
+const ANTI_ABUSE_PATTERN = /captcha|verify you are human|attention required|too many requests/i
+const TRANSLATION_STABILITY_POLL_MS = 250
+const REQUIRED_STABLE_SAMPLES = 2
 
 export type KagiSidecarErrorCode =
   | 'ANTI_ABUSE'
@@ -146,12 +137,6 @@ function ensureTranslatedContent(value: string): string {
     })
   }
 
-  if (detectAntiAbuse(trimmed)) {
-    throw new KagiSidecarError('ANTI_ABUSE', 'Kagi anti-abuse or captcha detected', {
-      status: 429,
-    })
-  }
-
   return trimmed
 }
 
@@ -187,7 +172,6 @@ export class KagiBrowserService {
   private readonly options: KagiBrowserServiceOptions
   private browser: BrowserLike | null = null
   private page: PageLike | null = null
-  private interceptionReady = false
   private activeCount = 0
   private queuedCount = 0
   private lastRequestStartedAt = 0
@@ -337,13 +321,6 @@ export class KagiBrowserService {
         timeout: this.options.requestTimeoutMs,
       })
 
-      const html = await page.content()
-      if (detectAntiAbuse(html)) {
-        throw new KagiSidecarError('ANTI_ABUSE', 'Kagi anti-abuse or captcha detected', {
-          status: 429,
-        })
-      }
-
       try {
         await page.waitForSelector(TRANSLATION_SELECTOR, {
           timeout: Math.floor(this.options.requestTimeoutMs / 2),
@@ -353,41 +330,7 @@ export class KagiBrowserService {
         // Best-effort: Kagi may render without the preferred selector.
       }
 
-      const translated = await page.evaluate(
-        (selectors) => {
-          const doc = document
-
-          for (const selector of selectors) {
-            const node = doc.querySelector(selector)
-            if (node instanceof HTMLTextAreaElement) {
-              if (node.value.trim().length > 0) {
-                return node.value.trim()
-              }
-              continue
-            }
-
-            const rawText = node?.textContent
-            if (typeof rawText === 'string') {
-              const text = rawText.trim()
-              if (text.length > 0) {
-                return text
-              }
-            }
-          }
-
-          const textareas = Array.from(doc.querySelectorAll('textarea'))
-          for (const textarea of textareas) {
-            if (textarea.value.trim().length > 0) {
-              return textarea.value.trim()
-            }
-          }
-
-          return ''
-        },
-        [...TRANSLATION_SELECTORS],
-      )
-
-      return ensureTranslatedContent(translated)
+      return await this.waitForStableTranslatedText(page)
     } catch (error) {
       if (error instanceof KagiSidecarError) {
         if (error.code !== 'BACKPRESSURE') {
@@ -409,13 +352,93 @@ export class KagiBrowserService {
     }
   }
 
+  private async waitForStableTranslatedText(page: PageLike): Promise<string> {
+    let lastNonEmptySample = ''
+    let stableSampleCount = 0
+
+    for (;;) {
+      const translated = await this.readTranslationText(page)
+      const trimmed = translated.trim()
+
+      if (trimmed.length > 0) {
+        if (trimmed === lastNonEmptySample) {
+          stableSampleCount += 1
+        } else {
+          lastNonEmptySample = trimmed
+          stableSampleCount = 1
+        }
+
+        if (stableSampleCount >= REQUIRED_STABLE_SAMPLES) {
+          return ensureTranslatedContent(trimmed)
+        }
+      } else {
+        const visiblePageText = await this.readVisiblePageText(page)
+
+        if (detectAntiAbuse(visiblePageText)) {
+          throw new KagiSidecarError('ANTI_ABUSE', 'Kagi anti-abuse or captcha detected', {
+            status: 429,
+          })
+        }
+
+        lastNonEmptySample = ''
+        stableSampleCount = 0
+      }
+
+      await this.options.sleep(TRANSLATION_STABILITY_POLL_MS)
+    }
+  }
+
+  private readTranslationText(page: PageLike): Promise<string> {
+    return page.evaluate(
+      (selectors) => {
+        const doc = document
+
+        for (const selector of selectors) {
+          const node = doc.querySelector(selector)
+          if (node instanceof HTMLTextAreaElement) {
+            if (node.value.trim().length > 0) {
+              return node.value.trim()
+            }
+            continue
+          }
+
+          const rawText = node?.textContent
+          if (typeof rawText === 'string') {
+            const text = rawText.trim()
+            if (text.length > 0) {
+              return text
+            }
+          }
+        }
+
+        const textareas = Array.from(doc.querySelectorAll('textarea'))
+        for (const textarea of textareas) {
+          if (textarea.value.trim().length > 0) {
+            return textarea.value.trim()
+          }
+        }
+
+        return ''
+      },
+      [...TRANSLATION_SELECTORS],
+    )
+  }
+
+  private readVisiblePageText(page: PageLike): Promise<string> {
+    return page.evaluate((_arg) => {
+      const title = document.title.trim()
+      const bodyText = document.body.innerText.trim()
+      return [title, bodyText].filter((value) => value.length > 0).join('\n')
+    }, null)
+  }
+
   private async ensurePage(): Promise<PageLike> {
     if (this.page !== null && this.browser !== null) {
       return this.page
     }
 
     const session = await this.options.connect({
-      headless: true,
+      headless: false,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       customConfig: {},
       turnstile: true,
@@ -427,19 +450,6 @@ export class KagiBrowserService {
     this.browser = session.browser
     this.page = session.page
 
-    if (!this.interceptionReady) {
-      await this.page.setRequestInterception(true)
-      this.page.on('request', (pageRequest) => {
-        if (BLOCKED_RESOURCE_TYPES.has(pageRequest.resourceType())) {
-          void pageRequest.abort()
-          return
-        }
-
-        void pageRequest.continue()
-      })
-      this.interceptionReady = true
-    }
-
     return this.page
   }
 
@@ -448,7 +458,6 @@ export class KagiBrowserService {
 
     this.browser = null
     this.page = null
-    this.interceptionReady = false
 
     if (browser !== null) {
       await browser.close().catch(() => undefined)
