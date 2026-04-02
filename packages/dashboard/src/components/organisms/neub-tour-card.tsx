@@ -1,16 +1,6 @@
-import type { ReactNode } from 'react'
+import type { CardComponentProps } from 'nextstepjs'
 
 import type { NeubStep } from '~/lib/tour-steps'
-
-interface NeubTourCardProps {
-  step: NeubStep
-  currentStep: number
-  totalSteps: number
-  nextStep: () => void
-  prevStep: () => void
-  skipTour: () => void
-  arrow: ReactNode
-}
 
 export function NeubTourCard({
   step,
@@ -20,7 +10,8 @@ export function NeubTourCard({
   prevStep,
   skipTour,
   arrow,
-}: NeubTourCardProps) {
+}: CardComponentProps) {
+  const coloredStep = step as NeubStep
   const isFirst = currentStep === 0
   const isLast = currentStep === totalSteps - 1
   const isCompletionStep = isLast
@@ -35,7 +26,7 @@ export function NeubTourCard({
         border: '3px solid #1a1a2e',
         borderRadius: 18,
         boxShadow: '5px 5px 0 #1a1a2e',
-        backgroundColor: step.color,
+        backgroundColor: coloredStep.color,
         overflow: 'visible',
       }}
     >
@@ -63,7 +54,7 @@ export function NeubTourCard({
             {currentStep + 1} / {totalSteps}
           </span>
 
-          {step.showSkip && !isLast && (
+          {step.showSkip && !isLast && skipTour && (
             <button
               type="button"
               onClick={skipTour}
@@ -147,7 +138,7 @@ export function NeubTourCard({
               background: '#1a1a2e',
               boxShadow: '2px 2px 0 rgba(0,0,0,0.35)',
               cursor: 'pointer',
-              color: step.color,
+              color: coloredStep.color,
             }}
           >
             {isLast ? '🎉 Hoàn thành!' : 'Tiếp →'}
