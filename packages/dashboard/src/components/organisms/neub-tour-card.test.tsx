@@ -35,16 +35,17 @@ function renderCard(
 }
 
 describe('NeubTourCard', () => {
-  it('renders the approved speech-bubble shell and badge text', () => {
+  it('renders the approved speech-bubble shell and badge text on middle steps', () => {
     const html = renderCard()
 
     expect(html).toContain('Xin chao')
     expect(html).toContain('background-color:#ffd166')
     expect(html).toContain('data-tour-tail-outer')
+    expect(html).toContain('data-tour-step-badge')
     expect(html).toContain('Bước 2 / 3')
   })
 
-  it('hides the previous button on the first step', () => {
+  it('uses a dot progress row and a start button on the first step', () => {
     const html = renderCard({
       currentStep: 0,
       step: {
@@ -56,18 +57,22 @@ describe('NeubTourCard', () => {
       },
     })
 
-    expect(html).not.toContain('← Trước')
-    expect(html).toContain('Tiếp →')
+    expect(html).not.toContain('data-tour-step-badge')
+    expect(html).toContain('data-tour-progress-dots')
+    expect(html).not.toContain('← Quay lại')
+    expect(html).toContain('Bắt đầu →')
   })
 
-  it('shows both previous and next buttons on a middle step', () => {
+  it('shows the compact badge plus previous and next buttons on a middle step', () => {
     const html = renderCard()
 
-    expect(html).toContain('← Trước')
-    expect(html).toContain('Tiếp →')
+    expect(html).toContain('data-tour-step-badge')
+    expect(html).toContain('← Quay lại')
+    expect(html).toContain('Tiếp theo →')
+    expect(html).not.toContain('data-tour-progress-dots')
   })
 
-  it('shows completion text and hides skip on the last step', () => {
+  it('renders the completion treatment on the last step', () => {
     const html = renderCard({
       currentStep: 2,
       step: {
@@ -79,8 +84,10 @@ describe('NeubTourCard', () => {
       },
     })
 
+    expect(html).toContain('data-tour-completion')
     expect(html).not.toContain('Bỏ qua')
-    expect(html).toContain('Hoàn thành')
-    expect(html).not.toContain('Tiếp →')
+    expect(html).toContain('Hoàn thành ✓')
+    expect(html).not.toContain('Tiếp theo →')
+    expect(html).toContain('color:#86e8c0')
   })
 })
