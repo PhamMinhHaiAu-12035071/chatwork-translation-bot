@@ -200,6 +200,7 @@ export function RoomListPage() {
       actions={
         <div className="flex w-full min-w-[min(100%,17.5rem)] flex-col gap-3">
           <button
+            id="tour-new-room"
             type="button"
             onClick={() => {
               void navigate('/rooms/new')
@@ -237,6 +238,7 @@ export function RoomListPage() {
           {[
             {
               label: 'Total Rooms',
+              tourId: 'tour-stat-total',
               value: rooms.length,
               tone: 'accent' as const,
               theme: 'theme-card-lilac',
@@ -244,6 +246,7 @@ export function RoomListPage() {
             },
             {
               label: 'Active',
+              tourId: 'tour-stat-active',
               value: activeCount,
               tone: 'success' as const,
               theme: 'theme-card-mint',
@@ -251,22 +254,21 @@ export function RoomListPage() {
             },
             {
               label: 'Inactive',
+              tourId: 'tour-stat-inactive',
               value: inactiveCount,
               tone: 'warning' as const,
               theme: 'theme-card-butter',
               tilt: 'right' as const,
             },
           ].map((stat) => (
-            <BrutalCard
-              key={stat.label}
-              tilt={stat.tilt}
-              className={[stat.theme, 'space-y-3'].join(' ')}
-            >
-              <StickerLabel tone={stat.tone}>{stat.label}</StickerLabel>
-              <div className="text-4xl font-extrabold">
-                <SlideStackNumber value={stat.value} minimumDigits={2} className="font-metric" />
-              </div>
-            </BrutalCard>
+            <div key={stat.label} id={stat.tourId}>
+              <BrutalCard tilt={stat.tilt} className={[stat.theme, 'space-y-3'].join(' ')}>
+                <StickerLabel tone={stat.tone}>{stat.label}</StickerLabel>
+                <div className="text-4xl font-extrabold">
+                  <SlideStackNumber value={stat.value} minimumDigits={2} className="font-metric" />
+                </div>
+              </BrutalCard>
+            </div>
           ))}
         </div>
 
@@ -315,13 +317,14 @@ export function RoomListPage() {
           </BrutalCard>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {rooms.map((room) =>
+            {rooms.map((room, roomIndex) =>
               (() => {
                 const isSpotlighted = room.id === spotlightRoomId
 
                 return (
                   <div
                     key={room.id}
+                    id={roomIndex === 0 ? 'tour-room-card-first' : undefined}
                     className="rounded-[24px] p-1"
                     style={{ position: 'relative' }}
                   >
@@ -403,17 +406,19 @@ export function RoomListPage() {
                             <div className="space-y-2">
                               <div className="flex min-w-0 items-start justify-between gap-4">
                                 <StatusRibbon enabled={room.enabled} />
-                                <RoomStatusToggle
-                                  enabled={room.enabled}
-                                  loading={roomToggleAction.loading}
-                                  onToggle={() => {
-                                    void handleToggle(
-                                      room.id,
-                                      room.destinationRoomName,
-                                      room.enabled,
-                                    )
-                                  }}
-                                />
+                                <div id={roomIndex === 0 ? 'tour-status-toggle' : undefined}>
+                                  <RoomStatusToggle
+                                    enabled={room.enabled}
+                                    loading={roomToggleAction.loading}
+                                    onToggle={() => {
+                                      void handleToggle(
+                                        room.id,
+                                        room.destinationRoomName,
+                                        room.enabled,
+                                      )
+                                    }}
+                                  />
+                                </div>
                               </div>
                               <div className="min-w-0 space-y-1">
                                 <div className="font-heading text-lg font-bold leading-tight">
@@ -439,6 +444,7 @@ export function RoomListPage() {
 
                             <div className="flex flex-wrap gap-2">
                               <button
+                                id={roomIndex === 0 ? 'tour-edit-btn' : undefined}
                                 type="button"
                                 onClick={() => {
                                   void navigate(`/rooms/${room.id}`)
@@ -449,6 +455,7 @@ export function RoomListPage() {
                                 Edit
                               </button>
                               <button
+                                id={roomIndex === 0 ? 'tour-delete-btn' : undefined}
                                 type="button"
                                 onClick={() => {
                                   setSelectedRoom(room)
