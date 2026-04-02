@@ -9,7 +9,7 @@ export function NeubTourCard({
   nextStep,
   prevStep,
   skipTour,
-  arrow,
+  arrow: _arrow,
 }: CardComponentProps) {
   const coloredStep = step as NeubStep
   const isFirst = currentStep === 0
@@ -30,8 +30,6 @@ export function NeubTourCard({
         overflow: 'visible',
       }}
     >
-      {arrow}
-
       <div style={{ padding: '16px 18px 14px' }}>
         <div
           style={{
@@ -51,7 +49,7 @@ export function NeubTourCard({
               letterSpacing: '0.08em',
             }}
           >
-            {currentStep + 1} / {totalSteps}
+            Bước {currentStep + 1} / {totalSteps}
           </span>
 
           {step.showSkip && !isLast && skipTour && (
@@ -141,10 +139,40 @@ export function NeubTourCard({
               color: coloredStep.color,
             }}
           >
-            {isLast ? '🎉 Hoàn thành!' : 'Tiếp →'}
+            {isLast ? 'Hoàn thành' : 'Tiếp →'}
           </button>
         </div>
       </div>
+
+      <div
+        aria-hidden
+        data-tour-tail-outer
+        style={{
+          position: 'absolute',
+          bottom: -17,
+          left: 28,
+          width: 0,
+          height: 0,
+          borderLeft: '11px solid transparent',
+          borderRight: '11px solid transparent',
+          borderTop: '15px solid #1a1a2e',
+        }}
+      />
+      <div
+        aria-hidden
+        data-tour-tail-inner
+        style={{
+          position: 'absolute',
+          bottom: -11,
+          left: 31,
+          width: 0,
+          height: 0,
+          borderLeft: '8px solid transparent',
+          borderRight: '8px solid transparent',
+          borderTop: `13px solid ${coloredStep.color}`,
+          zIndex: 1,
+        }}
+      />
     </div>
   )
 }
