@@ -17,7 +17,7 @@ Triển khai tính năng **tour guide tương tác** cho `packages/dashboard`, g
 
 **In scope:**
 
-- Grand Tour duy nhất bao gồm 12 bước, cover toàn bộ core workflow: Standard Rooms (create, edit, delete, enable/disable)
+- Grand Tour duy nhất bao gồm 14 bước, cover toàn bộ core workflow: Standard Rooms (create, edit, delete, enable/disable), bao gồm cả 2 optional fields phức tạp: Translation Context và Keyword Protection
 - Cross-page navigation: tour tự di chuyển giữa `/` và `/rooms/new`
 - Auto-trigger lần đầu vào dashboard (first-visit detection)
 - Floating "?" button để replay bất cứ lúc nào
@@ -41,7 +41,8 @@ Triển khai tính năng **tour guide tương tác** cho `packages/dashboard`, g
 - [ ] Hoàn thành hoặc skip tour đều set `tourSeenVersion = TOUR_VERSION`
 - [ ] Mở Chrome session mới → không hiện tour lại (localStorage persists)
 - [ ] Incognito / clear data → tour hiện lại (expected behavior)
-- [ ] Edge case 0 rooms: steps 8–11 dùng `selector: null`, hiển thị giữa màn hình
+- [ ] Steps 7–8 giải thích đúng Translation Context và Keyword Protection
+- [ ] Edge case 0 rooms: steps 10–13 dùng `selector: null`, hiển thị giữa màn hình
 - [ ] `bun test && bun run typecheck && bun run lint` pass
 
 ---
@@ -77,22 +78,24 @@ Triển khai tính năng **tour guide tương tác** cho `packages/dashboard`, g
 
 **Per-step solid colors (không gradient):**
 
-| Step | Màu                | Hex       |
-| ---- | ------------------ | --------- |
-| 1    | Vàng — Welcome     | `#ffd166` |
-| 2    | Tím — Stats        | `#c9b1ff` |
-| 3    | Mint — New Room    | `#86e8c0` |
-| 4    | Sky blue — Room ID | `#90cdf4` |
-| 5    | Peach — Provider   | `#ffc8a0` |
-| 6    | Blush — Style      | `#ffb3c1` |
-| 7    | Lime — Save        | `#bef264` |
-| 8    | Butter — Room card | `#fde68a` |
-| 9    | Orange — Toggle    | `#fb923c` |
-| 10   | Cyan — Edit        | `#a5f3fc` |
-| 11   | Rose — Delete      | `#f9a8d4` |
-| 12   | Coral — Completion | `#ff6b6b` |
+| Step | Màu                             | Hex       |
+| ---- | ------------------------------- | --------- |
+| 1    | Vàng — Welcome                  | `#ffd166` |
+| 2    | Tím — Stats                     | `#c9b1ff` |
+| 3    | Mint — New Room                 | `#86e8c0` |
+| 4    | Sky blue — Room ID              | `#90cdf4` |
+| 5    | Peach — Provider                | `#ffc8a0` |
+| 6    | Blush — Style                   | `#ffb3c1` |
+| 7    | Matcha — Translation Context 🧠 | `#a8d8a8` |
+| 8    | Amber — Keyword Protection 🛡️   | `#fcd34d` |
+| 9    | Lime — Save                     | `#bef264` |
+| 10   | Butter — Room card              | `#fde68a` |
+| 11   | Orange — Toggle                 | `#fb923c` |
+| 12   | Cyan — Edit                     | `#a5f3fc` |
+| 13   | Rose — Delete                   | `#f9a8d4` |
+| 14   | Coral — Completion              | `#ff6b6b` |
 
-**Step 12 (Completion):** coral solid, title/body text trắng (`#fff`).
+**Step 14 (Completion):** coral solid, title/body text trắng (`#fff`).
 
 ### Spotlight Effect
 
@@ -174,28 +177,30 @@ export interface TourStep {
 }
 
 export const tourSteps: TourStep[] = [
-  /* 12 steps */
+  /* 14 steps */
 ]
 ```
 
 ---
 
-## Tour Step Sequence (12 bước)
+## Tour Step Sequence (14 bước)
 
-| #   | Route        | Selector                  | Nội dung tiếng Việt                               | Navigate to  |
-| --- | ------------ | ------------------------- | ------------------------------------------------- | ------------ |
-| 1   | `/`          | `null`                    | 👋 Welcome — giới thiệu dashboard, ~2 phút        | —            |
-| 2   | `/`          | `#tour-stats`             | 📊 3 ô thống kê Total / Active / Inactive         | —            |
-| 3   | `/`          | `#tour-new-room`          | ➕ Đây là nút tạo phòng mới                       | `/rooms/new` |
-| 4   | `/rooms/new` | `#tour-field-roomid`      | 🔢 Room ID là số trong URL Chatwork               | —            |
-| 5   | `/rooms/new` | `#tour-field-provider`    | 🤖 Chọn AI provider dịch thuật                    | —            |
-| 6   | `/rooms/new` | `#tour-field-style`       | 🎨 Phong cách dịch: Casual / Business / Technical | —            |
-| 7   | `/rooms/new` | `#tour-save-btn`          | 💾 Nhấn Save để tạo phòng                         | `/`          |
-| 8   | `/`          | `#tour-room-card-first`\* | 🃏 Mỗi card là 1 phòng dịch thuật                 | —            |
-| 9   | `/`          | `#tour-status-toggle`\*   | 🔀 Toggle bật/tắt lắng nghe webhook               | —            |
-| 10  | `/`          | `#tour-edit-btn`\*        | ✏️ Edit để chỉnh sửa cài đặt phòng                | —            |
-| 11  | `/`          | `#tour-delete-btn`\*      | 🗑️ Delete xóa phòng khỏi hệ thống                 | —            |
-| 12  | `/`          | `null`                    | 🎉 Hoàn thành — bạn đã sẵn sàng!                  | —            |
+| #   | Route        | Selector                  | Nội dung tiếng Việt                                                                                                                                                                    | Navigate to  |
+| --- | ------------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| 1   | `/`          | `null`                    | 👋 Welcome — giới thiệu dashboard, ~2 phút                                                                                                                                             | —            |
+| 2   | `/`          | `#tour-stats`             | 📊 3 ô thống kê Total / Active / Inactive                                                                                                                                              | —            |
+| 3   | `/`          | `#tour-new-room`          | ➕ Đây là nút tạo phòng mới                                                                                                                                                            | `/rooms/new` |
+| 4   | `/rooms/new` | `#tour-field-roomid`      | 🔢 Room ID là số trong URL Chatwork (vd: chatwork.com/#/rid**123456**)                                                                                                                 | —            |
+| 5   | `/rooms/new` | `#tour-field-provider`    | 🤖 Chọn AI provider và model dịch thuật                                                                                                                                                | —            |
+| 6   | `/rooms/new` | `#tour-field-style`       | 🎨 Phong cách dịch: Casual / Business / Technical                                                                                                                                      | —            |
+| 7   | `/rooms/new` | `#tour-field-context`     | 🧠 **Translation Context** — mô tả mục đích phòng để AI dịch chính xác hơn. Có template sẵn, dùng ngay hoặc tự viết. Ví dụ: "Đây là phòng báo cáo nội bộ kỹ thuật."                    | —            |
+| 8   | `/rooms/new` | `#tour-field-keywords`    | 🛡️ **Keyword Protection** — liệt kê tên công ty, tên người, mã dự án không muốn bị dịch. AI sẽ thay thế bằng mã `[COMPANY_1]` trong quá trình dịch, rồi điền lại tên thật vào kết quả. | —            |
+| 9   | `/rooms/new` | `#tour-save-btn`          | 💾 Nhấn Save để tạo phòng — bot sẽ bắt đầu lắng nghe ngay                                                                                                                              | `/`          |
+| 10  | `/`          | `#tour-room-card-first`\* | 🃏 Mỗi card là 1 phòng dịch thuật                                                                                                                                                      | —            |
+| 11  | `/`          | `#tour-status-toggle`\*   | 🔀 Toggle bật/tắt lắng nghe webhook                                                                                                                                                    | —            |
+| 12  | `/`          | `#tour-edit-btn`\*        | ✏️ Edit để chỉnh sửa cài đặt phòng (bao gồm cả Context và Keywords)                                                                                                                    | —            |
+| 13  | `/`          | `#tour-delete-btn`\*      | 🗑️ Delete xóa phòng khỏi hệ thống                                                                                                                                                      | —            |
+| 14  | `/`          | `null`                    | 🎉 Hoàn thành — bạn đã sẵn sàng!                                                                                                                                                       | —            |
 
 > \* = `selector: null` nếu `rooms.length === 0` (hiển thị giữa màn hình, giải thích abstractly)
 
@@ -247,18 +252,20 @@ packages/dashboard/src/
 
 ## Selector Attributes cần thêm
 
-| File              | Element                           | Attribute                                       |
-| ----------------- | --------------------------------- | ----------------------------------------------- |
-| `room-list.tsx`   | Stats wrapper div                 | `id="tour-stats"`                               |
-| `room-list.tsx`   | "New Room" button                 | `id="tour-new-room"`                            |
-| `room-list.tsx`   | First room card wrapper           | `id="tour-room-card-first"` (chỉ card đầu tiên) |
-| `room-list.tsx`   | `RoomStatusToggle` trong card đầu | `id="tour-status-toggle"`                       |
-| `room-list.tsx`   | Edit button trong card đầu        | `id="tour-edit-btn"`                            |
-| `room-list.tsx`   | Delete button trong card đầu      | `id="tour-delete-btn"`                          |
-| `room-create.tsx` | Room ID input                     | `id="tour-field-roomid"`                        |
-| `room-create.tsx` | Provider select                   | `id="tour-field-provider"`                      |
-| `room-create.tsx` | Style select                      | `id="tour-field-style"`                         |
-| `room-create.tsx` | Save/Submit button                | `id="tour-save-btn"`                            |
+| File              | Element                               | Attribute                                       |
+| ----------------- | ------------------------------------- | ----------------------------------------------- |
+| `room-list.tsx`   | Stats wrapper div                     | `id="tour-stats"`                               |
+| `room-list.tsx`   | "New Room" button                     | `id="tour-new-room"`                            |
+| `room-list.tsx`   | First room card wrapper               | `id="tour-room-card-first"` (chỉ card đầu tiên) |
+| `room-list.tsx`   | `RoomStatusToggle` trong card đầu     | `id="tour-status-toggle"`                       |
+| `room-list.tsx`   | Edit button trong card đầu            | `id="tour-edit-btn"`                            |
+| `room-list.tsx`   | Delete button trong card đầu          | `id="tour-delete-btn"`                          |
+| `room-create.tsx` | Room ID input                         | `id="tour-field-roomid"`                        |
+| `room-create.tsx` | Provider select                       | `id="tour-field-provider"`                      |
+| `room-create.tsx` | Style select                          | `id="tour-field-style"`                         |
+| `room-create.tsx` | `ContextField` wrapper (outer button) | `id="tour-field-context"`                       |
+| `room-create.tsx` | `KeywordProtectionField` wrapper      | `id="tour-field-keywords"`                      |
+| `room-create.tsx` | Save/Submit button                    | `id="tour-save-btn"`                            |
 
 ---
 
