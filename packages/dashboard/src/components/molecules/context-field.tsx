@@ -344,7 +344,7 @@ export function ContextField({
                   <p className="font-ui-body mb-2 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
                     ⚡ Quick templates
                   </p>
-                  <div className="context-template-list-wrap">
+                  <div id="tour-context-templates" className="context-template-list-wrap">
                     <div className="context-template-list">
                       {CONTEXT_TEMPLATES.map((tpl) => {
                         const isActive = activeTemplate?.key === tpl.key

@@ -431,6 +431,7 @@ export function KeywordProtectionField({ value, onChange }: KeywordProtectionFie
 
           {/* Add form */}
           <div
+            id="tour-keyword-addform"
             style={{
               border: '2px solid rgba(26,26,46,0.25)',
               borderRadius: 10,
