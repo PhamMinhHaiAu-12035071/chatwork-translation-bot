@@ -34,7 +34,7 @@ const navItems: readonly {
   {
     to: '/free-rooms/new',
     label: 'New Free Room',
-    surfaceClassName: 'theme-card-matcha',
+    surfaceClassName: 'theme-card-peach',
     icon: 'plus',
   },
   {
@@ -183,6 +183,7 @@ export function AppLayout() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end
                 className="block shrink-0 min-w-[8.5rem] lg:min-w-0"
               >
                 {({ isActive }) => (
@@ -263,7 +264,7 @@ export function AppLayout() {
 
           <nav className="flex gap-2 overflow-x-auto pb-1">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} className="block shrink-0 min-w-[8.5rem]">
+              <NavLink key={item.to} to={item.to} end className="block shrink-0 min-w-[8.5rem]">
                 {({ isActive }) => (
                   <motion.div
                     animate={{

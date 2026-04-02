@@ -149,10 +149,10 @@ describe('ContextField', () => {
   it('renders a configurable note string when provided', () => {
     const html = render({
       value: 'some context',
-      note: 'This context is sent to Kagi as request context.',
+      note: 'This context helps guide the translation output.',
     })
 
-    expect(html).toContain('This context is sent to Kagi as request context.')
+    expect(html).toContain('This context helps guide the translation output.')
     expect(html).not.toContain('This context will be included in the system prompt')
   })
 })

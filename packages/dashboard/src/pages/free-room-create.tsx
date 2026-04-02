@@ -17,12 +17,13 @@ import { ApiError } from '~/lib/api-client'
 import {
   FREE_ROOM_KAGI_STYLE_LABELS,
   FREE_ROOM_KAGI_STYLES,
+  getFreeRoomKagiStyleDescription,
   freeRoomCreateSchema,
 } from '~/lib/free-room-schemas'
 import type { FreeRoomCreateInput } from '~/lib/free-room-schemas'
 import { selectCreateFreeRoom, useFreeRoomStore, type FreeRoom } from '~/stores/free-room-store'
 
-const providerOptions = [{ value: 'kagi-free', label: 'Kagi Translate Free' }] as const
+const providerOptions = [{ value: 'kagi-free', label: 'Translate Free' }] as const
 
 const kagiStyleOptions = FREE_ROOM_KAGI_STYLES.map((style) => ({
   value: style,
@@ -66,6 +67,7 @@ export function FreeRoomCreatePage() {
       protectedKeywords: [],
     } as FreeRoomCreateInput,
   })
+  const selectedKagiStyle = watch('kagiStyle')
 
   const onSubmit = async (data: FreeRoomCreateInput) => {
     const result = await createFreeRoomAction.execute(() => {
@@ -122,7 +124,7 @@ export function FreeRoomCreatePage() {
     <PageShell
       eyebrow="New Free Room"
       title="Set up a free translation room"
-      description="Configure a Kagi Translate free room while keeping the same Chatwork structure and safeguards."
+      description="Configure a free translation room while keeping the same Chatwork structure and safeguards."
     >
       <form
         onSubmit={(event) => {
@@ -154,17 +156,18 @@ export function FreeRoomCreatePage() {
                 label="Provider"
                 options={[...providerOptions]}
                 colorVariant="accent"
-                hint="Free rooms always use the Kagi Translate web provider."
+                hint="Free rooms use the free translation provider."
                 disabled
                 value="kagi-free"
                 onChange={() => undefined}
               />
               <BrutalSelect
-                label="Kagi Style"
+                label="Translation Style"
                 options={kagiStyleOptions}
                 colorVariant="mint"
-                hint="Controls how Kagi Translate frames the final wording."
+                hint={getFreeRoomKagiStyleDescription(selectedKagiStyle)}
                 error={errors.kagiStyle?.message}
+                value={selectedKagiStyle}
                 {...register('kagiStyle')}
               />
             </div>
@@ -199,7 +202,7 @@ export function FreeRoomCreatePage() {
               }}
               error={errors.context?.message}
               maxLength={100}
-              note="This context is sent to Kagi as request context."
+              note="This context helps guide the translation output."
             />
 
             <div className="page-divider-brutal my-4" />

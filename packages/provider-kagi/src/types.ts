@@ -120,6 +120,21 @@ export const KAGI_STYLE_LABELS: Record<KagiStyle, string> = {
   Exact: KAGI_STYLE_PRESETS.Exact.label,
 }
 
+export const KAGI_STYLE_DESCRIPTIONS: Record<KagiStyle, string> = {
+  Wild: 'Casual, vivid, and full of energy.',
+  Warm: 'Casual and friendly without sounding too loose.',
+  Easy: 'Simple, light, and very easy to follow.',
+  Clear: 'Balanced, natural, and easy to read.',
+  Smart: 'Sharper and more polished for thoughtful writing.',
+  Deep: 'Rich and nuanced for dense or complex ideas.',
+  Fine: 'Polite and refined with a formal tone.',
+  Polite: 'Professional, courteous, and business-friendly.',
+  Elegant: 'Formal, polished, and elevated in tone.',
+  True: 'Literal and faithful to the source wording.',
+  Precise: 'Literal with a clean and straightforward tone.',
+  Exact: 'Literal and highly precise for nuanced text.',
+}
+
 export interface KagiTranslateRequest {
   text: string
   style: KagiStyle

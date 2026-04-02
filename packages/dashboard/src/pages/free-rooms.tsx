@@ -167,7 +167,7 @@ export function FreeRoomListPage() {
     <PageShell
       eyebrow="Free Room Dashboard"
       title="Free Translation Rooms"
-      description="Manage all Kagi Translate free rooms. Keep the same Chatwork structure with a separate free provider surface."
+      description="Manage all free translation rooms. Keep the same Chatwork structure with a separate free provider surface."
       actions={
         <div className="flex w-full min-w-[min(100%,17.5rem)] flex-col gap-3">
           <button
@@ -269,8 +269,8 @@ export function FreeRoomListPage() {
                 Create your first free translation room
               </h2>
               <p className="font-ui-body max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">
-                Set up your Chatwork source room, choose the Kagi free translation style, and add
-                context or keyword protection if needed.
+                Set up your Chatwork source room, choose the translation style, and add context or
+                keyword protection if needed.
               </p>
             </div>
             <button
@@ -399,7 +399,7 @@ export function FreeRoomListPage() {
                             <div className="font-ui-body space-y-1.5 text-xs text-[var(--text-secondary)]">
                               <div>
                                 <span className="font-semibold">Provider: </span>
-                                Kagi Translate Free
+                                Translate Free
                               </div>
                               <div>
                                 <span className="font-semibold">Style: </span>

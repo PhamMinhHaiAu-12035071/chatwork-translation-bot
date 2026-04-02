@@ -19,16 +19,7 @@ import type {
  * @remarks Uses strict defaults (no extra params sent to Kagi)
  */
 export const DEFAULT_TRANSLATION_CONFIG = {
-  INPUT_TEXT: `動画を一定時間（例：10秒ごと）のチャンクに分割し、複数のGPUインスタンスで並列処理することで、1時間の動画でも数分で解析を終えることが可能です。（コストどすですか？）
-
-2. 圧縮技術による最適化
-「AIが物体を検出できる最低限の画質」まで落として転送するエンコード処理
-
-プロキシ動画の生成:
-4KやフルHDで撮影しても、AI検出用には 640x360（nHD） 程度まで解像度を落とした軽量なプロキシ動画に変換し、クラウドへ送る
-
-フレームサンプリング:
-すべてを送る必要はない。ヘアカットやカラーの動きであれば、10 fps 程度に間引いても検出精度への影響は軽微です。割り戻す処理（複雑か・・・）`,
+  INPUT_TEXT: 'Hello, how are you today?',
   SOURCE_LANG: 'auto',
   TARGET_LANG: 'vi',
   READING_LEVEL: 'standard' as ReadingLevel,

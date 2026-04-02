@@ -64,7 +64,7 @@ export function DeleteRoomConfirmModal({
 
   const providerLabel =
     room.kagiStyle !== undefined
-      ? 'Kagi Translate Free'
+      ? 'Translate Free'
       : room.aiProvider !== undefined
         ? PROVIDER_LABELS[room.aiProvider]
         : 'Unknown'

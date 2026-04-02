@@ -1,4 +1,8 @@
-import { KAGI_STYLE_LABELS, KAGI_STYLE_VALUES } from '@chatwork-bot/provider-kagi'
+import {
+  KAGI_STYLE_DESCRIPTIONS,
+  KAGI_STYLE_LABELS,
+  KAGI_STYLE_VALUES,
+} from '@chatwork-bot/provider-kagi'
 import { z } from 'zod'
 
 export const FREE_ROOM_KAGI_STYLES = KAGI_STYLE_VALUES
@@ -6,16 +10,22 @@ export const FREE_ROOM_KAGI_STYLES = KAGI_STYLE_VALUES
 export type FreeRoomKagiStyle = (typeof FREE_ROOM_KAGI_STYLES)[number]
 
 export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = KAGI_STYLE_LABELS
+export const FREE_ROOM_KAGI_STYLE_DESCRIPTIONS: Record<FreeRoomKagiStyle, string> =
+  KAGI_STYLE_DESCRIPTIONS
+
+export function getFreeRoomKagiStyleDescription(style: FreeRoomKagiStyle): string {
+  return FREE_ROOM_KAGI_STYLE_DESCRIPTIONS[style]
+}
 
 export const FREE_ROOM_PROVIDER_OPTIONS = [
   {
     value: 'kagi-free',
-    label: 'Kagi Translate Free',
+    label: 'Translate Free',
   },
 ] as const
 
 export const FREE_ROOM_CONTEXT_MAX_LENGTH = 100
-export const FREE_ROOM_CONTEXT_NOTE = 'This context is sent to Kagi as request context.'
+export const FREE_ROOM_CONTEXT_NOTE = 'This context helps guide the translation output.'
 
 const keywordEntrySchema = z.object({
   keyword: z.string().min(1, 'Keyword is required').max(100, 'Max 100 characters'),
@@ -35,7 +45,7 @@ export const freeRoomCreateSchema = z.object({
     .min(1, 'Destination room name is required')
     .max(100, 'Max 100 characters'),
   kagiStyle: z.enum(FREE_ROOM_KAGI_STYLES, {
-    required_error: 'Kagi style is required',
+    required_error: 'Translation style is required',
   }),
   context: z
     .string()
@@ -57,7 +67,7 @@ export const freeRoomEditSchema = z.object({
     .min(1, 'Destination room name is required')
     .max(100, 'Max 100 characters'),
   kagiStyle: z.enum(FREE_ROOM_KAGI_STYLES, {
-    required_error: 'Kagi style is required',
+    required_error: 'Translation style is required',
   }),
   context: z
     .string()

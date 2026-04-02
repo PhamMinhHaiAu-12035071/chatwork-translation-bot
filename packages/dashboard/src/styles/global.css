@@ -138,7 +138,7 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
-/* Sidebar active nav — peach candy thumb (same #f4b38b / #fff7ed DNA as html::-webkit-scrollbar-thumb) */
+/* Sidebar active nav — matcha candy thumb (cool contrast to warm peach main scrollbar) */
 .nav-candy-thumb {
   pointer-events: none;
   width: 14px;
@@ -148,15 +148,15 @@ html::-webkit-scrollbar-thumb:hover {
   background:
     repeating-linear-gradient(
       125deg,
-      #f4b38b 0px,
-      #f4b38b 7px,
-      #fff7ed 7px,
-      #fff7ed 14px
+      #79a766 0px,
+      #79a766 7px,
+      #e8f5e0 7px,
+      #e8f5e0 14px
     );
   background-size: 20px 20px;
   box-shadow:
-    inset 2px 3px 6px rgba(255, 239, 222, 0.76),
-    inset -2px -3px 7px rgba(201, 123, 72, 0.26),
+    inset 2px 3px 6px rgba(232, 245, 224, 0.82),
+    inset -2px -3px 7px rgba(92, 139, 82, 0.28),
     2px 2px 0 var(--border);
 }
 
@@ -569,8 +569,105 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
+/* ── Dropdown candy scrollbar with color variants ── */
+.brutal-dropdown {
+  /* Default (accent/violet) → Teal candy */
+  --dropdown-scroll-track: #f3fff4;
+  --dropdown-scroll-track-shadow: rgba(67, 140, 115, 0.16);
+  --dropdown-scroll-candy-base: #43aa8b;
+  --dropdown-scroll-candy-stripe: #e0f7ef;
+  --dropdown-scroll-candy-highlight: rgba(168, 245, 224, 0.76);
+  --dropdown-scroll-candy-shadow: rgba(67, 140, 115, 0.28);
+  --dropdown-scroll-fallback: #43aa8b;
+}
+
+.brutal-dropdown[data-color="mint"] {
+  /* Green candy */
+  --dropdown-scroll-track: #f8fbdc;
+  --dropdown-scroll-track-shadow: rgba(120, 160, 90, 0.16);
+  --dropdown-scroll-candy-base: #90be6d;
+  --dropdown-scroll-candy-stripe: #f0f8e0;
+  --dropdown-scroll-candy-highlight: rgba(200, 240, 180, 0.76);
+  --dropdown-scroll-candy-shadow: rgba(120, 160, 90, 0.3);
+  --dropdown-scroll-fallback: #90be6d;
+}
+
+.brutal-dropdown[data-color="peach"] {
+  /* Orange candy */
+  --dropdown-scroll-track: #fff4e9;
+  --dropdown-scroll-track-shadow: rgba(212, 112, 0, 0.16);
+  --dropdown-scroll-candy-base: #f77f00;
+  --dropdown-scroll-candy-stripe: #ffe8d0;
+  --dropdown-scroll-candy-highlight: rgba(255, 220, 180, 0.76);
+  --dropdown-scroll-candy-shadow: rgba(212, 112, 0, 0.32);
+  --dropdown-scroll-fallback: #f77f00;
+}
+
+.brutal-dropdown[data-color="rose"] {
+  /* Red candy */
+  --dropdown-scroll-track: #fff2f2;
+  --dropdown-scroll-track-shadow: rgba(196, 57, 70, 0.16);
+  --dropdown-scroll-candy-base: #e63946;
+  --dropdown-scroll-candy-stripe: #ffe0e3;
+  --dropdown-scroll-candy-highlight: rgba(255, 200, 210, 0.76);
+  --dropdown-scroll-candy-shadow: rgba(196, 57, 70, 0.32);
+  --dropdown-scroll-fallback: #e63946;
+}
+
+.brutal-dropdown::-webkit-scrollbar {
+  width: 14px;
+}
+
+.brutal-dropdown::-webkit-scrollbar-track {
+  background: var(--dropdown-scroll-track);
+  border: 2.5px solid var(--border);
+  border-radius: 16px;
+  margin: 3px 0;
+  box-shadow:
+    inset 2px 2px 6px rgba(255, 255, 255, 0.8),
+    inset -1.5px -1.5px 6px var(--dropdown-scroll-track-shadow);
+}
+
+.brutal-dropdown::-webkit-scrollbar-thumb {
+  border-radius: 12px;
+  border: 2.5px solid var(--border);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      var(--dropdown-scroll-candy-base) 0px,
+      var(--dropdown-scroll-candy-base) 6px,
+      var(--dropdown-scroll-candy-stripe) 6px,
+      var(--dropdown-scroll-candy-stripe) 12px
+    );
+  background-size: 17px 17px;
+  animation: candy-scroll 0.6s linear infinite;
+  box-shadow:
+    inset 3px 3px 6px var(--dropdown-scroll-candy-highlight),
+    inset -2px -2px 6px var(--dropdown-scroll-candy-shadow),
+    3px 3px 0 var(--border);
+}
+
+.brutal-dropdown::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    inset 3px 3px 6px var(--dropdown-scroll-candy-highlight),
+    inset -2px -2px 6px var(--dropdown-scroll-candy-shadow),
+    4px 4px 0 var(--border);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .brutal-dropdown {
+    scrollbar-color: var(--dropdown-scroll-fallback) var(--dropdown-scroll-track);
+    scrollbar-width: thin;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .brutal-dropdown {
+    animation: none;
+  }
+
+  .brutal-dropdown::-webkit-scrollbar-thumb {
     animation: none;
   }
 }

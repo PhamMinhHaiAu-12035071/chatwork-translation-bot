@@ -21,6 +21,7 @@ import { ApiError } from '~/lib/api-client'
 import {
   FREE_ROOM_KAGI_STYLE_LABELS,
   FREE_ROOM_KAGI_STYLES,
+  getFreeRoomKagiStyleDescription,
   freeRoomEditSchema,
 } from '~/lib/free-room-schemas'
 import type { FreeRoomEditInput } from '~/lib/free-room-schemas'
@@ -35,7 +36,7 @@ import {
   type FreeRoom,
 } from '~/stores/free-room-store'
 
-const providerOptions = [{ value: 'kagi-free', label: 'Kagi Translate Free' }] as const
+const providerOptions = [{ value: 'kagi-free', label: 'Translate Free' }] as const
 
 const kagiStyleOptions = FREE_ROOM_KAGI_STYLES.map((style) => ({
   value: style,
@@ -110,6 +111,7 @@ export function FreeRoomDetailPage() {
   }, [editForm, room])
 
   const destinationRoomNameWatch = editForm.watch('destinationRoomName')
+  const selectedKagiStyle = editForm.watch('kagiStyle')
 
   if ((listState === 'loading' || listState === 'idle') && !room) {
     return (
@@ -252,10 +254,12 @@ export function FreeRoomDetailPage() {
                 onChange={() => undefined}
               />
               <BrutalSelect
-                label="Kagi Style"
+                label="Translation Style"
                 options={kagiStyleOptions}
                 colorVariant="mint"
+                hint={getFreeRoomKagiStyleDescription(selectedKagiStyle)}
                 error={editForm.formState.errors.kagiStyle?.message}
+                value={selectedKagiStyle}
                 {...editForm.register('kagiStyle')}
               />
             </div>
@@ -297,7 +301,7 @@ export function FreeRoomDetailPage() {
               }}
               error={editForm.formState.errors.context?.message}
               maxLength={100}
-              note="This context is sent to Kagi as request context."
+              note="This context helps guide the translation output."
             />
 
             <div className="page-divider-brutal my-4" />

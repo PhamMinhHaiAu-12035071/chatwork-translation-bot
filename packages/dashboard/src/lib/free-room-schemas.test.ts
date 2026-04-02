@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   FREE_ROOM_KAGI_STYLES,
+  getFreeRoomKagiStyleDescription,
   freeRoomCreateSchema,
   freeRoomEditSchema,
 } from '~/lib/free-room-schemas'
@@ -59,7 +60,7 @@ describe('free-room-schemas', () => {
     expect(parsed.error.issues[0]?.message).toBe('Max 100 characters')
   })
 
-  it('exposes all supported Kagi styles for UI options', () => {
+  it('exposes all supported translation styles for UI options', () => {
     expect(FREE_ROOM_KAGI_STYLES).toEqual([
       'Wild',
       'Warm',
@@ -74,5 +75,13 @@ describe('free-room-schemas', () => {
       'Precise',
       'Exact',
     ])
+  })
+
+  it('returns short helper text for each supported style', () => {
+    expect(getFreeRoomKagiStyleDescription('Wild')).toBe('Casual, vivid, and full of energy.')
+    expect(getFreeRoomKagiStyleDescription('Clear')).toBe('Balanced, natural, and easy to read.')
+    expect(getFreeRoomKagiStyleDescription('Exact')).toBe(
+      'Literal and highly precise for nuanced text.',
+    )
   })
 })

@@ -18,7 +18,7 @@ describe('BrutalToast', () => {
 
     expect(html).toContain('Room enabled')
     expect(html).toContain('Dismiss')
-    expect(html).toContain('bg-[var(--success)]')
+    expect(html).toContain('bg-[var(--card-matcha)]')
   })
 
   it('renders the info variant styling', () => {
@@ -34,8 +34,8 @@ describe('BrutalToast', () => {
     )
 
     expect(html).toContain('Room updated')
-    expect(html).toContain('bg-[#ede9fe]')
-    expect(html).toContain('text-[#5b4fc4]')
+    expect(html).toContain('bg-[var(--card-sky)]')
+    expect(html).toContain('bg-[#93c5fd]')
   })
 
   it('renders the warning variant styling', () => {
@@ -51,8 +51,8 @@ describe('BrutalToast', () => {
     )
 
     expect(html).toContain('Room deleted')
-    expect(html).toContain('bg-[#fef3cd]')
-    expect(html).toContain('text-[#856404]')
+    expect(html).toContain('bg-[var(--card-cream)]')
+    expect(html).toContain('bg-[#fbbf24]')
   })
 
   it('renders the error variant styling', () => {
@@ -68,15 +68,15 @@ describe('BrutalToast', () => {
     )
 
     expect(html).toContain('Webhook activation failed')
-    expect(html).toContain('text-[var(--error)]')
+    expect(html).toContain('bg-[#ff6f9f]')
   })
 
   it('maps each variant to a distinct icon badge', async () => {
     const source = await Bun.file(new URL('./brutal-toast.tsx', import.meta.url)).text()
 
-    expect(source).toContain("success: 'OK'")
-    expect(source).toContain("info: 'i'")
-    expect(source).toContain("warning: '!'")
-    expect(source).toContain("error: 'X'")
+    expect(source).toContain("icon: '✓'")
+    expect(source).toContain("icon: 'i'")
+    expect(source).toContain("icon: '!'")
+    expect(source).toContain("icon: '✕'")
   })
 })
