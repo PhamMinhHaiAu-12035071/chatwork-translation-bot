@@ -169,56 +169,68 @@ export function RoomCreatePage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.8fr)]">
           <div className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">
-              <BrutalInput
-                label="Original Room ID"
-                type="text"
-                inputMode="numeric"
-                hint="The numeric ID of the source Chatwork room."
-                error={errors.originalRoomId?.message}
-                {...register('originalRoomId', {
-                  setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
-                })}
-              />
-              <BrutalInput
-                label="Destination Room Name"
-                type="text"
-                hint="Internal name for the translated output room."
-                error={errors.destinationRoomName?.message}
-                {...register('destinationRoomName')}
-              />
-              <BrutalSelect
-                label="AI Provider"
-                options={providerOptions}
-                colorVariant="accent"
-                hint="Choose which AI service handles translations."
-                error={errors.aiProvider?.message}
-                {...aiProviderField}
-              />
-              <BrutalSelect
-                label="AI Model"
-                options={modelOptions}
-                colorVariant="mint"
-                hint="Select the model for translation quality and cost balance."
-                error={errors.aiModel?.message}
-                value={aiModel}
-                {...register('aiModel')}
-              />
-              <BrutalSelect
-                label="Translation Style"
-                options={styleOptions}
-                colorVariant="peach"
-                hint="Controls the tone and formality of output."
-                error={errors.translationStyle?.message}
-                {...register('translationStyle')}
-              />
-              <BrutalInput
-                label="AI API Token"
-                type="password"
-                placeholder={selectedProvider === 'openai' ? 'sk-...' : 'AIza...'}
-                hint="Your provider API key for the selected translation service."
-                error={errors.aiApiToken?.message}
-                {...register('aiApiToken')}
-              />
+              <div id="tour-field-roomid">
+                <BrutalInput
+                  label="Original Room ID"
+                  type="text"
+                  inputMode="numeric"
+                  hint="The numeric ID of the source Chatwork room."
+                  error={errors.originalRoomId?.message}
+                  {...register('originalRoomId', {
+                    setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
+                  })}
+                />
+              </div>
+              <div id="tour-field-roomname">
+                <BrutalInput
+                  label="Destination Room Name"
+                  type="text"
+                  hint="Internal name for the translated output room."
+                  error={errors.destinationRoomName?.message}
+                  {...register('destinationRoomName')}
+                />
+              </div>
+              <div id="tour-field-provider">
+                <BrutalSelect
+                  label="AI Provider"
+                  options={providerOptions}
+                  colorVariant="accent"
+                  hint="Choose which AI service handles translations."
+                  error={errors.aiProvider?.message}
+                  {...aiProviderField}
+                />
+              </div>
+              <div id="tour-field-model">
+                <BrutalSelect
+                  label="AI Model"
+                  options={modelOptions}
+                  colorVariant="mint"
+                  hint="Select the model for translation quality and cost balance."
+                  error={errors.aiModel?.message}
+                  value={aiModel}
+                  {...register('aiModel')}
+                />
+              </div>
+              <div id="tour-field-style">
+                <BrutalSelect
+                  label="Translation Style"
+                  options={styleOptions}
+                  colorVariant="peach"
+                  hint="Controls the tone and formality of output."
+                  error={errors.translationStyle?.message}
+                  {...register('translationStyle')}
+                />
+              </div>
+              <div id="tour-field-token">
+                <BrutalInput
+                  label="AI API Token"
+                  type="password"
+                  placeholder={selectedProvider === 'openai' ? 'sk-...' : 'AIza...'}
+                  hint="Your provider API key for the selected translation service."
+                  error={errors.aiApiToken?.message}
+                  {...register('aiApiToken')}
+                />
+              </div>
             </div>
           </div>
 
@@ -244,30 +256,34 @@ export function RoomCreatePage() {
 
           <div className="xl:col-span-2">
             <div className="page-divider-brutal my-6" />
-            {(() => {
-              const contextFieldProps: {
-                value: string
-                onChange: (v: string) => void
-                error?: string
-              } = {
-                value: watch('context'),
-                onChange: (v: string) => {
-                  setValue('context', v, { shouldValidate: true })
-                },
-              }
-              if (errors.context?.message) {
-                contextFieldProps.error = errors.context.message
-              }
-              return <ContextField {...contextFieldProps} />
-            })()}
+            <div id="tour-field-context">
+              {(() => {
+                const contextFieldProps: {
+                  value: string
+                  onChange: (v: string) => void
+                  error?: string
+                } = {
+                  value: watch('context'),
+                  onChange: (v: string) => {
+                    setValue('context', v, { shouldValidate: true })
+                  },
+                }
+                if (errors.context?.message) {
+                  contextFieldProps.error = errors.context.message
+                }
+                return <ContextField {...contextFieldProps} />
+              })()}
+            </div>
 
             <div className="page-divider-brutal my-4" />
-            <KeywordProtectionField
-              value={watch('protectedKeywords')}
-              onChange={(v) => {
-                setValue('protectedKeywords', v, { shouldValidate: true })
-              }}
-            />
+            <div id="tour-field-keywords">
+              <KeywordProtectionField
+                value={watch('protectedKeywords')}
+                onChange={(v) => {
+                  setValue('protectedKeywords', v, { shouldValidate: true })
+                }}
+              />
+            </div>
 
             <div className="flex flex-wrap gap-3 pt-2 mt-4">
               <button
@@ -280,6 +296,7 @@ export function RoomCreatePage() {
                 Cancel
               </button>
               <button
+                id="tour-save-btn"
                 type="submit"
                 disabled={isSubmitting}
                 className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
