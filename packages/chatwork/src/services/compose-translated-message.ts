@@ -34,9 +34,11 @@ export async function composeTranslatedMessage(
   const envelope = getDecorationSnapshotEnvelope(command)
   const snapshot = envelope.snapshot
 
-  // Build header line
-  const eventType = command.sourceEventType === 'message_created' ? 'Created' : 'Updated'
-  const header = `[piconname:${String(command.senderAccountId)}] [${eventType}]`
+  // Build header line with emoji decoration
+  const eventDecoration = command.sourceEventType === 'message_created'
+    ? '🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿'
+    : '🔥⚡🔥 𝐔𝐩𝐝𝐚𝐭𝐞𝐝 🔥⚡🔥'
+  const header = `[piconname:${String(command.senderAccountId)}] ${eventDecoration}`
 
   // Render translated body only
   const translatedContext: RenderContext = {

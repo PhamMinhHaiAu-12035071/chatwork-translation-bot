@@ -76,7 +76,7 @@ describe('composeTranslatedMessage', () => {
     expect(result).not.toHaveProperty('bodyMessage')
 
     const lines = result.message.split('\n')
-    expect(lines[0]).toBe('[piconname:100] [Created]')
+    expect(lines[0]).toBe('[piconname:100] 🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿')
     expect(lines[1]).toBe('Vietnamese translation')
     expect(lines.length).toBe(2)
   })
@@ -96,8 +96,8 @@ describe('composeTranslatedMessage', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.message).toContain('[Updated]')
-    expect(result.message).not.toContain('[Created]')
+    expect(result.message).toContain('🔥⚡🔥 𝐔𝐩𝐝𝐚𝐭𝐞𝐝 🔥⚡🔥')
+    expect(result.message).not.toContain('🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿')
   })
 
   it('uses piconname tag even when member not in cache', async () => {
@@ -116,7 +116,7 @@ describe('composeTranslatedMessage', () => {
     })
 
     // Chatwork's piconname tag will handle fallback display automatically
-    expect(result.message).toContain('[piconname:999] [Created]')
+    expect(result.message).toContain('[piconname:999] 🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿')
     expect(result.message).toContain('Translation')
   })
 
@@ -280,5 +280,44 @@ describe('composeTranslatedMessage', () => {
     const lines = result.message.split('\n')
     const translatedBody = lines.slice(1).join('\n')
     expect(translatedBody).toBe('Xin chào [info]injected info[/info]')
+  })
+
+  it('uses distinct emoji decorations for created vs updated messages', async () => {
+    const createdCommand = makeCommand('Test message', {
+      webhook_event_type: 'message_created',
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const updatedCommand = makeCommand('Test message', {
+      webhook_event_type: 'message_updated',
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+        update_time: 1711271500,
+      },
+    })
+
+    const createdResult = await composeTranslatedMessage(createdCommand, {
+      translatedSegments: ['Test translation'],
+      apiToken: 'test-token',
+      roomCache: new Map([[777, 'Test Room']]),
+    })
+
+    const updatedResult = await composeTranslatedMessage(updatedCommand, {
+      translatedSegments: ['Test translation'],
+      apiToken: 'test-token',
+      roomCache: new Map([[777, 'Test Room']]),
+    })
+
+    // Created uses nature theme
+    expect(createdResult.message).toContain('🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿')
+    expect(createdResult.message).not.toContain('🔥⚡🔥')
+
+    // Updated uses energy theme
+    expect(updatedResult.message).toContain('🔥⚡🔥 𝐔𝐩𝐝𝐚𝐭𝐞𝐝 🔥⚡🔥')
+    expect(updatedResult.message).not.toContain('🌿🌺🌿')
   })
 })
