@@ -57,7 +57,8 @@ const makeResult = (overrides: Partial<TranslationResult> = {}): TranslationResu
 })
 
 describe('sendTranslatedMessage', () => {
-  const metadataMessage = '[info][title]Translation metadata[/title]Event: created[/info]'
+  const metadataMessage =
+    '[piconname:34567]\nEvent: created\nSender: TestUser\nRoom: TestRoom\nSent: 2026-03-06 10:30'
   const bodyMessage = '[info]Chào buổi sáng![/info]'
 
   const mockComposeTranslatedMessagePair = mock(
