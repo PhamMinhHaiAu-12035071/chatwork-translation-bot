@@ -114,7 +114,7 @@ export async function composeTranslatedMessagePair(
   }
 
   return {
-    metadataMessage: `[info][title]Translation metadata[/title]${metadataLines.join('\n')}[/info]`,
+    metadataMessage: `[piconname:${String(command.senderAccountId)}]\n${metadataLines.join('\n')}`,
     bodyMessage,
   }
 }

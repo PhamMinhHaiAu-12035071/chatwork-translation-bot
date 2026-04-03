@@ -89,6 +89,9 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
+    expect(result.metadataMessage).toContain('[piconname:100]')
+    expect(result.metadataMessage).not.toContain('[info]')
+    expect(result.metadataMessage).not.toContain('[title]')
     expect(result.metadataMessage).toContain('updated')
     expect(result.metadataMessage).toContain('Alice')
     expect(result.metadataMessage).toContain('JP Project Demo')
@@ -102,6 +105,30 @@ describe('composeTranslatedMessagePair', () => {
     )
     expect(result.bodyMessage).not.toContain('[To:200]')
     expect(result.bodyMessage).not.toContain('[cc:300]')
+  })
+
+  it('uses piconname tag to display sender avatar and name in metadata', async () => {
+    const command = makeCommand('Hello world', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessagePair(command, {
+      translatedSegments: ['Xin chao the gioi'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Alice']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    expect(result.metadataMessage).toContain('[piconname:100]')
+    expect(result.metadataMessage).not.toContain('[info]')
+    expect(result.metadataMessage).not.toContain('[title]')
+    expect(result.metadataMessage).toContain('Event: created')
+    expect(result.metadataMessage).toContain('Sender: Alice')
+    expect(result.metadataMessage).toContain('Room: JP Project Demo')
+    expect(result.metadataMessage).toContain(`Sent: ${formatUtc(1711271400)}`)
   })
 
   it('preserves portable wrappers and keeps code content byte-for-byte identical', async () => {
@@ -220,6 +247,8 @@ describe('composeTranslatedMessagePair', () => {
     })
 
     // Metadata no longer includes Quote/To/Cc/Reply summaries (body preserves full structure)
+    expect(result.metadataMessage).toContain('[piconname:100]')
+    expect(result.metadataMessage).not.toContain('[info]')
     expect(result.metadataMessage).toContain('Event: created')
     expect(result.metadataMessage).toContain('Sender: Alice')
     expect(result.metadataMessage).toContain('Room: JP Project Demo')
@@ -240,6 +269,7 @@ describe('composeTranslatedMessagePair', () => {
       apiToken: 'test-token',
     })
 
+    expect(result.metadataMessage).toContain('[piconname:100]')
     expect(result.metadataMessage).toContain('#100')
     expect(result.metadataMessage).toContain('Room #777')
     expect(result.bodyMessage).toBe('Xin chao')
