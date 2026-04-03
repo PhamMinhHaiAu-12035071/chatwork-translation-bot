@@ -403,4 +403,126 @@ describe('composeTranslatedMessagePair', () => {
     expect(translatedSection).toContain('[qt][qtmeta aid=200 time=1234567890]Translated quote[/qt]')
     expect(translatedSection).toContain('Translated new message')
   })
+
+  it('preserves reply structure in both original and translated sections', async () => {
+    const command = makeCommand('[rp aid=200 to=777-123]Thank you!', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Cảm ơn bạn!'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    // Original section has reply tag
+    expect(result.message).toContain('[rp aid=200 to=777-123]Thank you!')
+
+    // Translated section has same tag structure
+    expect(result.message).toContain('[rp aid=200 to=777-123]Cảm ơn bạn!')
+  })
+
+  it('preserves code blocks byte-identical in both sections', async () => {
+    const command = makeCommand('Check this:\n[code]const x = 1;\nconsole.log(x);[/code]', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Kiểm tra cái này:'], // Code not translated
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    const codeBlock = '[code]const x = 1;\nconsole.log(x);[/code]'
+
+    // Original section has original code
+    expect(result.message).toContain(`Check this:\n${codeBlock}`)
+
+    // Translated section has same code
+    expect(result.message).toContain(`Kiểm tra cái này:\n${codeBlock}`)
+  })
+
+  it('preserves code blocks in both sections even when no translatable content exists', async () => {
+    const command = makeCommand('[code]const x = 1;[/code]', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: [], // No translations
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    const lines = result.message.split('\n')
+
+    // Format: Header\nOriginal code block\n[hr]\nTranslated code block (identical)
+    expect(lines[0]).toContain('[piconname:100]')
+    expect(lines[1]).toBe('[code]const x = 1;[/code]')
+    expect(lines[2]).toBe('[hr]')
+    expect(lines[3]).toBe('[code]const x = 1;[/code]')
+    expect(lines.length).toBe(4)
+  })
+
+  it('preserves info and title wrappers in both sections', async () => {
+    const command = makeCommand('[info][title]Important[/title]Please read carefully[/info]', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Quan trọng', 'Vui lòng đọc kỹ'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    // Original section
+    expect(result.message).toContain('[info][title]Important[/title]Please read carefully[/info]')
+
+    // Translated section
+    expect(result.message).toContain('[info][title]Quan trọng[/title]Vui lòng đọc kỹ[/info]')
+  })
+
+  it('handles nested quote structures correctly', async () => {
+    const command = makeCommand(
+      '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Inner[/qt]Outer[/qt]\nNew',
+      {
+        webhook_event: {
+          account_id: 100,
+          send_time: 1711271400,
+        },
+      },
+    )
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Trong', 'Ngoài', 'Mới'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    // Original nested structure
+    expect(result.message).toContain(
+      '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Inner[/qt]Outer[/qt]',
+    )
+
+    // Translated nested structure
+    expect(result.message).toContain(
+      '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Trong[/qt]Ngoài[/qt]',
+    )
+  })
 })
