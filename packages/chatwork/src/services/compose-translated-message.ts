@@ -51,6 +51,7 @@ export async function composeTranslatedMessage(
   const eventType = command.sourceEventType === 'message_created' ? 'Created' : 'Updated'
   const header = `[piconname:${String(command.senderAccountId)}] ${senderName} 🇻🇳 [${eventType}]`
 
+  // Context is mutated during rendering; create fresh context for each render pass
   // Render original body (mode='original' preserves literal content)
   const originalContext: RenderContext = {
     mode: 'original',
@@ -67,6 +68,14 @@ export async function composeTranslatedMessage(
   }
   const translatedBody = await renderNodes(snapshot.renderTemplate, translatedContext)
 
+  // Validate all translated segments were consumed
+  if (translatedContext.nextTranslationIndex !== params.translatedSegments.length) {
+    throw new Error(
+      `Unused translated segments: expected ${String(params.translatedSegments.length)}, ` +
+        `used ${String(translatedContext.nextTranslationIndex)}`,
+    )
+  }
+
   // Compose single message
   const message = [header, originalBody, '[hr]', translatedBody].join('\n')
 
@@ -80,6 +89,8 @@ async function renderNodes(nodes: MessageRenderNode[], context: RenderContext): 
 
 async function renderNode(node: MessageRenderNode, context: RenderContext): Promise<string> {
   if (node.type === 'literal') {
+    // Whitespace-only content (newlines, spaces) is preserved as-is in both modes
+    // to maintain message structure without consuming translation segments
     if (node.content.trim().length === 0) {
       return node.content
     }
@@ -122,12 +133,22 @@ async function renderNode(node: MessageRenderNode, context: RenderContext): Prom
 
   const children = await renderNodes(node.children, context)
 
-  if (node.type === 'info' || node.type === 'title' || node.type === 'quote') {
-    return `[${node.type}]${children}[/${node.type}]`
-  }
+  switch (node.type) {
+    case 'info':
+    case 'title':
+    case 'quote':
+      return `[${node.type}]${children}[/${node.type}]`
 
-  const qtmetaTag = buildQtmetaTag(node.quoteMeta)
-  return `[qt]${qtmetaTag}${children}[/qt]`
+    case 'qt': {
+      const qtmetaTag = buildQtmetaTag(node.quoteMeta)
+      return `[qt]${qtmetaTag}${children}[/qt]`
+    }
+
+    default: {
+      const _exhaustive: never = node
+      throw new Error(`Unhandled node type: ${(node as MessageRenderNode).type}`)
+    }
+  }
 }
 
 // Backward-compatible wrapper - temporarily keep old function for existing tests
