@@ -463,12 +463,11 @@ describe('composeTranslatedMessagePair', () => {
 
     const lines = result.message.split('\n')
 
-    // Format: Header\nOriginal code block\n[hr]\nTranslated code block (identical)
+    // Format: Header\n[hr]\nTranslated code block (original section skipped when empty)
     expect(lines[0]).toContain('[piconname:100]')
-    expect(lines[1]).toBe('[code]const x = 1;[/code]')
-    expect(lines[2]).toBe('[hr]')
-    expect(lines[3]).toBe('[code]const x = 1;[/code]')
-    expect(lines.length).toBe(4)
+    expect(lines[1]).toBe('[hr]')
+    expect(lines[2]).toBe('[code]const x = 1;[/code]')
+    expect(lines.length).toBe(3)
   })
 
   it('preserves info and title wrappers in both sections', async () => {
@@ -520,5 +519,29 @@ describe('composeTranslatedMessagePair', () => {
     expect(result.message).toContain(
       '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Trong[/qt]Ngoài[/qt]',
     )
+  })
+
+  it('renders injected Chatwork tags as literal text in translations', async () => {
+    const command = makeCommand('Hello', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    // Malicious translation contains Chatwork tags
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Xin chào [info]injected info[/info]'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'Test Room']]),
+    })
+
+    // Tags should be escaped or rendered as text, not structure
+    expect(result.message).toContain('Xin chào [info]injected info[/info]')
+    // Verify it doesn't create actual info structure by checking rendered output
+    const lines = result.message.split('\n')
+    const translatedSection = lines.slice(lines.indexOf('[hr]') + 1).join('\n')
+    expect(translatedSection).toBe('Xin chào [info]injected info[/info]')
   })
 })

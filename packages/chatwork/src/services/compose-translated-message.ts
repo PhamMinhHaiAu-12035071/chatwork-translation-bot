@@ -74,8 +74,11 @@ export async function composeTranslatedMessage(
     )
   }
 
-  // Compose single message
-  const message = [header, originalBody, '[hr]', translatedBody].join('\n')
+  // Compose single message - skip original section if empty or identical to translated
+  const message =
+    originalBody.trim() === '' || originalBody === translatedBody
+      ? `${header}\n[hr]\n${translatedBody}`
+      : `${header}\n${originalBody}\n[hr]\n${translatedBody}`
 
   return { message }
 }
