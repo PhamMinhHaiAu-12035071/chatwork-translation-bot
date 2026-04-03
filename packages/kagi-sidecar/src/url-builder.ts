@@ -91,7 +91,7 @@ const KAGI_STYLE_PRESETS: Record<KagiStyle, KagiStylePreset> = {
 }
 
 type KagiStyleQuery = Readonly<{
-  formality?: 'more'
+  formality?: 'less' | 'more'
   formalityContext?: string
   languageComplexity?: Exclude<KagiReadingLevel, 'standard'>
   style?: 'literal'
@@ -109,7 +109,7 @@ function mapFormality(
 
   if (formality === 'vietnamese_casual') {
     return {
-      formality: 'more',
+      formality: 'less',
       formalityContext: 'vi_casual',
     }
   }

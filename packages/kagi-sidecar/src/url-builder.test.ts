@@ -36,7 +36,7 @@ describe('buildKagiUrl', () => {
   it('Wild adds formality and advanced language-complexity params', () => {
     const params = getParams(buildKagiUrl('Hello', 'Wild'))
 
-    expect(params.get('formality')).toBe('more')
+    expect(params.get('formality')).toBe('less')
     expect(params.get('formality_context')).toBe('vi_casual')
     expect(params.get('language_complexity')).toBe('c2')
   })
@@ -44,7 +44,7 @@ describe('buildKagiUrl', () => {
   it('Warm keeps the casual tone without forcing a reading level', () => {
     const params = getParams(buildKagiUrl('Hello', 'Warm'))
 
-    expect(params.get('formality')).toBe('more')
+    expect(params.get('formality')).toBe('less')
     expect(params.get('formality_context')).toBe('vi_casual')
     expect(params.has('language_complexity')).toBe(false)
     expect(params.has('style')).toBe(false)

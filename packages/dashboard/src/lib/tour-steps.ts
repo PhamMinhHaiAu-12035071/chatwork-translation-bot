@@ -77,6 +77,7 @@ const steps: NeubStep[] = [
     side: 'right',
     showControls: true,
     showSkip: true,
+    prevRoute: '/',
     color: '#ffc8a0',
   },
   {
@@ -168,7 +169,7 @@ const steps: NeubStep[] = [
     title: '➕ Thêm keyword',
     content:
       'Nhập từ cần giữ nguyên, chọn loại của nó, nếu muốn thì đặt tên thay thế, rồi bấm Add.',
-    side: 'top',
+    side: 'bottom',
     showControls: true,
     showSkip: true,
     color: '#fef3c7',
@@ -192,6 +193,7 @@ const steps: NeubStep[] = [
     side: 'right',
     showControls: true,
     showSkip: true,
+    prevRoute: '/rooms/new',
     color: '#fde68a',
   },
   {

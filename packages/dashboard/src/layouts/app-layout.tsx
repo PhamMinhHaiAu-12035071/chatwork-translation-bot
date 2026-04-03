@@ -1,17 +1,19 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { NextStepReact, useNextStep } from 'nextstepjs'
 import { useReactRouterAdapter } from 'nextstepjs/adapters/react-router'
-import { useEffect } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { Icon } from '~/components/atoms/icons'
 import type { ClayIconName } from '~/components/atoms/icons'
 import { AmbientOrbs } from '~/components/layout/ambient-orbs'
 import { NeubTourCard } from '~/components/organisms/neub-tour-card'
-import { TourFloatButton } from '~/components/organisms/tour-float-button'
+// TODO: Re-enable tour replay float button when tour/overlay issues are fully resolved.
+// import { TourFloatButton } from '~/components/organisms/tour-float-button'
 import { TOUR_NAME, TOUR_VERSION, tours } from '~/lib/tour-steps'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useUiStore, selectSidebarCollapsed, selectToggleSidebar } from '~/stores/ui-store'
+import { useRoomStore, selectRooms } from '~/stores/room-store'
 
 const navItems: readonly {
   to: string
@@ -55,10 +57,39 @@ export function AppLayout() {
   const location = useLocation()
   const sidebarCollapsed = useUiStore(selectSidebarCollapsed)
   const toggleSidebar = useUiStore(selectToggleSidebar)
-  const { startNextStep } = useNextStep()
+  const { startNextStep, setCurrentStep, currentTour, closeNextStep } = useNextStep()
+  const rooms = useRoomStore(selectRooms)
+  const navigate = useNavigate()
+  const tourSeenVersion = useUiStore((state) => state.tourSeenVersion)
+  const [persistHasHydrated, setPersistHasHydrated] = useState(() =>
+    useUiStore.persist.hasHydrated(),
+  )
 
   useEffect(() => {
-    if (useUiStore.getState().tourSeenVersion !== null) return
+    const unsub = useUiStore.persist.onFinishHydration(() => {
+      setPersistHasHydrated(true)
+    })
+    return unsub
+  }, [])
+
+  // After successful standard room create we navigate here with spotlightRoomId; clear any stale NextStep overlay (e.g. step 17 stuck open).
+  useEffect(() => {
+    const spotlightId = (location.state as { spotlightRoomId?: string } | null)?.spotlightRoomId
+    if (location.pathname === '/' && spotlightId != null) {
+      closeNextStep()
+    }
+  }, [location.pathname, location.state, closeNextStep])
+
+  useEffect(() => {
+    // Before rehydration, tourSeenVersion is default null — do not schedule auto-start (race with localStorage).
+    if (!persistHasHydrated) return
+    // Use hook state instead of getState() to ensure reactivity to Zustand persistence
+    if (tourSeenVersion !== null) return
+    if (location.pathname !== '/') return
+    // startNextStep() always resets to step 0 (nextstepjs NextStepContext). If we schedule it
+    // again when the user returns to "/" mid-tour (e.g. after /rooms/new), the tour jumps back
+    // to "Chào mừng" instead of continuing at the room-card steps.
+    if (currentTour === TOUR_NAME) return
 
     const id = window.setTimeout(() => {
       startNextStep(TOUR_NAME)
@@ -67,18 +98,84 @@ export function AppLayout() {
     return () => {
       window.clearTimeout(id)
     }
-  }, [startNextStep])
+  }, [
+    startNextStep,
+    location.pathname,
+    currentTour,
+    closeNextStep,
+    tourSeenVersion,
+    persistHasHydrated,
+  ])
 
   return (
     <NextStepReact
       steps={tours}
       cardComponent={NeubTourCard}
       navigationAdapter={useReactRouterAdapter}
+      onStepChange={(step) => {
+        // Steps 17–20 (0-based) cover room card interactions and require at least one room.
+        if (rooms.length === 0) {
+          // Forward: skip room steps → jump to completion
+          if (step === 17) {
+            setTimeout(() => {
+              setCurrentStep(21)
+            }, 0)
+            return
+          }
+          // Backward: skip back over room steps → return to "Lưu phòng" on /rooms/new
+          if (step >= 18 && step <= 20) {
+            void navigate('/rooms/new')
+            setTimeout(() => {
+              setCurrentStep(16)
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
+            }, 200)
+            return
+          }
+        }
+        // Auto-expand Translation Context when landing on its interior step (13).
+        // Handles keyboard navigation (ArrowRight/ArrowLeft) which bypasses card button handlers.
+        if (step === 13) {
+          if (document.querySelector('#tour-context-templates') === null) {
+            const triggerButton = document.querySelector<HTMLButtonElement>(
+              '#tour-field-context button',
+            )
+            if (triggerButton) {
+              triggerButton.click()
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 550)
+              return
+            }
+          }
+          setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
+          return
+        }
+        // Auto-expand Keyword Protection when landing on its interior step (15).
+        // Handles keyboard navigation (ArrowRight/ArrowLeft) which bypasses card button handlers.
+        if (step === 15) {
+          if (document.querySelector('#tour-keyword-addform') === null) {
+            const triggerButton = document.querySelector<HTMLButtonElement>(
+              '#tour-field-keywords button',
+            )
+            if (triggerButton) {
+              triggerButton.click()
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 550)
+              return
+            }
+          }
+          setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
+          return
+        }
+      }}
       onComplete={() => {
+        // Set seen immediately (synchronous Zustand state update triggers re-render)
         useUiStore.getState().setTourSeen(TOUR_VERSION)
+        // Force close immediately (nextstepjs also calls this, but double-call is safe)
+        closeNextStep()
       }}
       onSkip={() => {
+        // Set seen immediately (synchronous Zustand state update triggers re-render)
         useUiStore.getState().setTourSeen(TOUR_VERSION)
+        // Force close immediately (nextstepjs also calls this, but double-call is safe)
+        closeNextStep()
       }}
     >
       <div className="relative min-h-screen overflow-hidden px-4 py-5 md:px-6 lg:px-8">
@@ -347,7 +444,8 @@ export function AppLayout() {
           </motion.main>
         </div>
 
-        <TourFloatButton />
+        {/* TODO: Re-enable — see import above */}
+        {/* <TourFloatButton /> */}
       </div>
     </NextStepReact>
   )

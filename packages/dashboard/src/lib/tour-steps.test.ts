@@ -56,6 +56,25 @@ describe('tour-steps', () => {
     expect((steps[16] as { nextRoute?: string }).nextRoute).toBe('/')
   })
 
+  it('only the real cross-page backward boundaries use prevRoute', () => {
+    expect((steps[6] as { prevRoute?: string }).prevRoute).toBe('/')
+
+    for (const index of [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
+      expect((steps[index] as { prevRoute?: string }).prevRoute).toBeUndefined()
+    }
+
+    expect((steps[17] as { prevRoute?: string }).prevRoute).toBe('/rooms/new')
+
+    for (const index of [18, 19, 20, 21]) {
+      expect((steps[index] as { prevRoute?: string }).prevRoute).toBeUndefined()
+    }
+  })
+
+  it('keeps the keyword add-form step pointing upward toward the inline add form', () => {
+    expect(steps[15]?.selector).toBe('#tour-keyword-addform')
+    expect(steps[15]?.side).toBe('bottom')
+  })
+
   it('TOUR_VERSION is a positive integer', () => {
     expect(typeof TOUR_VERSION).toBe('number')
     expect(TOUR_VERSION).toBeGreaterThan(0)
