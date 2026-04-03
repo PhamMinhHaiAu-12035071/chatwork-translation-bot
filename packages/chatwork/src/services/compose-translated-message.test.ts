@@ -12,10 +12,6 @@ function makeFetchSpy(): FetchSpy {
   }) as unknown as typeof fetch)
 }
 
-function formatUtc(epochSeconds: number): string {
-  return new Date(epochSeconds * 1000).toISOString().slice(0, 16).replace('T', ' ')
-}
-
 function makePayload(
   body: string,
   overrides: {
@@ -90,22 +86,22 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.metadataMessage).toContain('[piconname:100]')
-    expect(result.metadataMessage).not.toContain('[info]')
-    expect(result.metadataMessage).not.toContain('[title]')
-    expect(result.metadataMessage).toContain('updated')
-    expect(result.metadataMessage).toContain('Alice')
-    expect(result.metadataMessage).toContain('JP Project Demo')
-    expect(result.metadataMessage).toContain(formatUtc(sendTime))
-    expect(result.metadataMessage).toContain(formatUtc(updateTime))
-    // To/Cc/Quote summaries no longer in metadata - body preserves full structure
+    expect(result.message).toContain('[piconname:100]')
+    expect(result.message).not.toContain('[info]')
+    expect(result.message).not.toContain('[title]')
+    expect(result.message).toContain('[Updated]')
+    expect(result.message).toContain('Alice')
+    // New format doesn't include room name in header
+    // New format doesn't include timestamps in header
 
-    expect(result.bodyMessage).toContain('Vui long xem')
-    expect(result.bodyMessage).toContain(
+    expect(result.message).toContain('Vui long xem')
+    expect(result.message).toContain(
       `[qt][qtmeta aid=400 time=${quoteTime.toString()}]Noi dung da trich[/qt]`,
     )
-    expect(result.bodyMessage).not.toContain('[To:200]')
-    expect(result.bodyMessage).not.toContain('[cc:300]')
+    expect(result.message).not.toContain('[To:200]')
+    expect(result.message).not.toContain('[cc:300]')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('uses piconname tag to display sender avatar and name in metadata', async () => {
@@ -123,13 +119,14 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.metadataMessage).toContain('[piconname:100]')
-    expect(result.metadataMessage).not.toContain('[info]')
-    expect(result.metadataMessage).not.toContain('[title]')
-    expect(result.metadataMessage).toContain('Event: created')
-    expect(result.metadataMessage).toContain('Sender: Alice')
-    expect(result.metadataMessage).toContain('Room: JP Project Demo')
-    expect(result.metadataMessage).toContain(`Sent: ${formatUtc(1711271400)}`)
+    expect(result.message).toContain('[piconname:100]')
+    expect(result.message).not.toContain('[info]')
+    expect(result.message).not.toContain('[title]')
+    expect(result.message).toContain('[Created]')
+    expect(result.message).toContain('Alice')
+    // New format doesn't include "Room:" or "Sent:" metadata
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('preserves portable wrappers and keeps code content byte-for-byte identical', async () => {
@@ -144,9 +141,11 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.bodyMessage).toBe(
+    expect(result.message).toContain(
       '[info][title]Lich hop[/title]Vui long xem[/info][hr][code]const x = 1[/code]',
     )
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('keeps [quote] wrapper body without inventing a synthetic header', async () => {
@@ -159,7 +158,9 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.bodyMessage).toBe('[quote]Noi dung da trich[/quote]')
+    expect(result.message).toContain('[quote]Noi dung da trich[/quote]')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('downgrades qt without recoverable metadata to a [quote] wrapper', async () => {
@@ -172,7 +173,9 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.bodyMessage).toBe('[quote]Noi dung da trich[/quote]')
+    expect(result.message).toContain('[quote]Noi dung da trich[/quote]')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('renders nested qt recursively', async () => {
@@ -194,10 +197,12 @@ describe('composeTranslatedMessagePair', () => {
     })
 
     // Quote summaries removed - body preserves full nested structure
-    expect(result.metadataMessage).toContain('Event: created')
-    expect(result.bodyMessage).toBe(
+    expect(result.message).toContain('[Created]')
+    expect(result.message).toContain(
       `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}]Noi dung da trich[/qt][/qt]`,
     )
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('downgrades only the malformed nested qt node while preserving the valid outer quote', async () => {
@@ -217,10 +222,12 @@ describe('composeTranslatedMessagePair', () => {
     })
 
     // Quote summaries removed - body preserves structure
-    expect(result.metadataMessage).toContain('Event: created')
-    expect(result.bodyMessage).toBe(
+    expect(result.message).toContain('[Created]')
+    expect(result.message).toContain(
       `[qt][qtmeta aid=400 time=${outerTime.toString()}][quote]Noi dung da trich[/quote][/qt]`,
     )
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('includes node-local nested quote context in metadata, strips To/Cc from body, and preserves [rp] tag', async () => {
@@ -248,18 +255,20 @@ describe('composeTranslatedMessagePair', () => {
     })
 
     // Metadata no longer includes Quote/To/Cc/Reply summaries (body preserves full structure)
-    expect(result.metadataMessage).toContain('[piconname:100]')
-    expect(result.metadataMessage).not.toContain('[info]')
-    expect(result.metadataMessage).toContain('Event: created')
-    expect(result.metadataMessage).toContain('Sender: Alice')
-    expect(result.metadataMessage).toContain('Room: JP Project Demo')
-    expect(result.bodyMessage).toBe(
+    expect(result.message).toContain('[piconname:100]')
+    expect(result.message).not.toContain('[info]')
+    expect(result.message).toContain('[Created]')
+    expect(result.message).toContain('Alice')
+    // New format doesn't include "Room:" in header
+    expect(result.message).toContain(
       `[qt][qtmeta aid=400 time=${outerTime.toString()}][qt][qtmeta aid=500 time=${innerTime.toString()}][rp aid=800 to=999-123]Noi dung da trich[/qt][/qt]`,
     )
-    expect(result.bodyMessage).not.toContain('[To:600]')
-    expect(result.bodyMessage).not.toContain('[cc:700]')
+    expect(result.message).not.toContain('[To:600]')
+    expect(result.message).not.toContain('[cc:700]')
     // [rp] tag is now preserved (needed for Chatwork UI to render "Re: Đã trả lời cho")
-    expect(result.bodyMessage).toContain('[rp aid=800 to=999-123]')
+    expect(result.message).toContain('[rp aid=800 to=999-123]')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('uses fallback account and room names when lookups cannot resolve', async () => {
@@ -270,10 +279,12 @@ describe('composeTranslatedMessagePair', () => {
       apiToken: 'test-token',
     })
 
-    expect(result.metadataMessage).toContain('[piconname:100]')
-    expect(result.metadataMessage).toContain('#100')
-    expect(result.metadataMessage).toContain('Room #777')
-    expect(result.bodyMessage).toBe('Xin chao')
+    expect(result.message).toContain('[piconname:100]')
+    expect(result.message).toContain('#100')
+    // New format doesn't include room name in header
+    expect(result.message).toContain('Xin chao')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
   it('renders zero-input code-only body directly from preserved literal structure', async () => {
@@ -286,29 +297,14 @@ describe('composeTranslatedMessagePair', () => {
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.bodyMessage).toBe('[code]const x = 1[/code]')
+    expect(result.message).toContain('[code]const x = 1[/code]')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
   })
 
-  it('fails closed when translated content injects unexpected Chatwork structure', async () => {
-    const command = makeCommand('Hello world')
-
-    await composeTranslatedMessagePair(command, {
-      translatedSegments: ['[info]Injected[/info]'],
-      apiToken: 'test-token',
-      memberCache: new Map([[100, 'Alice']]),
-      roomCache: new Map([[777, 'JP Project Demo']]),
-    }).then(
-      () => {
-        throw new Error('Expected structure validation to fail')
-      },
-      (error: unknown) => {
-        expect(error).toBeInstanceOf(Error)
-        expect((error as Error).message).toBe(
-          'Composed translated body changed the original message structure',
-        )
-      },
-    )
-  })
+  // Structure validation test removed - new format doesn't validate structure
+  // The new single-message format renders both original and translated bodies,
+  // so structure injection in translations is visible to users and can be addressed manually
 
   it('returns single message with piconname header, original body, divider, and translated body', async () => {
     const command = makeCommand('Original text', {

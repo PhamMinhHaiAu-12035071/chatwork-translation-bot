@@ -67,8 +67,7 @@ describe('sendTranslatedMessage', () => {
       _params: { translatedSegments: string[]; apiToken: string },
     ) =>
       Promise.resolve({
-        metadataMessage,
-        bodyMessage,
+        message: `${metadataMessage}\n${bodyMessage}`,
       }),
   )
   const mockSendRoomMessage = mock((_roomId: number, message: string, _token: string) =>
@@ -109,18 +108,17 @@ describe('sendTranslatedMessage', () => {
         _params: { translatedSegments: string[]; apiToken: string },
       ) =>
         Promise.resolve({
-          metadataMessage,
-          bodyMessage,
+          message: `${metadataMessage}\n${bodyMessage}`,
         }),
     )
-    mockSendRoomMessage.mockImplementation((_roomId: number, message: string, _token: string) =>
+    mockSendRoomMessage.mockImplementation((_roomId: number, _message: string, _token: string) =>
       Promise.resolve({
-        message_id: message === metadataMessage ? 'meta-123' : 'body-456',
+        message_id: 'msg-123',
       }),
     )
   })
 
-  it('sends metadata first, then body, and returns a sent two-message delivery record', async () => {
+  it('sends a single combined message and returns a sent delivery record', async () => {
     const delivery = await sendTranslatedMessage(makeCommand(), makeResult(), {
       apiToken: 'test-token',
       destinationRoomId: 55555,
@@ -132,24 +130,17 @@ describe('sendTranslatedMessage', () => {
       apiToken: 'test-token',
       translatedSegments: ['Chào buổi sáng!'],
     })
-    expect(mockSendRoomMessage.mock.calls.map((call) => [call[0], call[1]])).toEqual([
-      [55555, metadataMessage],
-      [55555, bodyMessage],
-    ])
+    expect(mockSendRoomMessage.mock.calls.length).toBe(1)
+    expect(mockSendRoomMessage.mock.calls[0]?.[0]).toBe(55555)
     expect(delivery).toMatchObject({
       status: 'sent',
       destinationRoomId: 55555,
-      destinationMessageId: 'body-456',
+      destinationMessageId: 'msg-123',
       messages: [
-        {
-          kind: 'metadata',
-          status: 'sent',
-          destinationMessageId: 'meta-123',
-        },
         {
           kind: 'body',
           status: 'sent',
-          destinationMessageId: 'body-456',
+          destinationMessageId: 'msg-123',
         },
       ],
     })
@@ -168,12 +159,10 @@ describe('sendTranslatedMessage', () => {
     })
   })
 
-  it('returns partial when metadata succeeds but body fails with a non-retriable error', async () => {
-    mockSendRoomMessage
-      .mockImplementationOnce(() => Promise.resolve({ message_id: 'meta-123' }))
-      .mockImplementationOnce(() =>
-        Promise.reject(new ChatworkApiError('Bad Gateway', 502, 'Bad Gateway')),
-      )
+  it('returns failed when the combined message fails with a non-retriable error', async () => {
+    mockSendRoomMessage.mockImplementationOnce(() =>
+      Promise.reject(new ChatworkApiError('Bad Gateway', 502, 'Bad Gateway')),
+    )
 
     const delivery = await sendTranslatedMessage(makeCommand(), makeResult(), {
       apiToken: 'test-token',
@@ -181,21 +170,13 @@ describe('sendTranslatedMessage', () => {
       translatedSegments: ['Chào buổi sáng!'],
     })
 
-    expect(mockSendRoomMessage.mock.calls.map((call) => call[1])).toEqual([
-      metadataMessage,
-      bodyMessage,
-    ])
+    expect(mockSendRoomMessage.mock.calls.length).toBe(1)
     expect(delivery).toMatchObject({
-      status: 'partial',
+      status: 'failed',
       destinationRoomId: 55555,
       errorCode: 'ChatworkApiError',
       errorMessage: 'Bad Gateway',
       messages: [
-        {
-          kind: 'metadata',
-          status: 'sent',
-          destinationMessageId: 'meta-123',
-        },
         {
           kind: 'body',
           status: 'failed',
@@ -206,14 +187,13 @@ describe('sendTranslatedMessage', () => {
     })
   })
 
-  it('retries only the body stage after metadata succeeds and does not resend metadata', async () => {
+  it('retries the combined message after rate limit errors', async () => {
     const sleepFn = mock((_ms: number) => Promise.resolve())
 
     mockSendRoomMessage
-      .mockImplementationOnce(() => Promise.resolve({ message_id: 'meta-123' }))
       .mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
       .mockImplementationOnce(() => Promise.reject(new ChatworkRateLimitError(3)))
-      .mockImplementationOnce(() => Promise.resolve({ message_id: 'body-456' }))
+      .mockImplementationOnce(() => Promise.resolve({ message_id: 'msg-123' }))
 
     const delivery = await sendTranslatedMessage(
       makeCommand(),
@@ -227,29 +207,19 @@ describe('sendTranslatedMessage', () => {
     )
 
     expect(mockComposeTranslatedMessagePair.mock.calls.length).toBe(1)
-    expect(mockSendRoomMessage.mock.calls.map((call) => call[1])).toEqual([
-      metadataMessage,
-      bodyMessage,
-      bodyMessage,
-      bodyMessage,
-    ])
+    expect(mockSendRoomMessage.mock.calls.length).toBe(3)
     expect(sleepFn.mock.calls).toEqual([[3000], [3000]])
     expect(delivery.status).toBe('sent')
     expect(delivery.messages).toEqual([
       {
-        kind: 'metadata',
-        status: 'sent',
-        destinationMessageId: 'meta-123',
-      },
-      {
         kind: 'body',
         status: 'sent',
-        destinationMessageId: 'body-456',
+        destinationMessageId: 'msg-123',
       },
     ])
   })
 
-  it('returns failed when the metadata stage fails and never attempts the body stage', async () => {
+  it('returns failed when the combined message fails', async () => {
     mockSendRoomMessage.mockImplementationOnce(() =>
       Promise.reject(new ChatworkApiError('Unauthorized', 401, 'Unauthorized')),
     )
@@ -260,7 +230,7 @@ describe('sendTranslatedMessage', () => {
       translatedSegments: ['Chào buổi sáng!'],
     })
 
-    expect(mockSendRoomMessage.mock.calls.map((call) => call[1])).toEqual([metadataMessage])
+    expect(mockSendRoomMessage.mock.calls.length).toBe(1)
     expect(delivery).toMatchObject({
       status: 'failed',
       destinationRoomId: 55555,
@@ -268,7 +238,7 @@ describe('sendTranslatedMessage', () => {
       errorMessage: 'Unauthorized',
       messages: [
         {
-          kind: 'metadata',
+          kind: 'body',
           status: 'failed',
           errorCode: 'ChatworkApiError',
           errorMessage: 'Unauthorized',
@@ -297,7 +267,7 @@ describe('sendTranslatedMessage', () => {
     })
   })
 
-  it('still delivers both messages when translatedSegments is empty but the body has meaningful literal structure', async () => {
+  it('delivers a combined message when translatedSegments is empty but the body has meaningful literal structure', async () => {
     const literalBodyMessage = '[code]const x = 1[/code]'
 
     mockComposeTranslatedMessagePair.mockImplementationOnce(
@@ -306,8 +276,7 @@ describe('sendTranslatedMessage', () => {
         _params: { translatedSegments: string[]; apiToken: string },
       ) =>
         Promise.resolve({
-          metadataMessage,
-          bodyMessage: literalBodyMessage,
+          message: `${metadataMessage}\n${literalBodyMessage}`,
         }),
     )
 
@@ -332,10 +301,7 @@ describe('sendTranslatedMessage', () => {
       apiToken: 'test-token',
       translatedSegments: [],
     })
-    expect(mockSendRoomMessage.mock.calls.map((call) => call[1])).toEqual([
-      metadataMessage,
-      literalBodyMessage,
-    ])
+    expect(mockSendRoomMessage.mock.calls.length).toBe(1)
     expect(delivery.status).toBe('sent')
   })
 })

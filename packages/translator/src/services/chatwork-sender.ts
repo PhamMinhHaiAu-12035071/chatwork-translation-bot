@@ -143,36 +143,22 @@ export async function sendTranslatedMessage(
 
   try {
     const translatedSegments = getTranslatedSegments(command, result, config)
-    const { metadataMessage, bodyMessage } = await composeTranslatedMessagePair(command, {
+    const { message } = await composeTranslatedMessagePair(command, {
       apiToken: config.apiToken,
       translatedSegments,
     })
 
-    const metadataDelivery = await sendStageMessage('metadata', metadataMessage, config, sleepFn)
-    if (metadataDelivery.status === 'failed') {
+    const messageDelivery = await sendStageMessage('body', message, config, sleepFn)
+    if (messageDelivery.status === 'failed') {
       return {
         status: 'failed',
         destinationRoomId: config.destinationRoomId,
-        messages: [metadataDelivery],
-        ...(metadataDelivery.errorCode !== undefined
-          ? { errorCode: metadataDelivery.errorCode }
+        messages: [messageDelivery],
+        ...(messageDelivery.errorCode !== undefined
+          ? { errorCode: messageDelivery.errorCode }
           : {}),
-        ...(metadataDelivery.errorMessage !== undefined
-          ? { errorMessage: metadataDelivery.errorMessage }
-          : {}),
-        sentAt,
-      }
-    }
-
-    const bodyDelivery = await sendStageMessage('body', bodyMessage, config, sleepFn)
-    if (bodyDelivery.status === 'failed') {
-      return {
-        status: 'partial',
-        destinationRoomId: config.destinationRoomId,
-        messages: [metadataDelivery, bodyDelivery],
-        ...(bodyDelivery.errorCode !== undefined ? { errorCode: bodyDelivery.errorCode } : {}),
-        ...(bodyDelivery.errorMessage !== undefined
-          ? { errorMessage: bodyDelivery.errorMessage }
+        ...(messageDelivery.errorMessage !== undefined
+          ? { errorMessage: messageDelivery.errorMessage }
           : {}),
         sentAt,
       }
@@ -181,9 +167,9 @@ export async function sendTranslatedMessage(
     return {
       status: 'sent',
       destinationRoomId: config.destinationRoomId,
-      messages: [metadataDelivery, bodyDelivery],
-      ...(bodyDelivery.destinationMessageId !== undefined
-        ? { destinationMessageId: bodyDelivery.destinationMessageId }
+      messages: [messageDelivery],
+      ...(messageDelivery.destinationMessageId !== undefined
+        ? { destinationMessageId: messageDelivery.destinationMessageId }
         : {}),
       sentAt,
     }
