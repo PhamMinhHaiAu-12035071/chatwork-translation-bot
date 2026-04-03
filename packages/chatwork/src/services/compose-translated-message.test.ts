@@ -76,7 +76,7 @@ describe('composeTranslatedMessage', () => {
     expect(result).not.toHaveProperty('bodyMessage')
 
     const lines = result.message.split('\n')
-    expect(lines[0]).toBe('[piconname:100] 🇻🇳 [Created]')
+    expect(lines[0]).toBe('[piconname:100] [Created]')
     expect(lines[1]).toBe('Vietnamese translation')
     expect(lines.length).toBe(2)
   })
@@ -116,7 +116,7 @@ describe('composeTranslatedMessage', () => {
     })
 
     // Chatwork's piconname tag will handle fallback display automatically
-    expect(result.message).toContain('[piconname:999] 🇻🇳 [Created]')
+    expect(result.message).toContain('[piconname:999] [Created]')
     expect(result.message).toContain('Translation')
   })
 

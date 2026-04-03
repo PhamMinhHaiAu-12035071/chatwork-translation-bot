@@ -36,7 +36,7 @@ export async function composeTranslatedMessage(
 
   // Build header line
   const eventType = command.sourceEventType === 'message_created' ? 'Created' : 'Updated'
-  const header = `[piconname:${String(command.senderAccountId)}] 🇻🇳 [${eventType}]`
+  const header = `[piconname:${String(command.senderAccountId)}] [${eventType}]`
 
   // Render translated body only
   const translatedContext: RenderContext = {
