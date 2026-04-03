@@ -29,97 +29,28 @@ export async function composeTranslatedMessage(
   command: TranslationIngressCommand,
   params: ComposeParams,
 ): Promise<ComposeResult> {
-  const envelope = getDecorationSnapshotEnvelope(command)
-  const snapshot = envelope.snapshot
   const memberCache = params.memberCache ?? new Map<number, string>()
-  const roomCache = params.roomCache ?? new Map<number, string>()
 
+  // Resolve sender name
   const senderName = await resolveMemberDisplayNameSafe(
     command.sourceRoomId,
     command.senderAccountId,
     params.apiToken,
     memberCache,
   )
-  const roomName = await resolveRoomDisplayName(command.sourceRoomId, params.apiToken, roomCache)
 
-  const metadataLines = [
-    `Event: ${command.sourceEventType.replace(/^message_/, '')}`,
-    `Sender: ${senderName}`,
-    `Room: ${roomName}`,
-    `Sent: ${formatUtcTimestamp(command.sendTime)}`,
-  ]
+  // Build header line
+  const eventType = command.sourceEventType === 'message_created' ? 'Created' : 'Updated'
+  const header = `[piconname:${String(command.senderAccountId)}] ${senderName} 🇻🇳 [${eventType}]`
 
-  if (command.sourceEventType === 'message_updated' && command.updateTime > 0) {
-    metadataLines.push(`Updated: ${formatUtcTimestamp(command.updateTime)}`)
-  }
+  // TODO: Build original body
+  const originalBody = 'Original text' // Placeholder
 
-  // To/Cc/Reply/Quote summaries removed - body message now preserves full structure with [rp] and [qtmeta] tags
+  // TODO: Build translated body
+  const translatedBody = params.translatedSegments[0] ?? '' // Placeholder
 
-  let nextTranslationIndex = 0
-
-  const renderNodes = async (nodes: MessageRenderNode[]): Promise<string> => {
-    const rendered = await Promise.all(nodes.map((node) => renderNode(node)))
-    return rendered.join('')
-  }
-
-  const renderNode = async (node: MessageRenderNode): Promise<string> => {
-    if (node.type === 'literal') {
-      if (node.content.trim().length === 0) {
-        return node.content
-      }
-
-      const translated = params.translatedSegments[nextTranslationIndex]
-      if (translated === undefined) {
-        throw new Error('Not enough translated segments to compose message body')
-      }
-
-      nextTranslationIndex += 1
-      return preserveOuterWhitespace(node.content, translated)
-    }
-
-    if (node.type === 'translationSlot') {
-      const translated = params.translatedSegments[node.index]
-      if (translated === undefined) {
-        throw new Error('Missing translated segment for translation slot')
-      }
-      return translated
-    }
-
-    if (node.type === 'hr') {
-      return '[hr]'
-    }
-
-    if (node.type === 'code') {
-      return `[code]${node.content}[/code]`
-    }
-
-    if (node.type === 'rp') {
-      const { replyAccountId, replyRoomId, replyMessageId } = node.replyToData
-      // Chatwork API requires '-' delimiter, not ':'
-      return `[rp aid=${String(replyAccountId)} to=${String(replyRoomId)}-${replyMessageId}]`
-    }
-
-    const children = await renderNodes(node.children)
-
-    if (node.type === 'info' || node.type === 'title' || node.type === 'quote') {
-      return `[${node.type}]${children}[/${node.type}]`
-    }
-
-    const qtmetaTag = buildQtmetaTag(node.quoteMeta)
-    return `[qt]${qtmetaTag}${children}[/qt]`
-  }
-
-  const bodyMessage = await renderNodes(snapshot.renderTemplate)
-
-  validateComposedBodyStructure(snapshot.renderTemplate, bodyMessage)
-
-  if (nextTranslationIndex !== params.translatedSegments.length) {
-    throw new Error('Unused translated segments remained after composing message body')
-  }
-
-  // Temporary format - keeping old logic for now, will refactor in next task
-  const metadataMessage = `[piconname:${String(command.senderAccountId)}]\n${metadataLines.join('\n')}`
-  const message = `${metadataMessage}\n${bodyMessage}`
+  // Compose single message
+  const message = [header, originalBody, '[hr]', translatedBody].join('\n')
 
   return { message }
 }

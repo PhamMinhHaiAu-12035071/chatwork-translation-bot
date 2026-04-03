@@ -335,4 +335,43 @@ describe('composeTranslatedMessagePair', () => {
     expect(lines[2]).toBe('[hr]')
     expect(lines[3]).toBe('Vietnamese translation')
   })
+
+  it('shows [Updated] indicator for message_updated events', async () => {
+    const command = makeCommand('Original text', {
+      webhook_event_type: 'message_updated',
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Translation'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    expect(result.message).toContain('[Updated]')
+    expect(result.message).not.toContain('[Created]')
+  })
+
+  it('uses fallback #accountId when name resolution fails', async () => {
+    const command = makeCommand('Original text', {
+      webhook_event_type: 'message_created',
+      webhook_event: {
+        account_id: 999,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Translation'],
+      apiToken: 'test-token',
+      memberCache: new Map(), // Empty - no match
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    expect(result.message).toContain('[piconname:999] #999 🇻🇳 [Created]')
+  })
 })
