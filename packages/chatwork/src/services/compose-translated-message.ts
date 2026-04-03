@@ -25,10 +25,18 @@ interface ComposeResult {
   message: string
 }
 
+interface RenderContext {
+  mode: 'original' | 'translated'
+  translatedSegments: string[]
+  nextTranslationIndex: number
+}
+
 export async function composeTranslatedMessage(
   command: TranslationIngressCommand,
   params: ComposeParams,
 ): Promise<ComposeResult> {
+  const envelope = getDecorationSnapshotEnvelope(command)
+  const snapshot = envelope.snapshot
   const memberCache = params.memberCache ?? new Map<number, string>()
 
   // Resolve sender name
@@ -43,16 +51,83 @@ export async function composeTranslatedMessage(
   const eventType = command.sourceEventType === 'message_created' ? 'Created' : 'Updated'
   const header = `[piconname:${String(command.senderAccountId)}] ${senderName} 🇻🇳 [${eventType}]`
 
-  // TODO: Build original body
-  const originalBody = 'Original text' // Placeholder
+  // Render original body (mode='original' preserves literal content)
+  const originalContext: RenderContext = {
+    mode: 'original',
+    translatedSegments: params.translatedSegments,
+    nextTranslationIndex: 0,
+  }
+  const originalBody = await renderNodes(snapshot.renderTemplate, originalContext)
 
-  // TODO: Build translated body
-  const translatedBody = params.translatedSegments[0] ?? '' // Placeholder
+  // Render translated body (mode='translated' substitutes translations)
+  const translatedContext: RenderContext = {
+    mode: 'translated',
+    translatedSegments: params.translatedSegments,
+    nextTranslationIndex: 0,
+  }
+  const translatedBody = await renderNodes(snapshot.renderTemplate, translatedContext)
 
   // Compose single message
   const message = [header, originalBody, '[hr]', translatedBody].join('\n')
 
   return { message }
+}
+
+async function renderNodes(nodes: MessageRenderNode[], context: RenderContext): Promise<string> {
+  const rendered = await Promise.all(nodes.map((node) => renderNode(node, context)))
+  return rendered.join('')
+}
+
+async function renderNode(node: MessageRenderNode, context: RenderContext): Promise<string> {
+  if (node.type === 'literal') {
+    if (node.content.trim().length === 0) {
+      return node.content
+    }
+
+    if (context.mode === 'original') {
+      // Original mode: return literal content as-is
+      return node.content
+    }
+
+    // Translated mode: substitute translation segment
+    const translated = context.translatedSegments[context.nextTranslationIndex]
+    if (translated === undefined) {
+      throw new Error('Not enough translated segments to compose message body')
+    }
+
+    context.nextTranslationIndex += 1
+    return preserveOuterWhitespace(node.content, translated)
+  }
+
+  if (node.type === 'translationSlot') {
+    const translated = context.translatedSegments[node.index]
+    if (translated === undefined) {
+      throw new Error('Missing translated segment for translation slot')
+    }
+    return translated
+  }
+
+  if (node.type === 'hr') {
+    return '[hr]'
+  }
+
+  if (node.type === 'code') {
+    return `[code]${node.content}[/code]`
+  }
+
+  if (node.type === 'rp') {
+    const { replyAccountId, replyRoomId, replyMessageId } = node.replyToData
+    return `[rp aid=${String(replyAccountId)} to=${String(replyRoomId)}-${replyMessageId}]`
+  }
+
+  const children = await renderNodes(node.children, context)
+
+  if (node.type === 'info' || node.type === 'title' || node.type === 'quote') {
+    return `[${node.type}]${children}[/${node.type}]`
+  }
+
+  const qtmetaTag = buildQtmetaTag(node.quoteMeta)
+  return `[qt]${qtmetaTag}${children}[/qt]`
 }
 
 // Backward-compatible wrapper - temporarily keep old function for existing tests

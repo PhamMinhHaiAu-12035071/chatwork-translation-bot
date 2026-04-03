@@ -374,4 +374,33 @@ describe('composeTranslatedMessagePair', () => {
 
     expect(result.message).toContain('[piconname:999] #999 🇻🇳 [Created]')
   })
+
+  it('preserves original body with all Chatwork tags intact', async () => {
+    const command = makeCommand('[qt][qtmeta aid=200 time=1234567890]Previous[/qt]\nNew message', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Translated quote', 'Translated new message'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'Test']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    // Original section should have original text with quote tag
+    const lines = result.message.split('\n')
+    const hrIndex = lines.indexOf('[hr]')
+    const originalSection = lines.slice(1, hrIndex).join('\n')
+
+    expect(originalSection).toContain('[qt][qtmeta aid=200 time=1234567890]Previous[/qt]')
+    expect(originalSection).toContain('New message')
+
+    // Translated section should have translations with same structure
+    const translatedSection = lines.slice(hrIndex + 1).join('\n')
+    expect(translatedSection).toContain('[qt][qtmeta aid=200 time=1234567890]Translated quote[/qt]')
+    expect(translatedSection).toContain('Translated new message')
+  })
 })
