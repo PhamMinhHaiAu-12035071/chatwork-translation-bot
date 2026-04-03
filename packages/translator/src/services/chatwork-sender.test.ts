@@ -61,7 +61,7 @@ describe('sendTranslatedMessage', () => {
     '[piconname:34567]\nEvent: created\nSender: TestUser\nRoom: TestRoom\nSent: 2026-03-06 10:30'
   const bodyMessage = '[info]Chào buổi sáng![/info]'
 
-  const mockComposeTranslatedMessagePair = mock(
+  const mockComposeTranslatedMessage = mock(
     (
       _command: TranslationIngressCommand,
       _params: { translatedSegments: string[]; apiToken: string },
@@ -89,7 +89,7 @@ describe('sendTranslatedMessage', () => {
 
   beforeAll(async () => {
     void mock.module('@chatwork-bot/chatwork', () => ({
-      composeTranslatedMessagePair: mockComposeTranslatedMessagePair,
+      composeTranslatedMessage: mockComposeTranslatedMessage,
       sendRoomMessage: mockSendRoomMessage,
       ChatworkApiError,
       ChatworkRateLimitError,
@@ -100,9 +100,9 @@ describe('sendTranslatedMessage', () => {
   })
 
   beforeEach(() => {
-    mockComposeTranslatedMessagePair.mockClear()
+    mockComposeTranslatedMessage.mockClear()
     mockSendRoomMessage.mockClear()
-    mockComposeTranslatedMessagePair.mockImplementation(
+    mockComposeTranslatedMessage.mockImplementation(
       (
         _command: TranslationIngressCommand,
         _params: { translatedSegments: string[]; apiToken: string },
@@ -125,8 +125,8 @@ describe('sendTranslatedMessage', () => {
       translatedSegments: ['Chào buổi sáng!'],
     })
 
-    expect(mockComposeTranslatedMessagePair.mock.calls.length).toBe(1)
-    expect(mockComposeTranslatedMessagePair.mock.calls[0]?.[1]).toEqual({
+    expect(mockComposeTranslatedMessage.mock.calls.length).toBe(1)
+    expect(mockComposeTranslatedMessage.mock.calls[0]?.[1]).toEqual({
       apiToken: 'test-token',
       translatedSegments: ['Chào buổi sáng!'],
     })
@@ -153,7 +153,7 @@ describe('sendTranslatedMessage', () => {
       destinationRoomId: 55555,
     })
 
-    expect(mockComposeTranslatedMessagePair.mock.calls[0]?.[1]).toEqual({
+    expect(mockComposeTranslatedMessage.mock.calls[0]?.[1]).toEqual({
       apiToken: 'test-token',
       translatedSegments: ['Chào buổi sáng!'],
     })
@@ -206,7 +206,7 @@ describe('sendTranslatedMessage', () => {
       sleepFn,
     )
 
-    expect(mockComposeTranslatedMessagePair.mock.calls.length).toBe(1)
+    expect(mockComposeTranslatedMessage.mock.calls.length).toBe(1)
     expect(mockSendRoomMessage.mock.calls.length).toBe(3)
     expect(sleepFn.mock.calls).toEqual([[3000], [3000]])
     expect(delivery.status).toBe('sent')
@@ -248,8 +248,8 @@ describe('sendTranslatedMessage', () => {
   })
 
   it('returns failed and sends nothing when compose validation fails before delivery starts', async () => {
-    mockComposeTranslatedMessagePair.mockImplementationOnce(() =>
-      Promise.reject(new Error('Composed translated body changed the original message structure')),
+    mockComposeTranslatedMessage.mockImplementationOnce(() =>
+      Promise.reject(new Error('Unused translated segments: expected 1, used 0')),
     )
 
     const delivery = await sendTranslatedMessage(makeCommand(), makeResult(), {
@@ -263,14 +263,14 @@ describe('sendTranslatedMessage', () => {
       status: 'failed',
       destinationRoomId: 55555,
       errorCode: 'Error',
-      errorMessage: 'Composed translated body changed the original message structure',
+      errorMessage: 'Unused translated segments: expected 1, used 0',
     })
   })
 
   it('delivers a combined message when translatedSegments is empty but the body has meaningful literal structure', async () => {
     const literalBodyMessage = '[code]const x = 1[/code]'
 
-    mockComposeTranslatedMessagePair.mockImplementationOnce(
+    mockComposeTranslatedMessage.mockImplementationOnce(
       (
         _command: TranslationIngressCommand,
         _params: { translatedSegments: string[]; apiToken: string },
@@ -297,7 +297,7 @@ describe('sendTranslatedMessage', () => {
       },
     )
 
-    expect(mockComposeTranslatedMessagePair.mock.calls[0]?.[1]).toEqual({
+    expect(mockComposeTranslatedMessage.mock.calls[0]?.[1]).toEqual({
       apiToken: 'test-token',
       translatedSegments: [],
     })

@@ -152,15 +152,6 @@ async function renderNode(node: MessageRenderNode, context: RenderContext): Prom
   }
 }
 
-// Backward-compatible wrapper - now returns new single-message format
-export async function composeTranslatedMessagePair(
-  command: TranslationIngressCommand,
-  params: ComposeParams,
-): Promise<{ message: string }> {
-  // Simply delegate to the new function
-  return composeTranslatedMessage(command, params)
-}
-
 function getDecorationSnapshotEnvelope(
   command: TranslationIngressCommand,
 ): DecorationSnapshotEnvelope {

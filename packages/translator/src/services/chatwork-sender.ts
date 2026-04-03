@@ -1,7 +1,7 @@
 import {
   ChatworkApiError,
   ChatworkRateLimitError,
-  composeTranslatedMessagePair,
+  composeTranslatedMessage,
   sendRoomMessage,
 } from '@chatwork-bot/chatwork'
 import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
@@ -143,7 +143,7 @@ export async function sendTranslatedMessage(
 
   try {
     const translatedSegments = getTranslatedSegments(command, result, config)
-    const { message } = await composeTranslatedMessagePair(command, {
+    const { message } = await composeTranslatedMessage(command, {
       apiToken: config.apiToken,
       translatedSegments,
     })
