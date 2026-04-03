@@ -278,6 +278,8 @@ export function RoomDetailPage() {
                 label="Original Room ID"
                 type="text"
                 inputMode="numeric"
+                readOnly
+                hint="This ID cannot be changed after room creation."
                 error={editForm.formState.errors.originalRoomId?.message}
                 {...editForm.register('originalRoomId', {
                   setValueAs: (v: string) => (v === '' ? undefined : Number(v)),

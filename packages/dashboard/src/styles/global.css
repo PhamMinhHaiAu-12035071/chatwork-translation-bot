@@ -434,6 +434,20 @@ html::-webkit-scrollbar-thumb:hover {
   box-shadow: 5px 5px 0 var(--accent);
 }
 
+input.brutal-input:read-only,
+textarea.brutal-input:read-only {
+  background: rgba(241, 245, 249, 0.9);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+input.brutal-input:read-only:focus,
+textarea.brutal-input:read-only:focus {
+  border-color: var(--border);
+  box-shadow: 3px 3px 0 var(--border);
+}
+
 .brutal-input-error {
   border-color: var(--error);
   box-shadow: 3px 3px 0 var(--error);
