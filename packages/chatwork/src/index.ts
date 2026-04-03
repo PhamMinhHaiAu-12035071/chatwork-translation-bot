@@ -29,4 +29,8 @@ export { getRoom } from '~/services/get-room'
 export { createRoom } from '~/services/create-room'
 export { updateRoom } from '~/services/update-room'
 export { resolveRoomDisplayName } from '~/services/resolve-room-display-name'
-export { composeTranslatedMessagePair } from '~/services/compose-translated-message-pair'
+export {
+  composeTranslatedMessage,
+  composeTranslatedMessagePair,
+} from '~/services/compose-translated-message'
+export type { ComposeParams } from '~/services/compose-translated-message'

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import type { ChatworkWebhookPayload } from '~/types/webhook'
 import { mapWebhookToTranslationCommand } from './map-webhook-to-translation-command'
-import { composeTranslatedMessagePair } from './compose-translated-message-pair'
+import { composeTranslatedMessagePair } from './compose-translated-message'
+import { composeTranslatedMessage } from './compose-translated-message'
 
 type FetchSpy = ReturnType<typeof spyOn<typeof globalThis, 'fetch'>>
 
@@ -307,5 +308,31 @@ describe('composeTranslatedMessagePair', () => {
         )
       },
     )
+  })
+
+  it('returns single message with piconname header, original body, divider, and translated body', async () => {
+    const command = makeCommand('Original text', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Vietnamese translation'],
+      apiToken: 'test-token',
+      memberCache: new Map([[100, 'AuPMH']]),
+      roomCache: new Map([[777, 'JP Project Demo']]),
+    })
+
+    expect(result).toHaveProperty('message')
+    expect(result).not.toHaveProperty('metadataMessage')
+    expect(result).not.toHaveProperty('bodyMessage')
+
+    const lines = result.message.split('\n')
+    expect(lines[0]).toBe('[piconname:100] AuPMH 🇻🇳 [Created]')
+    expect(lines[1]).toBe('Original text')
+    expect(lines[2]).toBe('[hr]')
+    expect(lines[3]).toBe('Vietnamese translation')
   })
 })
