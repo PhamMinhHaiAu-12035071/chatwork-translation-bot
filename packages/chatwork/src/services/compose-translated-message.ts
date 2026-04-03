@@ -5,7 +5,6 @@ import type {
   MessageRenderNode,
   QuoteMeta,
 } from '~/types/message-decoration'
-import { resolveRoomMemberDisplayName } from './resolve-room-member-display-name'
 
 interface DecorationSnapshotEnvelope {
   webhookPayload: ChatworkWebhookPayload
@@ -15,7 +14,6 @@ interface DecorationSnapshotEnvelope {
 export interface ComposeParams {
   translatedSegments: string[]
   apiToken: string
-  memberCache?: Map<number, string>
   roomCache?: Map<number, string>
 }
 
@@ -35,30 +33,12 @@ export async function composeTranslatedMessage(
 ): Promise<ComposeResult> {
   const envelope = getDecorationSnapshotEnvelope(command)
   const snapshot = envelope.snapshot
-  const memberCache = params.memberCache ?? new Map<number, string>()
-
-  // Resolve sender name
-  const senderName = await resolveMemberDisplayNameSafe(
-    command.sourceRoomId,
-    command.senderAccountId,
-    params.apiToken,
-    memberCache,
-  )
 
   // Build header line
   const eventType = command.sourceEventType === 'message_created' ? 'Created' : 'Updated'
-  const header = `[piconname:${String(command.senderAccountId)}] ${senderName} 🇻🇳 [${eventType}]`
+  const header = `[piconname:${String(command.senderAccountId)}] 🇻🇳 [${eventType}]`
 
-  // Context is mutated during rendering; create fresh context for each render pass
-  // Render original body (mode='original' preserves literal content)
-  const originalContext: RenderContext = {
-    mode: 'original',
-    translatedSegments: params.translatedSegments,
-    nextTranslationIndex: 0,
-  }
-  const originalBody = await renderNodes(snapshot.renderTemplate, originalContext)
-
-  // Render translated body (mode='translated' substitutes translations)
+  // Render translated body only
   const translatedContext: RenderContext = {
     mode: 'translated',
     translatedSegments: params.translatedSegments,
@@ -74,11 +54,8 @@ export async function composeTranslatedMessage(
     )
   }
 
-  // Compose single message - skip original section if empty or identical to translated
-  const message =
-    originalBody.trim() === '' || originalBody === translatedBody
-      ? `${header}\n[hr]\n${translatedBody}`
-      : `${header}\n${originalBody}\n[hr]\n${translatedBody}`
+  // Compose single message: header + translated body
+  const message = `${header}\n${translatedBody}`
 
   return { message }
 }
@@ -178,17 +155,4 @@ function buildQtmetaTag(quoteMeta: QuoteMeta): string {
     parts.push(`time=${String(quoteMeta.timestamp)}`)
   }
   return parts.length > 0 ? `[qtmeta ${parts.join(' ')}]` : ''
-}
-
-async function resolveMemberDisplayNameSafe(
-  roomId: number,
-  accountId: number,
-  token: string,
-  cache: Map<number, string>,
-): Promise<string> {
-  try {
-    return await resolveRoomMemberDisplayName(roomId, accountId, token, cache)
-  } catch {
-    return `#${String(accountId)}`
-  }
 }

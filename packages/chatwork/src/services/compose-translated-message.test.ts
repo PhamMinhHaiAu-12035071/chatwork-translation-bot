@@ -57,7 +57,7 @@ describe('composeTranslatedMessage', () => {
     fetchSpy.mockRestore()
   })
 
-  it('returns single message with piconname header, original body, divider, and translated body', async () => {
+  it('returns single message with piconname header and translated body', async () => {
     const command = makeCommand('Original text', {
       webhook_event: {
         account_id: 100,
@@ -68,7 +68,6 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Vietnamese translation'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'AuPMH']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
@@ -77,10 +76,9 @@ describe('composeTranslatedMessage', () => {
     expect(result).not.toHaveProperty('bodyMessage')
 
     const lines = result.message.split('\n')
-    expect(lines[0]).toBe('[piconname:100] AuPMH 🇻🇳 [Created]')
-    expect(lines[1]).toBe('Original text')
-    expect(lines[2]).toBe('[hr]')
-    expect(lines[3]).toBe('Vietnamese translation')
+    expect(lines[0]).toBe('[piconname:100] 🇻🇳 [Created]')
+    expect(lines[1]).toBe('Vietnamese translation')
+    expect(lines.length).toBe(2)
   })
 
   it('shows [Updated] indicator for message_updated events', async () => {
@@ -95,7 +93,6 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Translation'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
@@ -103,7 +100,7 @@ describe('composeTranslatedMessage', () => {
     expect(result.message).not.toContain('[Created]')
   })
 
-  it('uses fallback #accountId when name resolution fails', async () => {
+  it('uses piconname tag even when member not in cache', async () => {
     const command = makeCommand('Original text', {
       webhook_event_type: 'message_created',
       webhook_event: {
@@ -115,14 +112,15 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Translation'],
       apiToken: 'test-token',
-      memberCache: new Map(), // Empty - no match
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    expect(result.message).toContain('[piconname:999] #999 🇻🇳 [Created]')
+    // Chatwork's piconname tag will handle fallback display automatically
+    expect(result.message).toContain('[piconname:999] 🇻🇳 [Created]')
+    expect(result.message).toContain('Translation')
   })
 
-  it('preserves original body with all Chatwork tags intact', async () => {
+  it('preserves Chatwork tags in translated body', async () => {
     const command = makeCommand('[qt][qtmeta aid=200 time=1234567890]Previous[/qt]\nNew message', {
       webhook_event: {
         account_id: 100,
@@ -133,25 +131,19 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Translated quote', 'Translated new message'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    // Original section should have original text with quote tag
-    const lines = result.message.split('\n')
-    const hrIndex = lines.indexOf('[hr]')
-    const originalSection = lines.slice(1, hrIndex).join('\n')
+    // Translated body should preserve quote structure
+    expect(result.message).toContain('[qt][qtmeta aid=200 time=1234567890]Translated quote[/qt]')
+    expect(result.message).toContain('Translated new message')
 
-    expect(originalSection).toContain('[qt][qtmeta aid=200 time=1234567890]Previous[/qt]')
-    expect(originalSection).toContain('New message')
-
-    // Translated section should have translations with same structure
-    const translatedSection = lines.slice(hrIndex + 1).join('\n')
-    expect(translatedSection).toContain('[qt][qtmeta aid=200 time=1234567890]Translated quote[/qt]')
-    expect(translatedSection).toContain('Translated new message')
+    // Should NOT contain original text or divider
+    expect(result.message).not.toContain('Previous')
+    expect(result.message).not.toContain('[hr]')
   })
 
-  it('preserves reply structure in both original and translated sections', async () => {
+  it('preserves reply structure in translated body', async () => {
     const command = makeCommand('[rp aid=200 to=777-123]Thank you!', {
       webhook_event: {
         account_id: 100,
@@ -162,18 +154,17 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Cảm ơn bạn!'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    // Original section has reply tag
-    expect(result.message).toContain('[rp aid=200 to=777-123]Thank you!')
-
-    // Translated section has same tag structure
+    // Translated body should preserve reply tag structure
     expect(result.message).toContain('[rp aid=200 to=777-123]Cảm ơn bạn!')
+
+    // Should NOT contain original text
+    expect(result.message).not.toContain('Thank you!')
   })
 
-  it('preserves code blocks byte-identical in both sections', async () => {
+  it('preserves code blocks byte-identical in translated body', async () => {
     const command = makeCommand('Check this:\n[code]const x = 1;\nconsole.log(x);[/code]', {
       webhook_event: {
         account_id: 100,
@@ -184,17 +175,16 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Kiểm tra cái này:'], // Code not translated
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
     const codeBlock = '[code]const x = 1;\nconsole.log(x);[/code]'
 
-    // Original section has original code
-    expect(result.message).toContain(`Check this:\n${codeBlock}`)
-
-    // Translated section has same code
+    // Translated body should have code block
     expect(result.message).toContain(`Kiểm tra cái này:\n${codeBlock}`)
+
+    // Should NOT contain original text
+    expect(result.message).not.toContain('Check this:')
   })
 
   it('preserves code blocks in both sections even when no translatable content exists', async () => {
@@ -208,20 +198,18 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: [], // No translations
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
     const lines = result.message.split('\n')
 
-    // Format: Header\n[hr]\nTranslated code block (original section skipped when empty)
+    // Format: Header\nTranslated code block
     expect(lines[0]).toContain('[piconname:100]')
-    expect(lines[1]).toBe('[hr]')
-    expect(lines[2]).toBe('[code]const x = 1;[/code]')
-    expect(lines.length).toBe(3)
+    expect(lines[1]).toBe('[code]const x = 1;[/code]')
+    expect(lines.length).toBe(2)
   })
 
-  it('preserves info and title wrappers in both sections', async () => {
+  it('preserves info and title wrappers in translated body', async () => {
     const command = makeCommand('[info][title]Important[/title]Please read carefully[/info]', {
       webhook_event: {
         account_id: 100,
@@ -232,18 +220,18 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Quan trọng', 'Vui lòng đọc kỹ'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    // Original section
-    expect(result.message).toContain('[info][title]Important[/title]Please read carefully[/info]')
-
-    // Translated section
+    // Translated body should preserve structure
     expect(result.message).toContain('[info][title]Quan trọng[/title]Vui lòng đọc kỹ[/info]')
+
+    // Should NOT contain original text
+    expect(result.message).not.toContain('Important')
+    expect(result.message).not.toContain('Please read carefully')
   })
 
-  it('handles nested quote structures correctly', async () => {
+  it('handles nested quote structures correctly in translated body', async () => {
     const command = makeCommand(
       '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Inner[/qt]Outer[/qt]\nNew',
       {
@@ -257,19 +245,18 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Trong', 'Ngoài', 'Mới'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'JP Project Demo']]),
     })
 
-    // Original nested structure
-    expect(result.message).toContain(
-      '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Inner[/qt]Outer[/qt]',
-    )
-
-    // Translated nested structure
+    // Translated body should preserve nested structure
     expect(result.message).toContain(
       '[qt][qtmeta aid=200 time=123][qt][qtmeta aid=300 time=456]Trong[/qt]Ngoài[/qt]',
     )
+    expect(result.message).toContain('Mới')
+
+    // Should NOT contain original text
+    expect(result.message).not.toContain('Inner')
+    expect(result.message).not.toContain('Outer')
   })
 
   it('renders injected Chatwork tags as literal text in translations', async () => {
@@ -284,7 +271,6 @@ describe('composeTranslatedMessage', () => {
     const result = await composeTranslatedMessage(command, {
       translatedSegments: ['Xin chào [info]injected info[/info]'],
       apiToken: 'test-token',
-      memberCache: new Map([[100, 'Test']]),
       roomCache: new Map([[777, 'Test Room']]),
     })
 
@@ -292,7 +278,7 @@ describe('composeTranslatedMessage', () => {
     expect(result.message).toContain('Xin chào [info]injected info[/info]')
     // Verify it doesn't create actual info structure by checking rendered output
     const lines = result.message.split('\n')
-    const translatedSection = lines.slice(lines.indexOf('[hr]') + 1).join('\n')
-    expect(translatedSection).toBe('Xin chào [info]injected info[/info]')
+    const translatedBody = lines.slice(1).join('\n')
+    expect(translatedBody).toBe('Xin chào [info]injected info[/info]')
   })
 })
