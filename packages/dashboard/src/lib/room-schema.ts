@@ -12,7 +12,7 @@ const keywordEntrySchema = z.object({
 
 export type KeywordEntryFormInput = z.infer<typeof keywordEntrySchema>
 
-export const roomCreateSchema = z.object({
+const baseRoomFields = {
   originalRoomId: z
     .number({ required_error: 'Room ID is required' })
     .int('Room ID must be a whole number')
@@ -31,37 +31,22 @@ export const roomCreateSchema = z.object({
   translationStyle: z.enum(TRANSLATION_STYLES, {
     required_error: 'Translation style is required',
   }),
+  context: z.string().max(500, 'Max 500 characters').optional().default(''),
+  protectedKeywords: z.array(keywordEntrySchema).max(50, 'Max 50 keywords').default([]),
+}
+
+export const roomCreateSchema = z.object({
+  ...baseRoomFields,
   aiApiToken: z
     .string({ required_error: 'AI API token is required' })
     .min(1, 'AI API token is required'),
-  context: z.string().max(500, 'Max 500 characters').optional().default(''),
-  protectedKeywords: z.array(keywordEntrySchema).max(50, 'Max 50 keywords').default([]),
 })
 
 export type RoomCreateInput = z.infer<typeof roomCreateSchema>
 
 export const roomEditSchema = z.object({
-  originalRoomId: z
-    .number({ required_error: 'Room ID is required' })
-    .int('Room ID must be a whole number')
-    .positive('Room ID must be positive'),
-  originalRoomName: z
-    .string({ required_error: 'Original room name is required' })
-    .min(1, 'Original room name is required')
-    .max(100, 'Max 100 characters')
-    .trim(),
-  destinationRoomName: z
-    .string({ required_error: 'Destination room name is required' })
-    .min(1, 'Destination room name is required')
-    .max(100, 'Max 100 characters'),
-  aiProvider: z.enum(AI_PROVIDERS, { required_error: 'AI Provider is required' }),
-  aiModel: z.string({ required_error: 'AI Model is required' }).min(1, 'AI Model is required'),
-  translationStyle: z.enum(TRANSLATION_STYLES, {
-    required_error: 'Translation style is required',
-  }),
+  ...baseRoomFields,
   aiApiToken: z.string().optional().default(''),
-  context: z.string().max(500, 'Max 500 characters').optional().default(''),
-  protectedKeywords: z.array(keywordEntrySchema).max(50, 'Max 50 keywords').default([]),
 })
 
 export type RoomEditInput = z.infer<typeof roomEditSchema>

@@ -35,7 +35,7 @@ const keywordEntrySchema = z.object({
 
 export type FreeRoomKeywordEntry = z.infer<typeof keywordEntrySchema>
 
-export const freeRoomCreateSchema = z.object({
+const baseFreeRoomFields = {
   originalRoomId: z
     .number({ required_error: 'Room ID is required' })
     .int('Room ID must be a whole number')
@@ -58,33 +58,16 @@ export const freeRoomCreateSchema = z.object({
     .optional()
     .default(''),
   protectedKeywords: z.array(keywordEntrySchema).max(50, 'Max 50 keywords').default([]),
+}
+
+export const freeRoomCreateSchema = z.object({
+  ...baseFreeRoomFields,
 })
 
 export type FreeRoomCreateInput = z.infer<typeof freeRoomCreateSchema>
 
 export const freeRoomEditSchema = z.object({
-  originalRoomId: z
-    .number({ required_error: 'Room ID is required' })
-    .int('Room ID must be a whole number')
-    .positive('Room ID must be positive'),
-  originalRoomName: z
-    .string({ required_error: 'Original room name is required' })
-    .min(1, 'Original room name is required')
-    .max(100, 'Max 100 characters')
-    .trim(),
-  destinationRoomName: z
-    .string({ required_error: 'Destination room name is required' })
-    .min(1, 'Destination room name is required')
-    .max(100, 'Max 100 characters'),
-  kagiStyle: z.enum(FREE_ROOM_KAGI_STYLES, {
-    required_error: 'Translation style is required',
-  }),
-  context: z
-    .string()
-    .max(FREE_ROOM_CONTEXT_MAX_LENGTH, 'Max 100 characters')
-    .optional()
-    .default(''),
-  protectedKeywords: z.array(keywordEntrySchema).max(50, 'Max 50 keywords').default([]),
+  ...baseFreeRoomFields,
 })
 
 export type FreeRoomEditInput = z.infer<typeof freeRoomEditSchema>
