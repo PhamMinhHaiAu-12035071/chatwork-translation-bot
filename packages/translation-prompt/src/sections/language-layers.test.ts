@@ -57,3 +57,20 @@ describe('JAPANESE_RULES - Abbreviation and Brand Handling', () => {
     expect(JAPANESE_RULES).toContain('Well-known global brands')
   })
 })
+
+describe('JAPANESE_RULES - Special Cases', () => {
+  it('should contain working hours preservation instruction', () => {
+    expect(JAPANESE_RULES).toContain('Working time')
+    expect(JAPANESE_RULES).toContain('preserve working hours exactly')
+  })
+
+  it('should contain consistency requirement', () => {
+    expect(JAPANESE_RULES).toContain('Consistency')
+    expect(JAPANESE_RULES).toContain('same name/term')
+    expect(JAPANESE_RULES).toContain('identically throughout')
+  })
+
+  it('should contain [rp] tag handling instruction', () => {
+    expect(JAPANESE_RULES).toContain('[rp]')
+  })
+})
