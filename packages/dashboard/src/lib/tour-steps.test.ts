@@ -10,8 +10,8 @@ describe('tour-steps', () => {
     expect(tours[0]?.tour).toBe(TOUR_NAME)
   })
 
-  it('has exactly 22 steps', () => {
-    expect(steps).toHaveLength(22)
+  it('has exactly 23 steps', () => {
+    expect(steps).toHaveLength(23)
   })
 
   it('covers the sidebar and every create-room field we want to explain', () => {
@@ -20,6 +20,7 @@ describe('tour-steps', () => {
     expect(selectors).toContain('#tour-sidebar-nav')
     expect(selectors).toContain('#tour-new-room')
     expect(selectors).toContain('#tour-field-roomid')
+    expect(selectors).toContain('#tour-field-roomname-orig')
     expect(selectors).toContain('#tour-field-roomname')
     expect(selectors).toContain('#tour-field-provider')
     expect(selectors).toContain('#tour-field-model')
@@ -51,28 +52,36 @@ describe('tour-steps', () => {
     }
   })
 
-  it('steps 6 and 17 have nextRoute (cross-page navigation)', () => {
+  it('steps 6 and 18 have nextRoute (cross-page navigation)', () => {
     expect((steps[5] as { nextRoute?: string }).nextRoute).toBe('/rooms/new')
-    expect((steps[16] as { nextRoute?: string }).nextRoute).toBe('/')
+    expect((steps[17] as { nextRoute?: string }).nextRoute).toBe('/')
   })
 
   it('only the real cross-page backward boundaries use prevRoute', () => {
     expect((steps[6] as { prevRoute?: string }).prevRoute).toBe('/')
 
-    for (const index of [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
+    for (const index of [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]) {
       expect((steps[index] as { prevRoute?: string }).prevRoute).toBeUndefined()
     }
 
-    expect((steps[17] as { prevRoute?: string }).prevRoute).toBe('/rooms/new')
+    expect((steps[18] as { prevRoute?: string }).prevRoute).toBe('/rooms/new')
 
-    for (const index of [18, 19, 20, 21]) {
+    for (const index of [19, 20, 21, 22]) {
       expect((steps[index] as { prevRoute?: string }).prevRoute).toBeUndefined()
     }
   })
 
   it('keeps the keyword add-form step pointing upward toward the inline add form', () => {
-    expect(steps[15]?.selector).toBe('#tour-keyword-addform')
-    expect(steps[15]?.side).toBe('bottom')
+    expect(steps[16]?.selector).toBe('#tour-keyword-addform')
+    expect(steps[16]?.side).toBe('bottom')
+  })
+
+  it('step 7 is originalRoomName with mint color theme', () => {
+    const step = steps[7]
+    expect(step?.selector).toBe('#tour-field-roomname-orig')
+    expect(step?.title).toBe('🏢 Original Room Name')
+    expect((step as { color: string }).color).toBe('#b8e6e6')
+    expect(step?.side).toBe('right')
   })
 
   it('TOUR_VERSION is a positive integer', () => {

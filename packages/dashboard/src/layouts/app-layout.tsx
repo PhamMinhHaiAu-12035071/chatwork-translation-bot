@@ -113,28 +113,28 @@ export function AppLayout() {
       cardComponent={NeubTourCard}
       navigationAdapter={useReactRouterAdapter}
       onStepChange={(step) => {
-        // Steps 17–20 (0-based) cover room card interactions and require at least one room.
+        // Steps 18–21 (0-based) cover room card interactions and require at least one room.
         if (rooms.length === 0) {
           // Forward: skip room steps → jump to completion
-          if (step === 17) {
+          if (step === 18) {
             setTimeout(() => {
-              setCurrentStep(21)
+              setCurrentStep(22)
             }, 0)
             return
           }
           // Backward: skip back over room steps → return to "Lưu phòng" on /rooms/new
-          if (step >= 18 && step <= 20) {
+          if (step >= 19 && step <= 21) {
             void navigate('/rooms/new')
             setTimeout(() => {
-              setCurrentStep(16)
+              setCurrentStep(17)
               setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
             }, 200)
             return
           }
         }
-        // Auto-expand Translation Context when landing on its interior step (13).
+        // Auto-expand Translation Context when landing on its interior step (14).
         // Handles keyboard navigation (ArrowRight/ArrowLeft) which bypasses card button handlers.
-        if (step === 13) {
+        if (step === 14) {
           if (document.querySelector('#tour-context-templates') === null) {
             const triggerButton = document.querySelector<HTMLButtonElement>(
               '#tour-field-context button',
@@ -148,9 +148,9 @@ export function AppLayout() {
           setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
           return
         }
-        // Auto-expand Keyword Protection when landing on its interior step (15).
+        // Auto-expand Keyword Protection when landing on its interior step (16).
         // Handles keyboard navigation (ArrowRight/ArrowLeft) which bypasses card button handlers.
-        if (step === 15) {
+        if (step === 16) {
           if (document.querySelector('#tour-keyword-addform') === null) {
             const triggerButton = document.querySelector<HTMLButtonElement>(
               '#tour-field-keywords button',

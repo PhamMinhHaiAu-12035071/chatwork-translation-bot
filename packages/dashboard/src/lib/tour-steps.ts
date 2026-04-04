@@ -82,6 +82,17 @@ const steps: NeubStep[] = [
   },
   {
     icon: null,
+    selector: '#tour-field-roomname-orig',
+    title: '🏢 Original Room Name',
+    content:
+      'Tên gốc của room từ Chatwork. Bot sẽ tự động lấy tên này từ API của Chatwork sau khi bạn nhập Room ID.',
+    side: 'right',
+    showControls: true,
+    showSkip: true,
+    color: '#b8e6e6',
+  },
+  {
+    icon: null,
     selector: '#tour-field-roomname',
     title: '🏷️ Tên phòng',
     content: 'Đặt một cái tên dễ nhớ cho phòng này. Ví dụ: Nhom Ky Thuat JP hoặc Bao Cao Sang.',
