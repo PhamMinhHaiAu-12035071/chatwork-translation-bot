@@ -66,6 +66,7 @@ export function RoomCreatePage() {
     resolver: roomCreateResolver,
     defaultValues: {
       ...(prefillRoomId !== undefined ? { originalRoomId: Number(prefillRoomId) } : {}),
+      originalRoomName: '',
       aiProvider: 'openai',
       translationStyle: 'PROFESSIONAL_BUSINESS',
       aiModel: 'gpt-5.4',
@@ -101,6 +102,7 @@ export function RoomCreatePage() {
     const result = await createRoomAction.execute(() => {
       const keywordData: {
         originalRoomId: number
+        originalRoomName: string
         destinationRoomName: string
         aiProvider: 'openai' | 'gemini'
         aiModel: string | null
@@ -110,6 +112,7 @@ export function RoomCreatePage() {
         protectedKeywords?: ProtectedKeyword[]
       } = {
         originalRoomId: data.originalRoomId,
+        originalRoomName: data.originalRoomName,
         destinationRoomName: data.destinationRoomName,
         aiProvider: data.aiProvider,
         aiModel: data.aiModel,

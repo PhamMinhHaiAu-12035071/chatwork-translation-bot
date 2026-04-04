@@ -7,6 +7,7 @@ const BASE = '/api/free-rooms'
 export interface FreeRoomConfigPublic {
   id: string
   originalRoomId: number
+  originalRoomName: string
   destinationRoomId: number
   destinationRoomName: string
   kagiStyle: FreeRoomKagiStyle
@@ -19,6 +20,7 @@ export interface FreeRoomConfigPublic {
 
 export interface CreateFreeRoomInput {
   originalRoomId: number
+  originalRoomName: string
   destinationRoomName: string
   kagiStyle: FreeRoomKagiStyle
   context?: string | null

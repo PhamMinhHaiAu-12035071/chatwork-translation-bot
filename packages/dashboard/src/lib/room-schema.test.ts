@@ -13,6 +13,7 @@ describe('room schema', () => {
 
     const validResult = schemaModule.roomCreateSchema.safeParse({
       originalRoomId: 123456,
+      originalRoomName: 'Tokyo Support',
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-4o',
@@ -24,6 +25,7 @@ describe('room schema', () => {
 
     const invalidResult = schemaModule.roomCreateSchema.safeParse({
       originalRoomId: 0,
+      originalRoomName: '',
       destinationRoomName: '',
       aiProvider: 'openai',
       aiModel: null,
@@ -80,6 +82,7 @@ describe('room schema', () => {
 
     const valid = schemaModule.roomCreateSchema.safeParse({
       originalRoomId: 123456,
+      originalRoomName: 'Tokyo Support',
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-4o',
@@ -91,6 +94,7 @@ describe('room schema', () => {
 
     const tooLong = schemaModule.roomCreateSchema.safeParse({
       originalRoomId: 123456,
+      originalRoomName: 'Tokyo Support',
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-4o',
@@ -108,6 +112,7 @@ describe('room schema', () => {
 
     const result = schemaModule.roomCreateSchema.safeParse({
       originalRoomId: 123456,
+      originalRoomName: 'Tokyo Support',
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-4o',
@@ -116,5 +121,90 @@ describe('room schema', () => {
     })
     expect(result.success).toBe(true)
     expect(result.data?.context).toBe('')
+  })
+
+  it('requires originalRoomName', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+    if (!schemaModule) return
+
+    const result = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      // originalRoomName: missing
+      destinationRoomName: 'Translation Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-5.4',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-test',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const firstIssue = result.error.issues[0]
+      expect(firstIssue).toBeDefined()
+      if (firstIssue) {
+        expect(firstIssue.message).toContain('required')
+      }
+    }
+  })
+
+  it('trims originalRoomName whitespace', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+    if (!schemaModule) return
+
+    const result = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      originalRoomName: '  JP Project Demo  ',
+      destinationRoomName: 'Translation Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-5.4',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-test',
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.originalRoomName).toBe('JP Project Demo')
+    }
+  })
+
+  it('rejects empty originalRoomName', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+    if (!schemaModule) return
+
+    const result = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      originalRoomName: '',
+      destinationRoomName: 'Translation Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-5.4',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-test',
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects originalRoomName longer than 100 chars', async () => {
+    const schemaModule = await import('~/lib/room-schema').catch(() => null)
+    if (!schemaModule) return
+
+    const result = schemaModule.roomCreateSchema.safeParse({
+      originalRoomId: 123456,
+      originalRoomName: 'A'.repeat(101),
+      destinationRoomName: 'Translation Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-5.4',
+      translationStyle: 'PROFESSIONAL_BUSINESS',
+      aiApiToken: 'sk-test',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const firstIssue = result.error.issues[0]
+      expect(firstIssue).toBeDefined()
+      if (firstIssue) {
+        expect(firstIssue.message).toContain('100')
+      }
+    }
   })
 })

@@ -72,6 +72,7 @@ export function FreeRoomDetailPage() {
   const editDefaults: FreeRoomEditInput = room
     ? {
         originalRoomId: room.originalRoomId,
+        originalRoomName: room.originalRoomName,
         destinationRoomName: room.destinationRoomName,
         kagiStyle: room.kagiStyle,
         context: room.context ?? '',
@@ -79,6 +80,7 @@ export function FreeRoomDetailPage() {
       }
     : {
         originalRoomId: 0,
+        originalRoomName: '',
         destinationRoomName: '',
         kagiStyle: 'Clear',
         context: '',
@@ -103,6 +105,7 @@ export function FreeRoomDetailPage() {
 
     editForm.reset({
       originalRoomId: room.originalRoomId,
+      originalRoomName: room.originalRoomName,
       destinationRoomName: room.destinationRoomName,
       kagiStyle: room.kagiStyle,
       context: room.context ?? '',

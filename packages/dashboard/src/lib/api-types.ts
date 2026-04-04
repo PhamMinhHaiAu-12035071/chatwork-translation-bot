@@ -13,6 +13,7 @@ export interface ProtectedKeyword {
 export interface RoomConfigPublic {
   id: string
   originalRoomId: number
+  originalRoomName: string
   destinationRoomId: number
   destinationRoomName: string
   aiProvider: AiProvider
@@ -42,6 +43,7 @@ export interface ApiResponse<T> {
 
 export interface CreateRoomInput {
   originalRoomId: number
+  originalRoomName: string
   destinationRoomName: string
   aiProvider: AiProvider
   aiModel: string | null
