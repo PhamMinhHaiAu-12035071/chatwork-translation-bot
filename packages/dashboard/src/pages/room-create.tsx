@@ -274,22 +274,13 @@ export function RoomCreatePage() {
           <div className="xl:col-span-2">
             <div className="page-divider-brutal my-6" />
             <div id="tour-field-context">
-              {(() => {
-                const contextFieldProps: {
-                  value: string
-                  onChange: (v: string) => void
-                  error?: string
-                } = {
-                  value: watch('context'),
-                  onChange: (v: string) => {
-                    setValue('context', v, { shouldValidate: true })
-                  },
-                }
-                if (errors.context?.message) {
-                  contextFieldProps.error = errors.context.message
-                }
-                return <ContextField {...contextFieldProps} />
-              })()}
+              <ContextField
+                value={watch('context')}
+                onChange={(v) => {
+                  setValue('context', v, { shouldValidate: true })
+                }}
+                error={errors.context?.message}
+              />
             </div>
 
             <div className="page-divider-brutal my-4" />

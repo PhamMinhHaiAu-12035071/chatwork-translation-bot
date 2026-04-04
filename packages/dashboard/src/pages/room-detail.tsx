@@ -368,22 +368,13 @@ export function RoomDetailPage() {
 
           <div className="xl:col-span-2">
             <div className="page-divider-brutal my-6" />
-            {(() => {
-              const contextFieldProps: {
-                value: string
-                onChange: (v: string) => void
-                error?: string
-              } = {
-                value: editForm.watch('context'),
-                onChange: (v: string) => {
-                  editForm.setValue('context', v, { shouldValidate: true })
-                },
-              }
-              if (editForm.formState.errors.context?.message) {
-                contextFieldProps.error = editForm.formState.errors.context.message
-              }
-              return <ContextField {...contextFieldProps} />
-            })()}
+            <ContextField
+              value={editForm.watch('context')}
+              onChange={(v) => {
+                editForm.setValue('context', v, { shouldValidate: true })
+              }}
+              error={editForm.formState.errors.context?.message}
+            />
 
             <div className="page-divider-brutal my-4" />
             <KeywordProtectionField
