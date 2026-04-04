@@ -20,3 +20,16 @@ describe('JAPANESE_RULES - Person Name Romanization', () => {
     expect(JAPANESE_RULES).toContain('Verify')
   })
 })
+
+describe('JAPANESE_RULES - Company Name Romanization', () => {
+  it('should contain romanization examples for company names', () => {
+    expect(JAPANESE_RULES).toContain('DExpert Kihon-bu')
+    expect(JAPANESE_RULES).toContain('デキスパート基本部')
+    expect(JAPANESE_RULES).toContain('Katakana + Kanji')
+  })
+
+  it('should show first mention vs later mention pattern', () => {
+    expect(JAPANESE_RULES).toContain('First mention')
+    expect(JAPANESE_RULES).toContain('Later mentions')
+  })
+})
