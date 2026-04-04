@@ -1,71 +1,65 @@
-import { describe, it, expect } from 'bun:test'
-import { composeRoomDescription, convertToUnicodeBold } from './compose-room-description'
-
-describe('convertToUnicodeBold', () => {
-  it('converts uppercase A-Z to Unicode bold', () => {
-    expect(convertToUnicodeBold('ABCDEFGHIJKLMNOPQRSTUVWXYZ')).toBe('𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙')
-  })
-
-  it('converts lowercase a-z to Unicode bold', () => {
-    expect(convertToUnicodeBold('abcdefghijklmnopqrstuvwxyz')).toBe('𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳')
-  })
-
-  it('converts mixed case text', () => {
-    expect(convertToUnicodeBold('Hello World')).toBe('𝐇𝐞𝐥𝐥𝐨 𝐖𝐨𝐫𝐥𝐝')
-  })
-
-  it('preserves spaces and punctuation', () => {
-    expect(convertToUnicodeBold('Hello, World!')).toBe('𝐇𝐞𝐥𝐥𝐨, 𝐖𝐨𝐫𝐥𝐝!')
-  })
-
-  it('preserves numbers', () => {
-    expect(convertToUnicodeBold('Project 123')).toBe('𝐏𝐫𝐨𝐣𝐞𝐜𝐭 123')
-  })
-
-  it('preserves Unicode characters', () => {
-    expect(convertToUnicodeBold('プロジェクト')).toBe('プロジェクト')
-  })
-
-  it('preserves emoji', () => {
-    expect(convertToUnicodeBold('Hello 🚀')).toBe('𝐇𝐞𝐥𝐥𝐨 🚀')
-  })
-
-  it('handles empty string', () => {
-    expect(convertToUnicodeBold('')).toBe('')
-  })
-
-  it('correctly converts "TRANSLATION ROOM"', () => {
-    expect(convertToUnicodeBold('TRANSLATION ROOM')).toBe('𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌')
-  })
-
-  it('correctly converts "Original"', () => {
-    expect(convertToUnicodeBold('Original')).toBe('𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥')
-  })
-})
+import { describe, expect, it } from 'bun:test'
+import { composeRoomDescription } from './compose-room-description'
 
 describe('composeRoomDescription', () => {
-  it('generates correct Neubrutalism format with ASCII room name', () => {
+  it('generates correct format with decorative symbols and no blank line', () => {
     const result = composeRoomDescription('JP Project Demo')
 
-    expect(result).toContain('🌐')
-    expect(result).toContain('𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌')
-    expect(result).toContain('📍')
-    expect(result).toContain('𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥')
-    expect(result).toContain('JP Project Demo')
-    expect(result).toContain('╔═')
-    expect(result).toContain('╚═')
+    const expected = '◦•●◉✿ TRANSLATION ROOM ✿◉●•◦\n' + '╰┈☆ Original ☆┈╯: JP Project Demo'
+
+    expect(result).toBe(expected)
   })
 
-  it('handles Unicode characters in room name', () => {
-    const result = composeRoomDescription('プロジェクト Demo')
+  it('handles long room names without truncation', () => {
+    const longName =
+      '🔴 [URGENT] Q4 2026 Product Roadmap Planning & Strategy Discussion - Engineering Team Alpha Beta Gamma Delta'
+    const result = composeRoomDescription(longName)
 
-    expect(result).toContain('プロジェクト Demo')
-    expect(result).toContain('𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌')
+    // Should contain full name, no "..." truncation
+    expect(result).toContain(longName)
+    expect(result).not.toContain('...')
+
+    // Should still have decorative title
+    expect(result).toContain('◦•●◉✿ TRANSLATION ROOM ✿◉●•◦')
   })
 
-  it('handles emoji in room name', () => {
-    const result = composeRoomDescription('Project 🚀 Demo')
+  it('preserves special characters, Unicode, and emoji in room name', () => {
+    const specialName = 'Café & Bar 日本語 🎉 <Test>'
+    const result = composeRoomDescription(specialName)
 
-    expect(result).toContain('Project 🚀 Demo')
+    expect(result).toContain(specialName)
+    expect(result).toContain('╰┈☆ Original ☆┈╯: Café & Bar 日本語 🎉 <Test>')
+  })
+
+  it('handles empty room name gracefully', () => {
+    const result = composeRoomDescription('')
+
+    const expected = '◦•●◉✿ TRANSLATION ROOM ✿◉●•◦\n' + '╰┈☆ Original ☆┈╯: '
+
+    expect(result).toBe(expected)
+  })
+
+  it('handles single character room name', () => {
+    const result = composeRoomDescription('A')
+
+    expect(result).toBe('◦•●◉✿ TRANSLATION ROOM ✿◉●•◦\n' + '╰┈☆ Original ☆┈╯: A')
+  })
+
+  it('maintains exact 2-line structure with no extra whitespace', () => {
+    const result = composeRoomDescription('Test Room')
+    const lines = result.split('\n')
+
+    // Should be exactly 2 lines
+    expect(lines).toHaveLength(2)
+
+    // Line 1 should match title pattern
+    expect(lines[0]).toBe('◦•●◉✿ TRANSLATION ROOM ✿◉●•◦')
+
+    // Line 2 should match original pattern
+    expect(lines[1]).toBe('╰┈☆ Original ☆┈╯: Test Room')
+
+    // No trailing or leading whitespace
+    expect(result).not.toMatch(/^\s/)
+    expect(result).not.toMatch(/\s$/)
   })
 })
