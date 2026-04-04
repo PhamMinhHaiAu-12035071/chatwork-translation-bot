@@ -13,6 +13,7 @@ import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { useAsyncAction } from '~/hooks/use-async-action'
+import { toastMessages } from '~/lib/toast-messages'
 import { ApiError } from '~/lib/api-client'
 import {
   FREE_ROOM_KAGI_STYLE_LABELS,
@@ -33,10 +34,6 @@ const kagiStyleOptions = FREE_ROOM_KAGI_STYLES.map((style) => ({
 const freeRoomCreateResolver = zodResolver(
   freeRoomCreateSchema as never,
 ) as Resolver<FreeRoomCreateInput>
-
-export function getFreeRoomCreatedToastMessage(roomName: string): string {
-  return `"${roomName}" was created successfully`
-}
 
 export function FreeRoomCreatePage() {
   const navigate = useNavigate()
@@ -115,7 +112,7 @@ export function FreeRoomCreatePage() {
       return
     }
 
-    toast(getFreeRoomCreatedToastMessage(data.destinationRoomName))
+    toast(toastMessages.roomCreated(data.destinationRoomName))
     void navigate('/free-rooms', {
       state: {
         spotlightRoomId: result.data.id,

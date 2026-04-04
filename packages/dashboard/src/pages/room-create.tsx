@@ -14,6 +14,7 @@ import { PageShell } from '~/components/layout/page-shell'
 import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
+import { toastMessages } from '~/lib/toast-messages'
 import {
   BEST_MODEL_BY_PROVIDER,
   PROVIDER_LABELS,
@@ -37,10 +38,6 @@ const styleOptions = TRANSLATION_STYLES.map((style) => ({
 }))
 
 const roomCreateResolver = zodResolver(roomCreateSchema as never) as Resolver<RoomCreateInput>
-
-export function getRoomCreatedToastMessage(roomName: string): string {
-  return `"${roomName}" was created successfully`
-}
 
 export function RoomCreatePage() {
   const navigate = useNavigate()
@@ -149,7 +146,7 @@ export function RoomCreatePage() {
       return
     }
 
-    toast(getRoomCreatedToastMessage(data.destinationRoomName))
+    toast(toastMessages.roomCreated(data.destinationRoomName))
     void navigate('/', {
       state: {
         spotlightRoomId: result.data.id,

@@ -3,7 +3,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
-import { RoomCreatePage, getRoomCreatedToastMessage } from '~/pages/room-create'
+import { RoomCreatePage } from '~/pages/room-create'
+import { toastMessages } from '~/lib/toast-messages'
 
 function renderRoomCreatePage() {
   const router = createMemoryRouter(
@@ -21,7 +22,7 @@ function renderRoomCreatePage() {
 
 describe('RoomCreatePage', () => {
   it('builds create success toasts with the room name', () => {
-    expect(getRoomCreatedToastMessage('Sakura Desk JP')).toBe(
+    expect(toastMessages.roomCreated('Sakura Desk JP')).toBe(
       '"Sakura Desk JP" was created successfully',
     )
   })
@@ -55,7 +56,7 @@ describe('RoomCreatePage', () => {
     expect(source).toContain('ApiError')
     expect(source).toContain('result.cause instanceof ApiError')
     expect(source).toContain('result.cause.status === 409')
-    expect(source).toContain('getRoomCreatedToastMessage')
+    expect(source).toContain('toastMessages.roomCreated')
     expect(source).toContain('data.destinationRoomName')
     expect(source).toContain('toast(result.error,')
     expect(source).toContain("'error'")

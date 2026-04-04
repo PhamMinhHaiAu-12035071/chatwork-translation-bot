@@ -18,6 +18,7 @@ import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import { ApiError } from '~/lib/api-client'
+import { toastMessages } from '~/lib/toast-messages'
 import {
   BEST_MODEL_BY_PROVIDER,
   PROVIDER_LABELS,
@@ -49,10 +50,6 @@ const styleOptions = TRANSLATION_STYLES.map((style) => ({
 }))
 
 const roomEditResolver = zodResolver(roomEditSchema as never) as Resolver<RoomEditInput>
-
-export function getRoomUpdatedToastMessage(roomName: string): string {
-  return `"${roomName}" was updated successfully`
-}
 
 export function RoomDetailPage() {
   const { id = '' } = useParams<{ id: string }>()
@@ -219,7 +216,7 @@ export function RoomDetailPage() {
       return
     }
 
-    toast(getRoomUpdatedToastMessage(data.destinationRoomName), 'info')
+    toast(toastMessages.roomUpdated(data.destinationRoomName), 'info')
     void navigate('/', {
       state: {
         spotlightRoomId: result.data.id,

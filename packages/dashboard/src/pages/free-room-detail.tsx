@@ -18,6 +18,7 @@ import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import { ApiError } from '~/lib/api-client'
+import { toastMessages } from '~/lib/toast-messages'
 import {
   FREE_ROOM_KAGI_STYLE_LABELS,
   FREE_ROOM_KAGI_STYLES,
@@ -44,10 +45,6 @@ const kagiStyleOptions = FREE_ROOM_KAGI_STYLES.map((style) => ({
 }))
 
 const freeRoomEditResolver = zodResolver(freeRoomEditSchema as never) as Resolver<FreeRoomEditInput>
-
-export function getFreeRoomUpdatedToastMessage(roomName: string): string {
-  return `"${roomName}" was updated successfully`
-}
 
 export function FreeRoomDetailPage() {
   const { id = '' } = useParams<{ id: string }>()
@@ -177,7 +174,7 @@ export function FreeRoomDetailPage() {
       return
     }
 
-    toast(getFreeRoomUpdatedToastMessage(data.destinationRoomName), 'info')
+    toast(toastMessages.roomUpdated(data.destinationRoomName), 'info')
     void navigate('/free-rooms', {
       state: {
         spotlightRoomId: result.data.id,

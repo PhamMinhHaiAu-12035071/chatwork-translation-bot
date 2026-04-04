@@ -14,6 +14,7 @@ import { StickerLabel } from '~/components/atoms/sticker-label'
 import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
 import type { DeleteRoomResult } from '~/lib/api-types'
+import { toastMessages } from '~/lib/toast-messages'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import { PROVIDER_LABELS, TRANSLATION_STYLE_LABELS } from '~/lib/provider-models'
 import {
@@ -54,21 +55,6 @@ export function getRoomCardIndex(roomId: string): number {
     h = (h * 31 + roomId.charCodeAt(i)) | 0
   }
   return Math.abs(h) % cardThemeByIndex.length
-}
-
-export function getRoomToggleToastMessage(roomName: string, currentlyEnabled: boolean): string {
-  return `"${roomName}" is now ${currentlyEnabled ? 'paused' : 'enabled'}`
-}
-
-export function getDeleteRoomToastMessage(
-  roomName: string,
-  outcome: DeleteRoomResult['outcome'],
-): string {
-  if (outcome === 'already_deleted') {
-    return `Room "${roomName}" was already gone on Chatwork. Dashboard cleanup is complete`
-  }
-
-  return `Room "${roomName}" deleted from Chatwork and dashboard`
 }
 
 export function RoomListPage() {
@@ -171,7 +157,10 @@ export function RoomListPage() {
       return
     }
 
-    toast(getRoomToggleToastMessage(roomName, targetState), 'info')
+    toast(
+      targetState ? toastMessages.roomEnabled(roomName) : toastMessages.roomDisabled(roomName),
+      'info',
+    )
   }
 
   const handleConfirmDelete = async () => {
@@ -188,7 +177,7 @@ export function RoomListPage() {
       return
     }
 
-    toast(getDeleteRoomToastMessage(room.destinationRoomName, result.data.outcome), 'warning')
+    toast(toastMessages.roomDeleted(room.destinationRoomName, result.data.outcome), 'warning')
     setSelectedRoom(null)
   }
 

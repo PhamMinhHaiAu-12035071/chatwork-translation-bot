@@ -15,6 +15,7 @@ import { useToast } from '~/components/organisms/toast-provider'
 import { ApiError } from '~/lib/api-client'
 import { useAsyncAction } from '~/hooks/use-async-action'
 import type { DeleteRoomResult } from '~/lib/api-types'
+import { toastMessages } from '~/lib/toast-messages'
 import {
   selectDeleteFreeRoom,
   selectDisableFreeRoom,
@@ -26,11 +27,7 @@ import {
   useFreeRoomStore,
   type FreeRoom,
 } from '~/stores/free-room-store'
-import {
-  getDeleteRoomToastMessage,
-  getRoomCardIndex,
-  getRoomToggleToastMessage,
-} from '~/pages/room-list'
+import { getRoomCardIndex } from '~/pages/room-list'
 
 const cardThemeByIndex = [
   'theme-card-lilac',
@@ -144,7 +141,10 @@ export function FreeRoomListPage() {
       return
     }
 
-    toast(getRoomToggleToastMessage(roomName, targetState), 'info')
+    toast(
+      targetState ? toastMessages.roomEnabled(roomName) : toastMessages.roomDisabled(roomName),
+      'info',
+    )
   }
 
   const handleConfirmDelete = async () => {
@@ -159,7 +159,7 @@ export function FreeRoomListPage() {
       return
     }
 
-    toast(getDeleteRoomToastMessage(room.destinationRoomName, result.data.outcome), 'warning')
+    toast(toastMessages.roomDeleted(room.destinationRoomName, result.data.outcome), 'warning')
     setSelectedRoom(null)
   }
 
