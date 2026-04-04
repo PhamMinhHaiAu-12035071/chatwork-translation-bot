@@ -237,10 +237,20 @@ export function FreeRoomDetailPage() {
                 label="Original Room ID"
                 type="text"
                 inputMode="numeric"
+                readOnly
+                hint="Cannot be changed after creation."
                 error={editForm.formState.errors.originalRoomId?.message}
                 {...editForm.register('originalRoomId', {
                   setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
                 })}
+              />
+              <BrutalInput
+                label="Original Room Name"
+                type="text"
+                readOnly
+                hint="Cannot be changed after creation."
+                error={editForm.formState.errors.originalRoomName?.message}
+                {...editForm.register('originalRoomName')}
               />
               <BrutalInput
                 label="Destination Room Name"

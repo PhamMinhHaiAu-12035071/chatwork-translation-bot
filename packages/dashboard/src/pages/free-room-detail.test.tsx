@@ -59,4 +59,15 @@ describe('FreeRoomDetailPage', () => {
       /navigate\(\s*['"`]\/free-rooms['"`]\s*,[\s\S]*state:\s*\{[\s\S]*spotlightRoomId:\s*result\.data\.id[\s\S]*\}\s*\)/,
     )
   })
+
+  it('displays originalRoomName as read-only in edit form', async () => {
+    const source = await Bun.file(new URL('./free-room-detail.tsx', import.meta.url)).text()
+
+    expect(source).toContain('Original Room Name')
+    expect(source).toContain("...editForm.register('originalRoomName')")
+    expect(source).toContain('Cannot be changed after creation.')
+
+    const readOnlyPattern = /label="Original Room Name"[\s\S]*?readOnly/
+    expect(source).toMatch(readOnlyPattern)
+  })
 })
