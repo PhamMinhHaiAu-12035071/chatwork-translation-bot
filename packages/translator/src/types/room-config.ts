@@ -14,6 +14,7 @@ export type RoomTranslationStyle = (typeof TRANSLATION_STYLE_VALUES_ROOM)[number
 export const RoomConfigSchema = z.object({
   id: z.uuid(),
   originalRoomId: z.number().int().positive(),
+  originalRoomName: z.string().min(1),
   destinationRoomId: z.number().int().positive(),
   destinationRoomName: z.string().min(1),
   aiProvider: z.enum(AI_PROVIDER_VALUES),
@@ -58,6 +59,7 @@ export function redactRoomConfig(room: RoomConfig): RoomConfigPublic {
 
 export const CreateRoomRequestSchema = z.object({
   originalRoomId: z.number().int().positive(),
+  originalRoomName: z.string().min(1).max(100),
   destinationRoomName: z.string().min(1).max(128),
   aiProvider: z.enum(AI_PROVIDER_VALUES),
   aiModel: z.string().min(1).nullable().default(null),

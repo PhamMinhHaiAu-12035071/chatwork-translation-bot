@@ -9,6 +9,7 @@ export type FreeRoomKagiStyle = KagiStyle
 export const FreeRoomConfigSchema = z.object({
   id: z.uuid(),
   originalRoomId: z.number().int().positive(),
+  originalRoomName: z.string().min(1),
   destinationRoomId: z.number().int().positive(),
   destinationRoomName: z.string().min(1),
   kagiStyle: z.enum(FREE_ROOM_KAGI_STYLE_VALUES).default('Clear'),
@@ -30,6 +31,7 @@ export type FreeRoomConfigFile = z.infer<typeof FreeRoomConfigFileSchema>
 
 export const CreateFreeRoomRequestSchema = z.object({
   originalRoomId: z.number().int().positive(),
+  originalRoomName: z.string().min(1).max(100),
   destinationRoomName: z.string().min(1).max(128),
   kagiStyle: z.enum(FREE_ROOM_KAGI_STYLE_VALUES).default('Clear'),
   context: z.string().max(100).nullable().optional().default(null),
