@@ -3,7 +3,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
-import { RoomDetailPage, getRoomUpdatedToastMessage } from '~/pages/room-detail'
+import { RoomDetailPage } from '~/pages/room-detail'
+import { toastMessages } from '~/lib/toast-messages'
 
 const removedWebhookActivationSchema = ['webhook', 'Activation', 'Schema'].join('')
 const removedActivateWebhookSymbol = ['activate', 'Webhook'].join('')
@@ -25,7 +26,7 @@ function renderRoomDetailPage(path: string) {
 
 describe('RoomDetailPage', () => {
   it('builds update success toasts with the room name', () => {
-    expect(getRoomUpdatedToastMessage('Sakura Desk JP')).toBe(
+    expect(toastMessages.roomUpdated('Sakura Desk JP')).toBe(
       '"Sakura Desk JP" was updated successfully',
     )
   })
@@ -58,7 +59,7 @@ describe('RoomDetailPage', () => {
     expect(source).not.toContain('generateWebhookUrl')
     expect(source).toContain('onEditSubmit')
     expect(source).toContain('handleRoomStatusToggle')
-    expect(source).toContain('getRoomUpdatedToastMessage')
+    expect(source).toContain('toastMessages.roomUpdated')
     expect(source).toContain('data.destinationRoomName')
     expect(source).toContain('Room Status')
     expect(source).toContain('Disable Room')

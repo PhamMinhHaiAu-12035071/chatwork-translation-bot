@@ -3,7 +3,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
-import { FreeRoomCreatePage, getFreeRoomCreatedToastMessage } from '~/pages/free-room-create'
+import { FreeRoomCreatePage } from '~/pages/free-room-create'
+import { toastMessages } from '~/lib/toast-messages'
 
 function renderFreeRoomCreatePage() {
   const router = createMemoryRouter(
@@ -21,7 +22,7 @@ function renderFreeRoomCreatePage() {
 
 describe('FreeRoomCreatePage', () => {
   it('builds create success toasts with the room name', () => {
-    expect(getFreeRoomCreatedToastMessage('Sakura Desk JP Free')).toBe(
+    expect(toastMessages.roomCreated('Sakura Desk JP Free')).toBe(
       '"Sakura Desk JP Free" was created successfully',
     )
   })

@@ -3,12 +3,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { ToastProvider } from '~/components/organisms/toast-provider'
-import {
-  RoomListPage,
-  getDeleteRoomToastMessage,
-  getRoomToggleToastMessage,
-  getRoomCardIndex,
-} from '~/pages/room-list'
+import { RoomListPage, getRoomCardIndex } from '~/pages/room-list'
+import { toastMessages } from '~/lib/toast-messages'
 
 const removedToggleRoomSymbol = ['toggle', 'Room'].join('')
 const removedWebhookTokenSymbol = ['webhook', 'Token'].join('')
@@ -29,17 +25,15 @@ function renderRoomListPage() {
 
 describe('RoomListPage', () => {
   it('builds toggle toasts with the room name and resulting status', () => {
-    expect(getRoomToggleToastMessage('Sakura Desk JP', false)).toBe(
-      '"Sakura Desk JP" is now enabled',
-    )
-    expect(getRoomToggleToastMessage('Sakura Desk JP', true)).toBe('"Sakura Desk JP" is now paused')
+    expect(toastMessages.roomEnabled('Sakura Desk JP')).toBe('"Sakura Desk JP" is now enabled')
+    expect(toastMessages.roomDisabled('Sakura Desk JP')).toBe('"Sakura Desk JP" is now paused')
   })
 
   it('builds delete toasts with different messages for deleted and already-deleted outcomes', () => {
-    expect(getDeleteRoomToastMessage('Sakura Desk JP', 'deleted')).toBe(
+    expect(toastMessages.roomDeleted('Sakura Desk JP', 'deleted')).toBe(
       'Room "Sakura Desk JP" deleted from Chatwork and dashboard',
     )
-    expect(getDeleteRoomToastMessage('Sakura Desk JP', 'already_deleted')).toBe(
+    expect(toastMessages.roomDeleted('Sakura Desk JP', 'already_deleted')).toBe(
       'Room "Sakura Desk JP" was already gone on Chatwork. Dashboard cleanup is complete',
     )
   })
@@ -79,8 +73,9 @@ describe('RoomListPage', () => {
     expect(source).not.toContain('window.confirm')
     expect(source).not.toContain(removedToggleRoomSymbol)
     expect(source).not.toContain(removedWebhookTokenSymbol)
-    expect(source).toContain('getRoomToggleToastMessage')
-    expect(source).toContain('getDeleteRoomToastMessage')
+    expect(source).toContain('toastMessages.roomEnabled')
+    expect(source).toContain('toastMessages.roomDisabled')
+    expect(source).toContain('toastMessages.roomDeleted')
     expect(source).toContain('room.destinationRoomName')
     expect(source).toContain('result.data.outcome')
     expect(source).toContain('toast(result.error,')
