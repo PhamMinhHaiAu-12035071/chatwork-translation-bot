@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   buildSingleCallPrompts,
   buildStructuredTranslationPrompts,
@@ -6,6 +8,13 @@ import {
   TRANSLATION_PROMPT_BUILD_ID,
   TranslationDraftSchema,
 } from './translation-prompt'
+
+function getTestData(_filename: string): string {
+  // Navigate from this test file's directory to repo root
+  // packages/translation-prompt/src/translation-prompt.test.ts -> ../../..
+  const filepath = join(__dirname, '..', '..', '..', 'raw.txt')
+  return readFileSync(filepath, 'utf-8')
+}
 
 describe('buildSingleCallPrompts', () => {
   it('returns PromptPair with system and user strings', () => {
@@ -542,5 +551,28 @@ describe('Regression - English-Vietnamese Unaffected', () => {
     // Test via system prompt structure (user prompt is English)
     expect(prompts.user).toContain('John Smith')
     expect(prompts.user).not.toContain('san')
+  })
+})
+
+describe('E2E - Real-World Translation with Romanization', () => {
+  it('should generate prompt with romanization rules for raw.txt content', () => {
+    const rawContent = getTestData('raw.txt')
+    const lines = rawContent.split('\n')
+
+    // Find the original Japanese text section (lines 1-11)
+    const japaneseText = lines.slice(1, 12).join('\n')
+
+    const prompts = buildSingleCallPrompts(japaneseText, 'PROFESSIONAL_BUSINESS')
+
+    // Verify prompt contains all enhanced rules
+    expect(prompts.system).toContain('Sasaki-san')
+    expect(prompts.system).toContain('DExpert Kihon-bu')
+    expect(prompts.system).toContain('phát triển giai đoạn 2')
+    expect(prompts.system).toContain('Before Outputting - Self-Check')
+
+    // Verify user prompt contains the Japanese text
+    expect(prompts.user).toContain('佐々木さん')
+    expect(prompts.user).toContain('デキスパート基本部')
+    expect(prompts.user).toContain('2nd開発')
   })
 })
