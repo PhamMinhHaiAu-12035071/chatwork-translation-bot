@@ -16,7 +16,7 @@ describe('JAPANESE_RULES - Person Name Romanization', () => {
   })
 
   it('should contain lightweight verification reminder', () => {
-    expect(JAPANESE_RULES).toContain('Before outputting')
-    expect(JAPANESE_RULES).toContain('verify')
+    expect(JAPANESE_RULES).toContain('Before Outputting')
+    expect(JAPANESE_RULES).toContain('Verify')
   })
 })
