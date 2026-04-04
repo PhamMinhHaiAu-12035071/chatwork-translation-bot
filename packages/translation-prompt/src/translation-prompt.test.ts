@@ -487,12 +487,10 @@ describe('buildStructuredTranslationPrompts — keywordSystemHint', () => {
 
 describe('TRANSLATION_PROMPT_BUILD_ID', () => {
   it('should be updated to 2026-04-04-romanization-v2', () => {
-    const { TRANSLATION_PROMPT_BUILD_ID } = require('~/translation-prompt')
     expect(TRANSLATION_PROMPT_BUILD_ID).toBe('2026-04-04-romanization-v2')
   })
 
   it('should NOT be the old version', () => {
-    const { TRANSLATION_PROMPT_BUILD_ID } = require('~/translation-prompt')
     expect(TRANSLATION_PROMPT_BUILD_ID).not.toBe('2026-03-30-human-sounding-workplace-v1')
   })
 })
