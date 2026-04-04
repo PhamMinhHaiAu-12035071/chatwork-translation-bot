@@ -33,3 +33,15 @@ describe('JAPANESE_RULES - Company Name Romanization', () => {
     expect(JAPANESE_RULES).toContain('Later mentions')
   })
 })
+
+describe('JAPANESE_RULES - Technical Compound Term Translation', () => {
+  it('should contain technical term translation examples', () => {
+    expect(JAPANESE_RULES).toContain('2nd開発')
+    expect(JAPANESE_RULES).toContain('phát triển giai đoạn 2')
+    expect(JAPANESE_RULES).toContain('Number/Ordinal + Japanese term')
+  })
+
+  it('should show "giai đoạn" pattern for phased work', () => {
+    expect(JAPANESE_RULES).toContain('giai đoạn')
+  })
+})
