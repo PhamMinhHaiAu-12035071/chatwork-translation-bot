@@ -368,4 +368,26 @@ These items were discussed but explicitly marked **out-of-scope** for this bug f
 
 ---
 
+## Revision History
+
+### 2026-04-04 - Post-Implementation Simplification
+
+**Changes:**
+
+- Reduced test count from 6 to 3 tests (removed redundant validations)
+- Eliminated duplicate mock implementations (now import real function)
+- Removed YAGNI test for non-existent truncation feature
+
+**Impact:**
+
+- Net reduction: -41 lines (63% of test/mock code)
+- Coverage maintained: 3 focused tests still validate all meaningful behavior
+- DRY improved: Zero duplication in test mocks
+
+**Test Results:** All 1006 tests passing after simplification
+
+**Commit:** bb49e3d - refactor(repo): simplify room description tests and remove duplication
+
+---
+
 **End of Specification**

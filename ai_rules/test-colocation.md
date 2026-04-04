@@ -73,6 +73,32 @@ afterEach(() => {
 
 This ensures tests never reach `api.chatwork.com`.
 
+### Testing Pattern: Pure Functions in Mocks
+
+When mocking modules that export pure utility functions, prefer re-exporting the real implementation over duplicating logic:
+
+```typescript
+// ✅ Good: Re-export pure functions
+import { formatDate } from '@lib/utils'
+
+void mock.module('@lib/utils', () => ({
+  formatDate, // Pure function — use real implementation
+  fetchData: mockFetch, // Impure function — mock the side effect
+}))
+
+// ❌ Bad: Duplicate pure function logic
+void mock.module('@lib/utils', () => ({
+  formatDate: (d: Date) => d.toISOString(), // Duplication!
+  fetchData: mockFetch,
+}))
+```
+
+**Rationale:**
+
+- Eliminates code duplication (DRY)
+- Tests use production code path (catches integration issues)
+- Mock only the boundaries (I/O, side effects), not domain logic
+
 ## Rule: What to test
 
 Prioritize:
