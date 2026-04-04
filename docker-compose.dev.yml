@@ -68,6 +68,11 @@ services:
       - .:/app
       - kagi_node_modules:/app/node_modules
       - kagi_bun_cache:/root/.bun/install/cache
+    depends_on:
+      # Wait for translator to start before running parallel bun install.
+      # Reduces network race conditions and registry rate limiting during cold starts.
+      translator:
+        condition: service_started
     env_file:
       - .env
     environment:
