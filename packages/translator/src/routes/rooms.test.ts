@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { composeRoomDescription } from '@chatwork-bot/chatwork'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -10,8 +11,7 @@ const mockDeleteChatworkRoom = mock(() => Promise.resolve())
 const mockUpdateChatworkRoom = mock(() => Promise.resolve())
 
 void mock.module('@chatwork-bot/chatwork', () => ({
-  composeRoomDescription: (name: string) =>
-    `◦•●◉✿ TRANSLATION ROOM ✿◉●•◦\n╰┈☆ Original ☆┈╯: ${name}`,
+  composeRoomDescription,
   createRoom: mockCreateChatworkRoom,
   deleteRoom: mockDeleteChatworkRoom,
   updateRoom: mockUpdateChatworkRoom,
