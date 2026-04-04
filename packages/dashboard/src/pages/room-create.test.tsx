@@ -90,4 +90,21 @@ describe('RoomCreatePage', () => {
     expect(html).toContain('Translation Context')
     expect(html).toContain('Optional')
   })
+
+  it('renders originalRoomName input field with correct id', () => {
+    const html = renderRoomCreatePage()
+    expect(html).toContain('Original Room Name')
+    expect(html).toContain('tour-field-roomname-orig')
+    expect(html).toContain('The name of the source Chatwork room (for description).')
+  })
+
+  it('has originalRoomName field in form defaultValues', async () => {
+    const source = await Bun.file(new URL('./room-create.tsx', import.meta.url)).text()
+    expect(source).toContain("originalRoomName: ''")
+  })
+
+  it('includes originalRoomName in onSubmit keywordData', async () => {
+    const source = await Bun.file(new URL('./room-create.tsx', import.meta.url)).text()
+    expect(source).toContain('originalRoomName: data.originalRoomName')
+  })
 })

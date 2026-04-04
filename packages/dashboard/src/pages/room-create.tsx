@@ -184,6 +184,18 @@ export function RoomCreatePage() {
                   })}
                 />
               </div>
+              <div id="tour-field-roomname-orig">
+                <BrutalInput
+                  label="Original Room Name"
+                  type="text"
+                  hint="The name of the source Chatwork room (for description)."
+                  placeholder="e.g., JP Project Demo"
+                  error={errors.originalRoomName?.message}
+                  {...register('originalRoomName')}
+                />
+              </div>
+            </div>
+            <div>
               <div id="tour-field-roomname">
                 <BrutalInput
                   label="Destination Room Name"
@@ -193,6 +205,8 @@ export function RoomCreatePage() {
                   {...register('destinationRoomName')}
                 />
               </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
               <div id="tour-field-provider">
                 <BrutalSelect
                   label="AI Provider"

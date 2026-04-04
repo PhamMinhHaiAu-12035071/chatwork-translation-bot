@@ -1,4 +1,5 @@
 import {
+  composeRoomDescription,
   createRoom as createChatworkRoom,
   deleteRoom as deleteChatworkRoom,
   updateRoom as updateChatworkRoom,
@@ -90,12 +91,15 @@ export function createFreeRoomsRoutes({
           )
         }
 
+        const description = composeRoomDescription(data.originalRoomName)
+
         let destinationRoomId: number
         try {
           const created = await createChatworkRoom(
             {
               name: data.destinationRoomName,
               members_admin_ids: chatworkBotAccountId.toString(),
+              description,
             },
             chatworkApiToken,
           )

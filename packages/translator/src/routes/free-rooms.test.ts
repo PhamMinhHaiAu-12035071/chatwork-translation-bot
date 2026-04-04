@@ -9,10 +9,35 @@ const mockCreateChatworkRoom = mock(() => Promise.resolve({ room_id: 99001 }))
 const mockDeleteChatworkRoom = mock(() => Promise.resolve())
 const mockUpdateChatworkRoom = mock(() => Promise.resolve())
 
+// Use the actual composeRoomDescription function (not mocked, tested separately)
+function composeRoomDescription(originalRoomName: string): string {
+  const convertToUnicodeBold = (text: string): string => {
+    const boldMap: Record<string, string> = {
+      A: '𝐀', B: '𝐁', C: '𝐂', D: '𝐃', E: '𝐄', F: '𝐅', G: '𝐆', H: '𝐇', I: '𝐈', J: '𝐉',
+      K: '𝐊', L: '𝐋', M: '𝐌', N: '𝐍', O: '𝐎', P: '𝐏', Q: '𝐐', R: '𝐑', S: '𝐒', T: '𝐓',
+      U: '𝐔', V: '𝐕', W: '𝐖', X: '𝐗', Y: '𝐘', Z: '𝐙', a: '𝐚', b: '𝐛', c: '𝐜', d: '𝐝',
+      e: '𝐞', f: '𝐟', g: '𝐠', h: '𝐡', i: '𝐢', j: '𝐣', k: '𝐤', l: '𝐥', m: '𝐦', n: '𝐧',
+      o: '𝐨', p: '𝐩', q: '𝐪', r: '𝐫', s: '𝐬', t: '𝐭', u: '𝐮', v: '𝐯', w: '𝐰', x: '𝐱',
+      y: '𝐲', z: '𝐳',
+    }
+    return text.split('').map((char) => boldMap[char] ?? char).join('')
+  }
+
+  const title = convertToUnicodeBold('TRANSLATION ROOM')
+  const label = convertToUnicodeBold('Original')
+
+  return `╔═══════════════════════════════════════╗
+║    🌐 ${title} 🌐    ║
+╚═══════════════════════════════════════╝
+
+📍 ${label}: ${originalRoomName}`
+}
+
 void mock.module('@chatwork-bot/chatwork', () => ({
   createRoom: mockCreateChatworkRoom,
   deleteRoom: mockDeleteChatworkRoom,
   updateRoom: mockUpdateChatworkRoom,
+  composeRoomDescription,
 }))
 
 const API_TOKEN = 'test-chatwork-token'
@@ -33,6 +58,7 @@ async function buildApp(dataDir: string) {
 
 const VALID_BODY = {
   originalRoomId: 1001,
+  originalRoomName: 'Free Demo Room',
   destinationRoomName: 'Free Translation Output',
   kagiStyle: 'Clear',
   context: 'software team',
@@ -167,5 +193,65 @@ describe('free room routes', () => {
     expect((await enableRes.json()) as { data?: { enabled?: boolean } }).toMatchObject({
       data: { enabled: true },
     })
+  })
+
+  it('creates Chatwork room with description containing original room name', async () => {
+    const app = await buildApp(tmpDir)
+    mockCreateChatworkRoom.mockResolvedValue({ room_id: 888777 })
+
+    const payload = {
+      originalRoomId: 654321,
+      originalRoomName: 'Free Demo Room',
+      destinationRoomName: 'Free Translation',
+      kagiStyle: 'Clear',
+    }
+
+    const response = await app.handle(
+      new Request('http://localhost/api/free-rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    )
+
+    expect(response.status).toBe(201)
+
+    expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌'),
+      }),
+      expect.any(String),
+    )
+
+    expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('Free Demo Room'),
+      }),
+      expect.any(String),
+    )
+  })
+
+  it('rejects creation without originalRoomName', async () => {
+    const app = await buildApp(tmpDir)
+
+    const payload = {
+      originalRoomId: 654321,
+      // originalRoomName: missing
+      destinationRoomName: 'Free Translation',
+      kagiStyle: 'Clear',
+    }
+
+    const response = await app.handle(
+      new Request('http://localhost/api/free-rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+
+    const body = (await response.json()) as { error?: string }
+    expect(body.error).toContain('Invalid request body')
   })
 })

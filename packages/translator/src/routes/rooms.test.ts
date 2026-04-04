@@ -10,6 +10,8 @@ const mockDeleteChatworkRoom = mock(() => Promise.resolve())
 const mockUpdateChatworkRoom = mock(() => Promise.resolve())
 
 void mock.module('@chatwork-bot/chatwork', () => ({
+  composeRoomDescription: (name: string) =>
+    `╔═══════════════════════════════════════╗\n║    🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐    ║\n╚═══════════════════════════════════════╝\n\n📍 𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥: ${name}`,
   createRoom: mockCreateChatworkRoom,
   deleteRoom: mockDeleteChatworkRoom,
   updateRoom: mockUpdateChatworkRoom,
@@ -34,6 +36,7 @@ async function buildApp(dataDir: string) {
 
 const VALID_BODY = {
   originalRoomId: 1001,
+  originalRoomName: 'JP Project Demo',
   destinationRoomName: 'Translation Output',
   aiProvider: 'openai',
   aiModel: 'gpt-4o',
@@ -202,7 +205,11 @@ describe('POST /api/rooms', () => {
     expect(body.webhookUrl).toBe('http://localhost/webhook')
     expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
     expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
-      { name: 'Translation Output', members_admin_ids: BOT_ACCOUNT_ID.toString() },
+      expect.objectContaining({
+        name: 'Translation Output',
+        members_admin_ids: BOT_ACCOUNT_ID.toString(),
+        description: expect.any(String) as string,
+      }),
       API_TOKEN,
     )
   })
@@ -329,6 +336,51 @@ describe('POST /api/rooms', () => {
     )
 
     expect(response.status).toBe(400)
+  })
+
+  it('creates Chatwork room with description containing original room name', async () => {
+    const app = await buildApp(tmpDir)
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(VALID_BODY),
+      }),
+    )
+
+    expect(response.status).toBe(201)
+    expect(mockCreateChatworkRoom).toHaveBeenCalledTimes(1)
+    expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Translation Output',
+        description: expect.stringContaining('𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌') as string,
+      }),
+      API_TOKEN,
+    )
+
+    expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('JP Project Demo') as string,
+      }),
+      API_TOKEN,
+    )
+  })
+
+  it('rejects creation without originalRoomName', async () => {
+    const app = await buildApp(tmpDir)
+    const { originalRoomName: _removed, ...bodyWithoutOriginalRoomName } = VALID_BODY
+    const response = await app.handle(
+      new Request('http://localhost/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyWithoutOriginalRoomName),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+
+    const body = (await response.json()) as { error?: string }
+    expect(body.error).toBe('Invalid request body')
   })
 })
 
