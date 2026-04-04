@@ -61,6 +61,7 @@ export function FreeRoomCreatePage() {
     resolver: freeRoomCreateResolver,
     defaultValues: {
       ...(prefillRoomId !== undefined ? { originalRoomId: Number(prefillRoomId) } : {}),
+      originalRoomName: '',
       destinationRoomName: '',
       kagiStyle: 'Clear',
       context: '',
@@ -73,12 +74,14 @@ export function FreeRoomCreatePage() {
     const result = await createFreeRoomAction.execute(() => {
       const keywordData: {
         originalRoomId: number
+        originalRoomName: string
         destinationRoomName: string
         kagiStyle: typeof data.kagiStyle
         context: string | null
         protectedKeywords?: ProtectedKeyword[]
       } = {
         originalRoomId: data.originalRoomId,
+        originalRoomName: data.originalRoomName,
         destinationRoomName: data.destinationRoomName,
         kagiStyle: data.kagiStyle,
         context: data.context.trim() || null,
@@ -146,12 +149,26 @@ export function FreeRoomCreatePage() {
                 })}
               />
               <BrutalInput
+                label="Original Room Name"
+                type="text"
+                hint="The name of the source Chatwork room (for description)."
+                placeholder="e.g., JP Project Demo"
+                error={errors.originalRoomName?.message}
+                {...register('originalRoomName')}
+              />
+            </div>
+
+            <div>
+              <BrutalInput
                 label="Destination Room Name"
                 type="text"
                 hint="Internal name for the translated output room."
                 error={errors.destinationRoomName?.message}
                 {...register('destinationRoomName')}
               />
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
               <BrutalSelect
                 label="Provider"
                 options={[...providerOptions]}

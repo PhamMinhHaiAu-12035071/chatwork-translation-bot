@@ -54,6 +54,7 @@ describe('apiClient', () => {
     const room: RoomConfigPublic = {
       id: 'room-001',
       originalRoomId: 123,
+      originalRoomName: 'Sakura Desk JP Original',
       destinationRoomId: 456,
       destinationRoomName: 'Sakura Desk JP',
       aiProvider: 'openai',

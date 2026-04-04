@@ -13,6 +13,7 @@ const LIST_ROOMS_RAW: [RoomConfigPublic, RoomConfigPublic] = [
   {
     id: 'room-001',
     originalRoomId: 123456789,
+    originalRoomName: 'Sakura Desk Original',
     destinationRoomId: 99001,
     destinationRoomName: 'Sakura Desk JP',
     aiProvider: 'openai',
@@ -26,6 +27,7 @@ const LIST_ROOMS_RAW: [RoomConfigPublic, RoomConfigPublic] = [
   {
     id: 'room-002',
     originalRoomId: 555001,
+    originalRoomName: 'Osaka Original',
     destinationRoomId: 99002,
     destinationRoomName: 'Osaka Escalations',
     aiProvider: 'openai',
@@ -60,6 +62,7 @@ const PROVIDERS: ProviderInfo[] = [
 const CREATED_ROOM: RoomConfigPublic = {
   id: 'room-002',
   originalRoomId: 555001,
+  originalRoomName: 'Osaka Original',
   destinationRoomId: 99002,
   destinationRoomName: 'Osaka Escalations',
   aiProvider: 'openai',
@@ -219,6 +222,7 @@ describe('room store', () => {
 
     const created = await useRoomStore.getState().createRoom({
       originalRoomId: 555001,
+      originalRoomName: 'Osaka Original',
       destinationRoomName: 'Osaka Escalations',
       aiProvider: 'openai',
       aiModel: 'gpt-4o-mini',

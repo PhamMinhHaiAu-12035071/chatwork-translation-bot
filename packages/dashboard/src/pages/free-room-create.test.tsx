@@ -31,6 +31,7 @@ describe('FreeRoomCreatePage', () => {
 
     expect(html).toContain('Set up a free translation room')
     expect(html).toContain('Original Room ID')
+    expect(html).toContain('Original Room Name')
     expect(html).toContain('Destination Room Name')
     expect(html).toContain('Provider')
     expect(html).toContain('Translation Style')
