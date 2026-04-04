@@ -16,7 +16,7 @@ export interface PromptPair {
   user: string
 }
 
-export const TRANSLATION_PROMPT_BUILD_ID = '2026-03-30-human-sounding-workplace-v1'
+export const TRANSLATION_PROMPT_BUILD_ID = '2026-04-04-romanization-v2'
 
 export { TranslationDraftSchema }
 export { StructuredTranslationDraftSchema }
