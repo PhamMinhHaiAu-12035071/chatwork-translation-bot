@@ -16,9 +16,10 @@
 
 1. **`packages/translation-prompt/src/sections/language-layers.ts`**
    - Replace JAPANESE_RULES export (lines 1-7)
-   - Add 5 few-shot examples teaching detection patterns
-   - Add lightweight verification reminder
-   - ~250 tokens total (under 800-token limit)
+
+- Add 5 few-shot examples teaching detection patterns
+- Add lightweight verification reminder
+- ~450 tokens total (under 800-token limit)
 
 2. **`packages/translation-prompt/src/sections/verification.ts`**
    - Append 4 new verification checklist items (after line 4)
@@ -228,7 +229,7 @@ Research-backed: Few-shot learning achieves 94% compliance (vs 71%
 without examples). Implicit pattern learning outperforms explicit
 detection rules for classification tasks.
 
-Token count: ~250 tokens (under 800-token adherence limit)
+Token count: ~450 tokens (under 800-token adherence limit)
 
 Tests now pass."
 ```
@@ -1098,7 +1099,7 @@ Testing:
 Research foundation:
 - Few-shot learning: 3-5 examples = 94% compliance (validated)
 - Implicit pattern learning > explicit detection rules
-- Token-efficient: ~250 tokens (under 800-token adherence limit)
+- Token-efficient: ~450 tokens (under 800-token adherence limit)
 - Japanese NER: 0.86-0.99 F1 scores achievable
 - Lightweight verification (CoVe pattern) reduces errors
 

@@ -125,8 +125,8 @@ Complex reasoning:
 
 ```
 Current JAPANESE_RULES:              ~150 tokens
-Enhanced with 5 examples:            ~250 tokens
-Enhanced with explicit detection:    ~400 tokens (too verbose)
+Enhanced with 5 examples:            ~450 tokens
+Enhanced with explicit detection:    ~550 tokens (too verbose)
 Total system prompt:                 ~600 tokens ✅ (under 800 limit)
 ```
 
@@ -164,7 +164,7 @@ Total system prompt:                 ~600 tokens ✅ (under 800 limit)
 | **Example Count**      | 3, 5, or 7 examples                                                  | **5 examples**           | Research: 3 examples = 94% compliance. 5 examples covers all entity types (person, company, technical, abbreviation, brand) with one example each. Diminishing returns after 5. |
 | **Example Format**     | (1) Inline simple<br>(2) Annotated verbose<br>(3) Structured XML     | **Inline simple**        | Natural for translation task. Easy pattern-matching for LLM. Token-efficient.                                                                                                   |
 | **Verification**       | (1) No verification<br>(2) Lightweight reminder<br>(3) Explicit CoVe | **Lightweight reminder** | Research: CoVe reduces hallucinations. Lightweight (~15 tokens) provides benefit without latency cost of full CoVe (~100 tokens).                                               |
-| **Token Budget**       | 150, 250, 400 tokens                                                 | **~250 tokens**          | Well under 800-token limit for instruction adherence. Allows 5 examples + rules + verification.                                                                                 |
+| **Token Budget**       | 150, 450, 550 tokens                                                 | **~450 tokens**          | Well under 800-token limit for instruction adherence. Allows 5 examples + rules + verification. Measured by character count estimation.                                         |
 
 **All decisions are research-backed and user-confirmed.**
 
@@ -466,7 +466,7 @@ Before deploying enhanced prompt:
 - [x] Research completed (prompt engineering, few-shot learning, Japanese NER)
 - [x] Decisions locked (implicit few-shot, 5 examples, inline format, lightweight verification)
 - [x] Enhanced JAPANESE_RULES designed
-- [x] Token count validated (~250 tokens, under 800 limit)
+- [x] Token count validated (~450 tokens, under 800 limit)
 - [x] Risk analysis completed (all risks LOW)
 - [ ] Update `language-layers.ts` with enhanced rules
 - [ ] Add test cases for 5 example patterns
@@ -482,7 +482,7 @@ The enhanced detection prompt using **research-backed few-shot learning** provid
 
 ✅ **94% compliance** (research-validated)  
 ✅ **Implicit pattern learning** (examples > explicit rules)  
-✅ **Token-efficient** (~250 tokens, well under 800 limit)  
+✅ **Token-efficient** (~450 tokens, well under 800 limit)  
 ✅ **Easy to maintain** (add/update examples vs complex rules)  
 ✅ **High detection accuracy** (0.86-0.94 F1 from NER research)  
 ✅ **Lightweight verification** (CoVe pattern, minimal overhead)

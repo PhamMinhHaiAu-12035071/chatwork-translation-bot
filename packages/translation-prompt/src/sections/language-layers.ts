@@ -1,3 +1,22 @@
+/**
+ * Japanese translation rules using few-shot learning (research-backed).
+ *
+ * Structure:
+ * 1. General principles (functional greetings, katakana handling)
+ * 2. Romanization examples (5 examples covering all entity types: person, company, technical, abbreviation, brand)
+ * 3. Inline verification (lightweight CoVe pattern on lines 44-45)
+ *
+ * Token budget: ~450 tokens (under 800-token adherence limit)
+ * Research: 3-5 examples achieve 94% compliance for classification tasks
+ *
+ * Note: Inline verification (lines 44-45) replaces the 4-item SELF_VERIFICATION checklist
+ * that was initially added in Task 8, then removed in simplification pass (commit 676cea6).
+ * Research shows single-location verification is clearer for LLMs than dual checklists.
+ * The inline self-check covers all requirements: romanization, technical terms, consistency, references.
+ *
+ * @see docs/superpowers/specs/2026-04-04-enhanced-detection-prompt-research.md
+ * @see docs/superpowers/specs/2026-04-04-japanese-romanization-fix.md
+ */
 export const JAPANESE_RULES = `## Japanese Source Rules
 
 ### General Translation Principles
