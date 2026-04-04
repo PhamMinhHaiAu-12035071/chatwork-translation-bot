@@ -131,9 +131,9 @@ export function composeRoomDescription(originalRoomName: string): string {
   const title = convertToUnicodeBold('TRANSLATION ROOM')
   const label = convertToUnicodeBold('Original')
 
-  return `╔════════════════════════════════════╗
-║  🌐 ${title} 🌐  ║
-╚════════════════════════════════════╝
+  return `╔═══════════════════════════════════════╗
+║    🌐 ${title} 🌐    ║
+╚═══════════════════════════════════════╝
 
 📍 ${label}: ${originalRoomName}`
 }
@@ -1073,7 +1073,407 @@ git commit -m "feat(translator): compose and set room description on Free room c
 
 ---
 
-## Task 9: Run Full Test Suite
+## Task 9: Update Standard Room Edit Form (Read-Only Display)
+
+**Files:**
+
+- Modify: `packages/dashboard/src/pages/room-detail.tsx`
+- Modify: `packages/dashboard/src/lib/room-schema.ts`
+- Modify: `packages/dashboard/src/pages/room-detail.test.tsx`
+
+- [ ] **Step 1: Add originalRoomName to roomEditSchema**
+
+```typescript
+// packages/dashboard/src/lib/room-schema.ts
+export const roomEditSchema = z.object({
+  originalRoomId: z
+    .number({ required_error: 'Room ID is required' })
+    .int('Room ID must be a whole number')
+    .positive('Room ID must be positive'),
+
+  // NEW FIELD (same validation as create schema)
+  originalRoomName: z
+    .string({ required_error: 'Original room name is required' })
+    .min(1, 'Original room name is required')
+    .max(100, 'Max 100 characters')
+    .trim(),
+
+  // ... rest of fields
+})
+```
+
+- [ ] **Step 2: Update room-detail.tsx form to include originalRoomName**
+
+```typescript
+// packages/dashboard/src/pages/room-detail.tsx
+// In defaultValues:
+const editForm = useForm<RoomEditInput>({
+  resolver: zodResolver(roomEditSchema),
+  defaultValues: {
+    originalRoomId: room.originalRoomId,
+    originalRoomName: room.originalRoomName, // NEW
+    destinationRoomName: room.destinationRoomName,
+    // ... rest
+  },
+})
+
+// In form layout (after originalRoomId field):
+<div className="grid gap-5 md:grid-cols-2">
+  <BrutalInput
+    label="Original Room ID"
+    type="text"
+    inputMode="numeric"
+    readOnly
+    hint="Cannot be changed after creation."
+    {...register('originalRoomId', {
+      setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
+    })}
+  />
+
+  {/* NEW FIELD - read-only */}
+  <BrutalInput
+    label="Original Room Name"
+    type="text"
+    readOnly
+    hint="Cannot be changed after creation."
+    error={errors.originalRoomName?.message}
+    {...register('originalRoomName')}
+  />
+</div>
+```
+
+- [ ] **Step 3: Write test for read-only originalRoomName field**
+
+```typescript
+// packages/dashboard/src/pages/room-detail.test.tsx
+it('displays originalRoomName as read-only', () => {
+  const mockRoom = {
+    id: '123',
+    originalRoomId: 456,
+    originalRoomName: 'Test Original Room',
+    // ... other fields
+  }
+
+  render(<RoomDetailPage room={mockRoom} />, { wrapper: BrowserRouter })
+
+  const originalRoomNameInput = screen.getByLabelText(/Original Room Name/i)
+  expect(originalRoomNameInput).toBeInTheDocument()
+  expect(originalRoomNameInput).toHaveAttribute('readonly')
+  expect(originalRoomNameInput).toHaveValue('Test Original Room')
+})
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `bun test packages/dashboard/src/pages/room-detail.test.tsx`  
+Expected: PASS
+
+- [ ] **Step 5: Verify originalRoomName is NOT sent in updateRoom call**
+
+Ensure `onSubmit` handler does NOT include `originalRoomName` in update payload:
+
+```typescript
+// In onSubmit, the updateRoom call should still be:
+await updateRoom(room.id, {
+  destinationRoomName: data.destinationRoomName,
+  aiProvider: data.aiProvider,
+  aiModel: data.aiModel,
+  translationStyle: data.translationStyle,
+  // originalRoomName NOT included
+  // ... other fields
+})
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/dashboard/src/pages/room-detail.tsx
+git add packages/dashboard/src/lib/room-schema.ts
+git add packages/dashboard/src/pages/room-detail.test.tsx
+git commit -m "feat(dashboard): display originalRoomName as read-only in Standard room edit form"
+```
+
+---
+
+## Task 10: Update Free Room Edit Form (Read-Only Display)
+
+**Files:**
+
+- Modify: `packages/dashboard/src/pages/free-room-detail.tsx`
+- Modify: `packages/dashboard/src/lib/free-room-schemas.ts`
+- Modify: `packages/dashboard/src/pages/free-room-detail.test.tsx`
+
+- [ ] **Step 1: Add originalRoomName to freeRoomEditSchema**
+
+```typescript
+// packages/dashboard/src/lib/free-room-schemas.ts
+export const freeRoomEditSchema = z.object({
+  originalRoomId: z
+    .number({ required_error: 'Room ID is required' })
+    .int('Room ID must be a whole number')
+    .positive('Room ID must be positive'),
+
+  // NEW FIELD
+  originalRoomName: z
+    .string({ required_error: 'Original room name is required' })
+    .min(1, 'Original room name is required')
+    .max(100, 'Max 100 characters')
+    .trim(),
+
+  // ... rest
+})
+```
+
+- [ ] **Step 2: Update free-room-detail.tsx form**
+
+```typescript
+// packages/dashboard/src/pages/free-room-detail.tsx
+// Add to defaultValues and form layout (same pattern as Standard room)
+<div className="grid gap-5 md:grid-cols-2">
+  <BrutalInput
+    label="Original Room ID"
+    type="text"
+    inputMode="numeric"
+    readOnly
+    hint="Cannot be changed after creation."
+    {...register('originalRoomId', {
+      setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
+    })}
+  />
+
+  <BrutalInput
+    label="Original Room Name"
+    type="text"
+    readOnly
+    hint="Cannot be changed after creation."
+    error={errors.originalRoomName?.message}
+    {...register('originalRoomName')}
+  />
+</div>
+```
+
+- [ ] **Step 3: Write test for read-only field**
+
+```typescript
+// packages/dashboard/src/pages/free-room-detail.test.tsx
+it('displays originalRoomName as read-only', () => {
+  const mockRoom = {
+    id: '789',
+    originalRoomId: 321,
+    originalRoomName: 'Free Test Room',
+    // ... other fields
+  }
+
+  render(<FreeRoomDetailPage room={mockRoom} />, { wrapper: BrowserRouter })
+
+  const input = screen.getByLabelText(/Original Room Name/i)
+  expect(input).toHaveAttribute('readonly')
+  expect(input).toHaveValue('Free Test Room')
+})
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `bun test packages/dashboard/src/pages/free-room-detail.test.tsx`  
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/dashboard/src/pages/free-room-detail.tsx
+git add packages/dashboard/src/lib/free-room-schemas.ts
+git add packages/dashboard/src/pages/free-room-detail.test.tsx
+git commit -m "feat(dashboard): display originalRoomName as read-only in Free room edit form"
+```
+
+---
+
+## Task 11: Update Tour Guide Steps
+
+**Files:**
+
+- Modify: `packages/dashboard/src/lib/tour-steps.ts`
+- Modify: `packages/dashboard/src/lib/tour-steps.test.ts`
+- Modify: `packages/dashboard/src/layouts/app-layout.tsx`
+
+- [ ] **Step 1: Insert new tour step for originalRoomName**
+
+```typescript
+// packages/dashboard/src/lib/tour-steps.ts
+// Find the steps array, insert new step at index 7:
+
+export const steps: NeubStep[] = [
+  // ... steps 0-6 (Welcome through Original Room ID)
+
+  // NEW STEP 7
+  {
+    selector: '#tour-field-roomname-orig',
+    title: 'Original Room Name',
+    content:
+      'Enter the name of your source Chatwork room. This will appear in the translation room description for easy identification.',
+    color: 'mint',
+    placement: 'right',
+  },
+
+  // OLD STEP 7 becomes STEP 8 (Destination Room Name)
+  {
+    selector: '#tour-field-roomname',
+    title: 'Destination Room Name',
+    content: 'Give your translation room a clear internal name.',
+    color: 'mint',
+    placement: 'right',
+  },
+
+  // ... rest of steps (all indices shift by +1)
+]
+```
+
+- [ ] **Step 2: Update app-layout.tsx step index references**
+
+```typescript
+// packages/dashboard/src/layouts/app-layout.tsx
+// Find conditional logic that references specific step indices:
+
+// OLD: step 13 (context expand) → NEW: step 14
+// OLD: step 15 (keyword expand) → NEW: step 16
+// OLD: step 17 (save button) → NEW: step 18
+// OLD: steps 17-20 (room card segment) → NEW: steps 18-21
+// OLD: step 21 (completion) → NEW: step 22
+
+// Example update:
+const onStepChange = (step: number) => {
+  // Context expand
+  if (step === 14) {
+    // was 13
+    // ... expand logic
+  }
+
+  // Keyword expand
+  if (step === 16) {
+    // was 15
+    // ... expand logic
+  }
+
+  // Room card segment
+  if (step >= 18 && step <= 21) {
+    // was 17-20
+    // ... navigation logic
+  }
+}
+```
+
+- [ ] **Step 3: Update tour step tests**
+
+```typescript
+// packages/dashboard/src/lib/tour-steps.test.ts
+it('includes originalRoomName field step', () => {
+  const originalRoomNameStep = steps.find((s) => s.selector === '#tour-field-roomname-orig')
+  expect(originalRoomNameStep).toBeDefined()
+  expect(originalRoomNameStep?.title).toContain('Original Room Name')
+})
+
+it('has correct step order', () => {
+  const roomIdStepIndex = steps.findIndex((s) => s.selector === '#tour-field-roomid')
+  const origNameStepIndex = steps.findIndex((s) => s.selector === '#tour-field-roomname-orig')
+  const destNameStepIndex = steps.findIndex((s) => s.selector === '#tour-field-roomname')
+
+  expect(origNameStepIndex).toBe(roomIdStepIndex + 1)
+  expect(destNameStepIndex).toBe(origNameStepIndex + 1)
+})
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `bun test packages/dashboard/src/lib/tour-steps.test.ts`  
+Expected: PASS
+
+- [ ] **Step 5: Manual test tour flow**
+
+Manual verification:
+
+1. Start dashboard
+2. Click tour guide button or auto-start tour
+3. Verify new step 7 highlights originalRoomName field
+4. Verify all subsequent steps still work correctly
+5. Verify navigation to/from room create page
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/dashboard/src/lib/tour-steps.ts
+git add packages/dashboard/src/lib/tour-steps.test.ts
+git add packages/dashboard/src/layouts/app-layout.tsx
+git commit -m "feat(dashboard): add tour guide step for originalRoomName field"
+```
+
+---
+
+## Task 12: Update Manual E2E Test Documentation
+
+**Files:**
+
+- Modify: `docs/manual-e2e-test.md`
+
+- [ ] **Step 1: Add originalRoomName test cases**
+
+```markdown
+<!-- In docs/manual-e2e-test.md -->
+
+## Create Room Test Cases
+
+### Standard Room Creation
+
+...existing steps...
+
+- [ ] **NEW:** Verify "Original Room Name" field is present next to "Original Room ID"
+- [ ] **NEW:** Try to submit without entering Original Room Name → validation error appears
+- [ ] **NEW:** Try to enter 101-character name → validation error appears
+- [ ] **NEW:** Enter valid original room name (e.g., "JP Project Demo")
+- [ ] **NEW:** After creation, open destination room in Chatwork → verify description displays correctly with original room name
+
+### Free Room Creation
+
+...existing steps...
+
+- [ ] **NEW:** Verify "Original Room Name" field present
+- [ ] **NEW:** Test validation (required, max 100 chars)
+- [ ] **NEW:** Verify description created correctly in Chatwork
+
+## Edit Room Test Cases
+
+### Standard Room Edit
+
+...existing steps...
+
+- [ ] **NEW:** Verify "Original Room Name" field displays as read-only
+- [ ] **NEW:** Verify hint text says "Cannot be changed after creation"
+- [ ] **NEW:** Verify field value matches room config
+- [ ] **NEW:** Try to edit field → should not be possible (read-only)
+- [ ] **NEW:** Save changes → originalRoomName should NOT be sent in update request
+
+### Free Room Edit
+
+- [ ] **NEW:** Same read-only field tests as Standard room
+
+## Tour Guide Test Cases
+
+- [ ] **NEW:** Start tour guide
+- [ ] **NEW:** Verify Step 7 highlights "Original Room Name" field
+- [ ] **NEW:** Verify step content explains purpose of field
+- [ ] **NEW:** Verify all subsequent steps still work correctly (indices shifted by +1)
+- [ ] **NEW:** Complete tour → no errors
+```
+
+- [ ] **Step 2: Commit documentation update**
+
+```bash
+git add docs/manual-e2e-test.md
+git commit -m "docs(test): add originalRoomName test cases to manual E2E doc"
+```
+
+---
+
+## Task 13: Run Full Test Suite
 
 **Files:** N/A (verification task)
 
@@ -1100,7 +1500,7 @@ git commit --allow-empty -m "test(repo): verify all tests pass after room descri
 
 ---
 
-## Task 10: Manual Verification & Documentation
+## Task 14: Manual Verification & Documentation
 
 **Files:**
 
@@ -1137,9 +1537,9 @@ Manual steps:
    - Description should show:
 
      ```
-     ╔════════════════════════════════════╗
-     ║  🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐  ║
-     ╚════════════════════════════════════╝
+     ╔═══════════════════════════════════════╗
+     ║    🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐    ║
+     ╚═══════════════════════════════════════╝
 
      📍 𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥: JP Project Demo
      ```
@@ -1243,7 +1643,33 @@ git commit -m "docs(repo): add manual verification for room description feature"
 
 ---
 
-## Task 11: Completion Checklist
+- [ ] **Step 7: Test edit forms**
+
+Manual steps:
+
+1. Edit an existing Standard room
+2. Verify "Original Room Name" field displays as read-only
+3. Verify hint text: "Cannot be changed after creation"
+4. Try to click/type in field → should not be editable
+5. Save changes → verify room updates successfully without changing originalRoomName
+
+6. Edit an existing Free room
+7. Same verification as Standard room
+
+- [ ] **Step 8: Test tour guide**
+
+Manual steps:
+
+1. Start dashboard tour guide
+2. Verify Step 7 highlights "Original Room Name" field
+3. Verify step content is clear and helpful
+4. Continue through all steps
+5. Verify no steps are skipped or broken
+6. Complete tour successfully
+
+---
+
+## Task 15: Completion Checklist
 
 **Files:**
 
@@ -1266,17 +1692,21 @@ From spec:
 
 Verify all tasks completed:
 
-- [x] Task 1: Unicode bold utility
+- [x] Task 1: Unicode bold utility (fixed symmetric design)
 - [x] Task 2: Standard room schema
-- [x] Task 3: Standard room form
+- [x] Task 3: Standard room create form
 - [x] Task 4: Free room schema
-- [x] Task 5: Free room form
+- [x] Task 5: Free room create form
 - [x] Task 6: Backend types
 - [x] Task 7: Standard room route
 - [x] Task 8: Free room route
-- [x] Task 9: Test suite
-- [x] Task 10: Manual verification
-- [x] Task 11: Completion checklist
+- [x] Task 9: Standard room edit form (read-only)
+- [x] Task 10: Free room edit form (read-only)
+- [x] Task 11: Tour guide steps
+- [x] Task 12: Manual E2E doc update
+- [x] Task 13: Test suite
+- [x] Task 14: Manual verification
+- [x] Task 15: Completion checklist
 
 - [ ] **Step 4: Run final validation**
 
@@ -1303,12 +1733,24 @@ git commit --allow-empty -m "$(cat <<'EOF'
 feat(repo): complete room description feature implementation
 
 Summary:
-- Add originalRoomName field to dashboard forms (Standard & Free)
-- Create Unicode bold description composer utility
+- Add originalRoomName field to dashboard create forms (Standard & Free)
+- Display originalRoomName as read-only in edit forms (YAGNI principle)
+- Create Unicode bold description composer utility (symmetric design)
 - Compose Neubrutalism-styled description on room creation
-- Store originalRoomName in room configs
-- Full test coverage (unit + integration)
-- Manual verification complete
+- Store originalRoomName in room configs (required field)
+- Update tour guide with new field step (Step 7)
+- Update manual E2E test documentation
+- Full test coverage (unit + integration + manual)
+- Comprehensive dependency analysis via n=10 explore agents
+
+Impact Areas Covered:
+- Create forms: room-create.tsx, free-room-create.tsx
+- Edit forms: room-detail.tsx, free-room-detail.tsx (read-only display)
+- Schemas: room-schema.ts, free-room-schemas.ts (create + edit)
+- Backend routes: rooms.ts, free-rooms.ts (description composition)
+- Backend types: room-config.ts, free-room-config.ts
+- Tour guide: tour-steps.ts, app-layout.tsx (step index shifts)
+- Manual E2E doc: docs/manual-e2e-test.md
 
 Closes: Room Description Feature
 Spec: docs/superpowers/specs/2026-04-03-room-description-feature.md

@@ -32,16 +32,22 @@ Currently, translation destination rooms lack descriptive information, making it
 ### 2.1 In Scope
 
 - Add "Original Room Name" input field to dashboard create forms (Standard & Free)
-- Store original room name in database (new column)
+- Display originalRoomName in edit forms as read-only (cannot be changed after creation)
+- Store original room name in JSON config files (new required field)
 - Compose and set Chatwork room description when creating destination rooms
 - Create Unicode bold text utility function
-- Apply to newly created rooms only
+- Update tour guide to include new field step
+- Update manual E2E test documentation
+- Apply to newly created rooms only (no backfill)
 
 ### 2.2 Out of Scope
 
 - Backfilling descriptions for existing rooms (decided: no backfill)
-- Fetching room name via Chatwork API (decided: manual input instead)
-- Updating description on subsequent webhook events
+- Fetching room name via Chatwork API (decided: manual input instead, bot lacks permission)
+- Updating description after room creation (edit form shows field as read-only)
+- Updating description if user manually edits it in Chatwork (YAGNI, risk of conflict)
+- Displaying originalRoomName in room list cards (decided: only in Chatwork description)
+- Automatic migration of existing configs (user will cleanup data before deployment)
 - Multi-language description variants
 
 ### 2.3 Non-Goals
@@ -58,9 +64,10 @@ Currently, translation destination rooms lack descriptive information, making it
 
 **Rationale:**
 
-- Bot token lacks permission to `GET /rooms/{originalRoomId}` (bot not member of original rooms)
+- Bot token lacks permission to `GET /rooms/{originalRoomId}` if bot is not a member of original rooms
 - Manual input is simple, reliable, and has no API dependencies
 - Users already know the original room name they're configuring
+- Edit form displays field as **read-only** to prevent conflicts if Chatwork room description is manually modified by admins
 
 **User Flow:**
 
@@ -77,9 +84,9 @@ Currently, translation destination rooms lack descriptive information, making it
 **Selected Variant: Clean Brutal (Variant B)**
 
 ```
-╔════════════════════════════════════╗
-║  🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐  ║
-╚════════════════════════════════════╝
+╔═══════════════════════════════════════╗
+║    🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐    ║
+╚═══════════════════════════════════════╝
 
 📍 𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥: {originalRoomName}
 ```
@@ -87,15 +94,16 @@ Currently, translation destination rooms lack descriptive information, making it
 **Example (with actual room name):**
 
 ```
-╔════════════════════════════════════╗
-║  🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐  ║
-╚════════════════════════════════════╝
+╔═══════════════════════════════════════╗
+║    🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐    ║
+╚═══════════════════════════════════════╝
 
 📍 𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥: JP Project Demo
 ```
 
 **Design Rationale:**
 
+- **Perfect symmetry:** Extended box width with centered content for balanced aesthetic
 - **Neubrutalism aesthetic:** Geometric box drawing characters (U+2550-U+255D)
 - **Visual hierarchy:** Title in box, content below with clear separation
 - **Unicode Math Bold:** Matches existing "Created"/"Updated" indicator style (U+1D400-U+1D433)
@@ -233,7 +241,7 @@ interface CreateFreeRoomRequest {
 
 ### 4.4 Component Changes
 
-#### 4.4.1 Dashboard Forms
+#### 4.4.1 Dashboard Create Forms
 
 **Files to modify:**
 
@@ -382,15 +390,103 @@ export function composeRoomDescription(originalRoomName: string): string {
   const title = convertToUnicodeBold('TRANSLATION ROOM')
   const label = convertToUnicodeBold('Original')
 
-  return `╔════════════════════════════════════╗
-║  🌐 ${title} 🌐  ║
-╚════════════════════════════════════╝
+  return `╔═══════════════════════════════════════╗
+║    🌐 ${title} 🌐    ║
+╚═══════════════════════════════════════╝
 
 📍 ${label}: ${originalRoomName}`
 }
 ```
 
 **Export:** Add to `packages/chatwork/src/index.ts`
+
+#### 4.4.3 Dashboard Edit Forms (Read-Only Display)
+
+**Files to modify:**
+
+- `packages/dashboard/src/pages/room-detail.tsx` (Standard)
+- `packages/dashboard/src/pages/free-room-detail.tsx` (Free)
+- `packages/dashboard/src/lib/room-schema.ts` (add to `roomEditSchema`)
+- `packages/dashboard/src/lib/free-room-schemas.ts` (add to `freeRoomEditSchema`)
+
+**Changes:**
+
+```tsx
+// Add read-only field in edit forms (similar to originalRoomId)
+<BrutalInput
+  label="Original Room Name"
+  type="text"
+  readOnly
+  hint="Cannot be changed after creation."
+  value={room.originalRoomName}
+/>
+```
+
+**Behavior:**
+
+- Field displays current value from loaded room config
+- `readOnly` attribute prevents editing
+- Hint text explains it cannot be changed
+- Value is NOT sent in `updateRoom` API call (only shown for reference)
+
+**Rationale (YAGNI Principle):**
+
+Updating Chatwork room description after creation is risky because:
+
+1. Admins may have manually edited the description in Chatwork
+2. Parsing and replacing specific text in manually-edited descriptions is error-prone
+3. Risk of destroying custom content added by users
+4. Following YAGNI (You Aren't Gonna Need It) - set description once at creation, keep it simple
+
+#### 4.4.4 Tour Guide Updates
+
+**Files to modify:**
+
+- `packages/dashboard/src/lib/tour-steps.ts`
+- `packages/dashboard/src/lib/tour-steps.test.ts`
+- `packages/dashboard/src/layouts/app-layout.tsx` (adjust step index logic)
+
+**Changes:**
+
+Current tour steps for room create form:
+
+```
+Step 6: #tour-field-roomid (Original Room ID)
+Step 7: #tour-field-roomname (Destination Room Name)
+Step 8: #tour-field-provider
+Step 9: #tour-field-model
+...
+```
+
+**New tour steps (insert new step 7):**
+
+```
+Step 6: #tour-field-roomid (Original Room ID)
+Step 7: #tour-field-roomname-orig (Original Room Name) ← NEW
+Step 8: #tour-field-roomname (Destination Room Name)
+Step 9: #tour-field-provider
+Step 10: #tour-field-model
+...
+```
+
+**Impact:**
+
+- All step indices from Step 7 onward shift by +1
+- Update `app-layout.tsx` logic that references specific step indices (e.g., context expand at step 13 becomes step 14)
+- Update conditional navigation logic for "room card" steps (17-20 becomes 18-21)
+- Add new step object in `tour-steps.ts` array at index 7
+
+**Tour Step Content:**
+
+```typescript
+{
+  selector: '#tour-field-roomname-orig',
+  title: 'Original Room Name',
+  content: 'Enter the name of your source Chatwork room. This will appear in the translation room description for easy identification.',
+  color: 'mint',
+  placement: 'right',
+}
+```
 
 #### 4.5.2 Room Creation Services
 
@@ -472,9 +568,9 @@ const createdRoom = await createRoom(
 **After:**
 
 ```
-╔════════════════════════════════════╗
-║  🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐  ║
-╚════════════════════════════════════╝
+╔═══════════════════════════════════════╗
+║    🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐    ║
+╚═══════════════════════════════════════╝
 
 📍 𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥: JP Project Demo
 ```
@@ -523,8 +619,8 @@ const createdRoom = await createRoom(
 ### 6.6 Existing Rooms (No Description)
 
 **Scenario:** Rooms created before this feature have no `originalRoomName`  
-**Handling:** No automatic backfill. Rooms remain as-is.  
-**Future Enhancement:** If needed, user can manually add originalRoomName via edit form (not in current scope)
+**Handling:** No automatic backfill. User will cleanup all existing room data before deployment.  
+**Edit Form Behavior:** If old rooms somehow remain, edit form will show empty/undefined originalRoomName (read-only, cannot be filled in)
 
 ---
 
@@ -727,10 +823,11 @@ If critical issues discovered:
 
 ### 9.1 Backfill Existing Rooms
 
-If users request, implement:
+If users request (low priority due to YAGNI):
 
-- Add originalRoomName field to edit forms
+- Allow editing originalRoomName in edit forms (remove read-only)
 - Add "Update Description" button to edit pages
+- Parse existing Chatwork description carefully to avoid destroying manual edits
 - On save, call Chatwork `PUT /rooms/{room_id}` to update description
 
 ### 9.2 Custom Description Templates
