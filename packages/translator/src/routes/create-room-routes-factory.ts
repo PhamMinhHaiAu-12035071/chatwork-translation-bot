@@ -36,30 +36,78 @@ interface BaseStoreError extends Error {
   code: string
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/restrict-template-expressions */
-interface RoomRoutesFactoryOptions<TStoreError extends BaseStoreError> {
-  store: {
-    list(): any[]
-    getById(id: string): any
-    getByOriginalRoomId(originalRoomId: number): any
-    create(params: any): Promise<any>
-    update(id: string, params: any): Promise<any>
-    delete(id: string): Promise<void>
-    setEnabled(id: string, enabled: boolean): Promise<any>
-  }
+/**
+ * Store interface for room configurations.
+ *
+ * @typeParam TConfig - Base config type (union of possible return types)
+ *
+ * Note: Stores may return different variants of TConfig from different operations.
+ * For example, Standard rooms:
+ * - list/getById return RoomConfigPublic (redacted)
+ * - create returns RoomConfig (full)
+ * - update/setEnabled return RoomConfigPublic (redacted)
+ *
+ * The factory uses transformMutationResponse to normalize outputs when needed.
+ */
+interface BaseRoomStore<TConfig> {
+  list(): TConfig[]
+  getById(id: string): TConfig | null
+  getByOriginalRoomId(originalRoomId: number): TConfig | null
+  create(params: unknown): Promise<TConfig>
+  update(id: string, params: unknown): Promise<TConfig>
+  delete(id: string): Promise<void>
+  setEnabled(id: string, enabled: boolean): Promise<TConfig>
+}
+
+/**
+ * Room config with required fields for route operations.
+ * Both TListConfig and TFullConfig must extend this interface.
+ */
+interface BaseRoomConfig {
+  destinationRoomId: number
+  destinationRoomName: string
+}
+
+/**
+ * Create request must have these fields for room creation.
+ */
+interface BaseCreateRequest {
+  originalRoomId: number
+  originalRoomName: string
+  destinationRoomName: string
+}
+
+/**
+ * Update request may have optional destinationRoomName for rename operations.
+ * Using Record to allow any update fields - stores define their own update interfaces.
+ */
+type BaseUpdateRequest = Record<string, unknown>
+
+interface RoomRoutesFactoryOptions<
+  TConfig extends BaseRoomConfig,
+  TCreateRequest extends BaseCreateRequest,
+  TUpdateRequest extends BaseUpdateRequest,
+  TStoreError extends BaseStoreError,
+> {
+  store: BaseRoomStore<TConfig>
   chatworkApiToken: string
   chatworkBotAccountId: number
   basePath: string
   entityName: string
   elysiaName: string
-  createRequestSchema: z.ZodType<any>
-  updateRequestSchema: z.ZodType<any>
+  createRequestSchema: z.ZodType<TCreateRequest>
+  updateRequestSchema: z.ZodType<TUpdateRequest>
   StoreErrorClass: new (message: string, code: string) => TStoreError
   logEventPrefix: string
-  transformMutationResponse?: (config: any) => any
+  transformMutationResponse?: (config: TConfig) => unknown
 }
 
-export function createRoomRoutesFactory<TStoreError extends BaseStoreError>({
+export function createRoomRoutesFactory<
+  TConfig extends BaseRoomConfig,
+  TCreateRequest extends BaseCreateRequest,
+  TUpdateRequest extends BaseUpdateRequest,
+  TStoreError extends BaseStoreError,
+>({
   store,
   chatworkApiToken,
   chatworkBotAccountId,
@@ -71,7 +119,7 @@ export function createRoomRoutesFactory<TStoreError extends BaseStoreError>({
   StoreErrorClass,
   logEventPrefix,
   transformMutationResponse,
-}: RoomRoutesFactoryOptions<TStoreError>) {
+}: RoomRoutesFactoryOptions<TConfig, TCreateRequest, TUpdateRequest, TStoreError>) {
   return new Elysia({ name: elysiaName })
     .get(`/api/${basePath}`, () => {
       return { success: true, data: store.list() }
@@ -169,10 +217,11 @@ export function createRoomRoutesFactory<TStoreError extends BaseStoreError>({
           return response.body
         }
 
-        const nextDestinationRoomName = parsed.data.destinationRoomName
+        const nextDestinationRoomName = parsed.data['destinationRoomName'] as string | undefined
         const shouldRenameChatworkRoom =
           nextDestinationRoomName !== undefined &&
-          nextDestinationRoomName !== existing.destinationRoomName
+          // eslint-disable-next-line @typescript-eslint/dot-notation
+          nextDestinationRoomName !== existing['destinationRoomName']
 
         if (shouldRenameChatworkRoom) {
           try {
@@ -295,4 +344,3 @@ export function createRoomRoutesFactory<TStoreError extends BaseStoreError>({
       }
     })
 }
-/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/restrict-template-expressions */
