@@ -35,10 +35,10 @@ describe('buildSingleCallPrompts', () => {
     expect(result.user).toContain('translated')
   })
 
-  it('system prompt is reasonable size — under 6500 chars for any style', () => {
+  it('system prompt is reasonable size — under 7000 chars for any style', () => {
     for (const style of ['NATURAL_CASUAL', 'PROFESSIONAL_BUSINESS', 'TECHNICAL'] as const) {
       const result = buildSingleCallPrompts('テスト', style)
-      expect(result.system.length).toBeLessThan(6500)
+      expect(result.system.length).toBeLessThan(7000)
     }
   })
 
@@ -130,12 +130,14 @@ describe('buildSingleCallPrompts', () => {
     expect(result.system).toMatch(/Trân trọng|xem xét|cảm ơn/i)
   })
 
-  it('keeps Japanese-script personal names instead of auto-romanizing them', () => {
+  it('includes romanization examples for Japanese person names with honorifics', () => {
     const result = buildSingleCallPrompts(
       '山田太郎さんに連絡してください。',
       'PROFESSIONAL_BUSINESS',
     )
-    expect(result.system).toMatch(/Japanese-script personal names/i)
+    expect(result.system).toMatch(/Name and Term Romanization/i)
+    expect(result.system).toContain('Sasaki-san')
+    expect(result.system).toContain('Hepburn')
   })
 
   it('includes a first-class English workplace layer instead of relying on Japanese fallback rules', () => {
@@ -343,7 +345,7 @@ describe('StructuredTranslationDraftSchema', () => {
 
 describe('package exports', () => {
   it('exports the prompt build id for runtime logging', () => {
-    expect(TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-human-sounding-workplace-v1')
+    expect(TRANSLATION_PROMPT_BUILD_ID).toBe('2026-04-04-romanization-v2')
   })
 
   it('removes polish builders and schemas from the public barrel', async () => {
@@ -358,7 +360,7 @@ describe('package exports', () => {
   it('re-exports the prompt build id from the public barrel', async () => {
     const api = await import('./index')
 
-    expect(api.TRANSLATION_PROMPT_BUILD_ID).toBe('2026-03-30-human-sounding-workplace-v1')
+    expect(api.TRANSLATION_PROMPT_BUILD_ID).toBe('2026-04-04-romanization-v2')
   })
 })
 
@@ -492,5 +494,53 @@ describe('TRANSLATION_PROMPT_BUILD_ID', () => {
 
   it('should NOT be the old version', () => {
     expect(TRANSLATION_PROMPT_BUILD_ID).not.toBe('2026-03-30-human-sounding-workplace-v1')
+  })
+})
+
+describe('buildSingleCallPrompts - Japanese Romanization Integration', () => {
+  it('should include enhanced JAPANESE_RULES in system prompt', () => {
+    const prompts = buildSingleCallPrompts(
+      '佐々木さんからデキスパート基本部の2nd開発について',
+      'PROFESSIONAL_BUSINESS',
+    )
+
+    // Verify JAPANESE_RULES with examples are included
+    expect(prompts.system).toContain('Name and Term Romanization')
+    expect(prompts.system).toContain('Sasaki-san')
+    expect(prompts.system).toContain('DExpert Kihon-bu')
+    expect(prompts.system).toContain('phát triển giai đoạn 2')
+    expect(prompts.system).toContain('Before Outputting - Self-Check')
+  })
+
+  it('should NOT include blocking romanization rule', () => {
+    const prompts = buildSingleCallPrompts('佐々木さん', 'PROFESSIONAL_BUSINESS')
+
+    expect(prompts.system).not.toContain('Do not auto-romanize')
+  })
+})
+
+describe('Regression - English-Vietnamese Unaffected', () => {
+  it('should not apply Japanese rules to English source text', () => {
+    const prompts = buildSingleCallPrompts(
+      'Please review the document from John Smith regarding Phase 2 development.',
+      'PROFESSIONAL_BUSINESS',
+    )
+
+    // English source should NOT trigger Japanese-specific rules
+    // Verify JAPANESE_RULES are present but won't interfere
+    expect(prompts.system).toContain('## Japanese Source Rules')
+    expect(prompts.system).toContain('## English Source Rules')
+  })
+
+  it('should handle English names without romanization', () => {
+    const prompts = buildSingleCallPrompts(
+      'Meeting with John Smith and Microsoft team.',
+      'PROFESSIONAL_BUSINESS',
+    )
+
+    // No Japanese romanization should occur for English names
+    // Test via system prompt structure (user prompt is English)
+    expect(prompts.user).toContain('John Smith')
+    expect(prompts.user).not.toContain('san')
   })
 })

@@ -565,7 +565,7 @@ describe('handleTranslateRequest', () => {
     expect(content.llm?.promptMode).toBe('structured_segments')
     expect(content.llm?.translationStyle).toBe('TECHNICAL')
     expect(content.llm?.generation?.temperature).toBe(0)
-    expect(content.llm?.promptBuildId).toBe('2026-03-30-human-sounding-workplace-v1')
+    expect(content.llm?.promptBuildId).toBe('2026-04-04-romanization-v2')
   })
 
   it('writes a single_text natural-casual prompt mode and v3 runtime metadata for long single-message input', async () => {
@@ -631,7 +631,7 @@ describe('handleTranslateRequest', () => {
     expect(content.llm?.promptMode).toBe('single_text')
     expect(content.llm?.translationStyle).toBe('NATURAL_CASUAL')
     expect(content.llm?.generation?.temperature).toBe(0.75)
-    expect(content.llm?.promptBuildId).toBe('2026-03-30-human-sounding-workplace-v1')
+    expect(content.llm?.promptBuildId).toBe('2026-04-04-romanization-v2')
   })
 
   it('emits structured lifecycle logs and records completed request in status snapshot', async () => {
