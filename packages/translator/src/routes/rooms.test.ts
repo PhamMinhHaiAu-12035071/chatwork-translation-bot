@@ -11,7 +11,7 @@ const mockUpdateChatworkRoom = mock(() => Promise.resolve())
 
 void mock.module('@chatwork-bot/chatwork', () => ({
   composeRoomDescription: (name: string) =>
-    `╔═══════════════════════════════════════╗\n║    🌐 𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌 🌐    ║\n╚═══════════════════════════════════════╝\n\n📍 𝐎𝐫𝐢𝐠𝐢𝐧𝐚𝐥: ${name}`,
+    `◦•●◉✿ TRANSLATION ROOM ✿◉●•◦\n╰┈☆ Original ☆┈╯: ${name}`,
   createRoom: mockCreateChatworkRoom,
   deleteRoom: mockDeleteChatworkRoom,
   updateRoom: mockUpdateChatworkRoom,
@@ -353,7 +353,7 @@ describe('POST /api/rooms', () => {
     expect(mockCreateChatworkRoom).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Translation Output',
-        description: expect.stringContaining('𝐓𝐑𝐀𝐍𝐒𝐋𝐀𝐓𝐈𝐎𝐍 𝐑𝐎𝐎𝐌') as string,
+        description: expect.stringContaining('TRANSLATION ROOM') as string,
       }),
       API_TOKEN,
     )
