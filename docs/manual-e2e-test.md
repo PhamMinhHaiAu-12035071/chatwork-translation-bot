@@ -48,6 +48,27 @@
 - [ ] Verify on Chatwork: destination room was created
 - [ ] Room Detail shows the room info and active status controls
 
+### Test Case: Create Translation Room
+
+1. Open dashboard → "Create Room" page
+2. Fill form:
+   - Original Room ID: `123456789`
+   - **Original Room Name:** `E2E Test Room`
+   - Destination Room Name: `E2E-Translation`
+   - AI Provider: `gemini`
+   - Translation Style: `NATURAL_CASUAL`
+3. Submit form
+4. **Verify** success toast: `"E2E-Translation" was created successfully`
+5. Open destination room in Chatwork
+6. **Verify** room description displays:
+
+   ```
+   ◦•●◉✿ TRANSLATION ROOM ✿◉●•◦
+   ╰┈☆ Original ☆┈╯: E2E Test Room
+   ```
+
+**Expected:** All decorative symbols, light box drawing, and emoji render correctly
+
 #### Create Room Test Cases: originalRoomName Field
 
 **Field Presence Verification**
@@ -67,8 +88,9 @@
 **Description Verification in Chatwork**
 
 - [ ] After creating room, check destination room description in Chatwork
-- [ ] Verify description contains: "Original room: [your Original Room Name value]"
-- [ ] Verify description format matches template with provider/model/style
+- [ ] Verify banner line includes: `◦•●◉✿ TRANSLATION ROOM ✿◉●•◦`
+- [ ] Verify original reference line: `╰┈☆ Original ☆┈╯:` followed by your Original Room Name value
+- [ ] **Expected:** Decorative symbols (`◦•●◉✿╰┈☆╯`), light box drawing, and any emoji in the name render correctly in Chatwork
 
 ### 5. Test Translation
 
