@@ -45,3 +45,15 @@ describe('JAPANESE_RULES - Technical Compound Term Translation', () => {
     expect(JAPANESE_RULES).toContain('giai đoạn')
   })
 })
+
+describe('JAPANESE_RULES - Abbreviation and Brand Handling', () => {
+  it('should contain abbreviation keep-as-is example', () => {
+    expect(JAPANESE_RULES).toContain('MTG')
+    expect(JAPANESE_RULES).toContain('Keep unchanged')
+  })
+
+  it('should contain famous brand keep-as-is example', () => {
+    expect(JAPANESE_RULES).toContain('Toyota')
+    expect(JAPANESE_RULES).toContain('Well-known global brands')
+  })
+})
