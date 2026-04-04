@@ -97,4 +97,28 @@ describe('RoomDetailPage', () => {
     expect(source).toContain('ContextField')
     expect(source).toContain("editForm.watch('context')")
   })
+
+  it('includes originalRoomName field as read-only in edit form', async () => {
+    const source = await Bun.file(new URL('./room-detail.tsx', import.meta.url)).text()
+
+    expect(source).toContain('Original Room Name')
+    expect(source).toContain("editForm.register('originalRoomName')")
+    expect(source).toContain('room.originalRoomName')
+    expect(source).toMatch(/readOnly[\s\S]*?Original Room Name/)
+    expect(source).toContain('Cannot be changed after creation')
+  })
+
+  it('does not send originalRoomName in updateRoom call', async () => {
+    const source = await Bun.file(new URL('./room-detail.tsx', import.meta.url)).text()
+
+    const updateRoomCallMatch = /updateRoom\([^)]*\{[^}]*\}/s.exec(source)
+    expect(updateRoomCallMatch).toBeDefined()
+
+    if (updateRoomCallMatch) {
+      const updateRoomCall = updateRoomCallMatch[0]
+      expect(updateRoomCall).not.toContain('originalRoomName')
+      expect(updateRoomCall).toContain('destinationRoomName')
+      expect(updateRoomCall).toContain('aiProvider')
+    }
+  })
 })

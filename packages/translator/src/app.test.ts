@@ -36,6 +36,7 @@ describe('createApp (translator)', () => {
 
     const room = await store.create({
       originalRoomId: 567890123,
+      originalRoomName: 'Source Room',
       destinationRoomId: 678901234,
       destinationRoomName: 'Output Room',
       aiProvider: 'openai',
@@ -47,6 +48,7 @@ describe('createApp (translator)', () => {
     await store.setEnabled(room.id, true)
     const freeRoom = await freeStore.create({
       originalRoomId: 777888999,
+      originalRoomName: 'Free Source Room',
       destinationRoomId: 888999000,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Clear',

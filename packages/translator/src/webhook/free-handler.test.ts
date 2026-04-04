@@ -64,6 +64,7 @@ describe('createHandleFreeTranslateRequest', () => {
     const room = {
       id: 'free-room-1',
       originalRoomId: 567890123,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 678901234,
       destinationRoomName: 'Free Output',
       kagiStyle: 'Clear' as const,

@@ -45,6 +45,11 @@ export const roomEditSchema = z.object({
     .number({ required_error: 'Room ID is required' })
     .int('Room ID must be a whole number')
     .positive('Room ID must be positive'),
+  originalRoomName: z
+    .string({ required_error: 'Original room name is required' })
+    .min(1, 'Original room name is required')
+    .max(100, 'Max 100 characters')
+    .trim(),
   destinationRoomName: z
     .string({ required_error: 'Destination room name is required' })
     .min(1, 'Destination room name is required')

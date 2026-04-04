@@ -423,6 +423,7 @@ describe('handleTranslateRequest', () => {
 
     const room = await store.create({
       originalRoomId: 424846369,
+      originalRoomName: 'Test Room',
       destinationRoomId: DEFAULT_DESTINATION_ROOM_ID,
       destinationRoomName: 'Translated Output',
       aiProvider: 'openai',

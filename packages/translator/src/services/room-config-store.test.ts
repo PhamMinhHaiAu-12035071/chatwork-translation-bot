@@ -60,6 +60,7 @@ describe('RoomConfigStore', () => {
   it('create() stores a room and returns it with id + timestamps', async () => {
     const room = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Output Room',
       aiProvider: 'openai',
@@ -79,6 +80,7 @@ describe('RoomConfigStore', () => {
   it('create() throws duplicate error on duplicate originalRoomId', async () => {
     await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Output Room',
       aiProvider: 'openai',
@@ -90,6 +92,7 @@ describe('RoomConfigStore', () => {
     const error = await catchError(
       store.create({
         originalRoomId: 1001,
+        originalRoomName: 'Test Room',
         destinationRoomId: 3001,
         destinationRoomName: 'Other Room',
         aiProvider: 'gemini',
@@ -106,6 +109,7 @@ describe('RoomConfigStore', () => {
   it('getById() returns room by UUID with secrets redacted', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Room',
       aiProvider: 'openai',
@@ -123,6 +127,7 @@ describe('RoomConfigStore', () => {
   it('getByOriginalRoomId() returns room by sourceRoomId', async () => {
     await store.create({
       originalRoomId: 5555,
+      originalRoomName: 'Test Room',
       destinationRoomId: 6666,
       destinationRoomName: 'Room',
       aiProvider: 'openai',
@@ -139,6 +144,7 @@ describe('RoomConfigStore', () => {
   it('update() modifies fields and bumps updatedAt', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Room',
       aiProvider: 'openai',
@@ -157,6 +163,7 @@ describe('RoomConfigStore', () => {
   it('setEnabled() changes enabled flag', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Room',
       aiProvider: 'openai',
@@ -175,6 +182,7 @@ describe('RoomConfigStore', () => {
   it('delete() removes room and archives it', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Room',
       aiProvider: 'openai',
@@ -197,6 +205,7 @@ describe('RoomConfigStore', () => {
   it('decryptApiToken() returns the original plaintext token', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Room',
       aiProvider: 'openai',
@@ -212,6 +221,7 @@ describe('RoomConfigStore', () => {
   it('persists data across store re-instantiation', async () => {
     await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Room',
       aiProvider: 'openai',

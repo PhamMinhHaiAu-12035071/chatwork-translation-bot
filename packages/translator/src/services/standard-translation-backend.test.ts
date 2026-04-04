@@ -121,6 +121,7 @@ describe('StandardTranslationBackend', () => {
     const roomConfig: RoomConfig = {
       id: 'room-1',
       originalRoomId: 1001,
+      originalRoomName: 'Test Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Output Room',
       aiProvider: 'openai',

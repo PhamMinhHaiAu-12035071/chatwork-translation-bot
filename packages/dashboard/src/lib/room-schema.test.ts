@@ -55,6 +55,7 @@ describe('room schema', () => {
 
     const result = schemaModule.roomEditSchema.safeParse({
       originalRoomId: 123456,
+      originalRoomName: 'Tokyo Support',
       destinationRoomName: 'Tokyo Support',
       aiProvider: 'openai',
       aiModel: 'gpt-5.4',

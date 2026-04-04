@@ -51,6 +51,7 @@ describe('FreeRoomConfigStore', () => {
   it('create() stores a free room with id + timestamps', async () => {
     const room = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Clear',
@@ -69,6 +70,7 @@ describe('FreeRoomConfigStore', () => {
   it('create() throws duplicate error on duplicate originalRoomId inside the free store', async () => {
     await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Clear',
@@ -77,6 +79,7 @@ describe('FreeRoomConfigStore', () => {
     const error = await catchError(
       store.create({
         originalRoomId: 1001,
+        originalRoomName: 'Test Free Room',
         destinationRoomId: 3001,
         destinationRoomName: 'Other Free Room',
         kagiStyle: 'Wild',
@@ -90,6 +93,7 @@ describe('FreeRoomConfigStore', () => {
   it('getById() returns room by UUID', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Smart',
@@ -105,6 +109,7 @@ describe('FreeRoomConfigStore', () => {
   it('getByOriginalRoomId() returns room by sourceRoomId', async () => {
     await store.create({
       originalRoomId: 5555,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 6666,
       destinationRoomName: 'Free Room',
       kagiStyle: 'Fine',
@@ -119,6 +124,7 @@ describe('FreeRoomConfigStore', () => {
   it('update() modifies fields and bumps updatedAt', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Clear',
@@ -141,6 +147,7 @@ describe('FreeRoomConfigStore', () => {
   it('setEnabled() changes enabled flag', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Clear',
@@ -156,6 +163,7 @@ describe('FreeRoomConfigStore', () => {
   it('delete() removes room from the store', async () => {
     const created = await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Clear',
@@ -170,6 +178,7 @@ describe('FreeRoomConfigStore', () => {
   it('persists atomic writes that reload cleanly from disk', async () => {
     await store.create({
       originalRoomId: 1001,
+      originalRoomName: 'Test Free Room',
       destinationRoomId: 2001,
       destinationRoomName: 'Free Output Room',
       kagiStyle: 'Easy',

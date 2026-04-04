@@ -80,6 +80,7 @@ export class RoomConfigStore {
       const room: RoomConfig = {
         id: crypto.randomUUID(),
         originalRoomId: params.originalRoomId,
+        originalRoomName: params.originalRoomName,
         destinationRoomId: params.destinationRoomId,
         destinationRoomName: params.destinationRoomName,
         aiProvider: params.aiProvider,

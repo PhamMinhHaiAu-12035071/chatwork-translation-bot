@@ -74,6 +74,7 @@ export class FreeRoomConfigStore {
       const room: FreeRoomConfig = {
         id: crypto.randomUUID(),
         originalRoomId: params.originalRoomId,
+        originalRoomName: params.originalRoomName,
         destinationRoomId: params.destinationRoomId,
         destinationRoomName: params.destinationRoomName,
         kagiStyle: params.kagiStyle,

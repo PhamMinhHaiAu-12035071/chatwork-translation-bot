@@ -77,6 +77,7 @@ export function RoomDetailPage() {
   const editDefaults: RoomEditInput = room
     ? {
         originalRoomId: room.originalRoomId,
+        originalRoomName: room.originalRoomName,
         destinationRoomName: room.destinationRoomName,
         aiProvider: room.aiProvider,
         aiModel: room.aiModel ?? BEST_MODEL_BY_PROVIDER[room.aiProvider],
@@ -87,6 +88,7 @@ export function RoomDetailPage() {
       }
     : {
         originalRoomId: 0,
+        originalRoomName: '',
         destinationRoomName: '',
         aiProvider: 'openai',
         aiModel: BEST_MODEL_BY_PROVIDER.openai,
@@ -114,6 +116,7 @@ export function RoomDetailPage() {
 
     editForm.reset({
       originalRoomId: room.originalRoomId,
+      originalRoomName: room.originalRoomName,
       destinationRoomName: room.destinationRoomName,
       aiProvider: room.aiProvider,
       aiModel: room.aiModel ?? BEST_MODEL_BY_PROVIDER[room.aiProvider],
@@ -286,11 +289,23 @@ export function RoomDetailPage() {
                 })}
               />
               <BrutalInput
+                label="Original Room Name"
+                type="text"
+                readOnly
+                hint="Cannot be changed after creation."
+                error={editForm.formState.errors.originalRoomName?.message}
+                {...editForm.register('originalRoomName')}
+              />
+            </div>
+            <div>
+              <BrutalInput
                 label="Destination Room Name"
                 type="text"
                 error={editForm.formState.errors.destinationRoomName?.message}
                 {...editForm.register('destinationRoomName')}
               />
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
               <BrutalSelect
                 label="AI Provider"
                 options={providerOptions}
