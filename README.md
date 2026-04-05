@@ -4,7 +4,7 @@ A webhook-based bot that listens for Chatwork messages, parses `/translate` comm
 
 ## Features
 
-- Receives Chatwork webhook events with HMAC-SHA256 signature verification
+- Receives Chatwork webhook events and forwards to translation pipeline
 - Parses `/translate <lang> <text>` commands (handles Chatwork markup stripping)
 - Pluggable translation service via `ITranslationService` interface
 - Async fire-and-forget processing (returns 200 immediately)
@@ -44,12 +44,11 @@ Edit `.env` with your credentials:
 | Variable                            | Required | Default       | Description                                           |
 | ----------------------------------- | -------- | ------------- | ----------------------------------------------------- |
 | `CHATWORK_API_TOKEN`                | Yes      | —             | Chatwork API token for sending messages               |
-| `CHATWORK_WEBHOOK_SECRET`           | Yes      | —             | Secret for verifying webhook signatures               |
 | `PORT`                              | No       | `3000`        | HTTP server port                                      |
 | `NODE_ENV`                          | No       | `development` | `development` \| `production` \| `test`               |
 | `TRANSLATOR_PHASE_HEARTBEAT_MS`     | No       | `30000`       | Heartbeat interval after a phase crosses budget       |
 | `TRANSLATOR_TRANSLATION_BUDGET_MS`  | No       | `60000`       | Soft observability budget for translation phase       |
-| `TRANSLATOR_DELIVERY_BUDGET_MS`     | No       | `15000`       | Soft observability budget for Chatwork delivery       |
+| `TRANSLATOR_DELIVERY_BUDGET_MS`     | No       | `45000`       | Soft observability budget for Chatwork delivery       |
 | `TRANSLATOR_ACK_CALLBACK_BUDGET_MS` | No       | `10000`       | Soft observability budget for dataset ACK callback    |
 | `TRANSLATOR_STATUS_HISTORY_LIMIT`   | No       | `20`          | Number of finished requests kept in `/status`         |
 | `CHATWORK_ORIGINAL_ROOM_ID`         | Dev only | —             | Room for dataset injection (dataset-runner sidecar)   |
@@ -90,14 +89,18 @@ Bun workspaces monorepo:
 
 ```
 packages/
-├── core/            # @chatwork-bot/core — shared types, interfaces, utils, services
-├── translation-prompt/  # @chatwork-bot/translation-prompt — 4-phase pipeline prompts + Zod schemas
-├── provider-gemini/ # @chatwork-bot/provider-gemini — Gemini provider plugin
-├── provider-openai/ # @chatwork-bot/provider-openai — OpenAI provider plugin
-├── provider-cursor/ # @chatwork-bot/provider-cursor — Cursor provider (LOCAL DEV ONLY)
-├── translator/      # @chatwork-bot/translator — HTTP server, webhook handler
-├── webhook-logger/  # @chatwork-bot/webhook-logger — webhook receiver, forwards to translator
-└── dataset-runner/  # @chatwork-bot/dataset-runner — ACK-driven queue runner sidecar (LOCAL DEV ONLY)
+├── chatwork/          # @chatwork-bot/chatwork — Anti-corruption layer for Chatwork API
+├── core/              # @chatwork-bot/core — Shared types, interfaces, utils, services
+├── dashboard/         # @chatwork-bot/dashboard — React SPA for multi-room management
+├── dataset-runner/    # @chatwork-bot/dataset-runner — ACK-driven queue runner sidecar (LOCAL DEV ONLY)
+├── kagi-sidecar/      # @chatwork-bot/kagi-sidecar — Kagi translation sidecar service
+├── provider-cursor/   # @chatwork-bot/provider-cursor — Cursor provider (LOCAL DEV ONLY)
+├── provider-gemini/   # @chatwork-bot/provider-gemini — Gemini provider plugin
+├── provider-kagi/     # @chatwork-bot/provider-kagi — Kagi provider plugin
+├── provider-openai/   # @chatwork-bot/provider-openai — OpenAI provider plugin
+├── translation-prompt/# @chatwork-bot/translation-prompt — Translation prompts and schemas
+├── translator/        # @chatwork-bot/translator — HTTP server, webhook handler
+└── webhook-logger/    # @chatwork-bot/webhook-logger — Webhook receiver, forwards to translator
 ```
 
 ### Dataset Testing
@@ -132,6 +135,55 @@ When a translation is in flight:
 - dataset-runner logs emit send/ACK wait/ACK result events for automation traffic
 
 See `docs/operations/translator-observability.md` for the full event contract and debugging flow.
+
+## Observability & Tracing
+
+### Request Tracing
+
+Every translation request is assigned a `traceId` that flows through the entire pipeline:
+
+```bash
+# In webhook-logger logs
+{"level":"info","event":"webhook_forward","traceId":"abc123",...}
+
+# In translator logs
+{"level":"info","event":"translation_started","traceId":"abc123",...}
+{"level":"info","event":"translation_completed","traceId":"abc123",...}
+```
+
+### Trace Correlation
+
+Use `x-trace-id` to correlate logs across services:
+
+```bash
+# Grep logs by trace ID
+docker logs webhook-logger | grep "abc123"
+docker logs translator | grep "abc123"
+```
+
+### Performance Traces
+
+Detailed timing traces are saved to `output/traces/YYYY-MM-DD/`:
+
+```json
+{
+  "traceId": "abc123",
+  "timing": {
+    "webhookReceivedAt": "2026-04-05T10:00:00.000Z",
+    "totalEndToEnd": 17500,
+    "preprocessing": 150,
+    "llmCall": 15000,
+    "postprocessing": 200,
+    "delivery": 2150
+  },
+  "performance": {
+    "bottleneckStage": "llmCall",
+    "isSlowRequest": false
+  }
+}
+```
+
+See [`docs/operations/performance-monitoring.md`](docs/operations/performance-monitoring.md) for analysis tools.
 
 ## Scripts
 
@@ -178,7 +230,6 @@ The Docker image uses a multi-stage build with `oven/bun:1.1-distroless` for a m
 1. Go to Chatwork Admin > Webhooks
 2. Set the webhook URL to `https://<your-domain>/webhook`
 3. Select **Room Event** → **Message Created**
-4. Copy the webhook token and set it as `CHATWORK_WEBHOOK_SECRET`
 
 ## License
 
