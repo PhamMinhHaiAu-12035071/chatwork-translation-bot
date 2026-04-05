@@ -2,7 +2,7 @@
 
 ## Monorepo Layout
 
-Bun workspaces monorepo. Nine packages:
+Bun workspaces monorepo. Eleven packages:
 
 ```
 @chatwork-bot/core                ←── imported by ── @chatwork-bot/provider-*
@@ -10,8 +10,7 @@ Bun workspaces monorepo. Nine packages:
  registry, execution policy)                         @chatwork-bot/webhook-logger
 
 @chatwork-bot/translation-prompt  ←── imported by ── @chatwork-bot/provider-*
-(4-phase pipeline prompts +                          @chatwork-bot/translator
- Zod schemas)
+(translation prompts + schemas)                      @chatwork-bot/translator
 
 @chatwork-bot/chatwork            ←── imported by ── @chatwork-bot/translator
 (anti-corruption layer)
@@ -19,6 +18,12 @@ Bun workspaces monorepo. Nine packages:
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
+@chatwork-bot/provider-kagi       ←── registered in ── @chatwork-bot/translator
+@chatwork-bot/kagi-sidecar        ←── standalone sidecar service
+@chatwork-bot/translator          ←── HTTP server, webhook handler
+@chatwork-bot/webhook-logger      ←── webhook receiver
+@chatwork-bot/dataset-runner      ←── dataset injection sidecar (LOCAL DEV ONLY)
+@chatwork-bot/dashboard           ←── React SPA for multi-room management
 ```
 
 ## Package Responsibilities
@@ -37,7 +42,21 @@ No build step needed — Bun resolves TypeScript directly.
 
 ### `packages/translation-prompt` (`@chatwork-bot/translation-prompt`)
 
-4-phase translation pipeline prompts and Zod schemas. Contains: `src/sections/` (prompt builders), `src/schemas/` (`AnalysisSchema`, `ReviewSchema`, `TranslationDraftSchema`, `PipelineTraceSchema`). Exports `PromptPair` type. Used by provider-\* AND translator packages.
+**Purpose:** System and user prompts for single-call translation pipeline
+
+**Exports:**
+
+- `buildSingleCallPrompts()` — Constructs system + user prompts
+- `buildStructuredTranslationPrompts()` — Legacy structured output (unused)
+- Prompt sections: CORE_DOCTRINE, JAPANESE_RULES, ENGLISH_RULES, CONSTRAINTS
+- Zod schemas: Only `ReviewSchema` exported (not PipelineTraceSchema)
+
+**Phase 2+ Changes:**
+
+- Optimized prompt versions (30% token reduction)
+- Feature flag: `TRANSLATION_PROMPT_VERSION=baseline|optimized`
+
+**Note:** Pipeline is **single LLM call**, not 4-phase (design doc confirmed)
 
 ### `packages/chatwork` (`@chatwork-bot/chatwork`)
 
@@ -55,17 +74,48 @@ OpenAI provider plugin. Implements `ILLMExecutor.execute<T>()` using `Output.obj
 
 Cursor provider plugin (LOCAL DEV ONLY). Implements `ILLMExecutor.execute<T>()` using `extractJsonFromText` + `schema.parse()`. Must not be used in production.
 
+### `packages/provider-kagi` (`@chatwork-bot/provider-kagi`)
+
+Kagi provider plugin. Implements `ILLMExecutor.execute<T>()` using KagiClient HTTP API. Used for Free tier rooms via `kagi-sidecar`.
+
+### `packages/kagi-sidecar` (`@chatwork-bot/kagi-sidecar`)
+
+Kagi translation sidecar service. Anonymous best-effort transport for Free rooms. Provides queue-based rate limiting and guardrails to reduce anti-abuse risk. Port 3002, accessed via KAGI_TRANSLATOR_URL.
+
+### `packages/dashboard` (`@chatwork-bot/dashboard`)
+
+React SPA for multi-room management (Vite + Tailwind). Neubrutalism design language. Provides UI for room configuration, AI provider selection, translation style tuning, and keyword protection rules.
+
 ### `packages/translator` (`@chatwork-bot/translator`)
 
-Runnable HTTP server. Owns:
+**Purpose:** HTTP server, env validation, bootstrap, translation orchestration
 
-- Env validation with discriminated union (`src/env.ts`)
-- Provider bootstrap and startup guards (`src/bootstrap/`)
-- HTTP routing + shared-secret auth (`src/webhook/router.ts`)
-- Webhook event handling (`src/webhook/handler.ts`)
-- Structured JSON request logging (`src/utils/request-log.ts`)
-- Provider health endpoint (`src/routes/provider-health.ts`)
-- 4-phase translation pipeline (`src/pipeline/pipeline.ts`)
+**Key Files:**
+
+- `src/server.ts` — Bun.serve() HTTP server, graceful shutdown
+- `src/env-schema.ts` — Zod env validation, runtime config
+- `src/bootstrap/` — Provider plugin registration
+- `src/webhook/` — Webhook routing, request context, handler
+  - `router.ts` — `/internal/translate` endpoint, trace ID generation
+  - `handler.ts` — Room config resolution, provider selection
+- `src/services/` — Core business logic
+  - `room-translation-orchestrator.ts` — Pipeline orchestration (preprocess → LLM → postprocess → deliver)
+  - `async-logger.ts` — Buffered non-blocking logging (Phase 1+)
+  - `trace-builder.ts` — Per-request timing instrumentation (Phase 3+)
+  - `trace-persistence.ts` — Save traces to output/traces/ (Phase 3+)
+  - `keyword-redactor.ts` — Mask/restore keyword protection
+  - `chatwork-message-parser.ts` — Strip Chatwork markup decorations
+- `src/benchmarks/` — Performance measurement scripts
+  - `logging-overhead-benchmark.ts` — Async vs sync logging comparison
+- `src/types/` — TypeScript interfaces
+  - `observability.ts` — TranslatorLogEntry, TranslatorRequestContext
+  - `trace.ts` — TranslationTrace schema (Phase 3+)
+
+**Notes:**
+
+- Pipeline is **single LLM call**, not 4-phase (design doc confirmed)
+- Delivery is async fire-and-forget (Phase 1+)
+- Tracing system instruments all stages (Phase 3+)
 
 ### `packages/webhook-logger` (`@chatwork-bot/webhook-logger`)
 
