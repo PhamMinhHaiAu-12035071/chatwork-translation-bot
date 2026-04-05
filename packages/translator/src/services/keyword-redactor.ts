@@ -1,3 +1,4 @@
+import { LRUCache } from 'lru-cache'
 import type { KeywordEntry, KeywordCategory } from '~/types/keyword-entry'
 
 export interface RedactionResult {
@@ -13,6 +14,20 @@ const CATEGORY_PREFIX: Record<KeywordCategory, string> = {
   code: 'CODE',
   other: 'TERM',
 }
+
+// ─── Pattern Cache ────────────────────────────────────────────────────────────
+
+interface CompiledPatternEntry {
+  placeholder: string
+  original: string
+  category: KeywordCategory
+  pattern: RegExp
+}
+
+const patternCache = new LRUCache<string, CompiledPatternEntry[]>({
+  max: parseInt(process.env['KEYWORD_PATTERN_CACHE_MAX'] ?? '100', 10),
+  ttl: 1000 * 60 * 60, // 1 hour
+})
 
 const CATEGORY_DESCRIPTION: Record<KeywordCategory, string> = {
   company: 'company or organization name (proper noun)',
@@ -56,19 +71,19 @@ function buildSystemHint(entries: { placeholder: string; category: KeywordCatego
   ].join('\n')
 }
 
-/**
- * Masks sensitive keywords in `text` with typed placeholders.
- *
- * Placeholder assignment is deterministic (based on position in sorted keyword
- * array, not order of first occurrence in text). This means calling mask() on
- * any text with the same keyword list produces identical restoreMap entries —
- * safe to use a single restoreMap for restoring multiple segments.
- */
-export function mask(text: string, keywords: KeywordEntry[]): RedactionResult {
-  if (keywords.length === 0) {
-    return { maskedText: text, restoreMap: new Map(), systemHint: '' }
+function getCachedPatterns(keywords: KeywordEntry[]): CompiledPatternEntry[] {
+  // Create stable cache key (serialize sorted keywords)
+  const cacheKey = keywords
+    .map(k => `${k.keyword}:${k.category}:${k.placeholder ?? ''}`)
+    .sort()
+    .join('||')
+  
+  // Check cache
+  const cached = patternCache.get(cacheKey)
+  if (cached !== undefined) {
+    return cached
   }
-
+  
   // Sort longest-first to prevent partial-overlap bugs
   const sorted = [...keywords].sort(
     (a, b) => b.keyword.normalize('NFC').length - a.keyword.normalize('NFC').length,
@@ -84,11 +99,33 @@ export function mask(text: string, keywords: KeywordEntry[]): RedactionResult {
       : `[${prefix}_${(counters[prefix] ?? 0).toString()}]`
     return {
       placeholder,
-      original: entry.keyword, // preserve original (pre-normalization) for restore
+      original: entry.keyword,
       category: entry.category,
       pattern: buildPattern(entry.keyword.normalize('NFC')),
     }
   })
+  
+  // Store in cache
+  patternCache.set(cacheKey, entries)
+  
+  return entries
+}
+
+/**
+ * Masks sensitive keywords in `text` with typed placeholders.
+ *
+ * Placeholder assignment is deterministic (based on position in sorted keyword
+ * array, not order of first occurrence in text). This means calling mask() on
+ * any text with the same keyword list produces identical restoreMap entries —
+ * safe to use a single restoreMap for restoring multiple segments.
+ */
+export function mask(text: string, keywords: KeywordEntry[]): RedactionResult {
+  if (keywords.length === 0) {
+    return { maskedText: text, restoreMap: new Map(), systemHint: '' }
+  }
+
+  // Get or compile patterns (cached)
+  const entries = getCachedPatterns(keywords)
 
   // Apply masking on NFC-normalized text
   const normalizedText = text.normalize('NFC')

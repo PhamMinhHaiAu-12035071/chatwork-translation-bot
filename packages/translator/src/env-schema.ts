@@ -37,6 +37,10 @@ export const translatorEnvSchema = z.object({
   
   // HTTP connection pooling
   ENABLE_HTTP_KEEPALIVE: z.coerce.boolean().default(true),
+  
+  // Keyword processing optimization
+  KEYWORD_PATTERN_CACHE_MAX: z.coerce.number().default(100),
+  ENABLE_KEYWORD_CACHE: z.coerce.boolean().default(true),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {
