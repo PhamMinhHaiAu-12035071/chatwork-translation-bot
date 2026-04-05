@@ -152,12 +152,20 @@ export function mask(text: string, keywords: KeywordEntry[]): RedactionResult {
 
 /**
  * Restores all placeholders in `text` back to their original keywords.
+ * Uses single-pass regex replacement for O(T) complexity instead of O(K × T).
  */
 export function restore(text: string, restoreMap: Map<string, string>): string {
   if (restoreMap.size === 0) return text
-  let result = text
-  for (const [placeholder, original] of restoreMap) {
-    result = result.replaceAll(placeholder, original)
-  }
-  return result
+  
+  // Single-pass restore using combined regex
+  const placeholders = Array.from(restoreMap.keys())
+  
+  // Escape special regex chars in placeholders
+  const escaped = placeholders.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  
+  // Create combined pattern: [COMPANY_1]|[PERSON_1]|...
+  const pattern = new RegExp(escaped.join('|'), 'g')
+  
+  // Single replace with lookup
+  return text.replace(pattern, match => restoreMap.get(match) ?? match)
 }
