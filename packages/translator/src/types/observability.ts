@@ -78,3 +78,5 @@ export interface TranslatorStatusSnapshot {
   activeRequests: ActiveTranslatorRequest[]
   recentResults: TranslatorRecentResult[]
 }
+
+export type { LogEntry, AsyncLoggerConfig } from '~/services/async-logger'
