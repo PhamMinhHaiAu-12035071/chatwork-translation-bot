@@ -27,6 +27,7 @@ export const translatorEnvSchema = z.object({
     .default(DEFAULT_TRANSLATOR_PIPELINE_TIMEOUT_MS),
   TRANSLATOR_STATUS_HISTORY_LIMIT: z.coerce.number().int().positive().default(20),
   USE_ASYNC_LOGGING: z.coerce.boolean().default(true),
+  ENABLE_ASYNC_DELIVERY: z.coerce.boolean().default(false), // TODO: Enable after updating tests
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {

@@ -21,7 +21,9 @@ export class AsyncLogger {
   constructor(config: AsyncLoggerConfig = {}) {
     this.maxBufferSize = config.maxBufferSize ?? 50
     this.flushIntervalMs = config.flushIntervalMs ?? 100
-    this.writer = config.writer ?? ((output) => Bun.write(Bun.stdout, output))
+    this.writer = config.writer ?? (async (output) => {
+      await Bun.write(Bun.stdout, output)
+    })
   }
   
   log(entry: LogEntry): void {

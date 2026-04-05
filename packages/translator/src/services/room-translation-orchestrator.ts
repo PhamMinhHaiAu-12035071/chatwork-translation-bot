@@ -127,6 +127,25 @@ function buildTranslationResult(
   }
 }
 
+function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  
+  const message = error.message.toLowerCase()
+  
+  // HTTP status codes that should be retried
+  const retryablePatterns = [
+    '429', // Rate limit
+    '503', // Service unavailable
+    '504', // Gateway timeout
+    'timeout',
+    'econnreset',
+    'econnrefused',
+    'network',
+  ]
+  
+  return retryablePatterns.some(pattern => message.includes(pattern))
+}
+
 export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestratorDeps) {
   const resolveOrigin = deps.resolveOutputOrigin ?? resolveOutputOrigin
   const persistOutput = deps.writeTranslationOutput ?? writeTranslationOutput
@@ -371,70 +390,143 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
       const outputBaseDir = deps.outputBaseDir ?? process.env['OUTPUT_BASE_DIR']
       await persistOutput(outputRecord, ...(outputBaseDir ? [outputBaseDir] : []))
 
-      const delivery = await observer.runPhase('delivery', async () => {
-        observer.logEvent('info', 'translation_delivery_started', {
-          phase: 'delivery',
-        })
+      // Async delivery helper with exponential backoff retry
+      const deliverAsync = async (): Promise<void> => {
+        const maxRetries = 3
+        const baseDelayMs = 1000
+        
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const delivery = await observer.runPhase('delivery', async () => {
+              observer.logEvent('info', 'translation_delivery_started', {
+                phase: 'delivery',
+              })
 
-        const deliveryResult = await deliverTranslation(command, result, {
-          apiToken: deps.chatworkApiToken,
-          destinationRoomId: room.destinationRoomId,
-          translatedSegments: restoredTranslatedSegments,
-        })
+              const deliveryResult = await deliverTranslation(command, result, {
+                apiToken: deps.chatworkApiToken,
+                destinationRoomId: room.destinationRoomId,
+                translatedSegments: restoredTranslatedSegments,
+              })
 
-        if (deliveryResult.status === 'failed') {
-          observer.logEvent('error', 'translation_delivery_failed', {
-            phase: 'delivery',
-            deliveryStatus: deliveryResult.status,
-            ...(deliveryResult.errorCode !== undefined
-              ? { errorCode: deliveryResult.errorCode }
-              : {}),
-            ...(deliveryResult.errorMessage !== undefined
-              ? { errorMessage: deliveryResult.errorMessage }
-              : {}),
-          })
-        } else {
-          observer.logEvent('info', 'translation_delivery_completed', {
-            phase: 'delivery',
-            deliveryStatus: deliveryResult.status,
-          })
+              if (deliveryResult.status === 'failed') {
+                observer.logEvent('error', 'translation_delivery_failed', {
+                  phase: 'delivery',
+                  deliveryStatus: deliveryResult.status,
+                  ...(deliveryResult.errorCode !== undefined
+                    ? { errorCode: deliveryResult.errorCode }
+                    : {}),
+                  ...(deliveryResult.errorMessage !== undefined
+                    ? { errorMessage: deliveryResult.errorMessage }
+                    : {}),
+                })
+              } else {
+                observer.logEvent('info', 'translation_delivery_completed', {
+                  phase: 'delivery',
+                  deliveryStatus: deliveryResult.status,
+                })
+              }
+
+              return deliveryResult
+            })
+            
+            // Persist with delivery result
+            await persistOutput(
+              { ...outputRecord, delivery },
+              ...(outputBaseDir ? [outputBaseDir] : []),
+            )
+            observer.logEvent('info', 'translation_output_persisted', {
+              deliveryStatus: delivery.status,
+            })
+            
+            // Send ACK notification
+            await notifyDatasetRunnerAck(delivery)
+            
+            observer.completeRequest({
+              finalPhase: origin.type === 'automation' ? 'ack_callback' : 'delivery',
+              deliveryStatus: delivery.status,
+              ...(origin.type === 'automation' ? { ackStatus: 'sent' as const } : {}),
+            })
+            
+            return // Success - exit retry loop
+          } catch (error) {
+            const isLastAttempt = attempt === maxRetries
+            const isRetryable = isRetryableError(error)
+            
+            if (isLastAttempt || !isRetryable) {
+              logTranslatorEvent({
+                level: 'error',
+                service: 'translator',
+                event: 'translation_delivery_failed_permanently',
+                timestamp: new Date().toISOString(),
+                traceId,
+                requestId: '',
+                sourceMessageId: command.sourceMessageId,
+                originType: origin.type,
+                provider: '',
+                model: '',
+                translationStyle: '',
+                roomId: room.destinationRoomId,
+                inputLength: 0,
+                errorMessage: error instanceof Error ? error.message : String(error),
+              })
+              
+              // Send error notification to room (best effort)
+              try {
+                const errorMsg = `⚠️ Translation delivery failed after ${attempt + 1} attempts. Please try again.`
+                const errorResult = buildTranslationResult('', errorMsg, '')
+                await deliverTranslation(
+                  { ...command, translatableText: errorMsg, translationInputs: [errorMsg] },
+                  errorResult,
+                  {
+                    apiToken: deps.chatworkApiToken,
+                    destinationRoomId: command.sourceRoomId,
+                    translatedSegments: [errorMsg],
+                  },
+                )
+              } catch {
+                // Swallow notification errors
+              }
+              
+              return
+            }
+            
+            // Retry with exponential backoff
+            const delayMs = baseDelayMs * Math.pow(2, attempt)
+            const jitter = Math.random() * 500
+            
+            logTranslatorEvent({
+              level: 'warn',
+              service: 'translator',
+              event: 'translation_delivery_retrying',
+              timestamp: new Date().toISOString(),
+              traceId,
+              requestId: '',
+              sourceMessageId: command.sourceMessageId,
+              originType: origin.type,
+              provider: '',
+              model: '',
+              translationStyle: '',
+              roomId: room.destinationRoomId,
+              inputLength: 0,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            })
+            
+            await new Promise(resolve => setTimeout(resolve, delayMs + jitter))
+          }
         }
-
-        return deliveryResult
-      })
-
-      try {
-        await persistOutput(
-          { ...outputRecord, delivery },
-          ...(outputBaseDir ? [outputBaseDir] : []),
-        )
-        observer.logEvent('info', 'translation_output_persisted', {
-          deliveryStatus: delivery.status,
-        })
-      } catch (error) {
-        console.error(
-          JSON.stringify({
-            level: 'error',
-            service: 'translator',
-            event: 'output-rewrite-failed',
-            timestamp: new Date().toISOString(),
-            traceId,
-            messageId: command.sourceMessageId,
-            errorCode: error instanceof Error ? error.constructor.name : 'UnknownError',
-            error: error instanceof Error ? error.message : String(error),
-            context: { origin, deliveryStatus: delivery.status },
-          }),
-        )
-        throw error
       }
-
-      await notifyDatasetRunnerAck(delivery)
-
-      observer.completeRequest({
-        finalPhase: origin.type === 'automation' ? 'ack_callback' : 'delivery',
-        deliveryStatus: delivery.status,
-        ...(origin.type === 'automation' ? { ackStatus: 'sent' as const } : {}),
-      })
+      
+      // Feature flag for async vs blocking delivery
+      const enableAsync = process.env['ENABLE_ASYNC_DELIVERY'] !== 'false'
+      
+      if (enableAsync) {
+        // Fire-and-forget (return immediately, don't await)
+        void deliverAsync()
+        return
+      } else {
+        // Blocking fallback - await completion
+        await deliverAsync()
+      }
     } catch (error) {
       const { errorCode, errorMessage } =
         error instanceof TranslationError

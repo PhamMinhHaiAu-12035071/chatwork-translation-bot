@@ -20,23 +20,27 @@ export function getTranslatorStatusSnapshot(): TranslatorStatusSnapshot {
 }
 
 export function logTranslatorEvent(entry: TranslatorLogEntry): void {
-  const useAsync = process.env.USE_ASYNC_LOGGING !== 'false'
+  const useAsync = process.env['USE_ASYNC_LOGGING'] !== 'false'
+  
+  const logData = {
+    ...entry,
+    timestamp: new Date().toISOString(),
+  }
   
   if (useAsync) {
+    // Map TranslatorLogEntry to LogEntry format
     asyncLogger.log({
       level: entry.level,
-      event: entry.event,
-      timestamp: new Date().toISOString(),
-      ...entry,
+      message: entry.event,
+      timestamp: logData.timestamp,
+      service: entry.service,
+      traceId: entry.traceId,
+      requestId: entry.requestId,
+      sourceMessageId: entry.sourceMessageId,
     })
   } else {
     // Fallback to sync logging
-    console.log(JSON.stringify({
-      level: entry.level,
-      event: entry.event,
-      timestamp: new Date().toISOString(),
-      ...entry,
-    }))
+    console.log(JSON.stringify(logData))
   }
 }
 
