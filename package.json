@@ -25,6 +25,7 @@
     "quality": "bun run lint && bun run typecheck && bun run test",
     "quality:ci": "bun run quality && bunx prettier --check \"*.{json,md,yml,yaml}\" \"docs/**/*.md\"",
     "verify:standards": "bun run scripts/verify-standards.ts",
+    "validate:phase1": "bun run scripts/phase1-validation.ts",
     "cursor-proxy": "node \"$(realpath node_modules/cursor-api-proxy/dist/cli.js)\"",
     "prepare": "husky"
   },
