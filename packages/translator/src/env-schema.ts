@@ -28,6 +28,12 @@ export const translatorEnvSchema = z.object({
   TRANSLATOR_STATUS_HISTORY_LIMIT: z.coerce.number().int().positive().default(20),
   USE_ASYNC_LOGGING: z.coerce.boolean().default(true),
   ENABLE_ASYNC_DELIVERY: z.coerce.boolean().default(false), // TODO: Enable after updating tests
+  
+  // Circuit breaker config
+  CHATWORK_API_FAILURE_THRESHOLD: z.coerce.number().default(5),
+  CHATWORK_API_RESET_TIMEOUT_MS: z.coerce.number().default(30000),
+  LLM_PROVIDER_FAILURE_THRESHOLD: z.coerce.number().default(3),
+  LLM_PROVIDER_RESET_TIMEOUT_MS: z.coerce.number().default(60000),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {

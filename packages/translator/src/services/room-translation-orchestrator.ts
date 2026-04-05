@@ -14,6 +14,7 @@ import {
   getTranslatorStatusStore,
   logTranslatorEvent,
 } from '~/services/translator-observability-runtime'
+import { llmProviderBreaker, chatworkApiBreaker } from '~/services/circuit-breaker'
 import type { KeywordEntry } from '~/types/keyword-entry'
 import type {
   TranslatorLogEntry,
@@ -330,24 +331,26 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
               translatedText: '',
               translatedSegments: [],
             }
-          : await backend.translate({
-              cleanText: maskedText,
-              translationInputs: maskedTranslationInputs,
-              ...(hasRoomContextForPipeline ? { roomContext: trimmedRoomContext } : {}),
-              ...(systemHint ? { keywordSystemHint: systemHint } : {}),
-              runtimeConfig,
-              phaseObserver: {
-                onPhaseStarted: ({ phase }) => {
-                  observer.markPhaseStarted(phase, {})
+          : await llmProviderBreaker.execute(async () =>
+              backend.translate({
+                cleanText: maskedText,
+                translationInputs: maskedTranslationInputs,
+                ...(hasRoomContextForPipeline ? { roomContext: trimmedRoomContext } : {}),
+                ...(systemHint ? { keywordSystemHint: systemHint } : {}),
+                runtimeConfig,
+                phaseObserver: {
+                  onPhaseStarted: ({ phase }) => {
+                    observer.markPhaseStarted(phase, {})
+                  },
+                  onPhaseCompleted: () => {
+                    observer.markPhaseCompleted()
+                  },
+                  onPhaseFailed: ({ error }) => {
+                    observer.markPhaseFailed(error)
+                  },
                 },
-                onPhaseCompleted: () => {
-                  observer.markPhaseCompleted()
-                },
-                onPhaseFailed: ({ error }) => {
-                  observer.markPhaseFailed(error)
-                },
-              },
-            })
+              }),
+            )
 
       if (backendResult.translatedSegments.length !== command.translationInputs.length) {
         throw new TranslationError('Translation segment count mismatch', 'INVALID_RESPONSE')
@@ -402,11 +405,13 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
                 phase: 'delivery',
               })
 
-              const deliveryResult = await deliverTranslation(command, result, {
-                apiToken: deps.chatworkApiToken,
-                destinationRoomId: room.destinationRoomId,
-                translatedSegments: restoredTranslatedSegments,
-              })
+              const deliveryResult = await chatworkApiBreaker.execute(async () =>
+                deliverTranslation(command, result, {
+                  apiToken: deps.chatworkApiToken,
+                  destinationRoomId: room.destinationRoomId,
+                  translatedSegments: restoredTranslatedSegments,
+                }),
+              )
 
               if (deliveryResult.status === 'failed') {
                 observer.logEvent('error', 'translation_delivery_failed', {
@@ -474,14 +479,16 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
               try {
                 const errorMsg = `⚠️ Translation delivery failed after ${attempt + 1} attempts. Please try again.`
                 const errorResult = buildTranslationResult('', errorMsg, '')
-                await deliverTranslation(
-                  { ...command, translatableText: errorMsg, translationInputs: [errorMsg] },
-                  errorResult,
-                  {
-                    apiToken: deps.chatworkApiToken,
-                    destinationRoomId: command.sourceRoomId,
-                    translatedSegments: [errorMsg],
-                  },
+                await chatworkApiBreaker.execute(async () =>
+                  deliverTranslation(
+                    { ...command, translatableText: errorMsg, translationInputs: [errorMsg] },
+                    errorResult,
+                    {
+                      apiToken: deps.chatworkApiToken,
+                      destinationRoomId: command.sourceRoomId,
+                      translatedSegments: [errorMsg],
+                    },
+                  ),
                 )
               } catch {
                 // Swallow notification errors
