@@ -1,23 +1,68 @@
 # Architecture Patterns
 
-## Request Flow
+## Request Flow (Current)
 
-```
-POST /webhook (webhook-logger)
-→ verify HMAC-SHA256 signature, return 200 OK immediately
-→ fire-and-forget: forward to translator /internal/translate
+```mermaid
+sequenceDiagram
+    participant CW as Chatwork
+    participant WL as webhook-logger
+    participant TR as translator
+    participant LLM as AI Provider
+    participant CW2 as Chatwork (destination)
 
-POST /internal/translate (translator)
-→ router.ts → async (fire-and-forget): handleTranslateRequest
-  → stripChatworkMarkup()
-  → getProviderPlugin(env.AI_PROVIDER)  →  plugin.create(ctx)
-  → translateWithPolicy(service, text)   (timeout + retry)
-  → logTranslationRequest()             (structured JSON to stdout)
-  → sendTranslatedMessage()             (Chatwork API)
+    CW->>WL: POST /chatwork/webhook
+    Note over WL: Generate traceId
+    WL->>WL: Persist to output/webhooks/
+    WL->>TR: POST /internal/translate<br/>(x-trace-id, x-request-id)
+
+    Note over TR: Resolve room config
+    TR->>TR: Parse command (/translate <lang> <text>)
+    TR->>TR: Keyword masking (preprocessing)
+    TR->>LLM: generateText() with system+user prompts
+    LLM-->>TR: Translation result + usage
+    TR->>TR: Keyword restore (postprocessing)
+    TR->>CW2: POST /rooms/{id}/messages (async)
+    TR-->>WL: 200 OK (before delivery completes)
+
+    Note over TR: Persist trace to output/traces/
 ```
 
 **Fire-and-forget pattern**: The webhook handler returns 200 OK immediately and processes
 the translation asynchronously. This prevents Chatwork from retrying on slow responses.
+
+## Routing & Configuration
+
+### Webhook Path
+
+- **Entry:** `webhook-logger` receives at `/chatwork/webhook`
+- **Persistence:** Saves raw payload to `output/webhooks/YYYY-MM-DD/`
+- **Forward:** Calls `translator` at `/internal/translate` with:
+  - `x-trace-id`: UUID for request correlation
+  - `x-request-id`: Sequential counter for ordering
+  - Full webhook payload body
+
+### Translation Path
+
+- **Entry:** `translator` router creates `TranslatorRequestContext`
+- **Handler:** `handleTranslateRequest` resolves room configuration
+- **Orchestrator:** `orchestrateRoomTranslation` manages pipeline:
+  1. Preprocessing (keyword masking, tag parsing)
+  2. LLM call (single `executor.execute()`)
+  3. Postprocessing (keyword restore, tag addition)
+  4. Delivery (async fire-and-forget to Chatwork)
+- **Tracing:** `TraceBuilder` instruments each stage, persists to `output/traces/`
+
+### Per-Room Configuration
+
+**NEW (Phase 1+):** Room settings moved from global env to per-room dashboard config:
+
+- `aiProvider`: gemini | openai | cursor (local dev)
+- `model`: gemini-2.0-flash-exp | gpt-5.4-mini | etc.
+- `translationStyle`: NATURAL_CASUAL | PROFESSIONAL_BUSINESS | TECHNICAL
+- `temperature`: 0.0-1.0 (per-style defaults)
+- `keywords`: Array of keyword protection rules
+
+**Fallback:** If room not configured, uses `DEFAULT_*` env vars.
 
 ## Plugin Registry Pattern
 
@@ -50,21 +95,6 @@ All translation calls go through `translateWithPolicy()`:
 - **Retry**: Up to 1 retry (2 total attempts) for transient `API_ERROR` only
 - **Backoff**: Exponential (300ms base, factor 2)
 - Non-transient errors (`QUOTA_EXCEEDED`, `INVALID_RESPONSE`) fail immediately
-
-## Webhook Signature Verification
-
-All incoming webhooks from Chatwork are verified with HMAC-SHA256 before forwarding to the translator:
-
-1. Chatwork sends `X-ChatWorkWebhookSignature` header with every request
-2. Webhook-logger reads the raw request body (binary data, not parsed JSON)
-3. Bot computes HMAC-SHA256 of raw body using `CHATWORK_WEBHOOK_SECRET`
-4. Signatures are compared using constant-time comparison (timing-attack safe)
-5. Requests with invalid signatures are rejected with 400
-6. Valid requests are forwarded to translator `/internal/translate`
-
-**Development bypass**: Set `CHATWORK_SKIP_SIGNATURE_VERIFY=true` to disable verification. This flag has no effect in production.
-
-Implementation: `packages/webhook-logger/src/routes/webhook.ts`
 
 ## Chatwork Markup Stripping
 
