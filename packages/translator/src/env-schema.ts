@@ -34,6 +34,9 @@ export const translatorEnvSchema = z.object({
   CHATWORK_API_RESET_TIMEOUT_MS: z.coerce.number().default(30000),
   LLM_PROVIDER_FAILURE_THRESHOLD: z.coerce.number().default(3),
   LLM_PROVIDER_RESET_TIMEOUT_MS: z.coerce.number().default(60000),
+  
+  // HTTP connection pooling
+  ENABLE_HTTP_KEEPALIVE: z.coerce.boolean().default(true),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {

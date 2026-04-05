@@ -1,3 +1,4 @@
+import { Agent, request } from 'undici'
 import { ChatworkApiError, ChatworkRateLimitError } from '~/errors/chatwork-api-error'
 import type { IChatworkApiClient } from '~/interfaces/chatwork-api'
 import type {
@@ -12,12 +13,61 @@ import type { CreateRoomParams, CreateRoomResult, Room, UpdateRoomParams } from 
 
 const BASE_URL = 'https://api.chatwork.com/v2'
 
+// ─── HTTP Connection Pooling ──────────────────────────────────────────────────
+
+const enableKeepAlive = process.env['ENABLE_HTTP_KEEPALIVE'] !== 'false'
+
+export const httpAgent = enableKeepAlive
+  ? new Agent({
+      keepAliveTimeout: 30000, // 30 seconds
+      keepAliveMaxTimeout: 600000, // 10 minutes
+      connections: 10,
+      pipelining: 1,
+    })
+  : undefined
+
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 function makeHeaders(token: string): Record<string, string> {
   return {
     'X-ChatWorkToken': token,
   }
+}
+
+async function makeRequest(
+  url: string,
+  options: {
+    method: string
+    headers: Record<string, string>
+    body?: string
+  },
+): Promise<Response> {
+  const requestOptions: Parameters<typeof request>[1] = {
+    method: options.method,
+    headers: options.headers,
+  }
+  
+  if (options.body !== undefined) {
+    requestOptions.body = options.body
+  }
+  
+  if (httpAgent !== undefined) {
+    requestOptions.dispatcher = httpAgent
+  }
+  
+  const { statusCode, headers, body: responseBody } = await request(url, requestOptions)
+
+  const text = await responseBody.text()
+  
+  // Filter out undefined header values
+  const headerEntries = Object.entries(headers).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  )
+
+  return new Response(text, {
+    status: statusCode,
+    headers: new Headers(headerEntries),
+  })
 }
 
 interface ChatworkErrorBody {
@@ -54,7 +104,7 @@ export const chatworkApiClient = {
   async getMe(token: string): Promise<ChatworkMe> {
     const url = `${BASE_URL}/me`
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'GET',
       headers: makeHeaders(token),
     })
@@ -74,7 +124,7 @@ export const chatworkApiClient = {
     const url = `${BASE_URL}/rooms/${roomId.toString()}/messages`
     const body = new URLSearchParams({ body: message, self_unread: '1' })
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'POST',
       headers: {
         ...makeHeaders(token),
@@ -93,7 +143,7 @@ export const chatworkApiClient = {
   async deleteRoomMessage(roomId: number, messageId: string, token: string): Promise<void> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}/messages/${messageId}`
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'DELETE',
       headers: makeHeaders(token),
     })
@@ -107,7 +157,7 @@ export const chatworkApiClient = {
     const url = `${BASE_URL}/rooms/${roomId.toString()}`
     const body = new URLSearchParams({ action_type: 'delete' })
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'DELETE',
       headers: {
         ...makeHeaders(token),
@@ -124,7 +174,7 @@ export const chatworkApiClient = {
   async getRoomMembers(roomId: number, token: string): Promise<ChatworkMember[]> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}/members`
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'GET',
       headers: makeHeaders(token),
     })
@@ -139,7 +189,7 @@ export const chatworkApiClient = {
   async getRoomMessage(roomId: number, messageId: string, token: string): Promise<ChatworkMessage> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}/messages/${messageId}`
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'GET',
       headers: makeHeaders(token),
     })
@@ -161,7 +211,7 @@ export const chatworkApiClient = {
       url.searchParams.set('force', '1')
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await makeRequest(url.toString(), {
       method: 'GET',
       headers: makeHeaders(token),
     })
@@ -176,7 +226,7 @@ export const chatworkApiClient = {
   async getRoom(roomId: number, token: string): Promise<Room> {
     const url = `${BASE_URL}/rooms/${roomId.toString()}`
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'GET',
       headers: makeHeaders(token),
     })
@@ -200,7 +250,7 @@ export const chatworkApiClient = {
       body.set('icon_preset', params.icon_preset)
     }
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'POST',
       headers: {
         ...makeHeaders(token),
@@ -229,7 +279,7 @@ export const chatworkApiClient = {
       body.set('icon_preset', params.icon_preset)
     }
 
-    const response = await fetch(url, {
+    const response = await makeRequest(url, {
       method: 'PUT',
       headers: {
         ...makeHeaders(token),

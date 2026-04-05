@@ -77,9 +77,8 @@ async function shutdown() {
   await asyncLogger.shutdown()
   
   // Close HTTP connection pool
-  // TODO: Uncomment after Task 4 (Add HTTP Connection Pooling)
-  // const { httpAgent } = await import('@chatwork-bot/chatwork')
-  // httpAgent?.close()
+  const { httpAgent } = await import('@chatwork-bot/chatwork')
+  httpAgent?.close()
   
   // Stop accepting new requests
   void server.stop()

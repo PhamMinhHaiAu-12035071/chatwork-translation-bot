@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@chatwork-bot/core": "workspace:*",
-    "@sinclair/typebox": "^0.34.48"
+    "@sinclair/typebox": "^0.34.48",
+    "undici": "^8.0.0"
   }
 }
