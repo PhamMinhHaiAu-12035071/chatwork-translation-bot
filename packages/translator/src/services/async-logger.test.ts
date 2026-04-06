@@ -27,7 +27,7 @@ describe('AsyncLogger', () => {
     await new Promise(resolve => setTimeout(resolve, 10))
     
     expect(writeSpy).toHaveBeenCalled()
-    const output = writeSpy.mock.calls[0][0] as string
+    const output = writeSpy.mock.calls[0]?.[0] as string
     expect(output).toContain('test1')
     expect(output).toContain('test2')
     expect(output).toContain('test3')
