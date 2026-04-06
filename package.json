@@ -26,6 +26,7 @@
     "quality:ci": "bun run quality && bunx prettier --check \"*.{json,md,yml,yaml}\" \"docs/**/*.md\"",
     "verify:standards": "bun run scripts/verify-standards.ts",
     "validate:phase1": "bun run scripts/phase1-validation.ts",
+    "test:prompts": "bun run scripts/automated-ab-test.ts",
     "cursor-proxy": "node \"$(realpath node_modules/cursor-api-proxy/dist/cli.js)\"",
     "prepare": "husky"
   },
@@ -58,6 +59,7 @@
     "eslint-plugin-import-x": "^4.16.1",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
+    "openai": "^6.33.0",
     "prettier": "^3.0.0",
     "typescript": "^5.4.0",
     "typescript-eslint": "^8.0.0"
