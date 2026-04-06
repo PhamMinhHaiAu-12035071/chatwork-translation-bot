@@ -37,6 +37,7 @@ bun run analyze:traces output/traces/2026-04-05
 ```
 
 **Output:**
+
 - Summary statistics (total requests, avg latency, P50/P95/P99 percentiles)
 - Provider comparison (count, avg LLM time, avg total time, tokens/request)
 - Bottleneck identification (stage, occurrences, avg duration)
@@ -63,38 +64,41 @@ Saves structured analysis data for programmatic processing or integration with m
 
 ## Performance SLOs
 
-| Metric | Target | Alert If |
-|--------|--------|----------|
-| P95 latency | <21s | >25s |
-| P99 latency | <25s | >30s |
-| Slow requests (>25s) | <10% | >15% |
-| Delivery failures | <1% | >2% |
+| Metric               | Target | Alert If |
+| -------------------- | ------ | -------- |
+| P95 latency          | <21s   | >25s     |
+| P99 latency          | <25s   | >30s     |
+| Slow requests (>25s) | <10%   | >15%     |
+| Delivery failures    | <1%    | >2%      |
 
 ## Troubleshooting
 
 ### High LLM Time (>30s)
 
 **Possible causes:**
+
 - Long input text (>1000 characters)
 - Extended thinking models (Gemini 2.0 Flash Thinking, GPT-4o with thinking)
 - Provider rate limiting (429 errors)
 - Complex translation style requirements
 
 **Solutions:**
-- Check prompt token count using `bun run scripts/measure-prompt-tokens.ts`
+
 - Consider faster model for simple messages (`gpt-4o-mini`, `gemini-2.0-flash-exp`)
 - Review provider status and rate limits
-- Optimize prompt using optimized version (`TRANSLATION_PROMPT_VERSION=optimized`)
+- Check provider-specific rate limiting and quotas
 
 ### High Non-LLM Overhead (>2s)
 
 **Possible causes:**
+
 - Keyword processing with >100 keywords
 - Delivery network latency to Chatwork API
 - Synchronous logging (async disabled)
 - HTTP connection pool exhausted
 
 **Solutions:**
+
 - Verify `ENABLE_KEYWORD_CACHE=true` (default)
 - Check `ENABLE_HTTP_KEEPALIVE=true` (default)
 - Verify `USE_ASYNC_LOGGING=true` (default)
@@ -104,11 +108,13 @@ Saves structured analysis data for programmatic processing or integration with m
 ### Frequent Circuit Breaker Opens
 
 **Possible causes:**
+
 - Chatwork API downtime or degraded performance
 - LLM provider rate limits or outages
 - Network issues
 
 **Solutions:**
+
 - Check `CHATWORK_API_FAILURE_THRESHOLD` (default: 5 failures)
 - Check `LLM_PROVIDER_FAILURE_THRESHOLD` (default: 3 failures)
 - Review Docker logs for circuit breaker events
@@ -127,16 +133,19 @@ Saves structured analysis data for programmatic processing or integration with m
 ## Example Analysis Workflow
 
 1. **Generate daily report:**
+
    ```bash
    bun run report:daily
    ```
 
 2. **Check for anomalies:**
+
    ```bash
    bun run analyze:traces output/traces/$(date +%Y-%m-%d) | grep -A 5 "Slow Requests"
    ```
 
 3. **Investigate specific trace:**
+
    ```bash
    cat output/traces/2026-04-05/trace-<traceId>.json | jq '.'
    ```
@@ -151,11 +160,13 @@ Saves structured analysis data for programmatic processing or integration with m
 ## Integration with Monitoring Tools
 
 The JSON output can be integrated with:
+
 - **Grafana**: Import JSON metrics for dashboards
 - **Prometheus**: Convert to metrics format
 - **Alerting systems**: Query for SLO violations
 
 Example metric extraction:
+
 ```bash
 cat output/analysis/analysis-2026-04-05.json | jq '.summary.p95'
 ```

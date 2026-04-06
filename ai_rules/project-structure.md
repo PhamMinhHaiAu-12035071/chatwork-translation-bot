@@ -105,8 +105,6 @@ React SPA for multi-room management (Vite + Tailwind). Neubrutalism design langu
   - `trace-persistence.ts` — Save traces to output/traces/ (Phase 3+)
   - `keyword-redactor.ts` — Mask/restore keyword protection
   - `chatwork-message-parser.ts` — Strip Chatwork markup decorations
-- `src/benchmarks/` — Performance measurement scripts
-  - `logging-overhead-benchmark.ts` — Async vs sync logging comparison
 - `src/types/` — TypeScript interfaces
   - `observability.ts` — TranslatorLogEntry, TranslatorRequestContext
   - `trace.ts` — TranslationTrace schema (Phase 3+)

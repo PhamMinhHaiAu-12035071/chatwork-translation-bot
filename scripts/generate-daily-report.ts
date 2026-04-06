@@ -55,37 +55,43 @@ async function generateDailyReport(date: string): Promise<void> {
   }
 }
 
-function buildMarkdownReport(date: string, analysis: {
-  summary: {
-    totalRequests: number
-    avgLatencyMs: number
-    p50: number
-    p95: number
-    p99: number
-  }
-  byProvider: Record<string, {
-    count: number
-    avgLLMTime: number
-    avgTotal: number
-    tokensPerRequest: number
-  }>
-  bottlenecks: {
-    stage: string
-    occurrences: number
-    avgDuration: number
-  }[]
-  opportunities: {
-    cacheCandidate: number
-    fastModelCandidate: number
-    keywordOptimization: number
-  }
-  slowRequests: Array<{
-    traceId: string
-    duration: number
-    bottleneck: string
-    provider: string
-  }>
-}): string {
+function buildMarkdownReport(
+  date: string,
+  analysis: {
+    summary: {
+      totalRequests: number
+      avgLatencyMs: number
+      p50: number
+      p95: number
+      p99: number
+    }
+    byProvider: Record<
+      string,
+      {
+        count: number
+        avgLLMTime: number
+        avgTotal: number
+        tokensPerRequest: number
+      }
+    >
+    bottlenecks: {
+      stage: string
+      occurrences: number
+      avgDuration: number
+    }[]
+    opportunities: {
+      cacheCandidate: number
+      fastModelCandidate: number
+      keywordOptimization: number
+    }
+    slowRequests: Array<{
+      traceId: string
+      duration: number
+      bottleneck: string
+      provider: string
+    }>
+  },
+): string {
   const providerSection = Object.entries(analysis.byProvider)
     .map(
       ([provider, stats]) => `
@@ -110,7 +116,10 @@ function buildMarkdownReport(date: string, analysis: {
 
 ${analysis.slowRequests
   .slice(0, 5)
-  .map((req) => `- \`${req.traceId}\`: ${req.duration}ms (${req.bottleneck} bottleneck, ${req.provider})`)
+  .map(
+    (req) =>
+      `- \`${req.traceId}\`: ${req.duration}ms (${req.bottleneck} bottleneck, ${req.provider})`,
+  )
   .join('\n')}
 `
       : ''
@@ -143,5 +152,5 @@ ${slowRequestsSection}
 }
 
 // CLI usage
-const date = process.argv[2] || new Date().toISOString().split('T')[0]
+const date = process.argv[2] || new Date().toISOString().split('T')[0] || ''
 await generateDailyReport(date)

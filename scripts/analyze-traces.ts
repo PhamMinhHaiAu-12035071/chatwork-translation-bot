@@ -58,8 +58,10 @@ async function analyzeTraces(dir: string): Promise<TraceAnalysis> {
   }
 
   // Group by provider
-  const byProvider: Record<string, { count: number; totalLLMTime: number; totalTime: number; totalTokens: number }> =
-    {}
+  const byProvider: Record<
+    string,
+    { count: number; totalLLMTime: number; totalTime: number; totalTokens: number }
+  > = {}
 
   for (const trace of traces) {
     const provider = trace.llm.provider
@@ -87,6 +89,7 @@ async function analyzeTraces(dir: string): Promise<TraceAnalysis> {
 
   for (const provider in byProvider) {
     const stats = byProvider[provider]
+    if (!stats) continue
     providerStats[provider] = {
       count: stats.count,
       avgLLMTime: Math.round(stats.totalLLMTime / stats.count),
@@ -165,7 +168,7 @@ async function loadAllTraces(dir: string): Promise<TranslationTrace[]> {
 
 function percentile(sorted: number[], p: number): number {
   const index = Math.ceil((p / 100) * sorted.length) - 1
-  return sorted[index]
+  return sorted[index] ?? 0
 }
 
 // CLI usage
@@ -199,12 +202,16 @@ for (const [provider, stats] of Object.entries(analysis.byProvider)) {
 
 console.log('\nBottlenecks:')
 for (const bottleneck of analysis.bottlenecks) {
-  console.log(`  ${bottleneck.stage}: ${bottleneck.occurrences} times (avg ${bottleneck.avgDuration}ms)`)
+  console.log(
+    `  ${bottleneck.stage}: ${bottleneck.occurrences} times (avg ${bottleneck.avgDuration}ms)`,
+  )
 }
 
 console.log('\nSlow Requests (top 10):')
 for (const req of analysis.slowRequests) {
-  console.log(`  ${req.traceId}: ${req.duration}ms (${req.provider}, bottleneck: ${req.bottleneck})`)
+  console.log(
+    `  ${req.traceId}: ${req.duration}ms (${req.provider}, bottleneck: ${req.bottleneck})`,
+  )
 }
 
 console.log('\nOptimization Opportunities:')
