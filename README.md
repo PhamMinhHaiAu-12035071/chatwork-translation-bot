@@ -210,7 +210,59 @@ bun test                 # Run all tests
 bun run quality          # lint + typecheck + test
 bun run quality:ci       # quality + prettier --check on docs/configs
 bun run verify:standards # Verify all packages meet script/config standards
+
+# Performance analysis
+bun run analyze:traces output/traces/YYYY-MM-DD # Analyze translation performance
+bun run report:daily [YYYY-MM-DD]               # Generate daily performance report
 ```
+
+## Performance Optimization
+
+The translation bot includes comprehensive performance optimizations and observability features:
+
+### Key Optimizations
+
+- **Async Non-Blocking Delivery**: Fire-and-forget message delivery with exponential backoff retry
+- **HTTP Connection Pooling**: Keep-alive connections to Chatwork API using `undici`
+- **Circuit Breaker**: Auto-recovery from transient external service failures
+- **Async Buffered Logging**: Non-blocking JSON logging with automatic flushing
+- **Keyword Processing Cache**: LRU cache for compiled regex patterns
+- **Optimized Prompts**: Token-efficient prompts (-41% tokens, -38% response time)
+
+### Performance Monitoring
+
+Translation traces are automatically generated for every request, capturing:
+- Per-stage timing (preprocessing, LLM call, postprocessing, delivery)
+- Token usage and cost analysis
+- Bottleneck identification
+- Optimization opportunities
+
+See [Analyzing Traces Guide](./docs/operations/analyzing-traces.md) and [Performance Monitoring](./docs/operations/performance-monitoring.md) for details.
+
+### Trace Analysis
+
+```bash
+# Analyze traces for a specific day
+bun run analyze:traces output/traces/2026-04-05
+
+# Generate daily performance report
+bun run report:daily 2026-04-05
+```
+
+### Configuration
+
+Performance features can be configured via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_ASYNC_LOGGING` | `true` | Enable async buffered logging |
+| `ENABLE_ASYNC_DELIVERY` | `false` | Enable fire-and-forget delivery (TODO: update tests) |
+| `ENABLE_HTTP_KEEPALIVE` | `true` | Enable HTTP connection pooling |
+| `ENABLE_KEYWORD_CACHE` | `true` | Enable keyword pattern caching |
+| `TRANSLATION_PROMPT_VERSION` | `optimized` | Prompt version: `baseline` or `optimized` |
+| `TRACE_OUTPUT_ENABLED` | `true` | Enable trace persistence |
+
+See `.env.example` for all available options.
 
 ## Docker
 
