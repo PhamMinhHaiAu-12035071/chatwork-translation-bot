@@ -10,12 +10,32 @@ services:
       KAGI_TRANSLATOR_URL: http://kagi-translator:3002
       KAGI_MAX_ENCODED_PAYLOAD_CHARS: ${KAGI_MAX_ENCODED_PAYLOAD_CHARS:-12000}
       KAGI_MAX_SEGMENT_COUNT: ${KAGI_MAX_SEGMENT_COUNT:-50}
+      # Phase 1 Performance Optimizations
+      USE_ASYNC_LOGGING: ${USE_ASYNC_LOGGING:-true}
+      ENABLE_ASYNC_DELIVERY: ${ENABLE_ASYNC_DELIVERY:-false}
+      ENABLE_HTTP_KEEPALIVE: ${ENABLE_HTTP_KEEPALIVE:-true}
+      KEYWORD_PATTERN_CACHE_MAX: ${KEYWORD_PATTERN_CACHE_MAX:-100}
+      ENABLE_KEYWORD_CACHE: ${ENABLE_KEYWORD_CACHE:-true}
+      CHATWORK_API_FAILURE_THRESHOLD: ${CHATWORK_API_FAILURE_THRESHOLD:-5}
+      CHATWORK_API_RESET_TIMEOUT_MS: ${CHATWORK_API_RESET_TIMEOUT_MS:-30000}
+      LLM_PROVIDER_FAILURE_THRESHOLD: ${LLM_PROVIDER_FAILURE_THRESHOLD:-3}
+      LLM_PROVIDER_RESET_TIMEOUT_MS: ${LLM_PROVIDER_RESET_TIMEOUT_MS:-60000}
     ports:
       - '${PORT:-3000}:3000'
     volumes:
       - ./data:/app/data
     restart: unless-stopped
     networks: [chatwork-net]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        labels: "service,environment"
+        tag: "{{.Name}}/{{.ID}}"
+    labels:
+      service: "translator"
+      environment: "${NODE_ENV:-development}"
     healthcheck:
       test:
         - 'CMD'

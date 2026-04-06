@@ -1,6 +1,7 @@
 import { env } from '~/env'
 import type { TranslatorLogEntry, TranslatorStatusSnapshot } from '~/types/observability'
 import { TranslatorStatusStore } from './translator-status-store'
+import { asyncLogger } from './async-logger'
 
 function createStatusStore(): TranslatorStatusStore {
   return new TranslatorStatusStore({
@@ -19,7 +20,28 @@ export function getTranslatorStatusSnapshot(): TranslatorStatusSnapshot {
 }
 
 export function logTranslatorEvent(entry: TranslatorLogEntry): void {
-  console.log(JSON.stringify(entry))
+  const useAsync = process.env['USE_ASYNC_LOGGING'] !== 'false'
+  
+  const logData = {
+    ...entry,
+    timestamp: new Date().toISOString(),
+  }
+  
+  if (useAsync) {
+    // Map TranslatorLogEntry to LogEntry format
+    asyncLogger.log({
+      level: entry.level,
+      message: entry.event,
+      timestamp: logData.timestamp,
+      service: entry.service,
+      traceId: entry.traceId,
+      requestId: entry.requestId,
+      sourceMessageId: entry.sourceMessageId,
+    })
+  } else {
+    // Fallback to sync logging
+    console.log(JSON.stringify(logData))
+  }
 }
 
 export function getTranslatorObservabilityConfig() {
@@ -36,3 +58,5 @@ export function getTranslatorObservabilityConfig() {
 export function resetTranslatorObservabilityForTest(): void {
   translatorStatusStore = createStatusStore()
 }
+
+export { asyncLogger }

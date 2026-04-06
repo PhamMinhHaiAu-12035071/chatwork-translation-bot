@@ -11,6 +11,7 @@ import {
   resolvePipelineTimeout,
 } from '~/services/pipeline-timeout'
 import { RoomConfigStore } from '~/services/room-config-store'
+import { asyncLogger } from '~/services/async-logger'
 import { initFreeTranslateHandler } from '~/webhook/free-handler'
 import { initTranslateHandler } from '~/webhook/handler'
 import { createServer } from './server'
@@ -69,11 +70,22 @@ if (env.NODE_ENV === 'development') {
   console.log(`[translator] Swagger UI: http://localhost:${env.PORT.toString()}/docs`)
 }
 
-function shutdown() {
+async function shutdown() {
   console.log('\n[translator] Shutting down gracefully...')
+  
+  // Flush logs before exit
+  await asyncLogger.shutdown()
+  
+  // Close HTTP connection pool
+  const { httpAgent } = await import('@chatwork-bot/chatwork')
+  httpAgent?.close()
+  
+  // Stop accepting new requests
   void server.stop()
+  
+  console.log('[translator] Server stopped cleanly')
   process.exit(0)
 }
 
-process.on('SIGINT', shutdown)
-process.on('SIGTERM', shutdown)
+process.on('SIGINT', () => void shutdown())
+process.on('SIGTERM', () => void shutdown())

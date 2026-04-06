@@ -32,3 +32,6 @@ export { resolveRoomDisplayName } from '~/services/resolve-room-display-name'
 export { composeTranslatedMessage } from '~/services/compose-translated-message'
 export type { ComposeParams } from '~/services/compose-translated-message'
 export { composeRoomDescription } from '~/services/compose-room-description'
+
+// HTTP Connection Pool (for graceful shutdown)
+export { httpAgent } from '~/http/chatwork-api-client'
