@@ -1,13 +1,12 @@
 /**
- * Optimized Japanese translation rules (3 examples vs 5 in baseline).
+ * Japanese translation rules using few-shot learning (research-backed).
  *
- * Token budget: ~400 tokens (reduced from ~650)
+ * Token budget: ~400 tokens
  * Research: 3 examples sufficient for 94% compliance in few-shot learning
  *
- * Removed examples: Abbreviation (obvious), Brand (obvious)
- * Kept examples: Person, Company, Technical (core patterns)
+ * Core patterns: Person, Company, Technical
  */
-export const JAPANESE_RULES_OPTIMIZED = `## Japanese Source Rules
+export const JAPANESE_RULES = `## Japanese Source Rules
 
 **Business Formulas:** Read by function. "お世話になっております" = greeting, not literal content. Don't invent Vietnamese closings like "Trân trọng" unless explicit in source.
 

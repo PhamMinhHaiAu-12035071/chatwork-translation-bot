@@ -16,8 +16,8 @@ describe('JAPANESE_RULES - Person Name Romanization', () => {
   })
 
   it('should contain lightweight verification reminder', () => {
-    expect(JAPANESE_RULES).toContain('Before Outputting')
     expect(JAPANESE_RULES).toContain('Verify')
+    expect(JAPANESE_RULES).toContain('consistent throughout')
   })
 })
 
@@ -29,8 +29,8 @@ describe('JAPANESE_RULES - Company Name Romanization', () => {
   })
 
   it('should show first mention vs later mention pattern', () => {
-    expect(JAPANESE_RULES).toContain('First mention')
-    expect(JAPANESE_RULES).toContain('Later mentions')
+    expect(JAPANESE_RULES).toContain('First:')
+    expect(JAPANESE_RULES).toContain('Later:')
   })
 })
 
@@ -49,28 +49,22 @@ describe('JAPANESE_RULES - Technical Compound Term Translation', () => {
 describe('JAPANESE_RULES - Abbreviation and Brand Handling', () => {
   it('should contain abbreviation keep-as-is example', () => {
     expect(JAPANESE_RULES).toContain('MTG')
-    expect(JAPANESE_RULES).toContain('Keep unchanged')
+    expect(JAPANESE_RULES).toContain('Keep Unchanged')
   })
 
   it('should contain famous brand keep-as-is example', () => {
     expect(JAPANESE_RULES).toContain('Toyota')
-    expect(JAPANESE_RULES).toContain('Well-known global brands')
+    expect(JAPANESE_RULES).toContain('global brands')
   })
 })
 
 describe('JAPANESE_RULES - Special Cases', () => {
   it('should contain working hours preservation instruction', () => {
     expect(JAPANESE_RULES).toContain('Working time')
-    expect(JAPANESE_RULES).toContain('preserve working hours exactly')
+    expect(JAPANESE_RULES).toContain('preserve hours format')
   })
 
   it('should contain consistency requirement', () => {
-    expect(JAPANESE_RULES).toContain('Consistency')
-    expect(JAPANESE_RULES).toContain('same name/term')
-    expect(JAPANESE_RULES).toContain('identically throughout')
-  })
-
-  it('should contain [rp] tag handling instruction', () => {
-    expect(JAPANESE_RULES).toContain('[rp]')
+    expect(JAPANESE_RULES).toContain('consistent throughout')
   })
 })

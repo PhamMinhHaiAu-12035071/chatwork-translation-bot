@@ -26,7 +26,6 @@
     "quality:ci": "bun run quality && bunx prettier --check \"*.{json,md,yml,yaml}\" \"docs/**/*.md\"",
     "verify:standards": "bun run scripts/verify-standards.ts",
     "validate:phase1": "bun run scripts/phase1-validation.ts",
-    "test:prompts": "bun run scripts/automated-ab-test.ts",
     "analyze:traces": "bun run scripts/analyze-traces.ts",
     "report:daily": "bun run scripts/generate-daily-report.ts",
     "cursor-proxy": "node \"$(realpath node_modules/cursor-api-proxy/dist/cli.js)\"",
