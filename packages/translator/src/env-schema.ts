@@ -41,6 +41,9 @@ export const translatorEnvSchema = z.object({
   // Keyword processing optimization
   KEYWORD_PATTERN_CACHE_MAX: z.coerce.number().default(100),
   ENABLE_KEYWORD_CACHE: z.coerce.boolean().default(true),
+  
+  // Prompt optimization (Phase 2)
+  TRANSLATION_PROMPT_VERSION: z.enum(['baseline', 'optimized']).default('baseline'),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {
