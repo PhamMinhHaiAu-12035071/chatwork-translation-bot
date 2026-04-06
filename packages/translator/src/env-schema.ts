@@ -46,6 +46,10 @@ export const translatorEnvSchema = z.object({
   // Default: 'optimized' (-41% tokens, -38% response time, A/B tested ✓)
   // Rollback: Set to 'baseline' if issues occur
   TRANSLATION_PROMPT_VERSION: z.enum(['baseline', 'optimized']).default('optimized'),
+  
+  // Tracing configuration (Phase 3)
+  OUTPUT_BASE_DIR: z.string().default('./output'),
+  TRACE_OUTPUT_ENABLED: z.coerce.boolean().default(true),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {
