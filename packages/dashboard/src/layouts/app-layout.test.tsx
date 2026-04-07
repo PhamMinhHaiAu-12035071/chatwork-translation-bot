@@ -40,4 +40,11 @@ describe('AppLayout', () => {
     expect(source).toContain('spotlightRoomId')
     expect(source).toContain('persistHasHydrated')
   })
+
+  it('renders the tour replay float button so users can reopen help guide', async () => {
+    const source = await Bun.file(new URL('./app-layout.tsx', import.meta.url)).text()
+
+    expect(source).toContain('import { TourFloatButton }')
+    expect(source).toContain('<TourFloatButton />')
+  })
 })

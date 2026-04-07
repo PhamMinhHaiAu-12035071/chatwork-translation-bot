@@ -18,11 +18,9 @@ export function TourFloatButton() {
   const hasReplayTour = replayTour !== null
 
   const handleClick = () => {
-    if (!hasReplayTour) {
-      return
+    if (replayTour) {
+      startNextStep(replayTour.tour)
     }
-
-    startNextStep(replayTour.tour)
   }
 
   return (

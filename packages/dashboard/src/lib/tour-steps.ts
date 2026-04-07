@@ -252,10 +252,13 @@ const steps: NeubStep[] = [
 // Helper to strip navigation properties from a step
 function cleanStep(step: NeubStep | undefined): NeubStep {
   if (!step) throw new Error('Step is undefined')
-  const stepCopy = Object.assign({}, step)
-  delete (stepCopy as unknown as Record<string, unknown>)['nextRoute']
-  delete (stepCopy as unknown as Record<string, unknown>)['prevRoute']
-  return stepCopy
+  // Double cast through unknown to satisfy TypeScript type checking
+  const {
+    nextRoute: _nextRoute,
+    prevRoute: _prevRoute,
+    ...cleaned
+  } = step as unknown as Record<string, unknown>
+  return cleaned as unknown as NeubStep
 }
 
 // Replay tours: route-scoped step sets without cross-page navigation
@@ -297,8 +300,6 @@ const createRoomReplaySteps: NeubStep[] = [
   cleanStep(steps[22]), // Completion
 ]
 
-const editRoomReplaySteps = createRoomReplaySteps
-
 export const DASHBOARD_EMPTY_REPLAY_TOUR = 'dashboard-empty-tour' as const
 export const DASHBOARD_WITH_ROOM_REPLAY_TOUR = 'dashboard-with-room-tour' as const
 export const CREATE_ROOM_REPLAY_TOUR = 'create-room-tour' as const
@@ -327,7 +328,7 @@ export function getReplayTourForRoute(pathname: string, hasRooms: boolean): Repl
   }
 
   if (pathname.startsWith('/rooms/') && pathname !== '/rooms/new') {
-    return { tour: EDIT_ROOM_REPLAY_TOUR, steps: editRoomReplaySteps }
+    return { tour: EDIT_ROOM_REPLAY_TOUR, steps: createRoomReplaySteps }
   }
 
   return null
@@ -337,7 +338,7 @@ const replayTours: ReplayTour[] = [
   { tour: DASHBOARD_EMPTY_REPLAY_TOUR, steps: dashboardEmptyReplaySteps },
   { tour: DASHBOARD_WITH_ROOM_REPLAY_TOUR, steps: dashboardWithRoomReplaySteps },
   { tour: CREATE_ROOM_REPLAY_TOUR, steps: createRoomReplaySteps },
-  { tour: EDIT_ROOM_REPLAY_TOUR, steps: editRoomReplaySteps },
+  { tour: EDIT_ROOM_REPLAY_TOUR, steps: createRoomReplaySteps },
 ]
 
 export const tours: { tour: string; steps: NeubStep[] }[] = [

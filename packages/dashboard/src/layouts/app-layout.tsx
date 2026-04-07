@@ -7,8 +7,7 @@ import { Icon } from '~/components/atoms/icons'
 import type { ClayIconName } from '~/components/atoms/icons'
 import { AmbientOrbs } from '~/components/layout/ambient-orbs'
 import { NeubTourCard } from '~/components/organisms/neub-tour-card'
-// TODO: Re-enable tour replay float button when tour/overlay issues are fully resolved.
-// import { TourFloatButton } from '~/components/organisms/tour-float-button'
+import { TourFloatButton } from '~/components/organisms/tour-float-button'
 import { TOUR_NAME, TOUR_VERSION, tours } from '~/lib/tour-steps'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StickerLabel } from '~/components/atoms/sticker-label'
@@ -444,8 +443,7 @@ export function AppLayout() {
           </motion.main>
         </div>
 
-        {/* TODO: Re-enable — see import above */}
-        {/* <TourFloatButton /> */}
+        <TourFloatButton />
       </div>
     </NextStepReact>
   )

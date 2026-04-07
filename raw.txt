@@ -1,31 +1,4 @@
-Before:
-Liên quan đến nội dung được đưa ra trong cuộc MTG tuần trước của DExpert Kihon-bu (デキスパート基本部), tôi xin trao đổi như sau.
-Về việc này, tôi được Sasaki-san (佐々木さん) cho biết rằng trong cuộc họp đã có trao đổi theo hướng cân nhắc giao cho phía VFA thực hiện công việc khảo sát để lên estimate cho PJ tiếp theo vào khoảng tháng 5.
- 
-Tuy nhiên, vì các lý do dưới đây, thay vì tăng thêm các đơn đặt hàng mới trong tháng 5-6, phía KTM muốn chuẩn bị để có thể chuyển sang phát triển giai đoạn 2 của DExpert Kihon-bu từ tháng 7.
-Đối với phát triển giai đoạn 2 của DExpert Kihon-bu, về cơ bản chúng tôi sẽ áp dụng phương thức migration tương đương với phát triển giai đoạn 1, nên có thể sẽ phát sinh việc rà soát và điều chỉnh lại milestone dựa trên kết quả thực tế ngay từ giai đoạn sớm sau khi PJ bắt đầu.
- 
-・Hợp đồng là theo hình thức chuẩn ủy nhiệm
-・Ngay cả khi bỏ chi phí từ trước để thực hiện công việc khảo sát estimate và nâng độ chính xác của estimate, điều đó cũng không có nghĩa là sẽ giúp giảm tổng chi phí
- 
-Phần estimate trước dự án sẽ chỉ làm ở mức vừa phải, ưu tiên triển khai công việc thực tế để có thể khởi động PJ sớm nhất có thể.
-
-
-
-After:
-Tôi liên hệ về nội dung cuộc MTG tuần hôm qua của DExpert Kihon-bu (デキスパート基本部).
-Về việc này, tôi được Sasaki-san (佐々木さん) cho biết rằng trong cuộc họp đã có trao đổi theo hướng cân nhắc đặt hàng cho phía VFA thực hiện công việc khảo sát báo giá cho PJ tiếp theo vào khoảng tháng 5.
- 
-Tuy nhiên, vì các lý do dưới đây, thay vì tăng thêm đơn đặt hàng mới trong tháng 5 và 6, phía KTM muốn chuẩn bị để có thể chuyển sang giai đoạn phát triển 2 của DExpert Kihon-bu từ tháng 7.
-Đối với giai đoạn phát triển 2 của DExpert Kihon-bu, về cơ bản chúng tôi sẽ áp dụng phương pháp migrate tương đương với giai đoạn phát triển 1, nên có thể sẽ cần điều chỉnh lại milestone dựa trên kết quả thực tế ở giai đoạn sớm nhất có thể sau khi PJ bắt đầu.
- 
-- Hợp đồng theo hình thức quasi-mandate
-- Dù bỏ chi phí trước để thực hiện công việc khảo sát báo giá và nâng độ chính xác của báo giá, điều đó cũng không nhất thiết giúp giảm tổng chi phí
-
-Chúng tôi sẽ chỉ thực hiện ước tính sơ bộ ở mức vừa phải, ưu tiên công việc thực tế để có thể khởi động PJ sớm nhất có thể.
-
-
-Original:
+Nội dung bản gốc:
 デキスパート基本部の昨日の週次MTGの議題について、ご連絡です。
 こちらの件ですが、会議の中で5月くらいに次期PJの見積調査作業でVFAさんに発注することを検討する的な議論になったと佐々木さんから伺いました。
  
@@ -36,3 +9,29 @@ Original:
 ・事前にコストをかけて見積調査作業を行い、見積精度を上げたとしても、全体のコスト短縮に繋がる訳ではない 
 
 事前見積はほどほどに、実務を優先してなるべく早くにPJスタートできるようにしますので。
+
+
+Nội dung bản dịch của chúng ta:
+Tôi xin thông tin về nội dung được nêu trong cuộc họp MTG hằng tuần hôm qua của デキスパート基本部.
+Về việc này, tôi được 佐々木さん cho biết rằng trong cuộc họp đã có trao đổi theo hướng cân nhắc đặt hàng cho phía VFA vào khoảng tháng 5 để thực hiện công việc khảo sát phục vụ ước tính cho PJ tiếp theo.
+
+Tuy nhiên, vì các lý do dưới đây, thay vì tăng thêm đơn đặt hàng mới trong tháng 5-6, phía KTM muốn chuẩn bị để có thể chuyển sang 2nd開発 của デキスパート基本部 từ tháng 7.
+Đối với 2nd開発 của デキ基本部, về cơ bản chúng ta sẽ áp dụng phương pháp migration tương đương với 1st開発, nên có thể sẽ phát sinh việc điều chỉnh lại milestone dựa trên kết quả thực tế ở giai đoạn sớm nhất có thể sau khi PJ bắt đầu.
+
+・Hợp đồng là theo hình thức tính theo công sức thực tế
+・Ngay cả khi bỏ chi phí trước để thực hiện công việc khảo sát phục vụ ước tính và nâng độ chính xác của ước tính, điều đó cũng không đồng nghĩa với việc giúp giảm tổng chi phí
+
+Chúng tôi sẽ chỉ thực hiện ước tính trước ở mức vừa phải, ưu tiên công việc triển khai thực tế để có thể khởi động PJ sớm nhất có thể.
+
+
+
+
+
+Nôi dụng bản dịch trên Chatgpt web khi gõ "translate nội dung này sang tiếng Việt":
+Tôi xin thông báo về nội dung thảo luận trong cuộc họp tuần của bộ phận DExpert Basic ngày hôm qua.
+Về vấn đề này, tôi được anh Sasaki cho biết rằng trong cuộc họp đã có trao đổi theo hướng cân nhắc việc đặt hàng cho phía VFA thực hiện công việc khảo sát, ước tính cho dự án tiếp theo vào khoảng tháng 5.
+Tuy nhiên, vì các lý do dưới đây, thay vì tăng thêm các đơn đặt hàng mới trong tháng 5 và 6, chúng tôi muốn phía KTM chuẩn bị để có thể tiến hành phát triển giai đoạn 2 (2nd) của DExpert Basic từ tháng 7.
+Đối với phát triển giai đoạn 2 của DExpert Basic, về cơ bản chúng tôi sẽ áp dụng phương pháp migration tương tự như giai đoạn 1, nên có khả năng sau khi dự án bắt đầu, sẽ cần điều chỉnh lại các mốc (milestone) dựa trên kết quả thực tế trong giai đoạn sớm.
+Hợp đồng thuộc dạng ủy thác (準委任)
+Ngay cả khi thực hiện khảo sát và ước tính trước với chi phí phát sinh để nâng cao độ chính xác của estimate, thì cũng không nhất thiết dẫn đến việc giảm tổng chi phí
+Do đó, việc estimate trước sẽ được thực hiện ở mức vừa phải, ưu tiên triển khai thực tế để có thể bắt đầu dự án sớm nhất có thể.
