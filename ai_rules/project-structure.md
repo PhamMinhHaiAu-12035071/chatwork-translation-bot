@@ -51,10 +51,14 @@ No build step needed — Bun resolves TypeScript directly.
 - Prompt sections: CORE_DOCTRINE, JAPANESE_RULES, ENGLISH_RULES, CONSTRAINTS
 - Zod schemas: Only `ReviewSchema` exported (not PipelineTraceSchema)
 
-**Phase 2+ Changes:**
+**Performance Optimizations (Applied):**
 
-- Optimized prompt versions (30% token reduction)
-- Feature flag: `TRANSLATION_PROMPT_VERSION=baseline|optimized`
+- Optimized translation prompts (30% token reduction)
+- HTTP connection pooling with `undici`
+- Async buffered logging
+- Keyword pattern caching
+- Circuit breaker pattern for external calls
+- Exponential backoff retry with jitter
 
 **Note:** Pipeline is **single LLM call**, not 4-phase (design doc confirmed)
 

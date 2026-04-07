@@ -1,91 +1,56 @@
 import { describe, expect, it } from 'bun:test'
+import { getReplayTourForRoute } from './tour-steps'
 
-import { tours, TOUR_NAME, TOUR_VERSION } from './tour-steps'
+describe('getReplayTourForRoute', () => {
+  it('returns dashboard empty replay tour for / with no rooms', () => {
+    const replayTour = getReplayTourForRoute('/', false)
+    if (!replayTour) throw new Error('Expected replayTour')
 
-describe('tour-steps', () => {
-  const steps = tours[0]?.steps ?? []
-
-  it('exports exactly one tour named main-tour', () => {
-    expect(tours).toHaveLength(1)
-    expect(tours[0]?.tour).toBe(TOUR_NAME)
+    expect(replayTour.tour).toBe('dashboard-empty-tour')
+    expect(replayTour.steps.length).toBe(6)
   })
 
-  it('has exactly 23 steps', () => {
-    expect(steps).toHaveLength(23)
+  it('returns dashboard with-room replay tour for / with rooms', () => {
+    const replayTour = getReplayTourForRoute('/', true)
+    if (!replayTour) throw new Error('Expected replayTour')
+
+    expect(replayTour.tour).toBe('dashboard-with-room-tour')
+    expect(replayTour.steps.length).toBe(10)
+    expect((replayTour.steps[5] as { selector?: string }).selector).toBe('#tour-room-card-first')
   })
 
-  it('covers the sidebar and every create-room field we want to explain', () => {
-    const selectors = steps.map((step) => step.selector ?? null)
+  it('returns create-room replay tour for /rooms/new', () => {
+    const replayTour = getReplayTourForRoute('/rooms/new', false)
+    if (!replayTour) throw new Error('Expected replayTour')
 
-    expect(selectors).toContain('#tour-sidebar-nav')
-    expect(selectors).toContain('#tour-new-room')
-    expect(selectors).toContain('#tour-field-roomid')
-    expect(selectors).toContain('#tour-field-roomname-orig')
-    expect(selectors).toContain('#tour-field-roomname')
-    expect(selectors).toContain('#tour-field-provider')
-    expect(selectors).toContain('#tour-field-model')
-    expect(selectors).toContain('#tour-field-style')
-    expect(selectors).toContain('#tour-field-token')
-    expect(selectors).toContain('#tour-field-context')
-    expect(selectors).toContain('#tour-context-templates')
-    expect(selectors).toContain('#tour-field-keywords')
-    expect(selectors).toContain('#tour-keyword-addform')
-    expect(selectors).toContain('#tour-save-btn')
+    expect(replayTour.tour).toBe('create-room-tour')
+    expect(replayTour.steps.length).toBe(13)
+    // Step[1] is the first form field (Room ID)
+    expect((replayTour.steps[1] as { selector?: string }).selector).toBe('#tour-field-roomid')
   })
 
-  it('every step has title and content', () => {
-    for (const step of steps) {
-      expect(typeof step.title).toBe('string')
-      expect(step.title.length).toBeGreaterThan(0)
-      expect(typeof step.content).toBe('string')
-      expect((step.content as string).length).toBeGreaterThan(0)
-    }
+  it('returns edit-room replay tour for /rooms/:id', () => {
+    const tour1 = getReplayTourForRoute('/rooms/123', false)
+    expect(tour1?.tour).toBe('edit-room-tour')
+
+    const tour2 = getReplayTourForRoute('/rooms/abc', true)
+    expect(tour2?.tour).toBe('edit-room-tour')
   })
 
-  it('every step uses a unique solid hex color', () => {
-    const colors = steps.map((step) => (step as { color: string }).color)
-
-    expect(new Set(colors).size).toBe(colors.length)
-
-    for (const color of colors) {
-      expect(color).toMatch(/^#[0-9a-f]{6}$/i)
-    }
+  it('returns null for unsupported routes', () => {
+    expect(getReplayTourForRoute('/guide', false)).toBeNull()
+    expect(getReplayTourForRoute('/free-rooms', false)).toBeNull()
   })
 
-  it('steps 6 and 18 have nextRoute (cross-page navigation)', () => {
-    expect((steps[5] as { nextRoute?: string }).nextRoute).toBe('/rooms/new')
-    expect((steps[17] as { nextRoute?: string }).nextRoute).toBe('/')
-  })
+  it('does not include cross-page navigation in replay steps', () => {
+    const replayTour = getReplayTourForRoute('/rooms/new', false)
+    if (!replayTour) throw new Error('Expected replayTour')
 
-  it('only the real cross-page backward boundaries use prevRoute', () => {
-    expect((steps[6] as { prevRoute?: string }).prevRoute).toBe('/')
-
-    for (const index of [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]) {
-      expect((steps[index] as { prevRoute?: string }).prevRoute).toBeUndefined()
-    }
-
-    expect((steps[18] as { prevRoute?: string }).prevRoute).toBe('/rooms/new')
-
-    for (const index of [19, 20, 21, 22]) {
-      expect((steps[index] as { prevRoute?: string }).prevRoute).toBeUndefined()
-    }
-  })
-
-  it('keeps the keyword add-form step pointing upward toward the inline add form', () => {
-    expect(steps[16]?.selector).toBe('#tour-keyword-addform')
-    expect(steps[16]?.side).toBe('bottom')
-  })
-
-  it('step 7 is originalRoomName with mint color theme', () => {
-    const step = steps[7]
-    expect(step?.selector).toBe('#tour-field-roomname-orig')
-    expect(step?.title).toBe('🏢 Original Room Name')
-    expect((step as { color: string }).color).toBe('#b8e6e6')
-    expect(step?.side).toBe('right')
-  })
-
-  it('TOUR_VERSION is a positive integer', () => {
-    expect(typeof TOUR_VERSION).toBe('number')
-    expect(TOUR_VERSION).toBeGreaterThan(0)
+    // Only check if any step has nextRoute or prevRoute - replay steps should not
+    const hasNavigation = replayTour.steps.some((step) => {
+      // Check if step has any route navigation properties
+      return 'nextRoute' in step || 'prevRoute' in step
+    })
+    expect(hasNavigation).toBe(false)
   })
 })

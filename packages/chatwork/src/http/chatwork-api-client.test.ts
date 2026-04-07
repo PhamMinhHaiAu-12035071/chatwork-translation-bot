@@ -51,12 +51,20 @@ async function catchError(promise: Promise<unknown>): Promise<unknown> {
 
 describe('chatworkApiClient', () => {
   let fetchSpy: FetchSpy
+  let originalNodeEnv: string | undefined
 
   beforeEach(() => {
+    originalNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'test'
     fetchSpy = makeFetchSpy()
   })
 
   afterEach(() => {
+    if (originalNodeEnv !== undefined) {
+      process.env.NODE_ENV = originalNodeEnv
+    } else {
+      delete process.env.NODE_ENV
+    }
     fetchSpy.mockRestore()
   })
 

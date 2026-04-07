@@ -130,9 +130,9 @@ function buildTranslationResult(
 
 function isRetryableError(error: unknown): boolean {
   if (!(error instanceof Error)) return false
-  
+
   const message = error.message.toLowerCase()
-  
+
   // HTTP status codes that should be retried
   const retryablePatterns = [
     '429', // Rate limit
@@ -143,8 +143,8 @@ function isRetryableError(error: unknown): boolean {
     'econnrefused',
     'network',
   ]
-  
-  return retryablePatterns.some(pattern => message.includes(pattern))
+
+  return retryablePatterns.some((pattern) => message.includes(pattern))
 }
 
 export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestratorDeps) {
@@ -397,7 +397,7 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
       const deliverAsync = async (): Promise<void> => {
         const maxRetries = 3
         const baseDelayMs = 1000
-        
+
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
             const delivery = await observer.runPhase('delivery', async () => {
@@ -433,30 +433,50 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
 
               return deliveryResult
             })
-            
+
             // Persist with delivery result
-            await persistOutput(
-              { ...outputRecord, delivery },
-              ...(outputBaseDir ? [outputBaseDir] : []),
-            )
-            observer.logEvent('info', 'translation_output_persisted', {
-              deliveryStatus: delivery.status,
-            })
-            
+            try {
+              await persistOutput(
+                { ...outputRecord, delivery },
+                ...(outputBaseDir ? [outputBaseDir] : []),
+              )
+              observer.logEvent('info', 'translation_output_persisted', {
+                deliveryStatus: delivery.status,
+              })
+            } catch (error) {
+              observer.logEvent('error', 'output-rewrite-failed', {
+                phase: 'delivery',
+                errorMessage: error instanceof Error ? error.message : String(error),
+              })
+              throw error
+            }
+
             // Send ACK notification
             await notifyDatasetRunnerAck(delivery)
-            
+
             observer.completeRequest({
               finalPhase: origin.type === 'automation' ? 'ack_callback' : 'delivery',
               deliveryStatus: delivery.status,
               ...(origin.type === 'automation' ? { ackStatus: 'sent' as const } : {}),
             })
-            
+
             return // Success - exit retry loop
           } catch (error) {
+            // Check if this is an output persistence error (not a delivery error)
+            // Output persistence happens AFTER delivery succeeds, so if error occurs
+            // after we have a valid delivery object, it's a persistence issue
+            const isOutputPersistenceError =
+              error instanceof Error &&
+              (error.message.includes('rewrite') || error.stack?.includes('output-writer'))
+
+            if (isOutputPersistenceError) {
+              // Don't retry output persistence errors - they're not transient
+              throw error
+            }
+
             const isLastAttempt = attempt === maxRetries
             const isRetryable = isRetryableError(error)
-            
+
             if (isLastAttempt || !isRetryable) {
               logTranslatorEvent({
                 level: 'error',
@@ -474,10 +494,10 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
                 inputLength: 0,
                 errorMessage: error instanceof Error ? error.message : String(error),
               })
-              
+
               // Send error notification to room (best effort)
               try {
-                const errorMsg = `⚠️ Translation delivery failed after ${attempt + 1} attempts. Please try again.`
+                const errorMsg = `⚠️ Translation delivery failed after ${(attempt + 1).toString()} attempts. Please try again.`
                 const errorResult = buildTranslationResult('', errorMsg, '')
                 await chatworkApiBreaker.execute(async () =>
                   deliverTranslation(
@@ -493,14 +513,14 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
               } catch {
                 // Swallow notification errors
               }
-              
+
               return
             }
-            
+
             // Retry with exponential backoff
             const delayMs = baseDelayMs * Math.pow(2, attempt)
             const jitter = Math.random() * 500
-            
+
             logTranslatorEvent({
               level: 'warn',
               service: 'translator',
@@ -517,15 +537,15 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
               inputLength: 0,
               errorMessage: error instanceof Error ? error.message : String(error),
             })
-            
-            await new Promise(resolve => setTimeout(resolve, delayMs + jitter))
+
+            await new Promise((resolve) => setTimeout(resolve, delayMs + jitter))
           }
         }
       }
-      
+
       // Feature flag for async vs blocking delivery
       const enableAsync = process.env['ENABLE_ASYNC_DELIVERY'] !== 'false'
-      
+
       if (enableAsync) {
         // Fire-and-forget (return immediately, don't await)
         void deliverAsync()
