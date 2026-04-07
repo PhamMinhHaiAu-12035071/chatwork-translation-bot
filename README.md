@@ -232,6 +232,7 @@ The translation bot includes comprehensive performance optimizations and observa
 ### Performance Monitoring
 
 Translation traces are automatically generated for every request, capturing:
+
 - Per-stage timing (preprocessing, LLM call, postprocessing, delivery)
 - Token usage and cost analysis
 - Bottleneck identification
@@ -253,14 +254,13 @@ bun run report:daily 2026-04-05
 
 Performance features can be configured via environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `USE_ASYNC_LOGGING` | `true` | Enable async buffered logging |
+| Variable                | Default | Description                                          |
+| ----------------------- | ------- | ---------------------------------------------------- |
+| `USE_ASYNC_LOGGING`     | `true`  | Enable async buffered logging                        |
 | `ENABLE_ASYNC_DELIVERY` | `false` | Enable fire-and-forget delivery (TODO: update tests) |
-| `ENABLE_HTTP_KEEPALIVE` | `true` | Enable HTTP connection pooling |
-| `ENABLE_KEYWORD_CACHE` | `true` | Enable keyword pattern caching |
-| `TRANSLATION_PROMPT_VERSION` | `optimized` | Prompt version: `baseline` or `optimized` |
-| `TRACE_OUTPUT_ENABLED` | `true` | Enable trace persistence |
+| `ENABLE_HTTP_KEEPALIVE` | `true`  | Enable HTTP connection pooling                       |
+| `ENABLE_KEYWORD_CACHE`  | `true`  | Enable keyword pattern caching                       |
+| `TRACE_OUTPUT_ENABLED`  | `true`  | Enable trace persistence                             |
 
 See `.env.example` for all available options.
 

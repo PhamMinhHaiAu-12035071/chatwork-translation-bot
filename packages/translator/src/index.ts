@@ -72,17 +72,17 @@ if (env.NODE_ENV === 'development') {
 
 async function shutdown() {
   console.log('\n[translator] Shutting down gracefully...')
-  
+
   // Flush logs before exit
   await asyncLogger.shutdown()
-  
+
   // Close HTTP connection pool
   const { httpAgent } = await import('@chatwork-bot/chatwork')
-  httpAgent?.close()
-  
+  await httpAgent?.close()
+
   // Stop accepting new requests
   void server.stop()
-  
+
   console.log('[translator] Server stopped cleanly')
   process.exit(0)
 }

@@ -18,9 +18,9 @@ export async function persistTrace(trace: TranslationTrace): Promise<void> {
 
   try {
     // Create daily folder: output/traces/YYYY-MM-DD/
-    const date = new Date().toISOString().split('T')[0]
+    const date = new Date().toISOString().split('T')[0] ?? ''
     const outputBase: string = env.OUTPUT_BASE_DIR || './output'
-    const traceDir = join(outputBase, 'traces', date!)
+    const traceDir = join(outputBase, 'traces', date)
 
     await mkdir(traceDir, { recursive: true })
 

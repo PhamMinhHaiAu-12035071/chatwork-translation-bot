@@ -321,6 +321,7 @@ describe('handleTranslateRequest', () => {
 
   beforeAll(async () => {
     process.env['USE_ASYNC_LOGGING'] = 'false'
+    process.env['ENABLE_ASYNC_DELIVERY'] = 'false'
     process.env['CHATWORK_API_TOKEN'] = 'test-token'
     process.env['CHATWORK_BOT_ACCOUNT_ID'] = '42'
     process.env['ROOM_CONFIG_ENCRYPTION_KEY'] = ROOM_CONFIG_KEY_HEX

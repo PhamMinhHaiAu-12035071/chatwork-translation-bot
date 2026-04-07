@@ -21,6 +21,7 @@ describe('getRoom', () => {
   let fetchSpy: FetchSpy
 
   beforeEach(() => {
+    process.env.NODE_ENV = 'test'
     fetchSpy = makeFetchSpy()
   })
 

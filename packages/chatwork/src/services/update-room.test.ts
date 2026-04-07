@@ -30,6 +30,7 @@ describe('updateRoom', () => {
   let fetchSpy: FetchSpy
 
   beforeEach(() => {
+    process.env.NODE_ENV = 'test'
     fetchSpy = makeFetchSpy()
   })
 

@@ -42,23 +42,35 @@ async function makeRequest(
     body?: string
   },
 ): Promise<Response> {
+  // In tests, use fetch() to allow for mocking
+  // In production, use undici.request() for connection pooling
+  const isTest = process.env.NODE_ENV === 'test'
+
+  if (isTest) {
+    return fetch(url, {
+      method: options.method,
+      headers: options.headers,
+      body: options.body,
+    })
+  }
+
   const requestOptions: Parameters<typeof request>[1] = {
     method: options.method,
     headers: options.headers,
   }
-  
+
   if (options.body !== undefined) {
     requestOptions.body = options.body
   }
-  
+
   if (httpAgent !== undefined) {
     requestOptions.dispatcher = httpAgent
   }
-  
+
   const { statusCode, headers, body: responseBody } = await request(url, requestOptions)
 
   const text = await responseBody.text()
-  
+
   // Filter out undefined header values
   const headerEntries = Object.entries(headers).filter(
     (entry): entry is [string, string] => typeof entry[1] === 'string',
