@@ -249,4 +249,98 @@ const steps: NeubStep[] = [
   },
 ]
 
-export const tours: { tour: string; steps: NeubStep[] }[] = [{ tour: TOUR_NAME, steps }]
+// Helper to strip navigation properties from a step
+function cleanStep(step: NeubStep | undefined): NeubStep {
+  if (!step) throw new Error('Step is undefined')
+  const stepCopy = Object.assign({}, step)
+  delete (stepCopy as unknown as Record<string, unknown>)['nextRoute']
+  delete (stepCopy as unknown as Record<string, unknown>)['prevRoute']
+  return stepCopy
+}
+
+// Replay tours: route-scoped step sets without cross-page navigation
+const dashboardEmptyReplaySteps: NeubStep[] = [
+  cleanStep(steps[0]), // Welcome
+  cleanStep(steps[1]), // Sidebar nav
+  cleanStep(steps[2]), // Stat total
+  cleanStep(steps[3]), // Stat active
+  cleanStep(steps[4]), // Stat inactive
+  cleanStep(steps[22]), // Completion
+]
+
+const dashboardWithRoomReplaySteps: NeubStep[] = [
+  cleanStep(steps[0]), // Welcome
+  cleanStep(steps[1]), // Sidebar nav
+  cleanStep(steps[2]), // Stat total
+  cleanStep(steps[3]), // Stat active
+  cleanStep(steps[4]), // Stat inactive
+  cleanStep(steps[18]), // Room card first
+  cleanStep(steps[19]), // Status toggle
+  cleanStep(steps[20]), // Edit btn
+  cleanStep(steps[21]), // Delete btn
+  cleanStep(steps[22]), // Completion
+]
+
+const createRoomReplaySteps: NeubStep[] = [
+  cleanStep(steps[0]), // Welcome (only at top of create form)
+  cleanStep(steps[6]), // Room ID field
+  cleanStep(steps[7]), // Room name orig
+  cleanStep(steps[8]), // Room name
+  cleanStep(steps[9]), // Provider
+  cleanStep(steps[10]), // Model
+  cleanStep(steps[11]), // Style
+  cleanStep(steps[12]), // Token
+  cleanStep(steps[13]), // Context
+  cleanStep(steps[14]), // Context templates
+  cleanStep(steps[15]), // Keywords
+  cleanStep(steps[16]), // Keyword add form
+  cleanStep(steps[22]), // Completion
+]
+
+const editRoomReplaySteps = createRoomReplaySteps
+
+export const DASHBOARD_EMPTY_REPLAY_TOUR = 'dashboard-empty-tour' as const
+export const DASHBOARD_WITH_ROOM_REPLAY_TOUR = 'dashboard-with-room-tour' as const
+export const CREATE_ROOM_REPLAY_TOUR = 'create-room-tour' as const
+export const EDIT_ROOM_REPLAY_TOUR = 'edit-room-tour' as const
+
+type ReplayTourName =
+  | typeof DASHBOARD_EMPTY_REPLAY_TOUR
+  | typeof DASHBOARD_WITH_ROOM_REPLAY_TOUR
+  | typeof CREATE_ROOM_REPLAY_TOUR
+  | typeof EDIT_ROOM_REPLAY_TOUR
+
+export interface ReplayTour {
+  tour: ReplayTourName
+  steps: NeubStep[]
+}
+
+export function getReplayTourForRoute(pathname: string, hasRooms: boolean): ReplayTour | null {
+  if (pathname === '/') {
+    return hasRooms
+      ? { tour: DASHBOARD_WITH_ROOM_REPLAY_TOUR, steps: dashboardWithRoomReplaySteps }
+      : { tour: DASHBOARD_EMPTY_REPLAY_TOUR, steps: dashboardEmptyReplaySteps }
+  }
+
+  if (pathname === '/rooms/new') {
+    return { tour: CREATE_ROOM_REPLAY_TOUR, steps: createRoomReplaySteps }
+  }
+
+  if (pathname.startsWith('/rooms/') && pathname !== '/rooms/new') {
+    return { tour: EDIT_ROOM_REPLAY_TOUR, steps: editRoomReplaySteps }
+  }
+
+  return null
+}
+
+const replayTours: ReplayTour[] = [
+  { tour: DASHBOARD_EMPTY_REPLAY_TOUR, steps: dashboardEmptyReplaySteps },
+  { tour: DASHBOARD_WITH_ROOM_REPLAY_TOUR, steps: dashboardWithRoomReplaySteps },
+  { tour: CREATE_ROOM_REPLAY_TOUR, steps: createRoomReplaySteps },
+  { tour: EDIT_ROOM_REPLAY_TOUR, steps: editRoomReplaySteps },
+]
+
+export const tours: { tour: string; steps: NeubStep[] }[] = [
+  { tour: TOUR_NAME, steps },
+  ...replayTours,
+]

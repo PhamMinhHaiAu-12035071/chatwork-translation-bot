@@ -1,19 +1,35 @@
 import { useNextStep } from 'nextstepjs'
+import { useLocation } from 'react-router'
 
-import { TOUR_NAME } from '~/lib/tour-steps'
+import { getReplayTourForRoute } from '~/lib/tour-steps'
 import { selectTourSeenVersion, useUiStore } from '~/stores/ui-store'
+import { useRoomStore } from '~/stores/room-store'
 
 export function TourFloatButton() {
   const { startNextStep } = useNextStep()
+  const location = useLocation()
+  const rooms = useRoomStore((state) => state.rooms)
   const tourSeenVersion = useUiStore(selectTourSeenVersion)
   const showBadge = tourSeenVersion === null
+
+  const pathname = location.pathname
+  const hasRooms = rooms.length > 0
+  const replayTour = getReplayTourForRoute(pathname, hasRooms)
+  const hasReplayTour = replayTour !== null
+
+  const handleClick = () => {
+    if (!hasReplayTour) {
+      return
+    }
+
+    startNextStep(replayTour.tour)
+  }
 
   return (
     <button
       type="button"
-      onClick={() => {
-        startNextStep(TOUR_NAME)
-      }}
+      onClick={handleClick}
+      disabled={!hasReplayTour}
       style={{
         position: 'fixed',
         bottom: 20,
@@ -25,7 +41,8 @@ export function TourFloatButton() {
         background: '#6e77e5',
         border: '3px solid #1a1a2e',
         boxShadow: '4px 4px 0 #1a1a2e',
-        cursor: 'pointer',
+        cursor: hasReplayTour ? 'pointer' : 'not-allowed',
+        opacity: hasReplayTour ? 1 : 0.5,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -33,15 +50,19 @@ export function TourFloatButton() {
         fontSize: '1.3rem',
         fontWeight: 800,
         color: '#fff',
-        transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+        transition: 'transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'rotate(-5deg) translate(-2px, -2px)'
-        e.currentTarget.style.boxShadow = '6px 6px 0 #1a1a2e'
+        if (hasReplayTour) {
+          e.currentTarget.style.transform = 'rotate(-5deg) translate(-2px, -2px)'
+          e.currentTarget.style.boxShadow = '6px 6px 0 #1a1a2e'
+        }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = ''
-        e.currentTarget.style.boxShadow = '4px 4px 0 #1a1a2e'
+        if (hasReplayTour) {
+          e.currentTarget.style.transform = ''
+          e.currentTarget.style.boxShadow = '4px 4px 0 #1a1a2e'
+        }
       }}
       aria-label="Xem lại tour hướng dẫn"
     >
