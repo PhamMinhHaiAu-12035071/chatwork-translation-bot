@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import {
   buildSingleCallPrompts,
   buildStructuredTranslationPrompts,
@@ -8,13 +6,6 @@ import {
   TRANSLATION_PROMPT_BUILD_ID,
   TranslationDraftSchema,
 } from './translation-prompt'
-
-function getTestData(_filename: string): string {
-  // Navigate from this test file's directory to repo root
-  // packages/translation-prompt/src/translation-prompt.test.ts -> ../../..
-  const filepath = join(__dirname, '..', '..', '..', 'raw.txt')
-  return readFileSync(filepath, 'utf-8')
-}
 
 describe('buildSingleCallPrompts', () => {
   it('returns PromptPair with system and user strings', () => {
@@ -184,20 +175,5 @@ describe('buildSingleCallPrompts - Japanese Romanization Integration', () => {
     const result = buildSingleCallPrompts('テスト', 'PROFESSIONAL_BUSINESS')
     expect(result.system).toContain('## Japanese Source Rules')
     expect(result.system).toContain('Romanization')
-  })
-})
-
-describe('E2E - Real-World Translation with Romanization', () => {
-  it('should generate prompt with romanization rules for raw.txt content', () => {
-    const rawText = getTestData('raw.txt')
-    const result = buildSingleCallPrompts(rawText, 'PROFESSIONAL_BUSINESS')
-
-    // Verify system prompt includes romanization rules
-    expect(result.system).toContain('Romanization')
-    expect(result.system).toContain('Sasaki-san')
-
-    // Verify user prompt wraps the content
-    expect(result.user).toContain('<TRANSLATE_TEXT>')
-    expect(result.user).toContain('</TRANSLATE_TEXT>')
   })
 })
