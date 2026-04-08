@@ -4,6 +4,7 @@ export const TOUR_VERSION = 1
 export const TOUR_NAME = 'main-tour' as const
 
 export type NeubStep = Step & { color: string }
+type NeubStepWithNav = NeubStep & { nextRoute?: string; prevRoute?: string }
 
 const steps: NeubStep[] = [
   {
@@ -250,15 +251,11 @@ const steps: NeubStep[] = [
 ]
 
 // Helper to strip navigation properties from a step
-function cleanStep(step: NeubStep | undefined): NeubStep {
+function cleanStep(step: NeubStepWithNav | undefined): NeubStep {
   if (!step) throw new Error('Step is undefined')
-  // Double cast through unknown to satisfy TypeScript type checking
-  const {
-    nextRoute: _nextRoute,
-    prevRoute: _prevRoute,
-    ...cleaned
-  } = step as unknown as Record<string, unknown>
-  return cleaned as unknown as NeubStep
+  // Destructure and remove navigation properties to prevent cross-page jumps
+  const { nextRoute: _nextRoute, prevRoute: _prevRoute, ...cleaned } = step
+  return cleaned as NeubStep
 }
 
 // Replay tours: route-scoped step sets without cross-page navigation
