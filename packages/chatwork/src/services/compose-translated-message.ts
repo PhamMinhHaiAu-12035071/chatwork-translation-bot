@@ -35,9 +35,10 @@ export async function composeTranslatedMessage(
   const snapshot = envelope.snapshot
 
   // Build header line with emoji decoration
-  const eventDecoration = command.sourceEventType === 'message_created'
-    ? '🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿'
-    : '🔥⚡🔥 𝐔𝐩𝐝𝐚𝐭𝐞𝐝 🔥⚡🔥'
+  const eventDecoration =
+    command.sourceEventType === 'message_created'
+      ? '🌿🌺🌿 𝐂𝐫𝐞𝐚𝐭𝐞𝐝 🌿🌺🌿'
+      : '🔥⚡🔥 𝐔𝐩𝐝𝐚𝐭𝐞𝐝 🔥⚡🔥'
   const header = `[piconname:${String(command.senderAccountId)}] ${eventDecoration}`
 
   // Render translated body only
@@ -104,6 +105,14 @@ async function renderNode(node: MessageRenderNode, context: RenderContext): Prom
 
   if (node.type === 'code') {
     return `[code]${node.content}[/code]`
+  }
+
+  if (node.type === 'to') {
+    return `[To:${String(node.accountId)}]`
+  }
+
+  if (node.type === 'cc') {
+    return `[cc:${String(node.accountId)}]`
   }
 
   if (node.type === 'rp') {

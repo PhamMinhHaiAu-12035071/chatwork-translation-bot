@@ -207,10 +207,12 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
         } else if (tag.name === 'to') {
           if (tag.attributes.type === 'to') {
             context.toAccountIds.push(tag.attributes.accountId)
+            nodes.push({ type: 'to', accountId: tag.attributes.accountId })
           }
         } else if (tag.name === 'cc') {
           if (tag.attributes.type === 'cc') {
             context.ccAccountIds.push(tag.attributes.accountId)
+            nodes.push({ type: 'cc', accountId: tag.attributes.accountId })
           }
         } else if (tag.name === 'rp') {
           if (tag.attributes.type === 'rp') {

@@ -23,6 +23,8 @@ export type MessageRenderNode =
   | { type: 'translationSlot'; index: number }
   | { type: 'hr' }
   | { type: 'code'; content: string }
+  | { type: 'to'; accountId: number }
+  | { type: 'cc'; accountId: number }
   | { type: 'rp'; replyToData: ReplyToData }
   | { type: 'info'; children: MessageRenderNode[] }
   | { type: 'title'; children: MessageRenderNode[] }

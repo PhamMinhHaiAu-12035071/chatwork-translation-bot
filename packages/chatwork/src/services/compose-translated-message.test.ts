@@ -321,4 +321,41 @@ describe('composeTranslatedMessage', () => {
     expect(updatedResult.message).toContain('🔥⚡🔥 𝐔𝐩𝐝𝐚𝐭𝐞𝐝 🔥⚡🔥')
     expect(updatedResult.message).not.toContain('🌿🌺🌿')
   })
+
+  it('preserves [To:...] mention tags in translated body', async () => {
+    const command = makeCommand('[To:5293785]AuPMH\nお疲れ様です', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['AuPMH\nMọi người vất vả rồi'],
+      apiToken: 'test-token',
+      roomCache: new Map([[777, 'Test Room']]),
+    })
+
+    expect(result.message).toContain('[To:5293785]')
+    expect(result.message).toContain('AuPMH')
+    expect(result.message).toContain('Mọi người vất vả rồi')
+  })
+
+  it('preserves [cc:...] mention tags in translated body', async () => {
+    const command = makeCommand('[cc:999]Please check', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Vui lòng kiểm tra'],
+      apiToken: 'test-token',
+      roomCache: new Map([[777, 'Test Room']]),
+    })
+
+    expect(result.message).toContain('[cc:999]')
+    expect(result.message).toContain('Vui lòng kiểm tra')
+  })
 })

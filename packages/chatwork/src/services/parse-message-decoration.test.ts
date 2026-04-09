@@ -162,19 +162,24 @@ describe('parseMessageDecoration', () => {
     })
   })
 
-  it('extracts [To:...] into metadata', () => {
+  it('extracts [To:...] into metadata and render template', () => {
     const result = parseMessageDecoration('[To:1484814]Please review')
     expect(result.metadata.toAccountIds).toContain(1484814)
     expect(result.translationInputs).toContain('Please review')
-    // [To:...] should not be in render template
-    const renderedText = JSON.stringify(result.renderTemplate)
-    expect(renderedText).not.toContain('[To:')
+    // [To:...] should be in render template as a 'to' node
+    const toNode = result.renderTemplate.find((n) => n.type === 'to')
+    expect(toNode).toBeDefined()
+    expect(toNode?.type === 'to' && toNode.accountId).toBe(1484814)
   })
 
-  it('extracts [cc:...] into metadata', () => {
+  it('extracts [cc:...] into metadata and render template', () => {
     const result = parseMessageDecoration('[cc:999]Body text')
     expect(result.metadata.ccAccountIds).toContain(999)
     expect(result.translationInputs).toContain('Body text')
+    // [cc:...] should be in render template as a 'cc' node
+    const ccNode = result.renderTemplate.find((n) => n.type === 'cc')
+    expect(ccNode).toBeDefined()
+    expect(ccNode?.type === 'cc' && ccNode.accountId).toBe(999)
   })
 
   it('extracts [rp ...] reply metadata', () => {
