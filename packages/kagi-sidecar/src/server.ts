@@ -6,8 +6,8 @@ import {
   type KagiTranslationResult,
   type KagiHealthSnapshot,
 } from './browser-service'
-import { KAGI_STYLE_VALUES } from './url-builder'
-import type { KagiStyle } from './url-builder'
+import { KAGI_STYLE_VALUES } from '@chatwork-bot/provider-kagi'
+import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
 interface KagiServerLogger {
   info(event: string, context: Record<string, unknown>): void

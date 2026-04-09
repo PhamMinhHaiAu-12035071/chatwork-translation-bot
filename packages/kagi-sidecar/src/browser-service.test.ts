@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import type { KagiStyle } from './url-builder'
+import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 import type {
   KagiBrowserService as KagiBrowserServiceType,
   KagiSidecarError as KagiSidecarErrorType,

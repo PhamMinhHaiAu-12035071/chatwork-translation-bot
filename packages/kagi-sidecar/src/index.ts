@@ -1,7 +1,6 @@
 export * from './browser-service'
 export * from './runtime-config'
 export * from './server'
-export * from './url-builder'
 
 import { KagiBrowserService } from './browser-service'
 import { resolveKagiRuntimeConfig } from './runtime-config'

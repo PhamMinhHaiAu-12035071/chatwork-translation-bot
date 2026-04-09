@@ -1,5 +1,5 @@
-import { buildKagiUrl } from './url-builder'
-import type { KagiStyle } from './url-builder'
+import { buildKagiUrl } from '@chatwork-bot/provider-kagi'
+import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
 interface PageLike {
   goto(
