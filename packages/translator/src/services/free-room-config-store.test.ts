@@ -62,9 +62,28 @@ describe('FreeRoomConfigStore', () => {
     expect(room.originalRoomId).toBe(1001)
     expect(room.kagiStyle).toBe('Clear')
     expect(room.context).toBe('support room')
+    expect(room.previewUrl).toBeDefined()
+    expect(room.previewUrl).toMatch(/^https:\/\/translate\.kagi\.com\//)
+    expect(room.previewUrl).toContain('text=hello')
+    expect(room.previewUrl).toContain('context=support+room')
     expect(room.enabled).toBe(true)
     expect(room.createdAt).toBeTruthy()
     expect(room.updatedAt).toBe(room.createdAt)
+  })
+
+  it('create() includes previewUrl without context when null', async () => {
+    const room = await store.create({
+      originalRoomId: 888,
+      originalRoomName: 'Test Room 2',
+      destinationRoomId: 777,
+      destinationRoomName: 'Test Room 2 VN',
+      kagiStyle: 'Clear',
+      context: null,
+    })
+
+    expect(room.previewUrl).toBeDefined()
+    expect(room.previewUrl).toMatch(/^https:\/\/translate\.kagi\.com\//)
+    expect(room.previewUrl).not.toMatch(/[?&]context=/)
   })
 
   it('create() throws duplicate error on duplicate originalRoomId inside the free store', async () => {
@@ -141,7 +160,67 @@ describe('FreeRoomConfigStore', () => {
     expect(updated.destinationRoomName).toBe('Free Output Room 2')
     expect(updated.kagiStyle).toBe('True')
     expect(updated.context).toBe('new context')
+    expect(updated.previewUrl).toBeDefined()
+    expect(updated.previewUrl).toContain('style=literal')
+    expect(updated.previewUrl).toContain('context=new+context')
     expect(updated.updatedAt).not.toBe(created.updatedAt)
+  })
+
+  it('update() recomputes previewUrl when kagiStyle changes', async () => {
+    const created = await store.create({
+      originalRoomId: 1111,
+      originalRoomName: 'Test Room',
+      destinationRoomId: 2222,
+      destinationRoomName: 'Output',
+      kagiStyle: 'Clear',
+      context: 'team',
+    })
+
+    const updated = await store.update(created.id, {
+      kagiStyle: 'Wild',
+    })
+
+    expect(updated.previewUrl).not.toBe(created.previewUrl)
+    expect(updated.previewUrl).toContain('formality=less')
+    expect(updated.previewUrl).toContain('language_complexity=c2')
+    expect(updated.previewUrl).toContain('context=team')
+  })
+
+  it('update() recomputes previewUrl when context changes', async () => {
+    const created = await store.create({
+      originalRoomId: 2222,
+      originalRoomName: 'Test Room',
+      destinationRoomId: 3333,
+      destinationRoomName: 'Output',
+      kagiStyle: 'Clear',
+      context: 'old context',
+    })
+
+    const updated = await store.update(created.id, {
+      context: 'new context',
+    })
+
+    expect(updated.previewUrl).not.toBe(created.previewUrl)
+    expect(updated.previewUrl).toContain('context=new+context')
+    expect(updated.previewUrl).not.toContain('old+context')
+  })
+
+  it('update() removes context from previewUrl when set to null', async () => {
+    const created = await store.create({
+      originalRoomId: 3333,
+      originalRoomName: 'Test Room',
+      destinationRoomId: 4444,
+      destinationRoomName: 'Output',
+      kagiStyle: 'Smart',
+      context: 'has context',
+    })
+
+    const updated = await store.update(created.id, {
+      context: null,
+    })
+
+    expect(updated.previewUrl).not.toBe(created.previewUrl)
+    expect(updated.previewUrl).not.toMatch(/[?&]context=/)
   })
 
   it('setEnabled() changes enabled flag', async () => {
