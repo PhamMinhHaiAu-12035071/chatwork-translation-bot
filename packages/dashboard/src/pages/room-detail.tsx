@@ -274,27 +274,31 @@ export function RoomDetailPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">
-              <BrutalInput
-                label="Original Room ID"
-                type="text"
-                inputMode="numeric"
-                readOnly
-                hint="This ID cannot be changed after room creation."
-                error={editForm.formState.errors.originalRoomId?.message}
-                {...editForm.register('originalRoomId', {
-                  setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
-                })}
-              />
-              <BrutalInput
-                label="Original Room Name"
-                type="text"
-                readOnly
-                hint="Cannot be changed after creation."
-                error={editForm.formState.errors.originalRoomName?.message}
-                {...editForm.register('originalRoomName')}
-              />
+              <div id="tour-field-roomid">
+                <BrutalInput
+                  label="Original Room ID"
+                  type="text"
+                  inputMode="numeric"
+                  readOnly
+                  hint="This ID cannot be changed after room creation."
+                  error={editForm.formState.errors.originalRoomId?.message}
+                  {...editForm.register('originalRoomId', {
+                    setValueAs: (v: string) => (v === '' ? undefined : Number(v)),
+                  })}
+                />
+              </div>
+              <div id="tour-field-roomname-orig">
+                <BrutalInput
+                  label="Original Room Name"
+                  type="text"
+                  readOnly
+                  hint="Cannot be changed after creation."
+                  error={editForm.formState.errors.originalRoomName?.message}
+                  {...editForm.register('originalRoomName')}
+                />
+              </div>
             </div>
-            <div>
+            <div id="tour-field-roomname">
               <BrutalInput
                 label="Destination Room Name"
                 type="text"
@@ -303,36 +307,44 @@ export function RoomDetailPage() {
               />
             </div>
             <div className="grid gap-5 md:grid-cols-2">
-              <BrutalSelect
-                label="AI Provider"
-                options={providerOptions}
-                colorVariant="accent"
-                error={editForm.formState.errors.aiProvider?.message}
-                {...aiProviderField}
-              />
-              <BrutalSelect
-                label="AI Model"
-                options={modelOptions}
-                colorVariant="mint"
-                error={editForm.formState.errors.aiModel?.message}
-                value={aiModel}
-                {...editForm.register('aiModel')}
-              />
-              <BrutalSelect
-                label="Translation Style"
-                options={styleOptions}
-                colorVariant="peach"
-                error={editForm.formState.errors.translationStyle?.message}
-                {...editForm.register('translationStyle')}
-              />
-              <BrutalInput
-                label="AI API Token"
-                type="password"
-                placeholder={selectedProvider === 'openai' ? 'sk-...' : 'AIza...'}
-                hint="Leave unchanged to keep the existing token."
-                error={editForm.formState.errors.aiApiToken?.message}
-                {...editForm.register('aiApiToken')}
-              />
+              <div id="tour-field-provider">
+                <BrutalSelect
+                  label="AI Provider"
+                  options={providerOptions}
+                  colorVariant="accent"
+                  error={editForm.formState.errors.aiProvider?.message}
+                  {...aiProviderField}
+                />
+              </div>
+              <div id="tour-field-model">
+                <BrutalSelect
+                  label="AI Model"
+                  options={modelOptions}
+                  colorVariant="mint"
+                  error={editForm.formState.errors.aiModel?.message}
+                  value={aiModel}
+                  {...editForm.register('aiModel')}
+                />
+              </div>
+              <div id="tour-field-style">
+                <BrutalSelect
+                  label="Translation Style"
+                  options={styleOptions}
+                  colorVariant="peach"
+                  error={editForm.formState.errors.translationStyle?.message}
+                  {...editForm.register('translationStyle')}
+                />
+              </div>
+              <div id="tour-field-token">
+                <BrutalInput
+                  label="AI API Token"
+                  type="password"
+                  placeholder={selectedProvider === 'openai' ? 'sk-...' : 'AIza...'}
+                  hint="Leave unchanged to keep the existing token."
+                  error={editForm.formState.errors.aiApiToken?.message}
+                  {...editForm.register('aiApiToken')}
+                />
+              </div>
             </div>
           </div>
 
@@ -365,21 +377,25 @@ export function RoomDetailPage() {
 
           <div className="xl:col-span-2">
             <div className="page-divider-brutal my-6" />
-            <ContextField
-              value={editForm.watch('context')}
-              onChange={(v) => {
-                editForm.setValue('context', v, { shouldValidate: true })
-              }}
-              error={editForm.formState.errors.context?.message}
-            />
+            <div id="tour-field-context">
+              <ContextField
+                value={editForm.watch('context')}
+                onChange={(v) => {
+                  editForm.setValue('context', v, { shouldValidate: true })
+                }}
+                error={editForm.formState.errors.context?.message}
+              />
+            </div>
 
             <div className="page-divider-brutal my-4" />
-            <KeywordProtectionField
-              value={editForm.watch('protectedKeywords')}
-              onChange={(v) => {
-                editForm.setValue('protectedKeywords', v, { shouldValidate: true })
-              }}
-            />
+            <div id="tour-field-keywords">
+              <KeywordProtectionField
+                value={editForm.watch('protectedKeywords')}
+                onChange={(v) => {
+                  editForm.setValue('protectedKeywords', v, { shouldValidate: true })
+                }}
+              />
+            </div>
 
             <div className="flex flex-wrap gap-3 pt-2 mt-4">
               <button
@@ -393,6 +409,7 @@ export function RoomDetailPage() {
                 Back
               </button>
               <button
+                id="tour-save-btn"
                 type="submit"
                 className="brutal-button theme-button-violet px-6 py-3 font-heading text-sm font-bold text-white"
               >
