@@ -111,7 +111,7 @@ export function AppLayout() {
       steps={tours}
       cardComponent={NeubTourCard}
       navigationAdapter={useReactRouterAdapter}
-      onStepChange={(step) => {
+      onStepChange={(step, tourName) => {
         // Steps 18–21 (0-based) cover room card interactions and require at least one room.
         if (rooms.length === 0) {
           // Forward: skip room steps → jump to completion
@@ -131,9 +131,18 @@ export function AppLayout() {
             return
           }
         }
-        // Auto-expand Translation Context when landing on its interior step (14).
+
+        // Auto-expand sections when landing on interior steps (works for all tours).
+        // Find the current tour and get its steps array to check the current step's selector.
         // Handles keyboard navigation (ArrowRight/ArrowLeft) which bypasses card button handlers.
-        if (step === 14) {
+        const currentTourSteps = tours.find((t) => t.tour === tourName)?.steps
+        if (!currentTourSteps || step >= currentTourSteps.length) return
+
+        const currentStep = currentTourSteps[step]
+        const stepSelector = (currentStep as { selector?: string }).selector
+
+        // Auto-expand Translation Context when landing on Context Templates step
+        if (stepSelector === '#tour-context-templates') {
           if (document.querySelector('#tour-context-templates') === null) {
             const triggerButton = document.querySelector<HTMLButtonElement>(
               '#tour-field-context button',
@@ -147,9 +156,9 @@ export function AppLayout() {
           setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
           return
         }
-        // Auto-expand Keyword Protection when landing on its interior step (16).
-        // Handles keyboard navigation (ArrowRight/ArrowLeft) which bypasses card button handlers.
-        if (step === 16) {
+
+        // Auto-expand Keyword Protection when landing on Keyword Add Form step
+        if (stepSelector === '#tour-keyword-addform') {
           if (document.querySelector('#tour-keyword-addform') === null) {
             const triggerButton = document.querySelector<HTMLButtonElement>(
               '#tour-field-keywords button',

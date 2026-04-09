@@ -47,4 +47,18 @@ describe('AppLayout', () => {
     expect(source).toContain('import { TourFloatButton }')
     expect(source).toContain('<TourFloatButton />')
   })
+
+  it('auto-expands context and keywords sections based on selector not hardcoded step index', async () => {
+    const source = await Bun.file(new URL('./app-layout.tsx', import.meta.url)).text()
+
+    // Should NOT use hardcoded step indices (breaks replay tours)
+    expect(source).not.toContain('if (step === 14)')
+    expect(source).not.toContain('if (step === 16)')
+
+    // Should detect by selector or step properties (works for all tours)
+    expect(source).toContain('#tour-context-templates')
+    expect(source).toContain('#tour-keyword-addform')
+    expect(source).toContain('#tour-field-context button')
+    expect(source).toContain('#tour-field-keywords button')
+  })
 })
