@@ -69,11 +69,14 @@ export function buildMentionHint(context: MentionContext): string | undefined {
   const ccNames = ccRecipients.map((r) => r.displayName).filter(Boolean)
   const ccSuffix = ccNames.length > 0 ? ` CC: ${ccNames.join(', ')}.` : ''
 
+  const nameDirective =
+    'When translating greetings or direct address, include the recipient\'s name naturally (e.g., "Chào anh/chị {Name}" not just "Chào anh/chị").'
+
   if (toRecipients.length === 1) {
     const name = toNames[0] ?? ''
-    return `Directly addressed to 1 person: ${name}. Use singular address (anh/chị/bạn).${ccSuffix}`
+    return `Directly addressed to 1 person: ${name}. Use singular address (anh/chị/bạn). ${nameDirective}${ccSuffix}`
   }
 
   const count = toRecipients.length
-  return `Directly addressed to ${String(count)} people: ${toNames.join(', ')}. Use plural address.${ccSuffix}`
+  return `Directly addressed to ${String(count)} people: ${toNames.join(', ')}. Use plural address. ${nameDirective}${ccSuffix}`
 }

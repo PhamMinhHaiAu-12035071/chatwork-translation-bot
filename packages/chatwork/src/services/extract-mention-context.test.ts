@@ -73,7 +73,7 @@ describe('buildMentionHint', () => {
     expect(hint).toContain('plural')
   })
 
-  it('returns singular hint for 1 To recipient', () => {
+  it('returns singular hint for 1 To recipient with name directive', () => {
     const hint = buildMentionHint({
       toRecipients: [{ accountId: 123, displayName: 'AuPMH' }],
       ccRecipients: [],
@@ -82,9 +82,10 @@ describe('buildMentionHint', () => {
     expect(hint).toContain('1 person')
     expect(hint).toContain('AuPMH')
     expect(hint).toContain('singular')
+    expect(hint).toContain("include the recipient's name naturally")
   })
 
-  it('returns plural hint for multiple To recipients', () => {
+  it('returns plural hint for multiple To recipients with name directive', () => {
     const hint = buildMentionHint({
       toRecipients: [
         { accountId: 123, displayName: 'Alice' },
@@ -96,6 +97,7 @@ describe('buildMentionHint', () => {
     expect(hint).toContain('2 people')
     expect(hint).toContain('Alice, Bob')
     expect(hint).toContain('plural')
+    expect(hint).toContain("include the recipient's name naturally")
   })
 
   it('separates To and CC in hint', () => {
