@@ -25,6 +25,7 @@ export type MessageRenderNode =
   | { type: 'code'; content: string }
   | { type: 'to'; accountId: number }
   | { type: 'cc'; accountId: number }
+  | { type: 'toall' }
   | { type: 'rp'; replyToData: ReplyToData }
   | { type: 'info'; children: MessageRenderNode[] }
   | { type: 'title'; children: MessageRenderNode[] }
@@ -51,4 +52,5 @@ export interface MessageDecorationContext {
   toAccountIds: number[]
   ccAccountIds: number[]
   replyToData: ReplyToData | undefined
+  isToAll: boolean
 }

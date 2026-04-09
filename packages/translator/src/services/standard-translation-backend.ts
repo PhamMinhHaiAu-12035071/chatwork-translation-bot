@@ -21,6 +21,7 @@ interface StandardTranslationBackendDeps {
       translationStyle: RoomConfig['translationStyle']
       roomContext?: string
       keywordSystemHint?: string
+      mentionHint?: string
     },
   ) => Pick<TranslationPipeline, 'runStructured'>
 }
@@ -35,6 +36,7 @@ export class StandardTranslationBackend implements RoomTranslationBackend<Standa
     translationInputs: string[]
     roomContext?: string
     keywordSystemHint?: string
+    mentionHint?: string
     runtimeConfig: StandardTranslationRuntimeConfig
     phaseObserver?: {
       onPhaseStarted?: (params: { phase: 'translation' }) => Promise<void> | void
@@ -60,6 +62,7 @@ export class StandardTranslationBackend implements RoomTranslationBackend<Standa
       translationStyle: typeof roomConfig.translationStyle
       roomContext?: string
       keywordSystemHint?: string
+      mentionHint?: string
     } = {
       timeoutMs,
       translationStyle: roomConfig.translationStyle,
@@ -70,6 +73,9 @@ export class StandardTranslationBackend implements RoomTranslationBackend<Standa
     }
     if (input.keywordSystemHint !== undefined) {
       pipelineOpts.keywordSystemHint = input.keywordSystemHint
+    }
+    if (input.mentionHint !== undefined) {
+      pipelineOpts.mentionHint = input.mentionHint
     }
 
     const createPipeline =

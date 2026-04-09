@@ -35,6 +35,7 @@ describe('StandardTranslationBackend', () => {
             translationStyle: RoomConfig['translationStyle']
             roomContext?: string
             keywordSystemHint?: string
+            mentionHint?: string
           },
         ) => {
           runStructured(input: unknown, options: unknown): Promise<unknown>
@@ -45,6 +46,7 @@ describe('StandardTranslationBackend', () => {
           translationInputs: string[]
           roomContext?: string
           keywordSystemHint?: string
+          mentionHint?: string
           runtimeConfig: {
             roomConfig: RoomConfig
             timeoutMs: number
@@ -166,6 +168,79 @@ describe('StandardTranslationBackend', () => {
       sourceLang: 'English',
       translatedText: 'Xin chao\nTam biet',
       translatedSegments: ['Xin chao', 'Tam biet'],
+    })
+  })
+
+  it('forwards mentionHint to pipeline options', async () => {
+    if (StandardTranslationBackend === null) {
+      throw new Error('StandardTranslationBackend not initialized')
+    }
+
+    const decryptApiToken = mock((_encrypted: string) => Promise.resolve('token'))
+    const mockExecutor = {
+      execute<T>(_prompts: PromptPair, _schema: ISchema<T>): Promise<T> {
+        return Promise.resolve({} as T)
+      },
+      describeExecution: () => ({
+        generation: {
+          temperature: 0,
+          maxOutputTokens: 4000,
+          providerOptions: null,
+          providerManaged: false,
+        },
+      }),
+    } satisfies ILLMExecutor
+    const pluginCreate = mock((_ctx: unknown) => mockExecutor)
+    const mockGetProviderPlugin = mock(
+      (_providerId: string) =>
+        ({
+          manifest: {
+            id: 'openai',
+            defaultModel: 'gpt-4o',
+            supportedModels: ['gpt-4o'],
+            capabilities: { streaming: false },
+            timeoutMs: 1_800_000,
+          },
+          create: pluginCreate,
+        }) satisfies ProviderPlugin,
+    )
+    const createPipeline = (executor: ILLMExecutor, opts: unknown) => {
+      mockPipelineConstructor(executor, opts)
+      return {
+        runStructured: (input: unknown, options: unknown) => mockRunStructured(input, options),
+      }
+    }
+
+    const backend = new StandardTranslationBackend({
+      decryptApiToken,
+      resolveProviderPlugin: mockGetProviderPlugin,
+      createPipeline,
+    })
+    const roomConfig: RoomConfig = {
+      id: 'room-1',
+      originalRoomId: 1001,
+      originalRoomName: 'Test Room',
+      destinationRoomId: 2001,
+      destinationRoomName: 'Output Room',
+      aiProvider: 'openai',
+      aiModel: 'gpt-4o',
+      translationStyle: 'NATURAL_CASUAL',
+      context: null,
+      encryptedAiApiToken: 'encrypted-token',
+      enabled: true,
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+    }
+
+    await backend.translate({
+      cleanText: 'Hello',
+      translationInputs: ['Hello'],
+      mentionHint: 'Directly addressed to 1 person: AuPMH. Use singular address (anh/chị/bạn).',
+      runtimeConfig: { roomConfig, timeoutMs: 10_000 },
+    })
+
+    expect(mockPipelineConstructor.mock.calls[0]?.[1]).toMatchObject({
+      mentionHint: 'Directly addressed to 1 person: AuPMH. Use singular address (anh/chị/bạn).',
     })
   })
 })

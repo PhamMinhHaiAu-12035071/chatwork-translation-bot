@@ -12,6 +12,7 @@ type MessageRenderNodeLike =
   | { type: 'hr' }
   | { type: 'code'; content?: string }
   | { type: 'rp' }
+  | { type: 'to' | 'cc' | 'toall' }
   | { type: 'info' | 'title' | 'quote' | 'qt'; children?: MessageRenderNodeLike[] }
 
 export function hasMeaningfulLiteralStructure(command: TranslationIngressCommand): boolean {
@@ -27,8 +28,12 @@ function renderNodesHaveMeaningfulLiteralStructure(nodes: MessageRenderNodeLike[
 
 function renderNodeHasMeaningfulLiteralStructure(node: MessageRenderNodeLike): boolean {
   if (node.type === 'translationSlot') return false
+  if (node.type === 'to' || node.type === 'cc' || node.type === 'toall') return false
   if (node.type === 'hr' || node.type === 'rp') return true
   if (node.type === 'literal') return (node.content?.trim().length ?? 0) > 0
   if (node.type === 'code') return (node.content?.trim().length ?? 0) > 0
-  return renderNodesHaveMeaningfulLiteralStructure(node.children ?? [])
+  if ('children' in node) {
+    return renderNodesHaveMeaningfulLiteralStructure(node.children ?? [])
+  }
+  return false
 }

@@ -21,6 +21,7 @@ function createDecorationContext(): MessageDecorationContext {
     toAccountIds: [],
     ccAccountIds: [],
     replyToData: undefined,
+    isToAll: false,
   }
 }
 
@@ -214,6 +215,9 @@ export function parseMessageDecoration(body: string): MessageDecorationSnapshot 
             context.ccAccountIds.push(tag.attributes.accountId)
             nodes.push({ type: 'cc', accountId: tag.attributes.accountId })
           }
+        } else if (tag.name === 'toall') {
+          context.isToAll = true
+          nodes.push({ type: 'toall' })
         } else if (tag.name === 'rp') {
           if (tag.attributes.type === 'rp') {
             const replyToData = {

@@ -115,6 +115,10 @@ async function renderNode(node: MessageRenderNode, context: RenderContext): Prom
     return `[cc:${String(node.accountId)}]`
   }
 
+  if (node.type === 'toall') {
+    return '[toall]'
+  }
+
   if (node.type === 'rp') {
     const { replyAccountId, replyRoomId, replyMessageId } = node.replyToData
     return `[rp aid=${String(replyAccountId)} to=${String(replyRoomId)}-${replyMessageId}]`

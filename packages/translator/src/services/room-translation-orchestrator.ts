@@ -1,3 +1,5 @@
+import { buildMentionHint, extractMentionContext } from '@chatwork-bot/chatwork'
+import type { MessageDecorationSnapshot } from '@chatwork-bot/chatwork'
 import { TranslationError } from '@chatwork-bot/core'
 import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
 import { mask as maskKeywords, restore as restoreKeywords } from '~/services/keyword-redactor'
@@ -324,6 +326,25 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
         hasSystemHint: systemHint.length > 0,
       } as Partial<TranslatorLogEntry>)
 
+      const rawEnvelope = command.audit.rawSourceSnapshot as {
+        snapshot?: MessageDecorationSnapshot
+      }
+      const mentionHint =
+        rawEnvelope.snapshot !== undefined
+          ? buildMentionHint(
+              extractMentionContext(
+                rawEnvelope.snapshot.renderTemplate,
+                rawEnvelope.snapshot.metadata,
+              ),
+            )
+          : undefined
+
+      if (mentionHint !== undefined) {
+        observer.logEvent('info', 'translation_mention_hint_applied', {
+          mentionHint: mentionHint.slice(0, 100),
+        } as Partial<TranslatorLogEntry>)
+      }
+
       const backendResult =
         command.translationInputs.length === 0
           ? {
@@ -337,6 +358,7 @@ export function createRoomTranslationOrchestrator(deps: RoomTranslationOrchestra
                 translationInputs: maskedTranslationInputs,
                 ...(hasRoomContextForPipeline ? { roomContext: trimmedRoomContext } : {}),
                 ...(systemHint ? { keywordSystemHint: systemHint } : {}),
+                ...(mentionHint !== undefined ? { mentionHint } : {}),
                 runtimeConfig,
                 phaseObserver: {
                   onPhaseStarted: ({ phase }) => {

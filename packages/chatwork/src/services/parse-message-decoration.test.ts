@@ -182,6 +182,20 @@ describe('parseMessageDecoration', () => {
     expect(ccNode?.type === 'cc' && ccNode.accountId).toBe(999)
   })
 
+  it('parses [toall] tag into metadata and render template', () => {
+    const result = parseMessageDecoration('[toall]Good morning everyone')
+    expect(result.metadata.isToAll).toBe(true)
+    expect(result.translationInputs).toContain('Good morning everyone')
+    const toallNode = result.renderTemplate.find((n) => n.type === 'toall')
+    expect(toallNode).toBeDefined()
+  })
+
+  it('handles [toall] combined with [To:] tags', () => {
+    const result = parseMessageDecoration('[toall][To:123]Alice\nHello')
+    expect(result.metadata.isToAll).toBe(true)
+    expect(result.metadata.toAccountIds).toContain(123)
+  })
+
   it('extracts [rp ...] reply metadata', () => {
     const result = parseMessageDecoration('[rp aid=12345 to=567890:789012]Reply to message')
     expect(result.metadata.replyToData?.replyAccountId).toBe(12345)

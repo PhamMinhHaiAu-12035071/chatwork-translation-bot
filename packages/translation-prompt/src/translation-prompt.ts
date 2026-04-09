@@ -42,10 +42,18 @@ function buildContextSection(roomContext?: string): string {
   return `## Room Context\n${CONTEXT_ENFORCEMENT_HEADER}\n\n${roomContext.trim()}`
 }
 
-function buildSingleUserPrompt(text: string, _style: TranslationStyle): string {
+function buildSingleUserPrompt(
+  text: string,
+  _style: TranslationStyle,
+  mentionHint?: string,
+): string {
+  const mentionBlock = mentionHint
+    ? `\n<MENTION_CONTEXT>\n${mentionHint}\n</MENTION_CONTEXT>\n`
+    : ''
+
   return `Translate into Vietnamese as JSON:
 {"sourceLang": "<language>", "translated": "<Vietnamese>"}
-
+${mentionBlock}
 <TRANSLATE_TEXT>
 ${text}
 </TRANSLATE_TEXT>`
@@ -55,6 +63,7 @@ function buildStructuredUserPrompt(
   segments: string[],
   _style: TranslationStyle,
   fullMessageContext?: string,
+  mentionHint?: string,
 ): string {
   const contextBlock =
     fullMessageContext === undefined
@@ -65,10 +74,18 @@ ${fullMessageContext}
 
 `
 
+  const mentionBlock = mentionHint
+    ? `<MENTION_CONTEXT>
+${mentionHint}
+</MENTION_CONTEXT>
+
+`
+    : ''
+
   return `Translate each segment into Vietnamese as JSON. Preserve array order/length exactly.
 {"sourceLang": "<language>", "translatedSegments": ["<Vietnamese 1>", "<Vietnamese 2>"]}
 
-${contextBlock}<TRANSLATE_SEGMENTS>
+${contextBlock}${mentionBlock}<TRANSLATE_SEGMENTS>
 ${JSON.stringify(segments, null, 2)}
 </TRANSLATE_SEGMENTS>`
 }
@@ -79,6 +96,7 @@ export function buildStructuredTranslationPrompts(
   fullMessageContext?: string,
   roomContext?: string,
   keywordSystemHint?: string,
+  mentionHint?: string,
 ): PromptPair {
   const contextSection = buildContextSection(roomContext)
   const systemParts = [
@@ -91,7 +109,7 @@ export function buildStructuredTranslationPrompts(
     .join('\n\n')
   return {
     system: systemParts,
-    user: buildStructuredUserPrompt(segments, style, fullMessageContext),
+    user: buildStructuredUserPrompt(segments, style, fullMessageContext, mentionHint),
   }
 }
 
@@ -100,6 +118,7 @@ export function buildSingleCallPrompts(
   style: TranslationStyle = DEFAULT_TRANSLATION_STYLE,
   roomContext?: string,
   keywordSystemHint?: string,
+  mentionHint?: string,
 ): PromptPair {
   const contextSection = buildContextSection(roomContext)
   const systemParts = [
@@ -112,6 +131,6 @@ export function buildSingleCallPrompts(
     .join('\n\n')
   return {
     system: systemParts,
-    user: buildSingleUserPrompt(text, style),
+    user: buildSingleUserPrompt(text, style, mentionHint),
   }
 }

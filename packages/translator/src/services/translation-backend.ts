@@ -3,6 +3,7 @@ export interface RoomTranslationBackendInput<TRuntimeConfig = unknown> {
   translationInputs: string[]
   roomContext?: string
   keywordSystemHint?: string
+  mentionHint?: string
   runtimeConfig: TRuntimeConfig
   phaseObserver?: {
     onPhaseStarted?: (params: { phase: 'translation' }) => Promise<void> | void

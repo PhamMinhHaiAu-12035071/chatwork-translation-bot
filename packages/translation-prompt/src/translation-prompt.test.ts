@@ -138,6 +138,55 @@ describe('roomContext injection', () => {
   })
 })
 
+describe('mention hint injection', () => {
+  it('injects MENTION_CONTEXT block in single call prompt when mentionHint provided', () => {
+    const result = buildSingleCallPrompts(
+      'お疲れ様です',
+      'NATURAL_CASUAL',
+      undefined,
+      undefined,
+      'Directly addressed to 1 person: AuPMH. Use singular address (anh/chị/bạn).',
+    )
+    expect(result.user).toContain('<MENTION_CONTEXT>')
+    expect(result.user).toContain('Directly addressed to 1 person: AuPMH')
+    expect(result.user).toContain('</MENTION_CONTEXT>')
+    const mentionIdx = result.user.indexOf('<MENTION_CONTEXT>')
+    const translateIdx = result.user.indexOf('<TRANSLATE_TEXT>')
+    expect(mentionIdx).toBeLessThan(translateIdx)
+  })
+
+  it('does NOT inject MENTION_CONTEXT when mentionHint is undefined', () => {
+    const result = buildSingleCallPrompts('お疲れ様です', 'NATURAL_CASUAL')
+    expect(result.user).not.toContain('<MENTION_CONTEXT>')
+  })
+
+  it('injects MENTION_CONTEXT block in structured prompt when mentionHint provided', () => {
+    const result = buildStructuredTranslationPrompts(
+      ['Segment 1', 'Segment 2'],
+      'NATURAL_CASUAL',
+      'Full context',
+      undefined,
+      undefined,
+      'Addressed to all room members. Use plural address (mọi người/các anh chị).',
+    )
+    expect(result.user).toContain('<MENTION_CONTEXT>')
+    expect(result.user).toContain('all room members')
+    expect(result.user).toContain('</MENTION_CONTEXT>')
+    const mentionIdx = result.user.indexOf('<MENTION_CONTEXT>')
+    const translateIdx = result.user.indexOf('<TRANSLATE_SEGMENTS>')
+    expect(mentionIdx).toBeLessThan(translateIdx)
+  })
+
+  it('does NOT inject MENTION_CONTEXT in structured prompt when mentionHint is undefined', () => {
+    const result = buildStructuredTranslationPrompts(
+      ['Segment 1'],
+      'NATURAL_CASUAL',
+      'Full context',
+    )
+    expect(result.user).not.toContain('<MENTION_CONTEXT>')
+  })
+})
+
 describe('keywordSystemHint injection', () => {
   it('includes keyword system hint when provided', () => {
     const hint = 'Protected keywords: SECRET_KEY, API_TOKEN'

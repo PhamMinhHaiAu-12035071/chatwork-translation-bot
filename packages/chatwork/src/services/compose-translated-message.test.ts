@@ -358,4 +358,22 @@ describe('composeTranslatedMessage', () => {
     expect(result.message).toContain('[cc:999]')
     expect(result.message).toContain('Vui lòng kiểm tra')
   })
+
+  it('preserves [toall] tag in translated body', async () => {
+    const command = makeCommand('[toall]Good morning', {
+      webhook_event: {
+        account_id: 100,
+        send_time: 1711271400,
+      },
+    })
+
+    const result = await composeTranslatedMessage(command, {
+      translatedSegments: ['Chào buổi sáng'],
+      apiToken: 'test-token',
+      roomCache: new Map([[777, 'Test Room']]),
+    })
+
+    expect(result.message).toContain('[toall]')
+    expect(result.message).toContain('Chào buổi sáng')
+  })
 })

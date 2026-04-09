@@ -45,6 +45,7 @@ export class TranslationPipeline {
       translationStyle?: TranslationStyle
       roomContext?: string
       keywordSystemHint?: string
+      mentionHint?: string
     } = {},
   ) {}
 
@@ -76,6 +77,7 @@ export class TranslationPipeline {
         style,
         this.opts.roomContext,
         this.opts.keywordSystemHint,
+        this.opts.mentionHint,
       )
 
       const translation = await this.executeTranslation(prompts, TranslationDraftSchema, options)
@@ -100,6 +102,7 @@ export class TranslationPipeline {
       input.cleanText,
       this.opts.roomContext,
       this.opts.keywordSystemHint,
+      this.opts.mentionHint,
     )
     const structuredTranslation = await this.executeTranslation(
       prompts,

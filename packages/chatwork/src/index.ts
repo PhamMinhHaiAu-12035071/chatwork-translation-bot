@@ -31,6 +31,12 @@ export { updateRoom } from '~/services/update-room'
 export { resolveRoomDisplayName } from '~/services/resolve-room-display-name'
 export { composeTranslatedMessage } from '~/services/compose-translated-message'
 export type { ComposeParams } from '~/services/compose-translated-message'
+export { extractMentionContext, buildMentionHint } from '~/services/extract-mention-context'
+export type { MentionContext, MentionRecipient } from '~/services/extract-mention-context'
+export type {
+  MessageDecorationSnapshot,
+  MessageDecorationContext,
+} from '~/types/message-decoration'
 export { composeRoomDescription } from '~/services/compose-room-description'
 
 // HTTP Connection Pool (for graceful shutdown)
