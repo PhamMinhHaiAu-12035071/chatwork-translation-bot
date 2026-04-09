@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { buildPreviewUrl } from '@chatwork-bot/provider-kagi'
 import { FreeRoomConfigFileSchema } from '~/types/free-room-config'
 import type {
   CreateFreeRoomRequest,
@@ -71,6 +72,8 @@ export class FreeRoomConfigStore {
       }
 
       const now = new Date().toISOString()
+      const previewUrl = buildPreviewUrl(params.kagiStyle, params.context)
+
       const room: FreeRoomConfig = {
         id: crypto.randomUUID(),
         originalRoomId: params.originalRoomId,
@@ -79,6 +82,7 @@ export class FreeRoomConfigStore {
         destinationRoomName: params.destinationRoomName,
         kagiStyle: params.kagiStyle,
         context: params.context ?? null,
+        previewUrl,
         ...(params.protectedKeywords !== undefined
           ? { protectedKeywords: params.protectedKeywords }
           : {}),
@@ -116,6 +120,9 @@ export class FreeRoomConfigStore {
           : {}),
         updatedAt: new Date().toISOString(),
       }
+
+      const previewUrl = buildPreviewUrl(updated.kagiStyle, updated.context)
+      updated.previewUrl = previewUrl
 
       const rooms = this.allRooms().map((room) => (room.id === id ? updated : room))
       await this.writeConfig({ version: 1, rooms })

@@ -14,6 +14,7 @@ export const FreeRoomConfigSchema = z.object({
   destinationRoomName: z.string().min(1),
   kagiStyle: z.enum(FREE_ROOM_KAGI_STYLE_VALUES).default('Clear'),
   context: z.string().max(100).nullable().optional().default(null),
+  previewUrl: z.url(),
   protectedKeywords: z.array(KeywordEntrySchema).max(50).optional(),
   enabled: z.boolean(),
   createdAt: z.iso.datetime(),

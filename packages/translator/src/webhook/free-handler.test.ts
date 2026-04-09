@@ -69,6 +69,8 @@ describe('createHandleFreeTranslateRequest', () => {
       destinationRoomName: 'Free Output',
       kagiStyle: 'Clear' as const,
       context: 'software team',
+      previewUrl:
+        'https://translate.kagi.com/?from=auto&to=vi&text=hello&preserveFormatting=true&context=software+team',
       protectedKeywords: [{ keyword: 'Acme', category: 'company' as const }],
       enabled: true,
       createdAt: '2026-04-01T00:00:00.000Z',
