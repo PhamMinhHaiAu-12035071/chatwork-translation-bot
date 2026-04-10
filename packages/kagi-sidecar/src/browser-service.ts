@@ -1,7 +1,12 @@
 import { buildKagiUrl } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
-import { READING_LEVEL_TO_STEP } from './constants/kagi-ui.js'
+import { KAGI_SELECTORS, READING_LEVEL_TO_STEP } from './constants/kagi-ui.js'
+
+/** Handle returned by waitForSelector for elements that can be clicked. */
+export interface ElementHandleLike {
+  click(): Promise<void>
+}
 
 interface PageLike {
   goto(
@@ -17,10 +22,12 @@ interface PageLike {
       timeout?: number
       visible?: boolean
     },
-  ): Promise<unknown>
+  ): Promise<ElementHandleLike | null>
   evaluate<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg): Promise<TResult>
   /** Current page URL (address bar). Used for two-phase URL verification. */
   url(): string
+  /** Focus element matching selector (e.g. translation context textarea). */
+  focus(selector: string): Promise<void>
 }
 
 interface BrowserLike {
@@ -419,6 +426,190 @@ export class KagiBrowserService {
         `${errorContext}. Expected "${expectedParam}", got: ${currentUrl}`,
         {
           status: 502,
+        },
+      )
+    }
+  }
+
+  /**
+   * Click Translation Settings button to open settings dialog.
+   */
+  private async clickTranslationSettingsButton(page: PageLike): Promise<void> {
+    try {
+      const handle = await page.waitForSelector(KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON, {
+        visible: true,
+        timeout: 30_000,
+      })
+
+      if (handle === null) {
+        throw new Error('Translation Settings button not found')
+      }
+
+      await handle.click()
+      console.log('⚙️  Clicked Translation Settings button')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click Translation Settings button', {
+        step: 'clickTranslationSettingsButton',
+        selector: KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click Translation Settings button: ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Clear translation context textarea (baseline reset).
+   */
+  private async clearTranslationContext(page: PageLike): Promise<void> {
+    try {
+      const selector = KAGI_SELECTORS.CONTEXT_TEXTAREA
+      await page.focus(selector)
+
+      await page.evaluate((sel) => {
+        const textarea = document.querySelector<HTMLTextAreaElement>(sel)
+        if (textarea) {
+          textarea.value = ''
+          textarea.dispatchEvent(new Event('input', { bubbles: true }))
+          textarea.dispatchEvent(new Event('change', { bubbles: true }))
+        }
+      }, selector)
+
+      console.log('🧹 Cleared context textarea')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to clear context textarea', {
+        step: 'clearTranslationContext',
+        selector: KAGI_SELECTORS.CONTEXT_TEXTAREA,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError('UI_INTERACTION', `Failed to clear context textarea: ${message}`, {
+        status: 502,
+        cause: error,
+      })
+    }
+  }
+
+  /**
+   * Fill translation context textarea (target application).
+   */
+  private async fillTranslationContext(page: PageLike, context: string): Promise<void> {
+    try {
+      const selector = KAGI_SELECTORS.CONTEXT_TEXTAREA
+      await page.focus(selector)
+
+      await page.evaluate(
+        (payload: { sel: string; text: string }) => {
+          const textarea = document.querySelector<HTMLTextAreaElement>(payload.sel)
+          if (textarea) {
+            textarea.value = payload.text
+            textarea.dispatchEvent(new Event('input', { bubbles: true }))
+            textarea.dispatchEvent(new Event('change', { bubbles: true }))
+          }
+        },
+        { sel: selector, text: context },
+      )
+
+      const preview = context.length > 50 ? `${context.slice(0, 50)}...` : context
+      console.log(`📝 Filled context textarea: "${preview}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to fill context textarea', {
+        step: 'fillTranslationContext',
+        selector: KAGI_SELECTORS.CONTEXT_TEXTAREA,
+        contextLength: context.length,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError('UI_INTERACTION', `Failed to fill context textarea: ${message}`, {
+        status: 502,
+        cause: error,
+      })
+    }
+  }
+
+  /**
+   * Click speaker gender label (first matching label span).
+   */
+  private async clickSpeakerGenderOption(page: PageLike, label: string): Promise<void> {
+    try {
+      await page.evaluate((labelText: string) => {
+        const labels = Array.from(document.querySelectorAll('label span'))
+        const target = labels.find((el) => el.textContent.trim() === labelText)
+        if (!target) {
+          throw new Error(`Speaker gender label "${labelText}" not found`)
+        }
+        ;(target as HTMLElement).click()
+      }, label)
+
+      console.log(`🗣️  Clicked speaker gender: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click speaker gender', {
+        step: 'clickSpeakerGenderOption',
+        selector: KAGI_SELECTORS.GENDER_LABEL,
+        label,
+        matchIndex: 0,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click speaker gender "${label}": ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Click addressee gender label (second matching label span).
+   */
+  private async clickAddresseeGenderOption(page: PageLike, label: string): Promise<void> {
+    try {
+      await page.evaluate((labelText: string) => {
+        const labels = Array.from(document.querySelectorAll('label span'))
+        const matches = labels.filter((el) => el.textContent.trim() === labelText)
+        const target = matches[1]
+        if (!target) {
+          throw new Error(`Addressee gender label "${labelText}" not found (matchIndex=1)`)
+        }
+        ;(target as HTMLElement).click()
+      }, label)
+
+      console.log(`👤 Clicked addressee gender: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click addressee gender', {
+        step: 'clickAddresseeGenderOption',
+        selector: KAGI_SELECTORS.GENDER_LABEL,
+        label,
+        matchIndex: 1,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click addressee gender "${label}": ${message}`,
+        {
+          status: 502,
+          cause: error,
         },
       )
     }

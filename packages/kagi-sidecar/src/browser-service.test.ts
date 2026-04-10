@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 import type {
+  ElementHandleLike,
   KagiBrowserService as KagiBrowserServiceType,
   KagiSidecarError as KagiSidecarErrorType,
 } from './browser-service'
+import { KAGI_SELECTORS } from './constants/kagi-ui.js'
 
 interface Deferred {
   promise: Promise<void>
@@ -45,7 +47,8 @@ const mockPage = {
   setRequestInterception: mock((_enabled: boolean) => Promise.resolve()),
   on: mock((_event: string, _handler: unknown) => undefined),
   goto: mock((_url: string) => Promise.resolve()),
-  waitForSelector: mock((_selector: string) => Promise.resolve()),
+  waitForSelector: mock((_selector: string) => Promise.resolve(null)),
+  focus: mock((_selector: string) => Promise.resolve()),
   evaluate: mock((_fn: unknown, _arg?: unknown) => Promise.resolve('Xin chao')),
   content: mock(() => Promise.resolve('<main>translated</main>')),
   close: mock(() => Promise.resolve()),
@@ -77,6 +80,7 @@ describe('KagiBrowserService', () => {
     mockPage.on.mockClear()
     mockPage.goto.mockClear()
     mockPage.waitForSelector.mockClear()
+    mockPage.focus.mockClear()
     mockPage.evaluate.mockClear()
     mockPage.content.mockClear()
     mockPage.close.mockClear()
@@ -342,6 +346,180 @@ describe('KagiBrowserService URL verification helpers', () => {
     expect(() => {
       asUrlVerificationService(service).verifyUrlMatchesReadingLevel(page, 'c2', 'C2 level check')
     }).toThrow(KagiSidecarError)
+  })
+})
+
+interface BasicUiService {
+  clickTranslationSettingsButton(page: {
+    waitForSelector: (
+      selector: string,
+      options?: { visible?: boolean; timeout?: number },
+    ) => Promise<ElementHandleLike | null>
+    focus: (selector: string) => Promise<void>
+    evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>
+    url: () => string
+  }): Promise<void>
+  clearTranslationContext(page: {
+    focus: (selector: string) => Promise<void>
+    evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>
+    url: () => string
+  }): Promise<void>
+  fillTranslationContext(
+    page: {
+      focus: (selector: string) => Promise<void>
+      evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>
+      url: () => string
+    },
+    context: string,
+  ): Promise<void>
+  clickSpeakerGenderOption(
+    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
+    label: string,
+  ): Promise<void>
+  clickAddresseeGenderOption(
+    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
+    label: string,
+  ): Promise<void>
+}
+
+describe('KagiBrowserService basic UI interaction helpers', () => {
+  let KagiBrowserService: typeof KagiBrowserServiceType
+
+  beforeEach(async () => {
+    const mod = await import('./browser-service')
+    KagiBrowserService = mod.KagiBrowserService
+  })
+
+  function createService() {
+    return new KagiBrowserService({
+      minIntervalMs: 0,
+      maxQueueDepth: 10,
+      maxQueueWaitMs: 10_000,
+      maxRetries: 0,
+      sleep: () => Promise.resolve(),
+    })
+  }
+
+  function asBasicUiService(s: InstanceType<typeof KagiBrowserServiceType>): BasicUiService {
+    return s as unknown as BasicUiService
+  }
+
+  function minimalPage(overrides: Record<string, unknown> = {}) {
+    return {
+      goto: () => Promise.resolve(),
+      waitForSelector: mock((_s: string) => Promise.resolve(null)),
+      evaluate: mock((_fn: unknown, _arg?: unknown) => Promise.resolve(undefined)),
+      focus: mock((_s: string) => Promise.resolve()),
+      url: () => 'https://translate.kagi.com/',
+      ...overrides,
+    }
+  }
+
+  it('clickTranslationSettingsButton waits for visible button and clicks', async () => {
+    const click = mock(() => Promise.resolve())
+    const handle = { click } as ElementHandleLike
+    const waitForSelector = mock((_s: string) => Promise.resolve(handle))
+
+    const service = createService()
+    await asBasicUiService(service).clickTranslationSettingsButton(
+      minimalPage({ waitForSelector }) as Parameters<
+        BasicUiService['clickTranslationSettingsButton']
+      >[0],
+    )
+
+    expect(waitForSelector).toHaveBeenCalledWith(KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON, {
+      visible: true,
+      timeout: 30_000,
+    })
+    expect(click).toHaveBeenCalledTimes(1)
+  })
+
+  it('clickTranslationSettingsButton throws UI_INTERACTION when button is missing', async () => {
+    const waitForSelector = mock((_s: string) => Promise.resolve(null))
+    const service = createService()
+
+    try {
+      await asBasicUiService(service).clickTranslationSettingsButton(
+        minimalPage({ waitForSelector }) as Parameters<
+          BasicUiService['clickTranslationSettingsButton']
+        >[0],
+      )
+      expect.unreachable('expected UI_INTERACTION rejection')
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'UI_INTERACTION' })
+    }
+  })
+
+  it('clearTranslationContext focuses textarea and runs clear evaluate', async () => {
+    const focus = mock(() => Promise.resolve())
+    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
+
+    const service = createService()
+    await asBasicUiService(service).clearTranslationContext(
+      minimalPage({ focus, evaluate }) as Parameters<BasicUiService['clearTranslationContext']>[0],
+    )
+
+    expect(focus).toHaveBeenCalledWith(KAGI_SELECTORS.CONTEXT_TEXTAREA)
+    expect(evaluate).toHaveBeenCalledTimes(1)
+    expect(evaluate.mock.calls[0]?.[1]).toBe(KAGI_SELECTORS.CONTEXT_TEXTAREA)
+  })
+
+  it('fillTranslationContext focuses and passes sel+text to evaluate', async () => {
+    const focus = mock(() => Promise.resolve())
+    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
+
+    const service = createService()
+    await asBasicUiService(service).fillTranslationContext(
+      minimalPage({ focus, evaluate }) as Parameters<BasicUiService['fillTranslationContext']>[0],
+      'my context text',
+    )
+
+    expect(focus).toHaveBeenCalledWith(KAGI_SELECTORS.CONTEXT_TEXTAREA)
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
+      sel: KAGI_SELECTORS.CONTEXT_TEXTAREA,
+      text: 'my context text',
+    })
+  })
+
+  it('clickSpeakerGenderOption evaluates with label text', async () => {
+    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
+
+    const service = createService()
+    await asBasicUiService(service).clickSpeakerGenderOption(
+      minimalPage({ evaluate }) as Parameters<BasicUiService['clickSpeakerGenderOption']>[0],
+      'Feminine',
+    )
+
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), 'Feminine')
+  })
+
+  it('clickAddresseeGenderOption evaluates with label text', async () => {
+    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
+
+    const service = createService()
+    await asBasicUiService(service).clickAddresseeGenderOption(
+      minimalPage({ evaluate }) as Parameters<BasicUiService['clickAddresseeGenderOption']>[0],
+      'Neutral',
+    )
+
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), 'Neutral')
+  })
+
+  it('clearTranslationContext wraps focus errors in UI_INTERACTION', async () => {
+    const focus = mock(() => Promise.reject(new Error('focus failed')))
+
+    const service = createService()
+    try {
+      await asBasicUiService(service).clearTranslationContext(
+        minimalPage({ focus }) as Parameters<BasicUiService['clearTranslationContext']>[0],
+      )
+      expect.unreachable('expected UI_INTERACTION rejection')
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: 'UI_INTERACTION',
+        status: 502,
+      })
+    }
   })
 })
 
