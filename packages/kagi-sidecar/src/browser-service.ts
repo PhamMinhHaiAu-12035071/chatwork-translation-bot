@@ -1,6 +1,8 @@
 import { buildKagiUrl } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
+import { READING_LEVEL_TO_STEP } from './constants/kagi-ui.js'
+
 interface PageLike {
   goto(
     url: string,
@@ -17,6 +19,8 @@ interface PageLike {
     },
   ): Promise<unknown>
   evaluate<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg): Promise<TResult>
+  /** Current page URL (address bar). Used for two-phase URL verification. */
+  url(): string
 }
 
 interface BrowserLike {
@@ -60,6 +64,7 @@ export type KagiSidecarErrorCode =
   | 'TIMEOUT'
   | 'TRANSPORT'
   | 'INVALID_RESPONSE'
+  | 'UI_INTERACTION'
 
 export class KagiSidecarError extends Error {
   constructor(
@@ -309,6 +314,114 @@ export class KagiBrowserService {
     }
 
     this.lastRequestStartedAt = this.options.now()
+  }
+
+  /**
+   * Verify URL contains expected fragment (two-phase verification).
+   */
+  private verifyUrlContains(page: PageLike, expectedFragment: string, errorContext: string): void {
+    const currentUrl = page.url()
+
+    if (!currentUrl.includes(expectedFragment)) {
+      console.error('[UI_INTERACTION] URL verification failed', {
+        expectedFragment,
+        actualUrl: currentUrl,
+        context: errorContext,
+        phase: 'contains-check',
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `${errorContext}. Expected URL to contain "${expectedFragment}", got: ${currentUrl}`,
+        {
+          status: 502,
+        },
+      )
+    }
+  }
+
+  /**
+   * Verify URL does not contain forbidden fragment (baseline checks).
+   */
+  private verifyUrlNotContains(
+    page: PageLike,
+    forbiddenFragment: string,
+    errorContext: string,
+  ): void {
+    const currentUrl = page.url()
+
+    if (currentUrl.includes(forbiddenFragment)) {
+      console.error('[UI_INTERACTION] URL verification failed', {
+        forbiddenFragment,
+        actualUrl: currentUrl,
+        context: errorContext,
+        phase: 'not-contains-check',
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `${errorContext}. Expected URL NOT to contain "${forbiddenFragment}", got: ${currentUrl}`,
+        {
+          status: 502,
+        },
+      )
+    }
+  }
+
+  /**
+   * Verify URL reflects expected reading level (standard vs explicit step).
+   */
+  private verifyUrlMatchesReadingLevel(page: PageLike, level: string, errorContext: string): void {
+    const currentUrl = page.url()
+    const expectedStep = READING_LEVEL_TO_STEP[level]
+
+    if (expectedStep === undefined) {
+      throw new KagiSidecarError('UI_INTERACTION', `Unknown reading level: ${level}`, {
+        status: 502,
+      })
+    }
+
+    if (level === 'standard') {
+      const hasParam = currentUrl.includes('language_complexity=')
+      if (hasParam && !currentUrl.includes('language_complexity=0')) {
+        console.error('[UI_INTERACTION] URL verification failed', {
+          expectedLevel: 'standard (0 or absent)',
+          actualUrl: currentUrl,
+          context: errorContext,
+          timestamp: new Date().toISOString(),
+        })
+
+        throw new KagiSidecarError(
+          'UI_INTERACTION',
+          `${errorContext}. Expected standard reading level, got: ${currentUrl}`,
+          {
+            status: 502,
+          },
+        )
+      }
+      return
+    }
+
+    const expectedParam = `language_complexity=${String(expectedStep)}`
+    if (!currentUrl.includes(expectedParam)) {
+      console.error('[UI_INTERACTION] URL verification failed', {
+        expectedLevel: level,
+        expectedParam,
+        actualUrl: currentUrl,
+        context: errorContext,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `${errorContext}. Expected "${expectedParam}", got: ${currentUrl}`,
+        {
+          status: 502,
+        },
+      )
+    }
   }
 
   private async executeTranslation(request: KagiTranslateRequest): Promise<string> {

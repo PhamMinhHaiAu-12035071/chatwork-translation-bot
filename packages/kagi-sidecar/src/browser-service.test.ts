@@ -23,6 +23,24 @@ function createDeferred(): Deferred {
   return { promise, resolve, reject }
 }
 
+interface UrlVerificationService {
+  verifyUrlContains(
+    page: { url: () => string },
+    expectedFragment: string,
+    errorContext: string,
+  ): void
+  verifyUrlNotContains(
+    page: { url: () => string },
+    forbiddenFragment: string,
+    errorContext: string,
+  ): void
+  verifyUrlMatchesReadingLevel(
+    page: { url: () => string },
+    level: string,
+    errorContext: string,
+  ): void
+}
+
 const mockPage = {
   setRequestInterception: mock((_enabled: boolean) => Promise.resolve()),
   on: mock((_event: string, _handler: unknown) => undefined),
@@ -31,6 +49,7 @@ const mockPage = {
   evaluate: mock((_fn: unknown, _arg?: unknown) => Promise.resolve('Xin chao')),
   content: mock(() => Promise.resolve('<main>translated</main>')),
   close: mock(() => Promise.resolve()),
+  url: mock(() => 'https://translate.kagi.com/?from=auto&to=vi&text=test'),
 }
 
 const mockBrowser = {
@@ -61,6 +80,7 @@ describe('KagiBrowserService', () => {
     mockPage.evaluate.mockClear()
     mockPage.content.mockClear()
     mockPage.close.mockClear()
+    mockPage.url.mockClear()
     mockBrowser.close.mockClear()
 
     const mod = await import('./browser-service')
@@ -191,6 +211,137 @@ describe('KagiBrowserService', () => {
     const result = await service.translate({ text: 'Hello world', style: 'Clear' })
 
     expect(result.translated).toBe('Bản dịch hoàn chỉnh')
+  })
+})
+
+describe('KagiBrowserService URL verification helpers', () => {
+  let KagiBrowserService: typeof KagiBrowserServiceType
+  let KagiSidecarError: typeof KagiSidecarErrorType
+
+  beforeEach(async () => {
+    const mod = await import('./browser-service')
+    KagiBrowserService = mod.KagiBrowserService
+    KagiSidecarError = mod.KagiSidecarError
+  })
+
+  function createPageLike(url: string) {
+    return {
+      goto: () => Promise.resolve(),
+      waitForSelector: () => Promise.resolve(),
+      evaluate: () => Promise.resolve(''),
+      url: () => url,
+    }
+  }
+
+  function asUrlVerificationService(
+    s: InstanceType<typeof KagiBrowserServiceType>,
+  ): UrlVerificationService {
+    return s as unknown as UrlVerificationService
+  }
+
+  it('verifyUrlContains passes when URL includes fragment', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?speaker_gender=unknown')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlContains(
+        page,
+        'speaker_gender=unknown',
+        'Speaker gender baseline',
+      )
+    }).not.toThrow()
+  })
+
+  it('verifyUrlContains throws UI_INTERACTION when fragment missing', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?from=auto')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlContains(
+        page,
+        'speaker_gender=unknown',
+        'Speaker gender baseline',
+      )
+    }).toThrow(KagiSidecarError)
+
+    try {
+      asUrlVerificationService(service).verifyUrlContains(
+        page,
+        'speaker_gender=unknown',
+        'Speaker gender baseline',
+      )
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: 'UI_INTERACTION',
+        status: 502,
+      })
+    }
+  })
+
+  it('verifyUrlNotContains passes when fragment absent', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?from=auto')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlNotContains(page, 'context=', 'Context cleared')
+    }).not.toThrow()
+  })
+
+  it('verifyUrlNotContains throws when fragment present', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?context=old')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlNotContains(
+        page,
+        'context=',
+        'Context should be cleared',
+      )
+    }).toThrow(KagiSidecarError)
+  })
+
+  it('verifyUrlMatchesReadingLevel passes for standard with no param', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?from=auto')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlMatchesReadingLevel(
+        page,
+        'standard',
+        'Standard level',
+      )
+    }).not.toThrow()
+  })
+
+  it('verifyUrlMatchesReadingLevel passes for standard with complexity=0', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?language_complexity=0')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlMatchesReadingLevel(
+        page,
+        'standard',
+        'Standard level',
+      )
+    }).not.toThrow()
+  })
+
+  it('verifyUrlMatchesReadingLevel passes for c2 with complexity=6', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?language_complexity=6')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlMatchesReadingLevel(page, 'c2', 'C2 level')
+    }).not.toThrow()
+  })
+
+  it('verifyUrlMatchesReadingLevel throws when non-standard level missing param', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?from=auto')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlMatchesReadingLevel(page, 'c2', 'C2 level check')
+    }).toThrow(KagiSidecarError)
   })
 })
 
