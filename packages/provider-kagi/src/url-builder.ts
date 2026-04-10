@@ -102,3 +102,26 @@ export function buildKagiUrl(text: string, style: KagiStyle, context?: string): 
 export function buildPreviewUrl(style: KagiStyle, context?: string | null): string {
   return buildKagiUrl('hello', style, context ?? undefined)
 }
+
+/**
+ * Build minimal Kagi translate URL for UI interaction approach.
+ *
+ * Returns URL with only from/to/text params. Style settings will be
+ * applied via UI interactions (click, slide, type) rather than URL params.
+ *
+ * @param text - Text to translate
+ * @returns Minimal Kagi translate URL
+ *
+ * @example
+ * buildSimpleKagiUrl('Hello')
+ * // => 'https://translate.kagi.com/?from=auto&to=vi&text=Hello'
+ */
+export function buildSimpleKagiUrl(text: string): string {
+  const params = new URLSearchParams({
+    from: 'auto',
+    to: 'vi',
+    text: text,
+  })
+
+  return `https://translate.kagi.com/?${params.toString()}`
+}

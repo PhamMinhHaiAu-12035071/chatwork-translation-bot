@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildKagiUrl, buildPreviewUrl } from './url-builder'
+import { buildKagiUrl, buildPreviewUrl, buildSimpleKagiUrl } from './url-builder'
 
 describe('buildKagiUrl', () => {
   it('should build URL with Wild style and context', () => {
@@ -94,5 +94,37 @@ describe('buildPreviewUrl', () => {
     expect(url).toContain('text=hello')
     expect(url).toMatch(/[?&]context=/)
     expect(decodeURIComponent(url)).toContain('ソフトウェア')
+  })
+})
+
+describe('buildSimpleKagiUrl', () => {
+  it('should build minimal URL with from/to/text params only', () => {
+    const result = buildSimpleKagiUrl('Hello world')
+    expect(result).toBe('https://translate.kagi.com/?from=auto&to=vi&text=Hello+world')
+  })
+
+  it('should properly encode special characters', () => {
+    const result = buildSimpleKagiUrl('Hello & goodbye')
+    expect(result).toContain('Hello+%26+goodbye')
+  })
+
+  it('should handle unicode characters', () => {
+    const result = buildSimpleKagiUrl('你好 xin chào')
+    expect(result).toContain('%E4%BD%A0%E5%A5%BD')
+    expect(result).toContain('xin+ch%C3%A0o')
+  })
+
+  it('should handle empty string', () => {
+    const result = buildSimpleKagiUrl('')
+    expect(result).toBe('https://translate.kagi.com/?from=auto&to=vi&text=')
+  })
+
+  it('should handle long text', () => {
+    const longText = 'a'.repeat(1000)
+    const result = buildSimpleKagiUrl(longText)
+    expect(result).toContain('from=auto')
+    expect(result).toContain('to=vi')
+    expect(result).toContain('text=')
+    expect(result.length).toBeGreaterThan(1000)
   })
 })
