@@ -1,17 +1,30 @@
-import {
-  KAGI_STYLE_DESCRIPTIONS,
-  KAGI_STYLE_LABELS,
-  KAGI_STYLE_VALUES,
-} from '@chatwork-bot/provider-kagi'
+import { type KagiStyle } from '@chatwork-bot/provider-kagi'
 import { z } from 'zod'
 
-export const FREE_ROOM_KAGI_STYLES = KAGI_STYLE_VALUES
+/**
+ * ACTIVE_KAGI_STYLES - Styles verified and enabled for dashboard
+ *
+ * Currently only "Wild" has been manually verified with UI interaction approach.
+ * To enable additional styles:
+ * 1. Follow verification checklist in docs/kagi-style-verification.md
+ * 2. Test in nghien_cuu_cua_toi environment
+ * 3. Verify "chim mồi" requirements for each formality
+ * 4. Add verified style to this array
+ * 5. Update FREE_ROOM_KAGI_STYLE_LABELS and FREE_ROOM_KAGI_STYLE_DESCRIPTIONS below
+ */
+const ACTIVE_KAGI_STYLES = ['Wild'] as const satisfies readonly KagiStyle[]
+
+export const FREE_ROOM_KAGI_STYLES = ACTIVE_KAGI_STYLES
 
 export type FreeRoomKagiStyle = (typeof FREE_ROOM_KAGI_STYLES)[number]
 
-export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = KAGI_STYLE_LABELS
-export const FREE_ROOM_KAGI_STYLE_DESCRIPTIONS: Record<FreeRoomKagiStyle, string> =
-  KAGI_STYLE_DESCRIPTIONS
+export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = {
+  Wild: 'Wild',
+}
+
+export const FREE_ROOM_KAGI_STYLE_DESCRIPTIONS: Record<FreeRoomKagiStyle, string> = {
+  Wild: 'Casual Vietnamese, suitable for friends or peers',
+}
 
 export function getFreeRoomKagiStyleDescription(style: FreeRoomKagiStyle): string {
   return FREE_ROOM_KAGI_STYLE_DESCRIPTIONS[style]

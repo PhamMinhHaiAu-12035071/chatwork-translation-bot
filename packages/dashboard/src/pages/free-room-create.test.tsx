@@ -36,7 +36,7 @@ describe('FreeRoomCreatePage', () => {
     expect(html).toContain('Destination Room Name')
     expect(html).toContain('Provider')
     expect(html).toContain('Translation Style')
-    expect(html).toContain('Balanced, natural, and easy to read.')
+    expect(html).toContain('Casual Vietnamese, suitable for friends or peers')
     expect(html).toContain('Create Room')
     expect(html).toContain('Cancel')
     expect(html).toContain('Open Webhook Guide')

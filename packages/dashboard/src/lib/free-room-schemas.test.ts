@@ -12,7 +12,7 @@ describe('free-room-schemas', () => {
       originalRoomId: 424846369,
       originalRoomName: 'Sakura Desk JP',
       destinationRoomName: 'Sakura Desk JP Free',
-      kagiStyle: 'Clear',
+      kagiStyle: 'Wild',
       context: 'Use plain Japanese for internal team chat.',
       protectedKeywords: [
         {
@@ -26,7 +26,7 @@ describe('free-room-schemas', () => {
     expect(parsed.originalRoomId).toBe(424846369)
     expect(parsed.originalRoomName).toBe('Sakura Desk JP')
     expect(parsed.destinationRoomName).toBe('Sakura Desk JP Free')
-    expect(parsed.kagiStyle).toBe('Clear')
+    expect(parsed.kagiStyle).toBe('Wild')
     expect(parsed.context).toBe('Use plain Japanese for internal team chat.')
     expect(parsed.protectedKeywords).toHaveLength(1)
   })
@@ -36,14 +36,14 @@ describe('free-room-schemas', () => {
       originalRoomId: 424846369,
       originalRoomName: 'Sakura Desk JP',
       destinationRoomName: 'Sakura Desk JP Free',
-      kagiStyle: 'Polite',
+      kagiStyle: 'Wild',
       context: '',
       protectedKeywords: [],
     })
 
     expect(parsed.originalRoomId).toBe(424846369)
     expect(parsed.originalRoomName).toBe('Sakura Desk JP')
-    expect(parsed.kagiStyle).toBe('Polite')
+    expect(parsed.kagiStyle).toBe('Wild')
     expect(parsed.context).toBe('')
   })
 
@@ -52,7 +52,7 @@ describe('free-room-schemas', () => {
       originalRoomId: 424846369,
       originalRoomName: 'Sakura Desk JP',
       destinationRoomName: 'Sakura Desk JP Free',
-      kagiStyle: 'Clear',
+      kagiStyle: 'Wild',
       context: 'x'.repeat(101),
       protectedKeywords: [],
     })
@@ -67,28 +67,13 @@ describe('free-room-schemas', () => {
     )
   })
 
-  it('exposes all supported translation styles for UI options', () => {
-    expect(FREE_ROOM_KAGI_STYLES).toEqual([
-      'Wild',
-      'Warm',
-      'Easy',
-      'Clear',
-      'Smart',
-      'Deep',
-      'Fine',
-      'Polite',
-      'Elegant',
-      'True',
-      'Precise',
-      'Exact',
-    ])
+  it('exposes only verified translation styles for UI options', () => {
+    expect(FREE_ROOM_KAGI_STYLES).toEqual(['Wild'])
   })
 
-  it('returns short helper text for each supported style', () => {
-    expect(getFreeRoomKagiStyleDescription('Wild')).toBe('Casual, vivid, and full of energy.')
-    expect(getFreeRoomKagiStyleDescription('Clear')).toBe('Balanced, natural, and easy to read.')
-    expect(getFreeRoomKagiStyleDescription('Exact')).toBe(
-      'Literal and highly precise for nuanced text.',
+  it('returns short helper text for verified style', () => {
+    expect(getFreeRoomKagiStyleDescription('Wild')).toBe(
+      'Casual Vietnamese, suitable for friends or peers',
     )
   })
 
@@ -97,7 +82,7 @@ describe('free-room-schemas', () => {
       originalRoomId: 123456,
       // originalRoomName: missing
       destinationRoomName: 'Free Translation',
-      kagiStyle: 'Clear',
+      kagiStyle: 'Wild',
     })
 
     expect(result.success).toBe(false)
@@ -108,7 +93,7 @@ describe('free-room-schemas', () => {
       originalRoomId: 123456,
       originalRoomName: '  Free Demo  ',
       destinationRoomName: 'Free Translation',
-      kagiStyle: 'Clear',
+      kagiStyle: 'Wild',
     })
 
     expect(result.success).toBe(true)
@@ -122,7 +107,7 @@ describe('free-room-schemas', () => {
       originalRoomId: 123456,
       originalRoomName: '',
       destinationRoomName: 'Free Translation',
-      kagiStyle: 'Clear',
+      kagiStyle: 'Wild',
     })
 
     expect(result.success).toBe(false)
@@ -133,7 +118,7 @@ describe('free-room-schemas', () => {
       originalRoomId: 123456,
       originalRoomName: 'B'.repeat(101),
       destinationRoomName: 'Free Translation',
-      kagiStyle: 'Clear',
+      kagiStyle: 'Wild',
     })
 
     expect(result.success).toBe(false)
