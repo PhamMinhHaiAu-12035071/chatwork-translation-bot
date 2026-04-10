@@ -9,7 +9,7 @@ describe('buildKagiUrl', () => {
     expect(url).toContain('from=auto')
     expect(url).toContain('to=vi')
     expect(url).toContain('text=hello')
-    expect(url).toContain('preserveFormatting=true')
+    expect(url).not.toContain('preserveFormatting')
     expect(url).toContain('formality=less')
     expect(url).toContain('formality_context=vi_casual')
     expect(url).toContain('language_complexity=c2')

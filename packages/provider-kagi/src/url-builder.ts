@@ -74,7 +74,7 @@ export function buildKagiUrl(text: string, style: KagiStyle, context?: string): 
   params.set('from', 'auto')
   params.set('to', 'vi')
   params.set('text', text)
-  params.set('preserveFormatting', 'true')
+  // preserveFormatting removed - Kagi default behavior produces better quality
 
   if (styleParams.formality !== undefined) {
     params.set('formality', styleParams.formality)
