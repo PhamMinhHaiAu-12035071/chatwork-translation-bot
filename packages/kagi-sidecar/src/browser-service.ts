@@ -1,7 +1,14 @@
-import { buildKagiUrl } from '@chatwork-bot/provider-kagi'
+import { buildSimpleKagiUrl, KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
-import { KAGI_SELECTORS, KAGI_TIMING, READING_LEVEL_TO_STEP } from './constants/kagi-ui.js'
+import {
+  FORMALITY_LABELS,
+  FORMALITY_TO_URL_PARAM,
+  KAGI_SELECTORS,
+  KAGI_TIMING,
+  KAGI_UI_LABELS,
+  READING_LEVEL_TO_STEP,
+} from './constants/kagi-ui.js'
 
 /** Handle returned by waitForSelector for elements that can be clicked. */
 export interface ElementHandleLike {
@@ -58,19 +65,6 @@ interface BrowserAutomationConnectOptions {
 }
 
 type BrowserConnect = (options: BrowserAutomationConnectOptions) => Promise<BrowserSession>
-
-const TRANSLATION_SELECTOR = '.translation-content'
-const TRANSLATION_SELECTORS = [
-  '.translation-content .font-universal',
-  '.translation-content .text-direction-auto',
-  '.translation-content span[dir]',
-  '.translation-content',
-  'textarea[placeholder*="translation"]',
-  'textarea[placeholder*="Translation"]',
-] as const
-const ANTI_ABUSE_PATTERN = /captcha|verify you are human|attention required|too many requests/i
-const TRANSLATION_STABILITY_POLL_MS = 250
-const REQUIRED_STABLE_SAMPLES = 2
 
 export type KagiSidecarErrorCode =
   | 'ANTI_ABUSE'
@@ -142,22 +136,6 @@ async function loadBrowserConnect(): Promise<BrowserConnect> {
 
 function isRetryableError(error: unknown): boolean {
   return error instanceof KagiSidecarError && error.retryable
-}
-
-function detectAntiAbuse(content: string): boolean {
-  return ANTI_ABUSE_PATTERN.test(content)
-}
-
-function ensureTranslatedContent(value: string): string {
-  const trimmed = value.trim()
-
-  if (trimmed.length === 0) {
-    throw new KagiSidecarError('INVALID_RESPONSE', 'Kagi returned an empty translation payload', {
-      status: 502,
-    })
-  }
-
-  return trimmed
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -874,125 +852,169 @@ export class KagiBrowserService {
     }
   }
 
+  /**
+   * Execute translation via UI interaction approach.
+   *
+   * Two-phase verification:
+   * 1. Baseline reset: Reset all settings to defaults, verify URL baseline
+   * 2. Target application: Apply target settings, verify URL reflects changes
+   *
+   * "Chim mồi" (decoy) technique for non-standard formality:
+   * - Let Standard formality translate first
+   * - Then switch to target formality and wait for output change
+   *
+   * @param request - Translation request with text, style, optional context
+   * @returns Translation result with translated text
+   * @throws KagiSidecarError on any UI interaction failure (fail-fast)
+   */
   private async executeTranslation(request: KagiTranslateRequest): Promise<string> {
+    const startTime = Date.now()
+
+    // Lookup preset for target style (guaranteed by KagiStyle type)
+    const preset = KAGI_STYLE_PRESETS[request.style]
+
+    console.log(`\n🎯 Translating with style: ${request.style}`)
+    console.log(`Preset: ${JSON.stringify(preset, null, 2)}`)
+
     const page = await this.ensurePage()
-    const url = buildKagiUrl(request.text, request.style, request.context)
 
-    try {
-      await page.goto(url, {
-        waitUntil: 'networkidle2',
-        timeout: this.options.requestTimeoutMs,
-      })
+    // 1. Navigate to simple URL (no style params)
+    const simpleUrl = buildSimpleKagiUrl(request.text)
+    console.log(`🌐 Navigating to: ${simpleUrl}`)
+    await page.goto(simpleUrl, { waitUntil: 'networkidle2' })
 
-      try {
-        await page.waitForSelector(TRANSLATION_SELECTOR, {
-          timeout: Math.floor(this.options.requestTimeoutMs / 2),
-          visible: true,
-        })
-      } catch {
-        // Best-effort: Kagi may render without the preferred selector.
-      }
+    // 2. Open Translation Settings dialog
+    await this.clickTranslationSettingsButton(page)
+    await this.options.sleep(KAGI_TIMING.POST_DIALOG_SETTLE_MS)
 
-      return await this.waitForStableTranslatedText(page)
-    } catch (error) {
-      if (error instanceof KagiSidecarError) {
-        if (error.code !== 'BACKPRESSURE') {
-          await this.resetBrowserState()
-        }
-        throw error
-      }
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 1: RESET TO BASELINE (Defaults) + VERIFY
+    // ═══════════════════════════════════════════════════════════
 
-      await this.resetBrowserState()
-      throw new KagiSidecarError(
-        'TRANSPORT',
-        error instanceof Error ? error.message : 'Unknown Kagi browser transport failure',
-        {
-          retryable: true,
-          status: 502,
-          cause: error,
-        },
+    console.log('\n📌 PHASE 1: Resetting to baseline defaults...')
+
+    // 3. Clear context textarea
+    await this.clearTranslationContext(page)
+    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+    this.verifyUrlNotContains(page, 'context=', 'Baseline: context should be cleared')
+
+    // 4. Click speaker gender "Unknown" (default)
+    await this.clickSpeakerGenderOption(page, KAGI_UI_LABELS.GENDER.UNKNOWN)
+    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+    this.verifyUrlContains(page, 'speaker_gender=unknown', 'Baseline: speaker gender')
+
+    // 5. Click addressee gender "Unknown" (default)
+    await this.clickAddresseeGenderOption(page, KAGI_UI_LABELS.GENDER.UNKNOWN)
+    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+    this.verifyUrlContains(page, 'addressee_gender=unknown', 'Baseline: addressee gender')
+
+    // 6. Set reading level "standard" (default)
+    await this.setReadingLevel(page, 'standard')
+    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+    this.verifyUrlMatchesReadingLevel(page, 'standard', 'Baseline: reading level')
+
+    // 7. Click translation style "Natural" (default)
+    await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.NATURAL)
+    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+    this.verifyUrlContains(page, 'style=natural', 'Baseline: translation style')
+
+    // 8. Verify formality "Standard" (implicit default, no param)
+    this.verifyUrlNotContains(page, 'formality_context=', 'Baseline: formality (Standard default)')
+
+    const baselineUrl = page.url()
+    console.log(`✅ BASELINE VERIFIED: ${baselineUrl}`)
+
+    // ═══════════════════════════════════════════════════════════
+    // PHASE 2: APPLY TARGET SETTINGS + VERIFY
+    // ═══════════════════════════════════════════════════════════
+
+    console.log('\n🎯 PHASE 2: Applying target settings...')
+
+    // 9. Fill context if provided
+    if (request.context) {
+      await this.fillTranslationContext(page, request.context)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlContains(page, 'context=', 'Target: context')
+    }
+
+    // 10. Set target reading level if different from standard
+    if (preset.readingLevel !== 'standard') {
+      await this.setReadingLevel(page, preset.readingLevel)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlMatchesReadingLevel(page, preset.readingLevel, 'Target: reading level')
+    }
+
+    // 11. Set target translation style if different from natural
+    if (preset.translationType !== 'natural') {
+      await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.LITERAL)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlContains(page, 'style=literal', 'Target: translation style')
+    }
+
+    // 12. Handle formality with "Chim mồi" if non-standard
+    if (preset.formality !== 'standard') {
+      console.log('\n🐦 CHIM MỒI: Applying formality technique...')
+
+      // 12a. Wait for Standard output to stabilize (baseline formality)
+      console.log('  ⏳ Step 1: Waiting for Standard formality output...')
+      await this.waitForTranslationOutputStable(page)
+      const standardOutput = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
+        ((el as HTMLElement).textContent || '').trim(),
       )
-    }
-  }
+      console.log(`  📄 Standard output: "${standardOutput.substring(0, 100)}..."`)
 
-  private async waitForStableTranslatedText(page: PageLike): Promise<string> {
-    let lastNonEmptySample = ''
-    let stableSampleCount = 0
-
-    for (;;) {
-      const translated = await this.readTranslationText(page)
-      const trimmed = translated.trim()
-
-      if (trimmed.length > 0) {
-        if (trimmed === lastNonEmptySample) {
-          stableSampleCount += 1
-        } else {
-          lastNonEmptySample = trimmed
-          stableSampleCount = 1
-        }
-
-        if (stableSampleCount >= REQUIRED_STABLE_SAMPLES) {
-          return ensureTranslatedContent(trimmed)
-        }
-      } else {
-        const visiblePageText = await this.readVisiblePageText(page)
-
-        if (detectAntiAbuse(visiblePageText)) {
-          throw new KagiSidecarError('ANTI_ABUSE', 'Kagi anti-abuse or captcha detected', {
-            status: 429,
-          })
-        }
-
-        lastNonEmptySample = ''
-        stableSampleCount = 0
+      // 12b. Click target formality
+      const formalityLabel = FORMALITY_LABELS[preset.formality]
+      if (!formalityLabel) {
+        throw new KagiSidecarError('UI_INTERACTION', `Unknown formality: ${preset.formality}`, {
+          status: 502,
+        })
       }
+      console.log(`  🔄 Step 2: Switching to formality "${formalityLabel}"...`)
+      await this.clickFormalityOption(page, formalityLabel)
 
-      await this.options.sleep(TRANSLATION_STABILITY_POLL_MS)
+      // 12c. Verify URL updated with formality param
+      const expectedParam = FORMALITY_TO_URL_PARAM[preset.formality]
+      if (!expectedParam) {
+        throw new KagiSidecarError(
+          'UI_INTERACTION',
+          `No URL param mapping for formality: ${preset.formality}`,
+          { status: 502 },
+        )
+      }
+      console.log(`  🔍 Step 3: Verifying URL contains "${expectedParam}"...`)
+      await this.waitForFormalityUrlUpdate(page, `formality_context=${expectedParam}`)
+
+      // 12d. Wait for output to CHANGE from Standard
+      console.log('  🔄 Step 4: Waiting for output to change...')
+      await this.waitForTranslationContentChange(page, standardOutput)
+
+      // 12e. Wait for new output to stabilize
+      console.log('  ⏳ Step 5: Waiting for new output to stabilize...')
+      await this.waitForTranslationOutputStable(page)
+
+      console.log('  ✅ CHIM MỒI Complete - formality applied correctly')
+    } else {
+      // Standard formality - just wait for output
+      console.log('\n⏳ Waiting for translation output (Standard formality)...')
+      await this.waitForTranslationOutputStable(page)
     }
-  }
 
-  private readTranslationText(page: PageLike): Promise<string> {
-    return page.evaluate(
-      (selectors) => {
-        const doc = document
+    const finalUrl = page.url()
+    console.log(`\n✅ TARGET VERIFIED: ${finalUrl}`)
 
-        for (const selector of selectors) {
-          const node = doc.querySelector(selector)
-          if (node instanceof HTMLTextAreaElement) {
-            if (node.value.trim().length > 0) {
-              return node.value.trim()
-            }
-            continue
-          }
-
-          const rawText = node?.textContent
-          if (typeof rawText === 'string') {
-            const text = rawText.trim()
-            if (text.length > 0) {
-              return text
-            }
-          }
-        }
-
-        const textareas = Array.from(doc.querySelectorAll('textarea'))
-        for (const textarea of textareas) {
-          if (textarea.value.trim().length > 0) {
-            return textarea.value.trim()
-          }
-        }
-
-        return ''
-      },
-      [...TRANSLATION_SELECTORS],
+    // 13. Scrape translated text
+    const translated = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
+      ((el as HTMLElement).textContent || '').trim(),
     )
-  }
 
-  private readVisiblePageText(page: PageLike): Promise<string> {
-    return page.evaluate((_arg) => {
-      const title = document.title.trim()
-      const bodyText = document.body.innerText.trim()
-      return [title, bodyText].filter((value) => value.length > 0).join('\n')
-    }, null)
+    const transportLatencyMs = Date.now() - startTime
+    console.log(`\n🎉 Translation complete in ${String(transportLatencyMs)}ms`)
+    console.log(
+      `📝 Result: "${translated.substring(0, 150)}${translated.length > 150 ? '...' : ''}"`,
+    )
+
+    return translated
   }
 
   private async ensurePage(): Promise<PageLike> {
