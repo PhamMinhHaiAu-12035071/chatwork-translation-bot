@@ -82,6 +82,10 @@ Implementation requirements:
 - always `to=vi`
 - always `text=<input>`
 - always `preserveFormatting=true`
+
+> **DEPRECATED (2026-04-09):** This requirement was removed to improve translation quality.
+> See `../specs/2026-04-09-remove-preserve-formatting-design.md`.
+
 - add Kagi style params only when needed
 - trim `context`
 - omit empty `context`

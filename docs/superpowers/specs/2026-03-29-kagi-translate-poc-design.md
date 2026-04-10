@@ -33,6 +33,10 @@ Xây dựng PoC thử nghiệm tích hợp [Kagi Translate](https://translate.ka
 
 ## Phase 1 Findings — Kagi Translate URL Parameters
 
+> **DEPRECATED (2026-04-09):** The `preserveFormatting=true` requirement has been removed.
+> See `2026-04-09-remove-preserve-formatting-design.md` for rationale.
+> Production code no longer sets this parameter.
+
 Translate.kagi.com là SvelteKit app với URL parameters được document chính thức.
 
 ### Translation Mode (`/`) — Full Parameter Reference
