@@ -53,6 +53,8 @@ const mockPage = {
   content: mock(() => Promise.resolve('<main>translated</main>')),
   close: mock(() => Promise.resolve()),
   url: mock(() => 'https://translate.kagi.com/?from=auto&to=vi&text=test'),
+  waitForFunction: mock((_fn: unknown, _options: unknown, _arg?: unknown) => Promise.resolve()),
+  $eval: mock((_selector: string, _fn: unknown) => Promise.resolve('')),
 }
 
 const mockBrowser = {
@@ -85,6 +87,8 @@ describe('KagiBrowserService', () => {
     mockPage.content.mockClear()
     mockPage.close.mockClear()
     mockPage.url.mockClear()
+    mockPage.waitForFunction.mockClear()
+    mockPage.$eval.mockClear()
     mockBrowser.close.mockClear()
 
     const mod = await import('./browser-service')

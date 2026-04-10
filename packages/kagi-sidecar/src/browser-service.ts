@@ -1,7 +1,7 @@
 import { buildKagiUrl } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
-import { KAGI_SELECTORS, READING_LEVEL_TO_STEP } from './constants/kagi-ui.js'
+import { KAGI_SELECTORS, KAGI_TIMING, READING_LEVEL_TO_STEP } from './constants/kagi-ui.js'
 
 /** Handle returned by waitForSelector for elements that can be clicked. */
 export interface ElementHandleLike {
@@ -28,6 +28,14 @@ interface PageLike {
   url(): string
   /** Focus element matching selector (e.g. translation context textarea). */
   focus(selector: string): Promise<void>
+  /** Wait for function to return truthy in page context (polling with timeout). */
+  waitForFunction<TArg>(
+    fn: (arg: TArg) => boolean,
+    options: { timeout: number; polling: number },
+    arg: TArg,
+  ): Promise<unknown>
+  /** Evaluate function with selector and return result ($eval pattern). */
+  $eval<TResult>(selector: string, fn: (el: Element) => TResult): Promise<TResult>
 }
 
 interface BrowserLike {
@@ -607,6 +615,257 @@ export class KagiBrowserService {
       throw new KagiSidecarError(
         'UI_INTERACTION',
         `Failed to click addressee gender "${label}": ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Set reading level slider to target step value.
+   */
+  private async setReadingLevel(page: PageLike, level: string): Promise<void> {
+    try {
+      const targetStep = READING_LEVEL_TO_STEP[level]
+      if (targetStep === undefined) {
+        throw new Error(`Unknown reading level: ${level}`)
+      }
+
+      await page.evaluate(
+        (payload: { sel: string; step: number }) => {
+          const slider = document.querySelector<HTMLInputElement>(payload.sel)
+          if (!slider) {
+            throw new Error('Reading level slider not found')
+          }
+          slider.value = String(payload.step)
+          slider.dispatchEvent(new Event('input', { bubbles: true }))
+          slider.dispatchEvent(new Event('change', { bubbles: true }))
+        },
+        { sel: KAGI_SELECTORS.READING_LEVEL_SLIDER, step: targetStep },
+      )
+
+      console.log(`📊 Set reading level: "${level}" (step ${String(targetStep)})`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      const targetStep = READING_LEVEL_TO_STEP[level]
+      console.error('[UI_INTERACTION] Failed to set reading level', {
+        step: 'setReadingLevel',
+        level,
+        targetStep,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to set reading level "${level}": ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Click translation style option label (Natural or Literal).
+   */
+  private async clickTranslationStyleOption(page: PageLike, label: string): Promise<void> {
+    try {
+      await page.evaluate((labelText: string) => {
+        const labels = Array.from(document.querySelectorAll('label span'))
+        const target = labels.find((el) => el.textContent.trim() === labelText)
+        if (!target) {
+          throw new Error(`Translation style label "${labelText}" not found`)
+        }
+        ;(target as HTMLElement).click()
+      }, label)
+
+      console.log(`🎨 Clicked translation style: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click translation style', {
+        step: 'clickTranslationStyleOption',
+        selector: KAGI_SELECTORS.STYLE_LABEL,
+        label,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click translation style "${label}": ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Click formality option label (Standard, Vietnamese Casual, Vietnamese Formal).
+   */
+  private async clickFormalityOption(page: PageLike, label: string): Promise<void> {
+    try {
+      await page.evaluate((labelText: string) => {
+        const labels = Array.from(document.querySelectorAll('label span'))
+        const target = labels.find((el) => el.textContent.trim() === labelText)
+        if (!target) {
+          throw new Error(`Formality label "${labelText}" not found`)
+        }
+        ;(target as HTMLElement).click()
+      }, label)
+
+      console.log(`💼 Clicked formality: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click formality', {
+        step: 'clickFormalityOption',
+        selector: KAGI_SELECTORS.FORMALITY_LABEL,
+        label,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click formality "${label}": ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Wait for URL address bar to contain expected formality fragment.
+   * Used after clicking formality to verify it took effect.
+   */
+  private async waitForFormalityUrlUpdate(page: PageLike, expectedFragment: string): Promise<void> {
+    try {
+      await page.waitForFunction(
+        (fragment) => window.location.href.includes(fragment),
+        { timeout: 3000, polling: 100 },
+        expectedFragment,
+      )
+
+      console.log(`✅ URL updated with formality: "${expectedFragment}"`)
+    } catch (error: unknown) {
+      const currentUrl = page.url()
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Formality URL update timeout', {
+        step: 'waitForFormalityUrlUpdate',
+        expectedFragment,
+        actualUrl: currentUrl,
+        timeout: 3000,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Formality URL not updated. Expected fragment "${expectedFragment}", got: ${currentUrl}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Wait for translation output to stabilize (text stops changing).
+   * Polls output text and waits for it to remain unchanged for TRANSLATION_OUTPUT_STABLE_MS.
+   */
+  private async waitForTranslationOutputStable(page: PageLike): Promise<void> {
+    try {
+      const startTime = Date.now()
+      let lastText = ''
+      let lastChangeTime = Date.now()
+
+      while (Date.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
+        const currentText = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
+          ((el as HTMLElement).textContent || '').trim(),
+        )
+
+        if (currentText !== lastText) {
+          lastText = currentText
+          lastChangeTime = Date.now()
+        }
+
+        if (Date.now() - lastChangeTime >= KAGI_TIMING.TRANSLATION_OUTPUT_STABLE_MS) {
+          await this.options.sleep(KAGI_TIMING.POST_STABLE_EXTRA_MS)
+          console.log('⏱️  Translation output stabilized')
+          return
+        }
+
+        await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
+      }
+
+      throw new Error(
+        `Output did not stabilize within ${String(KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS)}ms`,
+      )
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Translation output did not stabilize', {
+        step: 'waitForTranslationOutputStable',
+        maxTimeout: KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Translation output did not stabilize: ${message}`,
+        {
+          status: 502,
+          cause: error,
+        },
+      )
+    }
+  }
+
+  /**
+   * Wait for translation output to CHANGE from previous text.
+   * Used after formality switch to detect when new output appears.
+   */
+  private async waitForTranslationContentChange(page: PageLike, beforeText: string): Promise<void> {
+    try {
+      const startTime = Date.now()
+
+      while (Date.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
+        const currentText = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
+          ((el as HTMLElement).textContent || '').trim(),
+        )
+
+        if (currentText !== beforeText && currentText.length > 0) {
+          console.log('🔄 Translation output changed after formality switch')
+          return
+        }
+
+        await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
+      }
+
+      throw new Error(
+        `Output did not change within ${String(KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS)}ms`,
+      )
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Translation output did not change', {
+        step: 'waitForTranslationContentChange',
+        beforeText: beforeText.substring(0, 100),
+        maxTimeout: KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Translation output did not change after formality switch: ${message}`,
         {
           status: 502,
           cause: error,
