@@ -111,6 +111,7 @@ describe('Translation Types', () => {
         addresseeGender: 'unknown',
         style: 'natural',
         formality: 'standard',
+        translationContext: '',
       }
 
       expect(options.sourceLang).toBe('auto')
@@ -127,6 +128,7 @@ describe('Translation Types', () => {
         addresseeGender: 'feminine',
         style: 'literal',
         formality: 'vietnamese_formal',
+        translationContext: 'Technical documentation',
       }
 
       expect(options.readingLevel).toBe('c2')

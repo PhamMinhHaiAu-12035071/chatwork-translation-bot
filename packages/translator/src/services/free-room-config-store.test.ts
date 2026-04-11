@@ -101,7 +101,7 @@ describe('FreeRoomConfigStore', () => {
         originalRoomName: 'Test Free Room',
         destinationRoomId: 3001,
         destinationRoomName: 'Other Free Room',
-        kagiStyle: 'Wild',
+        kagiStyle: 'Raw',
       }),
     )
 
@@ -177,7 +177,7 @@ describe('FreeRoomConfigStore', () => {
     })
 
     const updated = await store.update(created.id, {
-      kagiStyle: 'Wild',
+      kagiStyle: 'Raw',
     })
 
     expect(updated.previewUrl).not.toBe(created.previewUrl)

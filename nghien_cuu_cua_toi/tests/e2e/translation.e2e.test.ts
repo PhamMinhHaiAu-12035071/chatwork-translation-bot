@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import { KagiUrlBuilder, KagiBrowserService } from '~/services'
-import { getDefaultTranslationOptions } from '~/config'
+import { DEFAULT_TRANSLATION_CONFIG, getDefaultTranslationOptions } from '~/config'
 
 describe('E2E Smoke Tests: Real Kagi Translation', () => {
   let browserService: KagiBrowserService
@@ -34,22 +34,26 @@ describe('E2E Smoke Tests: Real Kagi Translation', () => {
 
   it('should translate with default config (smoke test 1)', async () => {
     const options = getDefaultTranslationOptions()
-    const inputText = 'Hello, how are you today?'
+    const inputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT
 
     console.log(`📝 Translating: "${inputText}"`)
     const url = urlBuilder.build(inputText, options)
     const result = await browserService.translate(url)
 
-    console.log(`✅ Result: "${result}"`)
+    console.log(`✅ Result: "${result.translated}"`)
+    console.log(`🔗 Final URL: ${result.finalUrl}`)
 
     // Basic assertions
-    expect(result).toBeTruthy()
-    expect(result.length).toBeGreaterThan(0)
-    expect(result).not.toContain('[No translation result found')
+    expect(result.translated).toBeTruthy()
+    expect(result.translated.length).toBeGreaterThan(0)
+    expect(result.translated).not.toContain('[No translation result found')
+    expect(result.finalUrl).toMatch(/^https:\/\/translate\.kagi\.com\//)
 
     // Vietnamese detection (loose check)
     const hasVietnameseChars =
-      /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(result)
+      /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(
+        result.translated,
+      )
     expect(hasVietnameseChars).toBe(true)
 
     // Rate limit protection (3-5s delay)
@@ -72,16 +76,18 @@ describe('E2E Smoke Tests: Real Kagi Translation', () => {
     const url = urlBuilder.build(inputText, options)
     const result = await browserService.translate(url)
 
-    console.log(`✅ Result: "${result}"`)
+    console.log(`✅ Result: "${result.translated}"`)
+    console.log(`🔗 Final URL: ${result.finalUrl}`)
 
     // Basic assertions
-    expect(result).toBeTruthy()
-    expect(result.length).toBeGreaterThan(0)
-    expect(result).not.toContain('[No translation result found')
+    expect(result.translated).toBeTruthy()
+    expect(result.translated.length).toBeGreaterThan(0)
+    expect(result.translated).not.toContain('[No translation result found')
+    expect(result.finalUrl).toMatch(/^https:\/\/translate\.kagi\.com\//)
 
     // Formal Vietnamese should have distinct characteristics
     // (This is a loose check - actual formality depends on Kagi's implementation)
-    expect(result).toBeTruthy()
+    expect(result.translated).toBeTruthy()
 
     // Rate limit protection (3-5s delay)
     console.log('⏳ Rate limit delay: 4s...')

@@ -15,7 +15,7 @@ import {
   FORMALITIES,
 } from '~/types'
 import { ValidationError } from '~/errors'
-import { KAGI_TRANSLATE_BASE_URL } from '~/config'
+import { KAGI_TRANSLATE_BASE_URL, clampTranslationContext } from '~/config'
 
 /**
  * Validates enum value against allowed values
@@ -50,7 +50,7 @@ function validateEnum<T extends string>(
  *   formality: 'standard'
  * });
  * // Returns: "https://translate.kagi.com/?from=auto&to=vi&text=Hello"
- * // (No extra params because all are defaults)
+ * // (Reading level is applied later via UI automation)
  *
  * @example
  * const url = builder.build('Hello', {
@@ -62,7 +62,8 @@ function validateEnum<T extends string>(
  *   style: 'literal',
  *   formality: 'vietnamese_casual'
  * });
- * // Returns: "https://translate.kagi.com/?from=auto&to=vi&text=Hello&language_complexity=c2&speaker_gender=neutral&addressee_gender=feminine&style=literal&formality=more&formality_context=vi_casual"
+ * // Returns: "https://translate.kagi.com/?from=auto&to=vi&text=Hello&speaker_gender=neutral&addressee_gender=feminine&style=literal&formality=less&formality_context=vi_casual"
+ * // Non-empty translationContext also adds: &context=<clamped text>
  */
 export class KagiUrlBuilder implements IUrlBuilder {
   /**
@@ -89,11 +90,6 @@ export class KagiUrlBuilder implements IUrlBuilder {
 
     // Conditional params (only sent if not default)
 
-    // Reading Level: skip 'standard'
-    if (options.readingLevel !== 'standard') {
-      params.set('language_complexity', options.readingLevel)
-    }
-
     // Speaker Gender: skip 'unknown'
     if (options.speakerGender !== 'unknown') {
       params.set('speaker_gender', options.speakerGender)
@@ -114,10 +110,15 @@ export class KagiUrlBuilder implements IUrlBuilder {
       params.set('formality', 'more')
       params.set('formality_context', 'vi_formal')
     } else if (options.formality === 'vietnamese_casual') {
-      params.set('formality', 'more')
+      params.set('formality', 'less')
       params.set('formality_context', 'vi_casual')
     }
     // 'standard' formality: skip params
+
+    const contextParam = clampTranslationContext(options.translationContext)
+    if (contextParam !== '') {
+      params.set('context', contextParam)
+    }
 
     return `${KAGI_TRANSLATE_BASE_URL}?${params.toString()}`
   }

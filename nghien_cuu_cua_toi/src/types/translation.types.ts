@@ -44,7 +44,7 @@ export type TranslationStyle = 'natural' | 'literal'
  * @remarks Sends formality + formality_context params
  * @example 'standard' // won't send formality params
  * @example 'vietnamese_formal' // sends formality=more&formality_context=vi_formal
- * @example 'vietnamese_casual' // sends formality=more&formality_context=vi_casual
+ * @example 'vietnamese_casual' // sends formality=less&formality_context=vi_casual
  */
 export type Formality = 'standard' | 'vietnamese_formal' | 'vietnamese_casual'
 
@@ -59,6 +59,11 @@ export interface TranslationOptions {
   addresseeGender: AddresseeGender
   style: TranslationStyle
   formality: Formality
+  /**
+   * Optional brief context for the Translation Settings textarea (Kagi UI).
+   * @remarks At most 100 characters; longer input is truncated when filling the field.
+   */
+  translationContext?: string
 }
 
 /**

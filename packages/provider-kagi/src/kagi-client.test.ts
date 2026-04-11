@@ -64,7 +64,7 @@ describe('KagiClient', () => {
 
     await client.translate({
       text: 'Hello',
-      style: 'Wild',
+      style: 'Raw',
       context: 'software team',
     })
 
@@ -79,7 +79,7 @@ describe('KagiClient', () => {
     expect(new Headers(init?.headers).get('content-type')).toBe('application/json')
     expect(JSON.parse(requestBody)).toEqual({
       text: 'Hello',
-      style: 'Wild',
+      style: 'Raw',
       context: 'software team',
     })
   })

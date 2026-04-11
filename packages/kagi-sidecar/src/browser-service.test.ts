@@ -56,10 +56,7 @@ const mockPage = {
   evaluate: mock((_fn: unknown, _arg?: unknown) => Promise.resolve('Xin chao')),
   content: mock(() => Promise.resolve('<main>translated</main>')),
   close: mock(() => Promise.resolve()),
-  url: mock(
-    () =>
-      'https://translate.kagi.com/?from=auto&to=vi&text=test&speaker_gender=unknown&addressee_gender=unknown&style=natural',
-  ),
+  url: mock(() => 'https://translate.kagi.com/?from=auto&to=vi&text=test'),
   waitForFunction: mock((_fn: unknown, _options: unknown, _arg?: unknown) => Promise.resolve()),
   $eval: mock((_selector: string, _fn: unknown) => Promise.resolve('Xin chao')),
 }
@@ -217,6 +214,15 @@ describe('KagiBrowserService', () => {
     expect(mockPage.on).not.toHaveBeenCalled()
   })
 
+  it('accepts the minimal research baseline URL when translating Clear style', async () => {
+    mockPage.url.mockImplementation(() => 'https://translate.kagi.com/?from=auto&to=vi&text=Hello')
+
+    const service = createService()
+    const result = await service.translate({ text: 'Hello', style: 'Clear' })
+
+    expect(result.translated).toBe('Xin chao')
+  })
+
   it.skip('waits for rendered translation output to stabilize before returning it (old polling-based behavior, pending update)', async () => {
     mockPage.evaluate
       .mockResolvedValueOnce('Bản dịch đang render dang dở')
@@ -351,6 +357,15 @@ describe('KagiBrowserService URL verification helpers', () => {
     }).not.toThrow()
   })
 
+  it('verifyUrlMatchesReadingLevel passes for c2 with complexity=c2', () => {
+    const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
+    const page = createPageLike('https://translate.kagi.com/?language_complexity=c2')
+
+    expect(() => {
+      asUrlVerificationService(service).verifyUrlMatchesReadingLevel(page, 'c2', 'C2 level')
+    }).not.toThrow()
+  })
+
   it('verifyUrlMatchesReadingLevel throws when non-standard level missing param', () => {
     const service = new KagiBrowserService({ maxRetries: 0, sleep: () => Promise.resolve() })
     const page = createPageLike('https://translate.kagi.com/?from=auto')
@@ -392,6 +407,113 @@ interface BasicUiService {
     page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
     label: string,
   ): Promise<void>
+  clickTranslationStyleOption(
+    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
+    label: string,
+  ): Promise<void>
+  clickFormalityOption(
+    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
+    label: string,
+  ): Promise<void>
+}
+
+interface FakeContainer {
+  parentElement: FakeContainer | null
+  querySelectorAll(selector: string): FakeSpan[]
+}
+
+interface FakeButton {
+  click(): void
+  parentElement: FakeContainer | null
+}
+
+interface FakeSpan {
+  textContent: string
+  click(): void
+  closest(selector: string): FakeButton | null
+  getBoundingClientRect(): { width: number; height: number }
+}
+
+function createFakeButton() {
+  let clickCount = 0
+
+  const button: FakeButton = {
+    click() {
+      clickCount += 1
+    },
+    parentElement: null,
+  }
+
+  return {
+    button,
+    get clickCount() {
+      return clickCount
+    },
+  }
+}
+
+function createFakeSpan(label: string, button: FakeButton): FakeSpan {
+  return {
+    textContent: label,
+    click() {
+      button.click()
+    },
+    closest(selector: string) {
+      return selector === 'button' ? button : null
+    },
+    getBoundingClientRect() {
+      return { width: 120, height: 24 }
+    },
+  }
+}
+
+function createFakeContainer(spans: FakeSpan[], supportedSelectors: string[]): FakeContainer {
+  return {
+    parentElement: null,
+    querySelectorAll(selector: string) {
+      return supportedSelectors.includes(selector) ? spans : []
+    },
+  }
+}
+
+function withFakeDocument<TResult>(
+  documentMock: { querySelectorAll(selector: string): FakeSpan[] },
+  run: () => TResult,
+): TResult {
+  const hadDocument = 'document' in globalThis
+  const originalDocument = hadDocument
+    ? (globalThis as typeof globalThis & { document?: unknown }).document
+    : undefined
+
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true,
+    value: documentMock,
+  })
+
+  try {
+    return run()
+  } finally {
+    if (hadDocument) {
+      Object.defineProperty(globalThis, 'document', {
+        configurable: true,
+        value: originalDocument,
+      })
+    } else {
+      Reflect.deleteProperty(globalThis, 'document')
+    }
+  }
+}
+
+function createEvaluateWithFakeDocument(documentMock: {
+  querySelectorAll(selector: string): FakeSpan[]
+}) {
+  return mock(<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg) => {
+    try {
+      return Promise.resolve(withFakeDocument(documentMock, () => fn(arg)))
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+    }
+  })
 }
 
 describe('KagiBrowserService basic UI interaction helpers', () => {
@@ -493,7 +615,7 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
     })
   })
 
-  it('clickSpeakerGenderOption evaluates with label text', async () => {
+  it('clickSpeakerGenderOption evaluates with selector payload', async () => {
     const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
 
     const service = createService()
@@ -502,10 +624,14 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
       'Feminine',
     )
 
-    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), 'Feminine')
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
+      selector: KAGI_SELECTORS.GENDER_LABEL,
+      labelText: 'Feminine',
+      matchIndex: 0,
+    })
   })
 
-  it('clickAddresseeGenderOption evaluates with label text', async () => {
+  it('clickAddresseeGenderOption evaluates with selector payload', async () => {
     const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
 
     const service = createService()
@@ -514,7 +640,126 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
       'Neutral',
     )
 
-    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), 'Neutral')
+    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
+      selector: KAGI_SELECTORS.GENDER_LABEL,
+      labelText: 'Neutral',
+      matchIndex: 1,
+    })
+  })
+
+  it('clickSpeakerGenderOption supports research span/button markup', async () => {
+    const speakerButton = createFakeButton()
+    const addresseeButton = createFakeButton()
+    const spans = [
+      createFakeSpan('Unknown', speakerButton.button),
+      createFakeSpan('Unknown', addresseeButton.button),
+    ]
+    const documentMock = {
+      querySelectorAll(selector: string) {
+        return selector === 'span.flex-grow.text-start' ? spans : []
+      },
+    }
+    const evaluate = createEvaluateWithFakeDocument(documentMock)
+
+    const service = createService()
+    await asBasicUiService(service).clickSpeakerGenderOption(
+      minimalPage({ evaluate }) as Parameters<BasicUiService['clickSpeakerGenderOption']>[0],
+      'Unknown',
+    )
+
+    expect(speakerButton.clickCount).toBe(1)
+    expect(addresseeButton.clickCount).toBe(0)
+  })
+
+  it('clickAddresseeGenderOption uses second match with research span/button markup', async () => {
+    const speakerButton = createFakeButton()
+    const addresseeButton = createFakeButton()
+    const spans = [
+      createFakeSpan('Unknown', speakerButton.button),
+      createFakeSpan('Unknown', addresseeButton.button),
+    ]
+    const documentMock = {
+      querySelectorAll(selector: string) {
+        return selector === 'span.flex-grow.text-start' ? spans : []
+      },
+    }
+    const evaluate = createEvaluateWithFakeDocument(documentMock)
+
+    const service = createService()
+    await asBasicUiService(service).clickAddresseeGenderOption(
+      minimalPage({ evaluate }) as Parameters<BasicUiService['clickAddresseeGenderOption']>[0],
+      'Unknown',
+    )
+
+    expect(speakerButton.clickCount).toBe(0)
+    expect(addresseeButton.clickCount).toBe(1)
+  })
+
+  it('clickTranslationStyleOption supports research span/button markup', async () => {
+    const naturalButton = createFakeButton()
+    const literalButton = createFakeButton()
+    const spans = [
+      createFakeSpan('Natural', naturalButton.button),
+      createFakeSpan('Literal', literalButton.button),
+    ]
+    const documentMock = {
+      querySelectorAll(selector: string) {
+        return selector === 'span.flex-grow.text-start' ? spans : []
+      },
+    }
+    const evaluate = createEvaluateWithFakeDocument(documentMock)
+
+    const service = createService()
+    await asBasicUiService(service).clickTranslationStyleOption(
+      minimalPage({ evaluate }) as Parameters<BasicUiService['clickTranslationStyleOption']>[0],
+      'Literal',
+    )
+
+    expect(naturalButton.clickCount).toBe(0)
+    expect(literalButton.clickCount).toBe(1)
+  })
+
+  it('clickFormalityOption disambiguates the correct Standard row in research markup', async () => {
+    const unrelatedStandardButton = createFakeButton()
+    const targetStandardButton = createFakeButton()
+    const formalButton = createFakeButton()
+    const casualButton = createFakeButton()
+
+    const unrelatedStandardSpan = createFakeSpan('Standard', unrelatedStandardButton.button)
+    const targetStandardSpan = createFakeSpan('Standard', targetStandardButton.button)
+    const formalSpan = createFakeSpan('Vietnamese Formal', formalButton.button)
+    const casualSpan = createFakeSpan('Vietnamese Casual', casualButton.button)
+
+    const formalitySelector = 'span.flex-grow.text-start, span.grow.text-start'
+    const row = createFakeContainer(
+      [targetStandardSpan, formalSpan, casualSpan],
+      [formalitySelector],
+    )
+    targetStandardButton.button.parentElement = row
+    formalButton.button.parentElement = row
+    casualButton.button.parentElement = row
+
+    const documentMock = {
+      querySelectorAll(selector: string) {
+        if (selector === formalitySelector) {
+          return [unrelatedStandardSpan, targetStandardSpan, formalSpan, casualSpan]
+        }
+
+        return []
+      },
+    }
+    const evaluate = createEvaluateWithFakeDocument(documentMock)
+
+    const service = createService()
+    await asBasicUiService(service).clickFormalityOption(
+      minimalPage({ evaluate }) as Parameters<BasicUiService['clickFormalityOption']>[0],
+      'Standard',
+    )
+
+    expect(unrelatedStandardButton.clickCount).toBe(0)
+    expect(targetStandardButton.clickCount).toBe(1)
+    expect(formalButton.clickCount).toBe(0)
+    expect(casualButton.clickCount).toBe(0)
   })
 
   it('clearTranslationContext wraps focus errors in UI_INTERACTION', async () => {

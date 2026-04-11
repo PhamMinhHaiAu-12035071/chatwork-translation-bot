@@ -79,7 +79,7 @@ export function FreeRoomDetailPage() {
         originalRoomId: 0,
         originalRoomName: '',
         destinationRoomName: '',
-        kagiStyle: 'Wild',
+        kagiStyle: 'Raw',
         context: '',
         protectedKeywords: [],
       }

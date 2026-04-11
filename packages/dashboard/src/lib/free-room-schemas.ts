@@ -4,7 +4,7 @@ import { z } from 'zod'
 /**
  * ACTIVE_KAGI_STYLES - Styles verified and enabled for dashboard
  *
- * Currently only "Wild" has been manually verified with UI interaction approach.
+ * Currently only "Raw" has been manually verified with UI interaction approach.
  * To enable additional styles:
  * 1. Follow verification checklist in docs/kagi-style-verification.md
  * 2. Test in nghien_cuu_cua_toi environment
@@ -12,18 +12,18 @@ import { z } from 'zod'
  * 4. Add verified style to this array
  * 5. Update FREE_ROOM_KAGI_STYLE_LABELS and FREE_ROOM_KAGI_STYLE_DESCRIPTIONS below
  */
-const ACTIVE_KAGI_STYLES = ['Wild'] as const satisfies readonly KagiStyle[]
+const ACTIVE_KAGI_STYLES = ['Raw'] as const satisfies readonly KagiStyle[]
 
 export const FREE_ROOM_KAGI_STYLES = ACTIVE_KAGI_STYLES
 
 export type FreeRoomKagiStyle = (typeof FREE_ROOM_KAGI_STYLES)[number]
 
 export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = {
-  Wild: 'Wild',
+  Raw: 'Raw',
 }
 
 export const FREE_ROOM_KAGI_STYLE_DESCRIPTIONS: Record<FreeRoomKagiStyle, string> = {
-  Wild: 'Casual Vietnamese, suitable for friends or peers',
+  Raw: 'Casual Vietnamese, suitable for friends or peers',
 }
 
 export function getFreeRoomKagiStyleDescription(style: FreeRoomKagiStyle): string {

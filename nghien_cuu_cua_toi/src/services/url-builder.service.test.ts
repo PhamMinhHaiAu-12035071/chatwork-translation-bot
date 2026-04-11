@@ -35,6 +35,7 @@ describe('KagiUrlBuilder', () => {
       expect(url).not.toContain('addressee_gender')
       expect(url).not.toContain('style')
       expect(url).not.toContain('formality')
+      expect(url).not.toContain('context=')
     })
 
     it('should encode special characters in text', () => {
@@ -54,8 +55,43 @@ describe('KagiUrlBuilder', () => {
     })
   })
 
+  describe('Translation context (URL)', () => {
+    it('should include context param when translationContext is non-empty', () => {
+      const options: TranslationOptions = {
+        sourceLang: 'auto',
+        targetLang: 'vi',
+        readingLevel: 'standard',
+        speakerGender: 'unknown',
+        addresseeGender: 'unknown',
+        style: 'natural',
+        formality: 'standard',
+        translationContext: 'Technical documentation for senior engineers',
+      }
+
+      const url = builder.build('Hello', options)
+
+      expect(url).toContain('context=')
+      expect(url).toContain('Technical+documentation+for+senior+engineers')
+    })
+
+    it('should omit context param when translationContext is empty', () => {
+      const options: TranslationOptions = {
+        sourceLang: 'auto',
+        targetLang: 'vi',
+        readingLevel: 'standard',
+        speakerGender: 'unknown',
+        addresseeGender: 'unknown',
+        style: 'natural',
+        formality: 'standard',
+        translationContext: '',
+      }
+
+      expect(builder.build('Hi', options)).not.toContain('context=')
+    })
+  })
+
   describe('Reading Level Variations', () => {
-    it('should include language_complexity for a1', () => {
+    it('should not include language_complexity for a1', () => {
       const url = builder.build('Hello', {
         sourceLang: 'auto',
         targetLang: 'vi',
@@ -66,10 +102,10 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=a1')
+      expect(url).not.toContain('language_complexity')
     })
 
-    it('should include language_complexity for a2', () => {
+    it('should not include language_complexity for a2', () => {
       const url = builder.build('Hello', {
         sourceLang: 'auto',
         targetLang: 'vi',
@@ -80,10 +116,10 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=a2')
+      expect(url).not.toContain('language_complexity')
     })
 
-    it('should include language_complexity for b1', () => {
+    it('should not include language_complexity for b1', () => {
       const url = builder.build('Hello', {
         sourceLang: 'auto',
         targetLang: 'vi',
@@ -94,10 +130,10 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=b1')
+      expect(url).not.toContain('language_complexity')
     })
 
-    it('should include language_complexity for b2', () => {
+    it('should not include language_complexity for b2', () => {
       const url = builder.build('Hello', {
         sourceLang: 'auto',
         targetLang: 'vi',
@@ -108,10 +144,10 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=b2')
+      expect(url).not.toContain('language_complexity')
     })
 
-    it('should include language_complexity for c1', () => {
+    it('should not include language_complexity for c1', () => {
       const url = builder.build('Hello', {
         sourceLang: 'auto',
         targetLang: 'vi',
@@ -122,10 +158,10 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=c1')
+      expect(url).not.toContain('language_complexity')
     })
 
-    it('should include language_complexity for c2 (extreme)', () => {
+    it('should not include language_complexity for c2 (extreme)', () => {
       const url = builder.build('Hello', {
         sourceLang: 'auto',
         targetLang: 'vi',
@@ -136,7 +172,7 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=c2')
+      expect(url).not.toContain('language_complexity')
     })
   })
 
@@ -272,7 +308,7 @@ describe('KagiUrlBuilder', () => {
         formality: 'vietnamese_casual',
       })
 
-      expect(url).toContain('formality=more')
+      expect(url).toContain('formality=less')
       expect(url).toContain('formality_context=vi_casual')
     })
 
@@ -304,7 +340,7 @@ describe('KagiUrlBuilder', () => {
         formality: 'vietnamese_formal',
       })
 
-      expect(url).toContain('language_complexity=c2')
+      expect(url).not.toContain('language_complexity')
       expect(url).toContain('formality=more')
       expect(url).toContain('formality_context=vi_formal')
     })
@@ -320,8 +356,8 @@ describe('KagiUrlBuilder', () => {
         formality: 'vietnamese_casual',
       })
 
-      expect(url).toContain('language_complexity=a1')
-      expect(url).toContain('formality=more')
+      expect(url).not.toContain('language_complexity')
+      expect(url).toContain('formality=less')
       expect(url).toContain('formality_context=vi_casual')
     })
 
@@ -336,7 +372,7 @@ describe('KagiUrlBuilder', () => {
         formality: 'standard',
       })
 
-      expect(url).toContain('language_complexity=c2')
+      expect(url).not.toContain('language_complexity')
       expect(url).toContain('speaker_gender=feminine')
       expect(url).toContain('addressee_gender=feminine')
       expect(url).toContain('style=literal')
@@ -355,7 +391,7 @@ describe('KagiUrlBuilder', () => {
 
       expect(url).toContain('from=en')
       expect(url).toContain('to=vi')
-      expect(url).toContain('language_complexity=b2')
+      expect(url).not.toContain('language_complexity')
       expect(url).toContain('speaker_gender=neutral')
       expect(url).toContain('addressee_gender=feminine')
       expect(url).toContain('style=literal')
@@ -374,7 +410,7 @@ describe('KagiUrlBuilder', () => {
         formality: 'vietnamese_casual',
       })
 
-      expect(url).toContain('language_complexity=b1')
+      expect(url).not.toContain('language_complexity')
       expect(url).toContain('speaker_gender=neutral')
       expect(url).toContain('addressee_gender=neutral')
       expect(url).toContain('formality_context=vi_casual')

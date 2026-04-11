@@ -7,6 +7,8 @@
   "scripts": {
     "start": "docker-compose up --build",
     "start:local": "bun run src/index.ts",
+    "local": "bun run src/index.ts",
+    "start:local:no-context": "TRANSLATION_CONTEXT= bun run src/index.ts",
     "docker:rebuild": "docker-compose build --no-cache && docker-compose up",
     "docker:logs": "docker-compose logs -f translator",
     "docker:clean": "docker-compose down -v",
@@ -15,7 +17,8 @@
     "test:unit": "bun test --exclude tests/e2e",
     "test:e2e": "bun test tests/e2e",
     "lint": "eslint src/ --ext .ts",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit",
+    "check": "bun run typecheck"
   },
   "keywords": [
     "puppeteer",
@@ -35,6 +38,7 @@
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
     "eslint": "^10.1.0",
+    "jiti": "^2.4.2",
     "typescript": "^5.4.0"
   }
 }

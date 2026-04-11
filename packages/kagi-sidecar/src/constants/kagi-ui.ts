@@ -12,19 +12,19 @@ export const KAGI_SELECTORS = {
   TRANSLATION_SETTINGS_BUTTON: '[aria-label="Translation Settings"]',
 
   /** Context textarea in Translation Settings dialog */
-  CONTEXT_TEXTAREA: 'textarea[placeholder*="context"]',
+  CONTEXT_TEXTAREA: 'textarea[placeholder*="Brief context for translation"]',
 
   /** Reading level slider input */
-  READING_LEVEL_SLIDER: 'input[type="range"][aria-label*="reading level"]',
+  READING_LEVEL_SLIDER: 'input[type="range"][aria-valuemin="0"][aria-valuemax="6"][step="1"]',
 
-  /** Gender label spans (disambiguate by matchIndex: 0=speaker, 1=addressee) */
-  GENDER_LABEL: 'label span',
+  /** Gender option label spans (disambiguate by matchIndex: 0=speaker, 1=addressee) */
+  GENDER_LABEL: 'span.flex-grow.text-start',
 
-  /** Translation style label spans (contains "Natural" or "Literal") */
-  STYLE_LABEL: 'label span',
+  /** Translation style option label spans (contains "Natural" or "Literal") */
+  STYLE_LABEL: 'span.flex-grow.text-start',
 
-  /** Formality label spans (contains "Standard", "Vietnamese Casual", etc.) */
-  FORMALITY_LABEL: 'label span',
+  /** Formality label spans. Kagi may use either `flex-grow` or `grow`. */
+  FORMALITY_LABEL: 'span.flex-grow.text-start, span.grow.text-start',
 
   /** Translation content output container */
   TRANSLATION_CONTENT: '.translation-content, [class*="translation"]',

@@ -8,7 +8,7 @@ export const KAGI_READING_LEVEL_VALUES = ['standard', 'a2', 'b2', 'c1', 'c2'] as
 export type KagiReadingLevel = (typeof KAGI_READING_LEVEL_VALUES)[number]
 
 export const KAGI_STYLE_VALUES = [
-  'Wild',
+  'Raw',
   'Warm',
   'Easy',
   'Clear',
@@ -31,8 +31,8 @@ export interface KagiStylePreset {
 }
 
 export const KAGI_STYLE_PRESETS: Record<KagiStyle, KagiStylePreset> = {
-  Wild: {
-    label: 'Wild',
+  Raw: {
+    label: 'Raw',
     translationType: 'natural',
     formality: 'vietnamese_casual',
     readingLevel: 'c2',
@@ -106,7 +106,7 @@ export const KAGI_STYLE_PRESETS: Record<KagiStyle, KagiStylePreset> = {
 }
 
 export const KAGI_STYLE_LABELS: Record<KagiStyle, string> = {
-  Wild: KAGI_STYLE_PRESETS.Wild.label,
+  Raw: KAGI_STYLE_PRESETS.Raw.label,
   Warm: KAGI_STYLE_PRESETS.Warm.label,
   Easy: KAGI_STYLE_PRESETS.Easy.label,
   Clear: KAGI_STYLE_PRESETS.Clear.label,
@@ -121,7 +121,7 @@ export const KAGI_STYLE_LABELS: Record<KagiStyle, string> = {
 }
 
 export const KAGI_STYLE_DESCRIPTIONS: Record<KagiStyle, string> = {
-  Wild: 'Casual, vivid, and full of energy.',
+  Raw: 'Casual, vivid, and full of energy.',
   Warm: 'Casual and friendly without sounding too loose.',
   Easy: 'Simple, light, and very easy to follow.',
   Clear: 'Balanced, natural, and easy to read.',

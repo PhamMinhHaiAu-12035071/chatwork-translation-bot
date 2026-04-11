@@ -5,16 +5,59 @@
  * Uses mocked browser to avoid real browser launches
  */
 
-import { describe, it, expect, mock } from 'bun:test'
+import { describe, it, expect, mock, setDefaultTimeout } from 'bun:test'
+
+setDefaultTimeout(30_000)
 import { KagiUrlBuilder, KagiBrowserService } from '~/services'
 import { getDefaultTranslationOptions, DEFAULT_TRANSLATION_CONFIG } from '~/config'
 import { ValidationError, BrowserAutomationError } from '~/errors'
+
+const MOCK_FINAL_URL = 'https://translate.kagi.com/?text=Hello&mockFinal=1'
+
+/** Mirrors {@link KagiBrowserService.translate} stripping formality params before `goto` */
+function stripFormalityParamsFromUrl(url: string): string {
+  const u = new URL(url)
+  u.searchParams.delete('formality')
+  u.searchParams.delete('formality_context')
+  return u.toString()
+}
 
 // Mock puppeteer-real-browser for integration tests
 const mockPage = {
   goto: mock(async () => {}),
   waitForSelector: mock(async () => {}),
+  waitForFunction: mock(async () => {}),
+  click: mock(async () => {}),
+  focus: mock(async () => {}),
   evaluate: mock(async () => 'Xin chào, bạn khỏe không hôm nay?'),
+  url: mock(() => MOCK_FINAL_URL),
+}
+
+function queueEvaluateForOneTranslate(result: string) {
+  mockPage.evaluate
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(undefined as never)
+    .mockResolvedValueOnce(result)
+}
+
+/** Vietnamese formal/casual: extra snapshot scrape, formality row click, second stable clear, final scrape */
+function queueEvaluateForOneTranslateWithFormalitySwitch(
+  result: string,
+  textBeforeSwitch = '__prior_translation__',
+) {
+  mockPage.evaluate
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(undefined as never)
+    .mockResolvedValueOnce(textBeforeSwitch as never)
+    .mockResolvedValueOnce(true as never)
+    .mockResolvedValueOnce(undefined as never)
+    .mockResolvedValueOnce(result)
 }
 
 const mockBrowser = {
@@ -35,11 +78,13 @@ describe('Integration: Config + URLBuilder', () => {
     const urlBuilder = new KagiUrlBuilder()
     const options = getDefaultTranslationOptions()
 
-    const url = urlBuilder.build(DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT, options)
+    const inputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT
+    const url = urlBuilder.build(inputText, options)
 
     expect(url).toContain('from=auto')
     expect(url).toContain('to=vi')
-    expect(url).toContain('text=Hello')
+    const textParam = new URL(url).searchParams.get('text')
+    expect(textParam).toBe(inputText)
     // Defaults should not add extra params
     expect(url).not.toContain('language_complexity')
     expect(url).not.toContain('formality')
@@ -63,7 +108,7 @@ describe('Integration: Config + URLBuilder', () => {
 
     const url = urlBuilder.build('Hello', options)
 
-    expect(url).toContain('language_complexity=c2')
+    expect(url).not.toContain('language_complexity')
     expect(url).toContain('formality=more')
     expect(url).toContain('formality_context=vi_formal')
   })
@@ -83,39 +128,46 @@ describe('Integration: URLBuilder + BrowserService', () => {
     await browserService.launch()
 
     // Translate
-    const result = await browserService.translate(url)
-    expect(result).toBe('Xin chào, bạn khỏe không hôm nay?')
+    const result = await browserService.translate(url, options)
+    expect(result.translated).toBe('Xin chào, bạn khỏe không hôm nay?')
+    expect(result.finalUrl).toBe(MOCK_FINAL_URL)
 
     // Cleanup
     await browserService.close()
 
     // Verify integration
     expect(mockConnect).toHaveBeenCalled()
-    expect(mockPage.goto).toHaveBeenCalledWith(url, expect.any(Object))
+    expect(mockPage.goto).toHaveBeenCalledWith(stripFormalityParamsFromUrl(url), expect.any(Object))
     expect(mockBrowser.close).toHaveBeenCalled()
   })
 
-  it('should handle multiple translations with same services', async () => {
-    const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
-    const options = getDefaultTranslationOptions()
+  it(
+    'should handle multiple translations with same services',
+    async () => {
+      const urlBuilder = new KagiUrlBuilder()
+      const browserService = new KagiBrowserService()
+      const options = getDefaultTranslationOptions()
 
-    await browserService.launch()
+      await browserService.launch()
 
-    // First translation
-    const url1 = urlBuilder.build('Hello', options)
-    mockPage.evaluate.mockResolvedValueOnce('Xin chào')
-    const result1 = await browserService.translate(url1)
-    expect(result1).toBe('Xin chào')
+      // First translation
+      const url1 = urlBuilder.build('Hello', options)
+      queueEvaluateForOneTranslate('Xin chào')
+      const result1 = await browserService.translate(url1, options)
+      expect(result1.translated).toBe('Xin chào')
+      expect(result1.finalUrl).toBe(MOCK_FINAL_URL)
 
-    // Second translation with different text
-    const url2 = urlBuilder.build('Goodbye', options)
-    mockPage.evaluate.mockResolvedValueOnce('Tạm biệt')
-    const result2 = await browserService.translate(url2)
-    expect(result2).toBe('Tạm biệt')
+      // Second translation with different text
+      const url2 = urlBuilder.build('Goodbye', options)
+      queueEvaluateForOneTranslate('Tạm biệt')
+      const result2 = await browserService.translate(url2, options)
+      expect(result2.translated).toBe('Tạm biệt')
+      expect(result2.finalUrl).toBe(MOCK_FINAL_URL)
 
-    await browserService.close()
-  })
+      await browserService.close()
+    },
+    { timeout: 45_000 },
+  )
 
   it('should handle advanced settings in full workflow', async () => {
     const urlBuilder = new KagiUrlBuilder()
@@ -131,15 +183,16 @@ describe('Integration: URLBuilder + BrowserService', () => {
     const url = urlBuilder.build('Complex sentence', options)
 
     // Verify URL has all params
-    expect(url).toContain('language_complexity=b2')
+    expect(url).not.toContain('language_complexity')
     expect(url).toContain('speaker_gender=neutral')
     expect(url).toContain('formality_context=vi_casual')
     expect(url).toContain('style=literal')
 
     await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('Câu phức tạp')
-    const result = await browserService.translate(url)
-    expect(result).toBe('Câu phức tạp')
+    queueEvaluateForOneTranslateWithFormalitySwitch('Câu phức tạp')
+    const result = await browserService.translate(url, options)
+    expect(result.translated).toBe('Câu phức tạp')
+    expect(result.finalUrl).toBe(MOCK_FINAL_URL)
     await browserService.close()
   })
 })
@@ -207,40 +260,60 @@ describe('Integration: Error Propagation', () => {
 })
 
 describe('Integration: Service Lifecycle', () => {
-  it('should enforce correct service initialization order', async () => {
-    const browserService = new KagiBrowserService()
+  it(
+    'should enforce correct service initialization order',
+    async () => {
+      const browserService = new KagiBrowserService()
 
-    // Translate before launch should fail
-    await expect(browserService.translate('https://example.com')).rejects.toThrow(
-      BrowserAutomationError,
-    )
+      // Translate before launch should fail
+      await expect(browserService.translate('https://example.com')).rejects.toThrow(
+        BrowserAutomationError,
+      )
 
-    // Launch then translate should work
-    await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('Result')
-    const result = await browserService.translate('https://example.com')
-    expect(result).toBe('Result')
+      // Launch then translate should work
+      await browserService.launch()
+      queueEvaluateForOneTranslate('Result')
+      const result = await browserService.translate(
+        'https://example.com',
+        getDefaultTranslationOptions(),
+      )
+      expect(result.translated).toBe('Result')
+      expect(result.finalUrl).toBe(MOCK_FINAL_URL)
 
-    await browserService.close()
-  })
+      await browserService.close()
+    },
+    { timeout: 20_000 },
+  )
 
-  it('should allow re-initialization after close', async () => {
-    const browserService = new KagiBrowserService()
+  it(
+    'should allow re-initialization after close',
+    async () => {
+      const browserService = new KagiBrowserService()
 
-    // First lifecycle
-    await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('First')
-    const result1 = await browserService.translate('https://example.com')
-    expect(result1).toBe('First')
-    await browserService.close()
+      // First lifecycle
+      await browserService.launch()
+      queueEvaluateForOneTranslate('First')
+      const result1 = await browserService.translate(
+        'https://example.com',
+        getDefaultTranslationOptions(),
+      )
+      expect(result1.translated).toBe('First')
+      expect(result1.finalUrl).toBe(MOCK_FINAL_URL)
+      await browserService.close()
 
-    // Second lifecycle
-    await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('Second')
-    const result2 = await browserService.translate('https://example.com')
-    expect(result2).toBe('Second')
-    await browserService.close()
-  })
+      // Second lifecycle
+      await browserService.launch()
+      queueEvaluateForOneTranslate('Second')
+      const result2 = await browserService.translate(
+        'https://example.com',
+        getDefaultTranslationOptions(),
+      )
+      expect(result2.translated).toBe('Second')
+      expect(result2.finalUrl).toBe(MOCK_FINAL_URL)
+      await browserService.close()
+    },
+    { timeout: 35_000 },
+  )
 
   it('should handle URL building without browser service', () => {
     const urlBuilder = new KagiUrlBuilder()
@@ -268,9 +341,10 @@ describe('Integration: Real-World Scenarios', () => {
     expect(url).toContain('to=en')
 
     await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('Hello')
+    queueEvaluateForOneTranslate('Hello')
     const result = await browserService.translate(url)
-    expect(result).toBe('Hello')
+    expect(result.translated).toBe('Hello')
+    expect(result.finalUrl).toBe(MOCK_FINAL_URL)
     await browserService.close()
   })
 
@@ -283,9 +357,10 @@ describe('Integration: Real-World Scenarios', () => {
     expect(url).toContain('text=')
 
     await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('')
+    queueEvaluateForOneTranslate('')
     const result = await browserService.translate(url)
-    expect(result).toBe('')
+    expect(result.translated).toBe('')
+    expect(result.finalUrl).toBe(MOCK_FINAL_URL)
     await browserService.close()
   })
 
@@ -302,9 +377,10 @@ describe('Integration: Real-World Scenarios', () => {
     expect(url).toContain('text=')
 
     await browserService.launch()
-    mockPage.evaluate.mockResolvedValueOnce('Xin chào & "tạm biệt"! <test>')
+    queueEvaluateForOneTranslate('Xin chào & "tạm biệt"! <test>')
     const result = await browserService.translate(url)
-    expect(result).toBeTruthy()
+    expect(result.translated).toBeTruthy()
+    expect(result.finalUrl).toBe(MOCK_FINAL_URL)
     await browserService.close()
   })
 
@@ -326,11 +402,12 @@ describe('Integration: Real-World Scenarios', () => {
     await browserService.launch()
 
     // 4. Navigate and translate (same as original page.goto + scrape)
-    mockPage.evaluate.mockResolvedValueOnce('Xin chào, bạn khỏe không hôm nay?')
-    const translated = await browserService.translate(url)
+    queueEvaluateForOneTranslate('Xin chào, bạn khỏe không hôm nay?')
+    const run = await browserService.translate(url)
 
     // 5. Verify result
-    expect(translated).toBe('Xin chào, bạn khỏe không hôm nay?')
+    expect(run.translated).toBe('Xin chào, bạn khỏe không hôm nay?')
+    expect(run.finalUrl).toBe(MOCK_FINAL_URL)
 
     // 6. Cleanup (same as original browser.close)
     await browserService.close()

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'bun:test'
 import { buildKagiUrl, buildPreviewUrl, buildSimpleKagiUrl } from './url-builder'
 
 describe('buildKagiUrl', () => {
-  it('should build URL with Wild style and context', () => {
-    const url = buildKagiUrl('hello', 'Wild', 'software team')
+  it('should build URL with Raw style and context', () => {
+    const url = buildKagiUrl('hello', 'Raw', 'software team')
 
     expect(url).toContain('https://translate.kagi.com/')
     expect(url).toContain('from=auto')
@@ -47,7 +47,7 @@ describe('buildKagiUrl', () => {
 
 describe('buildPreviewUrl', () => {
   it('should build preview URL with context', () => {
-    const url = buildPreviewUrl('Wild', 'software team')
+    const url = buildPreviewUrl('Raw', 'software team')
 
     expect(url).toContain('text=hello')
     expect(url).toContain('context=software+team')

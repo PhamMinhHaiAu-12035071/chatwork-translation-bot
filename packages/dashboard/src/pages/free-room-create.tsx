@@ -60,7 +60,7 @@ export function FreeRoomCreatePage() {
       ...(prefillRoomId !== undefined ? { originalRoomId: Number(prefillRoomId) } : {}),
       originalRoomName: '',
       destinationRoomName: '',
-      kagiStyle: 'Wild',
+      kagiStyle: 'Raw',
       context: '',
       protectedKeywords: [],
     } as FreeRoomCreateInput,
