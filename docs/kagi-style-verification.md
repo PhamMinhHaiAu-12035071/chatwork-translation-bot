@@ -5,9 +5,9 @@
 Kagi translation styles require actual UI interaction (not URL params) to apply correctly.
 Each style must be manually verified before enabling on dashboard.
 
-**Currently verified:** Wild
+**Currently verified:** Wild, Clear
 
-**Pending verification:** Warm, Easy, Clear, Bright, Smooth, Calm, Rich, Crisp, Gentle, Bold, Fresh
+**Pending verification:** Warm, Easy, Bright, Smooth, Calm, Rich, Crisp, Gentle, Bold, Fresh
 
 ---
 
@@ -158,9 +158,9 @@ export const FREE_ROOM_KAGI_STYLE_DESCRIPTIONS = {
 | Style  | Status      | Date       | Tester | Notes                                           |
 | ------ | ----------- | ---------- | ------ | ----------------------------------------------- |
 | Wild   | ✅ VERIFIED | 2026-04-09 | [Name] | All checks pass, "chim mồi" for vi_casual works |
+| Clear  | ✅ VERIFIED | 2026-04-11 | phamau | natural+standard+standard, no chim mồi needed   |
 | Warm   | ⏳ PENDING  | -          | -      | -                                               |
 | Easy   | ⏳ PENDING  | -          | -      | -                                               |
-| Clear  | ⏳ PENDING  | -          | -      | -                                               |
 | Bright | ⏳ PENDING  | -          | -      | -                                               |
 | Smooth | ⏳ PENDING  | -          | -      | -                                               |
 | Calm   | ⏳ PENDING  | -          | -      | -                                               |

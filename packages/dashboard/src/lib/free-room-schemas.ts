@@ -12,7 +12,7 @@ import { z } from 'zod'
  * 4. Add verified style to this array
  * 5. Update FREE_ROOM_KAGI_STYLE_LABELS and FREE_ROOM_KAGI_STYLE_DESCRIPTIONS below
  */
-const ACTIVE_KAGI_STYLES = ['Raw'] as const satisfies readonly KagiStyle[]
+const ACTIVE_KAGI_STYLES = ['Raw', 'Clear'] as const satisfies readonly KagiStyle[]
 
 export const FREE_ROOM_KAGI_STYLES = ACTIVE_KAGI_STYLES
 
@@ -20,10 +20,12 @@ export type FreeRoomKagiStyle = (typeof FREE_ROOM_KAGI_STYLES)[number]
 
 export const FREE_ROOM_KAGI_STYLE_LABELS: Record<FreeRoomKagiStyle, string> = {
   Raw: 'Raw',
+  Clear: 'Clear',
 }
 
 export const FREE_ROOM_KAGI_STYLE_DESCRIPTIONS: Record<FreeRoomKagiStyle, string> = {
   Raw: 'Casual Vietnamese, suitable for friends or peers',
+  Clear: 'Balanced, natural, and easy to read.',
 }
 
 export function getFreeRoomKagiStyleDescription(style: FreeRoomKagiStyle): string {

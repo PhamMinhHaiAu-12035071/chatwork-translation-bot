@@ -68,13 +68,14 @@ describe('free-room-schemas', () => {
   })
 
   it('exposes only verified translation styles for UI options', () => {
-    expect(FREE_ROOM_KAGI_STYLES).toEqual(['Raw'])
+    expect(FREE_ROOM_KAGI_STYLES).toEqual(['Raw', 'Clear'])
   })
 
   it('returns short helper text for verified style', () => {
     expect(getFreeRoomKagiStyleDescription('Raw')).toBe(
       'Casual Vietnamese, suitable for friends or peers',
     )
+    expect(getFreeRoomKagiStyleDescription('Clear')).toBe('Balanced, natural, and easy to read.')
   })
 
   it('requires originalRoomName', () => {
