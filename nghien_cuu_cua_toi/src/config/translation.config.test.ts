@@ -66,6 +66,7 @@ describe('Translation Config', () => {
       expect(BROWSER_CONFIG.TRANSLATION_OUTPUT_MAX_WAIT_MS).toBeDefined()
       expect(BROWSER_CONFIG.POST_STABLE_EXTRA_MS).toBeDefined()
       expect(BROWSER_CONFIG.POST_FORMALITY_CASUAL_SETTLE_MS).toBeDefined()
+      expect(BROWSER_CONFIG.TRANSLATION_VISIBLE_AFTER_SETTINGS_MS).toBeDefined()
     })
 
     it('should default to visible browser for debugging', () => {
@@ -103,9 +104,7 @@ describe('Translation Config', () => {
 
   describe('INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT', () => {
     it('should be the non-empty demo string used by src/index.ts local entry', () => {
-      expect(INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT).toBe(
-        'Technical documentation for senior engineers',
-      )
+      expect(INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT).toBe('hello')
       expect(INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT.length).toBeLessThanOrEqual(
         MAX_TRANSLATION_CONTEXT_LENGTH,
       )
@@ -177,6 +176,7 @@ describe('Translation Config', () => {
       expect(KAGI_SELECTORS.TEXT_SPAN).toBeDefined()
       expect(KAGI_SELECTORS.TEXTAREA_PLACEHOLDER).toBeDefined()
       expect(KAGI_SELECTORS.TRANSLATION_CONTEXT_TEXTAREA).toBeDefined()
+      expect(KAGI_SELECTORS.SOURCE_TEXT_INPUT).toBeDefined()
     })
 
     it('should have valid CSS selectors', () => {
@@ -194,6 +194,7 @@ describe('Translation Config', () => {
       expect(KAGI_SELECTORS.TRANSLATION_CONTEXT_TEXTAREA).toBe(
         'textarea[placeholder*="Brief context for translation"]',
       )
+      expect(KAGI_SELECTORS.SOURCE_TEXT_INPUT).toBe('[aria-label="Source text input"]')
     })
 
     it('should be immutable (const)', () => {

@@ -42,8 +42,8 @@ export async function runReadingLevelSweep(
 
       log?.(`\n🔁 Reading Level ${index + 1}/${readingLevels.length}: ${readingLevel}`)
 
-      const url = urlBuilder.build(inputText, options)
-      const { translated, finalUrl } = await browserService.translate(url, options)
+      const url = urlBuilder.buildNavigation(options)
+      const { translated, finalUrl } = await browserService.translate(url, options, inputText)
 
       results.push({
         readingLevel,

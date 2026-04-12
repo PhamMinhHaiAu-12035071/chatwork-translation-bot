@@ -90,6 +90,28 @@ describe('KagiUrlBuilder', () => {
     })
   })
 
+  describe('buildNavigation (UI-first automation)', () => {
+    it('should only set from, to, and empty text', () => {
+      const options: TranslationOptions = {
+        sourceLang: 'auto',
+        targetLang: 'vi',
+        readingLevel: 'c2',
+        speakerGender: 'neutral',
+        addresseeGender: 'feminine',
+        style: 'literal',
+        formality: 'vietnamese_casual',
+        translationContext: 'should not appear in URL',
+      }
+
+      const url = builder.buildNavigation(options)
+
+      expect(url).toBe('https://translate.kagi.com/?from=auto&to=vi&text=')
+      expect(url).not.toContain('speaker_gender')
+      expect(url).not.toContain('formality')
+      expect(url).not.toContain('context=')
+    })
+  })
+
   describe('Reading Level Variations', () => {
     it('should not include language_complexity for a1', () => {
       const url = builder.build('Hello', {

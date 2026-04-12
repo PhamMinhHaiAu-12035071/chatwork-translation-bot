@@ -840,13 +840,6 @@ export class KagiBrowserService {
    */
   private async waitForTranslationOutputStable(page: PageLike): Promise<void> {
     try {
-      // Wait for the translation output element to appear in DOM before polling.
-      // page.$eval throws immediately if the element doesn't exist yet — we need
-      // waitForSelector to poll until Kagi renders the element after navigation/settings.
-      await page.waitForSelector(KAGI_SELECTORS.TRANSLATION_CONTENT, {
-        timeout: KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS,
-      })
-
       const startTime = Date.now()
       let lastText = ''
       let lastChangeTime = Date.now()
@@ -854,11 +847,14 @@ export class KagiBrowserService {
       while (Date.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
         let currentText = ''
         try {
-          currentText = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
-            ((el as HTMLElement).textContent || '').trim(),
-          )
+          currentText = await this.scrapeTranslatedText(page)
         } catch {
-          // Element may temporarily disappear during SPA re-render — continue polling
+          await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
+          continue
+        }
+
+        if (currentText.length === 0) {
+          await this.detectVerificationRequirement(page)
           await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
           continue
         }
@@ -874,6 +870,7 @@ export class KagiBrowserService {
           return
         }
 
+        await this.detectVerificationRequirement(page)
         await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
       }
 
@@ -881,6 +878,10 @@ export class KagiBrowserService {
         `Output did not stabilize within ${String(KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS)}ms`,
       )
     } catch (error: unknown) {
+      if (error instanceof KagiSidecarError && error.code === 'ANTI_ABUSE') {
+        throw error
+      }
+
       const message = error instanceof Error ? error.message : String(error)
       console.error('[UI_INTERACTION] Translation output did not stabilize', {
         step: 'waitForTranslationOutputStable',
@@ -911,11 +912,8 @@ export class KagiBrowserService {
       while (Date.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
         let currentText = ''
         try {
-          currentText = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
-            ((el as HTMLElement).textContent || '').trim(),
-          )
+          currentText = await this.scrapeTranslatedText(page)
         } catch {
-          // Element may temporarily disappear during SPA re-render — continue polling
           await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
           continue
         }
@@ -925,6 +923,7 @@ export class KagiBrowserService {
           return
         }
 
+        await this.detectVerificationRequirement(page)
         await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
       }
 
@@ -932,6 +931,10 @@ export class KagiBrowserService {
         `Output did not change within ${String(KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS)}ms`,
       )
     } catch (error: unknown) {
+      if (error instanceof KagiSidecarError && error.code === 'ANTI_ABUSE') {
+        throw error
+      }
+
       const message = error instanceof Error ? error.message : String(error)
       console.error('[UI_INTERACTION] Translation output did not change', {
         step: 'waitForTranslationContentChange',
@@ -1062,9 +1065,7 @@ export class KagiBrowserService {
       // 12a. Wait for Standard output to stabilize (baseline formality)
       console.log('  ⏳ Step 1: Waiting for Standard formality output...')
       await this.waitForTranslationOutputStable(page)
-      const standardOutput = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
-        ((el as HTMLElement).textContent || '').trim(),
-      )
+      const standardOutput = await this.requireTranslatedText(page)
       console.log(`  📄 Standard output: "${standardOutput.substring(0, 100)}..."`)
 
       // 12b. Click target formality
@@ -1108,15 +1109,104 @@ export class KagiBrowserService {
     console.log(`\n✅ TARGET VERIFIED: ${finalUrl}`)
 
     // 13. Scrape translated text
-    const translated = await page.$eval(KAGI_SELECTORS.TRANSLATION_CONTENT, (el) =>
-      ((el as HTMLElement).textContent || '').trim(),
-    )
+    const translated = await this.requireTranslatedText(page)
 
     const transportLatencyMs = Date.now() - startTime
     console.log(`\n🎉 Translation complete in ${String(transportLatencyMs)}ms`)
     console.log(
       `📝 Result: "${translated.substring(0, 150)}${translated.length > 150 ? '...' : ''}"`,
     )
+
+    return translated
+  }
+
+  private async scrapeTranslatedText(page: PageLike): Promise<string> {
+    interface TranslationSelectors {
+      TRANSLATION_CONTENT: string
+      TEXT_SPAN: string
+      OUTPUT_TEXTAREA: string
+    }
+
+    const selectors: TranslationSelectors = {
+      TRANSLATION_CONTENT: KAGI_SELECTORS.TRANSLATION_CONTENT,
+      TEXT_SPAN: KAGI_SELECTORS.TEXT_SPAN,
+      OUTPUT_TEXTAREA: KAGI_SELECTORS.OUTPUT_TEXTAREA,
+    }
+
+    return page.evaluate((currentSelectors: TranslationSelectors) => {
+      const translationContent = document.querySelector(currentSelectors.TRANSLATION_CONTENT)
+      if (translationContent !== null) {
+        const textSpan = translationContent.querySelector(currentSelectors.TEXT_SPAN)
+        const spanText = textSpan ? textSpan.textContent.trim() : ''
+        if (spanText && spanText.length > 0) {
+          return spanText
+        }
+
+        const fullText = translationContent.textContent.trim()
+        if (fullText && fullText.length > 0) {
+          return fullText
+        }
+      }
+
+      const outputArea = document.querySelector<HTMLTextAreaElement>(
+        currentSelectors.OUTPUT_TEXTAREA,
+      )
+      const outputAreaValue = outputArea ? outputArea.value.trim() : ''
+      if (outputAreaValue && outputAreaValue.length > 0) {
+        return outputAreaValue
+      }
+
+      const allTextareas = document.querySelectorAll<HTMLTextAreaElement>('textarea')
+      if (allTextareas.length >= 2) {
+        const secondTextarea = allTextareas.item(1)
+        const secondTextareaValue = secondTextarea.value.trim()
+        if (secondTextareaValue && secondTextareaValue.length > 0) {
+          return secondTextareaValue
+        }
+      }
+
+      return ''
+    }, selectors)
+  }
+
+  private async detectVerificationRequirement(page: PageLike): Promise<void> {
+    const messages = [
+      'Please complete the verification step, then edit your text to retry.',
+      'Verify you are human before continuing',
+      "You've hit a rate limit",
+      'Rate limit reached',
+    ]
+
+    const matchedMessage = await page.evaluate(
+      (payload: { messages: string[] }) => {
+        const bodyText = document.body.innerText
+
+        return payload.messages.find((message) => bodyText.includes(message)) ?? ''
+      },
+      { messages },
+    )
+
+    if (!messages.includes(matchedMessage)) {
+      return
+    }
+
+    throw new KagiSidecarError(
+      'ANTI_ABUSE',
+      `Kagi requires verification before translation can continue: ${matchedMessage}`,
+      {
+        status: 429,
+      },
+    )
+  }
+
+  private async requireTranslatedText(page: PageLike): Promise<string> {
+    const translated = await this.scrapeTranslatedText(page)
+
+    if (translated.length === 0) {
+      throw new KagiSidecarError('INVALID_RESPONSE', 'Kagi returned an empty translation payload', {
+        status: 502,
+      })
+    }
 
     return translated
   }

@@ -17,10 +17,10 @@ import { BrowserAutomationError } from '~/errors'
 import {
   BROWSER_CONFIG,
   KAGI_SELECTORS,
-  TRANSLATION_STYLE_UI_LABELS,
-  FORMALITY_UI_LABELS,
   SPEAKER_GENDER_UI_LABELS,
   ADDRESSEE_GENDER_UI_LABELS,
+  TRANSLATION_STYLE_UI_LABELS,
+  FORMALITY_UI_LABELS,
   getDefaultTranslationOptions,
   getReadingLevelSliderValue,
   clampTranslationContext,
@@ -75,13 +75,32 @@ export class KagiBrowserService implements IBrowserService {
   async launch(): Promise<IBrowserConnection> {
     try {
       const headless: boolean = BROWSER_CONFIG.HEADLESS
+      const chromePath = process.env.CHROME_PATH?.trim()
+      const userDataDir = process.env.USER_DATA_DIR?.trim()
+      const customConfig: { chromePath?: string; userDataDir?: string } = {}
+
+      if (chromePath !== undefined && chromePath !== '') {
+        customConfig.chromePath = chromePath
+      }
+
+      if (userDataDir !== undefined && userDataDir !== '') {
+        customConfig.userDataDir = userDataDir
+      }
+
       const { browser, page } = (await connect({
         headless,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        customConfig: {},
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--start-maximized',
+        ],
+        customConfig,
         turnstile: true,
-        connectOption: {},
-        disableXvfb: false,
+        connectOption: {
+          defaultViewport: null,
+        },
+        disableXvfb: true,
         ignoreAllFlags: false,
       })) as unknown as { browser: Browser; page: Page }
 
@@ -105,6 +124,7 @@ export class KagiBrowserService implements IBrowserService {
   async translate(
     url: string,
     options: TranslationOptions = getDefaultTranslationOptions(),
+    sourceText?: string,
   ): Promise<TranslateResult> {
     if (!this.connection) {
       throw new BrowserAutomationError(
@@ -118,10 +138,6 @@ export class KagiBrowserService implements IBrowserService {
 
     try {
       const timeout: number = BROWSER_CONFIG.TIMEOUT
-      const selectorTimeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
-      const renderDelay: number = BROWSER_CONFIG.POST_RENDER_DELAY
-      const translationSelector: string = KAGI_SELECTORS.TRANSLATION_CONTENT
-
       // UI label maps
       const speakerLabelMap: Record<string, string> = {
         unknown: SPEAKER_GENDER_UI_LABELS.UNKNOWN,
@@ -138,84 +154,231 @@ export class KagiBrowserService implements IBrowserService {
         vietnamese_formal: FORMALITY_UI_LABELS.VIETNAMESE_FORMAL,
         vietnamese_casual: FORMALITY_UI_LABELS.VIETNAMESE_CASUAL,
       }
-      const formalityToUrlFragment: Record<string, string | null> = {
-        standard: null,
-        vietnamese_formal: 'formality_context=vi_formal',
-        vietnamese_casual: 'formality_context=vi_casual',
+      const formalityToUrlFragment: Record<
+        string,
+        {
+          value: string | null
+          context: string | null
+        }
+      > = {
+        standard: { value: null, context: null },
+        vietnamese_formal: { value: 'more', context: 'vi_formal' },
+        vietnamese_casual: { value: 'less', context: 'vi_casual' },
       }
 
-      // ── BƯỚC 1: Navigate WITHOUT formality params → Kagi starts with Standard ──
+      // ── BƯỚC 1: Navigate and wait for Cloudflare verification to complete ──
       const navUrl = new URL(url)
-      navUrl.searchParams.delete('formality')
-      navUrl.searchParams.delete('formality_context')
       await page.goto(navUrl.toString(), { waitUntil: 'networkidle2', timeout })
 
-      await this.clickTranslationSettingsButton(page)
-      await this.delayMs(BROWSER_CONFIG.POST_DIALOG_SETTLE_MS)
+      // ── BƯỚC 2: Wait 5s to ensure Cloudflare verification is completed before proceeding
+      await this.delayMs(5000)
 
-      // Configure all settings except formality
-      await this.fillTranslationContext(page, options.translationContext)
-      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
+      // ── BƯỚC 3: Fill source text (if provided) ──
+      if (sourceText !== undefined) {
+        await this.clearSourceTextInput(page)
+        await this.fillSourceTextInput(page, sourceText)
+      }
+
+      // ── BƯỚC 4: Open Translation Settings dialog ──
+      await this.clickTranslationSettingsButton(page)
+
+      // ── BƯỚC 5: Fill context (if provided) ──
+      const contextText = clampTranslationContext(options.translationContext)
+      if (contextText !== '') {
+        await this.fillTranslationContext(page, options.translationContext)
+        await this.delayMs(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS)
+        await this.verifyContextInAddressBar(page, contextText)
+      }
+
+      // ── BƯỚC 6: Click speaker gender option ──
       await this.clickSpeakerGenderOption(
         page,
         speakerLabelMap[options.speakerGender] ?? SPEAKER_GENDER_UI_LABELS.UNKNOWN,
       )
-      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
+
+      // ── BƯỚC 7: Click addressee gender option ──
       await this.clickAddresseeGenderOption(
         page,
         speakerLabelMap[options.addresseeGender] ?? ADDRESSEE_GENDER_UI_LABELS.UNKNOWN,
       )
-      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
-      await this.setReadingLevel(page, options.readingLevel)
-      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
-      await this.clickTranslationStyleOption(
-        page,
-        styleToLabel[options.style] ?? TRANSLATION_STYLE_UI_LABELS.NATURAL,
-      )
 
-      // ── BƯỚC 2: Chờ Standard translation hoàn tất ──
-      await this.waitForTranslationVisible(page, translationSelector, selectorTimeout, renderDelay)
-      await this.waitForTranslationOutputStable(page).catch((err: unknown) => {
-        console.warn(
-          `⚠️  Standard translation did not stabilize: ${err instanceof Error ? err.message : err}`,
-        )
-      })
+      // ── BƯỚC 8: Chọn style "Natural" ──
+      const styleLabel = styleToLabel.natural
+      await this.clickTranslationStyleOption(page, styleLabel)
 
-      // ── BƯỚC 3 & 4: Nếu target không phải Standard → click formality rồi chờ output mới ──
-      const formalityUrlFragment = formalityToUrlFragment[options.formality] ?? null
-      if (formalityUrlFragment !== null) {
-        const targetLabel = formalityToLabel[options.formality] ?? FORMALITY_UI_LABELS.STANDARD
+      // ── BƯỚC 9: Set reading level theo options.readingLevel ──
+      const readingLevel = options.readingLevel
+      await this.delayMs(2_000)
+      await this.setReadingLevel(page, readingLevel)
+      await this.verifyReadingLevelInAddressBar(page, readingLevel)
 
-        // Snapshot text hiện tại để detect content change
-        const textBeforeSwitch = await this.scrapeTranslatedText(page)
-
-        await this.clickFormalityOption(page, targetLabel)
-        await this.waitForFormalityUrlUpdate(page, formalityUrlFragment)
-
-        // Chờ content thực sự thay đổi (Kagi bắt đầu re-translate)
-        await this.waitForTranslationContentChange(page, translationSelector, textBeforeSwitch)
-
-        // ── BƯỚC 4: Chờ Vietnamese Casual translation hoàn tất ──
-        await this.waitForTranslationOutputStable(page).catch((err: unknown) => {
-          console.warn(
-            `⚠️  Target formality translation did not stabilize: ${err instanceof Error ? err.message : err}`,
-          )
-        })
-      } else {
-        await this.delayMs(BROWSER_CONFIG.POST_FORMALITY_CASUAL_SETTLE_MS)
+      // ── BƯỚC 10: Set formality theo options.formality ──
+      const formality: string = options.formality
+      const targetLabel = formalityToLabel[formality] ?? FORMALITY_UI_LABELS.STANDARD
+      const formalityUrlFragment = formalityToUrlFragment[formality] ?? {
+        value: null,
+        context: null,
       }
+      await this.clickFormalityOption(page, targetLabel)
+      await this.verifyFormalityInAddressBar(
+        page,
+        formalityUrlFragment.value,
+        formalityUrlFragment.context,
+      )
+      await this.delayMs(2_000)
 
-      // ── BƯỚC 5: Lấy URL sau khi tất cả đã ổn định ──
       const finalUrl: string = page.url()
       const translated = await this.scrapeTranslatedText(page)
+      console.log(`Final translation output: ${translated}`)
 
       return { translated, finalUrl }
     } catch (error) {
+      if (error instanceof BrowserAutomationError) {
+        throw error
+      }
       throw new BrowserAutomationError('translate', url, error instanceof Error ? error : undefined)
     }
   }
 
-  /** Waits for .translation-content to appear; falls back to a fixed delay. */
+  /**
+   * Verifies the address bar includes the expected context query parameter.
+   * Fail-fast nếu context không được phản ánh lên URL.
+   */
+  private async verifyContextInAddressBar(page: Page, expectedContext: string): Promise<void> {
+    try {
+      await page.waitForFunction(
+        (contextValue: string) => {
+          const params = new URLSearchParams(location.search)
+          const actual = params.get('context')
+          if (actual === null) {
+            return false
+          }
+
+          try {
+            if (actual === contextValue) {
+              return true
+            }
+
+            if (decodeURIComponent(actual) === contextValue) {
+              return true
+            }
+          } catch {
+            // Ignore malformed encoding in non-standard URLs.
+          }
+
+          return actual === encodeURIComponent(contextValue)
+        },
+        {
+          timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
+          polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS,
+        },
+        expectedContext,
+      )
+    } catch (error) {
+      const currentUrl = page.url()
+      console.error(
+        `❌ context verification failed: URL does not contain &context=${encodeURIComponent(expectedContext)}`,
+      )
+      console.error(`Current URL: ${currentUrl}`)
+      throw new BrowserAutomationError(
+        'context-url-verification',
+        currentUrl,
+        error instanceof Error ? error : undefined,
+      )
+    }
+  }
+
+  /**
+   * Verifies the address bar includes the expected language_complexity param.
+   * Fail-fast nếu reading level không được phản ánh lên URL.
+   */
+  private async verifyReadingLevelInAddressBar(
+    page: Page,
+    expectedReadingLevel: ReadingLevel,
+  ): Promise<void> {
+    try {
+      await page.waitForFunction(
+        (expected: string) => {
+          const params = new URLSearchParams(location.search)
+          const actual = params.get('language_complexity')
+          if (expected === 'standard') {
+            return actual == null || actual === ''
+          }
+          return actual === expected
+        },
+        {
+          timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
+          polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS,
+        },
+        expectedReadingLevel,
+      )
+    } catch (error) {
+      const currentUrl = page.url()
+      console.error(
+        `❌ reading level verification failed: URL does not contain language_complexity=${expectedReadingLevel}`,
+      )
+      console.error(`Current URL: ${currentUrl}`)
+      throw new BrowserAutomationError(
+        'reading-level-url-verification',
+        currentUrl,
+        error instanceof Error ? error : undefined,
+      )
+    }
+  }
+
+  /**
+   * Verifies the address bar includes the expected formality query values.
+   * Fail-fast nếu formality context không được phản ánh lên URL.
+   */
+  private async verifyFormalityInAddressBar(
+    page: Page,
+    expectedFormality: string | null,
+    expectedFormalityContext: string | null,
+  ): Promise<void> {
+    try {
+      await page.waitForFunction(
+        (expectedFormalityValue: string | null, expectedContextValue: string | null) => {
+          const params = new URLSearchParams(location.search)
+          if (expectedFormalityValue === null && expectedContextValue === null) {
+            return params.get('formality') === null && params.get('formality_context') === null
+          }
+          return (
+            params.get('formality') === expectedFormalityValue &&
+            params.get('formality_context') === expectedContextValue
+          )
+        },
+        {
+          timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
+          polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS,
+        },
+        expectedFormality,
+        expectedFormalityContext,
+      )
+    } catch (error) {
+      const currentUrl = page.url()
+      if (expectedFormality === null && expectedFormalityContext === null) {
+        console.error(
+          '❌ formality verification failed: URL should not contain formality/formality_context',
+        )
+      } else {
+        console.error(
+          `❌ formality verification failed: URL does not contain formality=${expectedFormality}&${expectedFormalityContext}`,
+        )
+      }
+      console.error(`Current URL: ${currentUrl}`)
+      throw new BrowserAutomationError(
+        'formality-url-verification',
+        currentUrl,
+        error instanceof Error ? error : undefined,
+      )
+    }
+  }
+
+  /**
+   * Waits until `.translation-content` has non-empty text.
+   * Avoids Puppeteer `visible: true`, which often false-fails under Docker/Xvfb while Kagi has
+   * already rendered output.
+   */
   private async waitForTranslationVisible(
     page: Page,
     selector: string,
@@ -223,39 +386,50 @@ export class KagiBrowserService implements IBrowserService {
     fallbackDelay: number,
   ): Promise<void> {
     try {
-      await page.waitForSelector(selector, { timeout: selectorTimeout, visible: true })
+      await page.waitForFunction(
+        (sel: string) => {
+          const el = document.querySelector(sel)
+          return (el?.textContent ?? '').trim().length > 0
+        },
+        { timeout: selectorTimeout, polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS },
+        selector,
+      )
     } catch {
-      console.warn(`⚠️  Timeout waiting for ${selector} - continuing with fallback delay…`)
+      console.warn(`Timeout waiting for ${selector} — continuing with fallback delay…`)
       await this.delayMs(fallbackDelay)
     }
   }
 
   /**
-   * Waits until .translation-content text differs from textBefore.
-   * Confirms Kagi has started a new translation after a settings change.
-   * Non-fatal: logs a warning on timeout.
+   * Closes Translation Settings so the result pane is unobstructed.
+   * Repeats Escape while the reading-level slider is still visible — under Docker/Xvfb a single
+   * Escape can miss focus, leaving the panel open; the next toolbar click then toggles it closed
+   * and the context textarea never appears.
    */
-  private async waitForTranslationContentChange(
-    page: Page,
-    selector: string,
-    textBefore: string,
-  ): Promise<void> {
-    const timeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
+  private async dismissTranslationSettingsDialog(page: Page): Promise<void> {
     try {
-      await page.waitForFunction(
-        (sel: string, prev: string) => {
+      const sliderSel: string = KAGI_SELECTORS.READING_LEVEL_SLIDER
+      const settle: number = BROWSER_CONFIG.POST_DISMISS_SETTINGS_MS
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const panelOpen: boolean = await page.evaluate((sel: string) => {
           const el = document.querySelector(sel)
-          const current = (el?.textContent ?? '').trim()
-          return current.length > 0 && current !== prev
-        },
-        { timeout },
-        selector,
-        textBefore,
-      )
+          if (el === null) {
+            return false
+          }
+          const rect = el.getBoundingClientRect()
+          return rect.width > 0 && rect.height > 0
+        }, sliderSel)
+
+        if (!panelOpen) {
+          break
+        }
+
+        await page.keyboard.press('Escape')
+        await this.delayMs(settle)
+      }
     } catch {
-      console.warn(
-        `⚠️  Translation content did not change after formality switch within ${timeout}ms`,
-      )
+      // Non-fatal: dialog may already be closed
     }
   }
 
@@ -554,15 +728,80 @@ export class KagiBrowserService implements IBrowserService {
       return
     }
 
-    const selector: string = KAGI_SELECTORS.TRANSLATION_CONTEXT_TEXTAREA
+    const primarySel: string = KAGI_SELECTORS.TRANSLATION_CONTEXT_TEXTAREA
     const timeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
 
     try {
       console.log(`⚙️  Setting translation context (${text.length} chars)…`)
-      await page.waitForSelector(selector, { timeout, visible: true })
+      // Do not use Puppeteer `visible: true` here: under Docker + smaller Xvfb (e.g. 1024×768)
+      // the textarea can sit in a scrollable modal below the fold and fail the visibility check
+      // even though it exists (same rationale as waitForTranslationVisible).
+      await page.waitForFunction(
+        (sel: string) => {
+          const el =
+            document.querySelector<HTMLTextAreaElement>(sel) ??
+            Array.from(document.querySelectorAll<HTMLTextAreaElement>('textarea')).find((t) =>
+              /context/i.test(t.placeholder ?? ''),
+            ) ??
+            null
+          if (el === null) {
+            return false
+          }
+          el.scrollIntoView({ block: 'center', inline: 'nearest' })
+          return true
+        },
+        { timeout },
+        primarySel,
+      )
 
-      // Two-step focus: click activates the control in the settings dialog (React / modal),
-      // then explicit focus before assigning value so frameworks observe the sequence.
+      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
+
+      await page.evaluate(
+        (sel: string, value: string) => {
+          const el =
+            document.querySelector<HTMLTextAreaElement>(sel) ??
+            Array.from(document.querySelectorAll<HTMLTextAreaElement>('textarea')).find((t) =>
+              /context/i.test(t.placeholder ?? ''),
+            ) ??
+            null
+          if (el === null) {
+            return
+          }
+          el.scrollIntoView({ block: 'center', inline: 'nearest' })
+          el.focus()
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+          el.value = value
+          el.dispatchEvent(
+            new InputEvent('input', { bubbles: true, data: value, inputType: 'insertFromPaste' }),
+          )
+          el.dispatchEvent(new Event('change', { bubbles: true }))
+          el.blur()
+          el.dispatchEvent(new FocusEvent('blur', { bubbles: true }))
+          el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+          document.body?.focus()
+        },
+        primarySel,
+        text,
+      )
+    } catch (error) {
+      console.warn(
+        `⚠️  Could not set translation context (${primarySel}):`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+  }
+
+  /**
+   * Fills the CodeMirror source pane.
+   * Inserts text into the current source text value without clearing it.
+   */
+  private async fillSourceTextInput(page: Page, rawText: string): Promise<void> {
+    const selector: string = KAGI_SELECTORS.SOURCE_TEXT_INPUT
+    const timeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
+
+    try {
+      console.log(`Setting source text (${rawText.length} chars)...`)
+      await page.waitForSelector(selector, { timeout, visible: true })
       await page.click(selector)
       await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
       await page.focus(selector)
@@ -570,26 +809,87 @@ export class KagiBrowserService implements IBrowserService {
 
       await page.evaluate(
         (sel: string, value: string) => {
-          const el = document.querySelector<HTMLTextAreaElement>(sel)
+          const el = document.querySelector(sel) as HTMLElement | null
           if (el === null) {
             return
           }
           el.focus()
-          el.value = value
-          el.dispatchEvent(
-            new InputEvent('input', { bubbles: true, data: value, inputType: 'insertFromPaste' }),
-          )
-          el.dispatchEvent(new Event('change', { bubbles: true }))
+          /* eslint-disable-next-line @typescript-eslint/no-deprecated */
+          const inserted = document.execCommand('insertText', false, value)
+          if (!inserted) {
+            el.textContent = value
+            el.dispatchEvent(
+              new InputEvent('input', {
+                bubbles: true,
+                data: value,
+                inputType: 'insertFromPaste',
+              }),
+            )
+            el.dispatchEvent(new Event('change', { bubbles: true }))
+          }
         },
         selector,
-        text,
+        rawText,
       )
     } catch (error) {
       console.warn(
-        `⚠️  Could not set translation context (${selector}):`,
+        `Could not set source text (${selector}):`,
         error instanceof Error ? error.message : error,
       )
     }
+  }
+
+  /**
+   * Clears the source text input completely.
+   * Used as a single explicit pre-step before setting new text.
+   */
+  private async clearSourceTextInput(page: Page): Promise<void> {
+    const selector: string = KAGI_SELECTORS.SOURCE_TEXT_INPUT
+    const timeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
+
+    try {
+      console.log('🧹 Clearing source text...')
+      await page.waitForSelector(selector, { timeout, visible: true })
+      await page.click(selector)
+      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
+      await page.focus(selector)
+      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
+
+      await page.evaluate((sel: string) => {
+        const el = document.querySelector(sel) as HTMLElement | null
+        if (el === null) {
+          return
+        }
+        el.focus()
+        /* eslint-disable-next-line @typescript-eslint/no-deprecated */
+        document.execCommand('selectAll', false)
+        /* eslint-disable-next-line @typescript-eslint/no-deprecated */
+        document.execCommand('delete', false)
+      }, selector)
+    } catch (error) {
+      console.warn(
+        `Could not clear source text (${selector}):`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+  }
+
+  private normalizeSourceTextForCompare(value: unknown): string {
+    if (typeof value !== 'string') {
+      return ''
+    }
+    return value.replace(/\r\n/g, '\n').trim()
+  }
+
+  private async getSourceTextInputPlain(page: Page): Promise<string> {
+    const raw: unknown = await page.evaluate((sel: string) => {
+      const el = document.querySelector(sel) as HTMLElement | null
+      if (el === null) {
+        return ''
+      }
+      return el.textContent ?? ''
+    }, KAGI_SELECTORS.SOURCE_TEXT_INPUT)
+    return typeof raw === 'string' ? raw : ''
   }
 
   /**

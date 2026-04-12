@@ -5,8 +5,13 @@ services:
       dockerfile: Dockerfile
     container_name: kagi-translator
     restart: 'no' # One-shot script, no restart needed
+    volumes:
+      # Persist Chrome profile across runs to reduce Docker fingerprint churn
+      - ./user-data:/app/user-data
     environment:
       - DISPLAY=:99
+      - USER_DATA_DIR=/app/user-data
+      - CHROME_PATH=/usr/bin/chromium
     logging:
       driver: json-file
       options:

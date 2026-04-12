@@ -47,7 +47,12 @@ export interface IBrowserService {
    * @returns Translated text result
    * @throws {BrowserAutomationError} If navigation or scraping fails
    */
-  translate(url: string, options?: TranslationOptions): Promise<TranslateResult>
+  translate(
+    url: string,
+    options?: TranslationOptions,
+    /** When set, pasted into the source editor before opening Translation Settings; omit to keep source from the URL only */
+    sourceText?: string,
+  ): Promise<TranslateResult>
 
   /**
    * Closes the current browser instance

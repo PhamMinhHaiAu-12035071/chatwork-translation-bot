@@ -14,8 +14,11 @@ describe('runReadingLevelSweep', () => {
 
     const urlBuilder: IUrlBuilder = {
       build(text, options) {
-        builtLevels.push(options.readingLevel)
         return `${text}-${options.readingLevel}`
+      },
+      buildNavigation(options) {
+        builtLevels.push(options.readingLevel)
+        return `nav-${options.readingLevel}`
       },
     }
 
@@ -25,7 +28,7 @@ describe('runReadingLevelSweep', () => {
 
     const browserService: IBrowserService = {
       launch: mock(async () => connection),
-      translate: mock(async (_url: string, options) => {
+      translate: mock(async (_url: string, options, _sourceText?: string) => {
         const readingLevel = options?.readingLevel ?? 'missing'
         translatedLevels.push(readingLevel)
         return {
@@ -63,13 +66,16 @@ describe('runReadingLevelSweep', () => {
       build(text, options) {
         return `${text}-${options.readingLevel}`
       },
+      buildNavigation(options) {
+        return `nav-${options.readingLevel}`
+      },
     }
 
     const browserService: IBrowserService = {
       launch: mock(async () => ({
         close: mock(async () => {}),
       })),
-      translate: mock(async (_url: string, options) => {
+      translate: mock(async (_url: string, options, _sourceText?: string) => {
         if (options?.readingLevel === 'b1') {
           throw new Error('b1 failed')
         }
@@ -108,13 +114,17 @@ describe('runReadingLevelSweep', () => {
         builtLevels.push(options.readingLevel)
         return `${text}-${options.readingLevel}`
       },
+      buildNavigation(options) {
+        builtLevels.push(options.readingLevel)
+        return `nav-${options.readingLevel}`
+      },
     }
 
     const browserService: IBrowserService = {
       launch: mock(async () => ({
         close: mock(async () => {}),
       })),
-      translate: mock(async (_url: string, options) => {
+      translate: mock(async (_url: string, options, _sourceText?: string) => {
         const readingLevel = options?.readingLevel ?? 'missing'
         translatedLevels.push(readingLevel)
         return {

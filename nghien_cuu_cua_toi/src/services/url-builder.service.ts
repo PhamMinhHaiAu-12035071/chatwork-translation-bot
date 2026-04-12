@@ -67,6 +67,24 @@ function validateEnum<T extends string>(
  */
 export class KagiUrlBuilder implements IUrlBuilder {
   /**
+   * Opens translate.kagi.com with `from` / `to` and empty `text` so automation applies settings in
+   * the UI first, then fills the CodeMirror source field.
+   */
+  buildNavigation(options: TranslationOptions): string {
+    validateEnum(options.readingLevel, READING_LEVELS, 'readingLevel')
+    validateEnum(options.speakerGender, SPEAKER_GENDERS, 'speakerGender')
+    validateEnum(options.addresseeGender, ADDRESSEE_GENDERS, 'addresseeGender')
+    validateEnum(options.style, TRANSLATION_STYLES, 'style')
+    validateEnum(options.formality, FORMALITIES, 'formality')
+
+    const params = new URLSearchParams()
+    params.set('from', options.sourceLang)
+    params.set('to', options.targetLang)
+    params.set('text', '')
+    return `${KAGI_TRANSLATE_BASE_URL}?${params.toString()}`
+  }
+
+  /**
    * Builds a complete Kagi Translate URL
    * @param text - Text to translate
    * @param options - Translation configuration

@@ -499,7 +499,7 @@ describe('scripts/dev.sh orchestration', () => {
     expect(envExample).toContain('KAGI_MIN_INTERVAL_MS=1500')
     expect(envExample).toContain('KAGI_MAX_RETRIES=2')
     expect(envExample).toContain('KAGI_RETRY_BASE_MS=1000')
-    expect(envExample).toContain('KAGI_REQUEST_TIMEOUT_MS=30000')
+    expect(envExample).toContain('KAGI_REQUEST_TIMEOUT_MS=120000')
     expect(envExample).toContain('KAGI_MAX_QUEUE_DEPTH=10')
     expect(envExample).toContain('KAGI_MAX_QUEUE_WAIT_MS=15000')
   })

@@ -3,7 +3,7 @@ import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 import type {
   ElementHandleLike,
   KagiBrowserService as KagiBrowserServiceType,
-  KagiSidecarError as KagiSidecarErrorType,
+  KagiSidecarError as _KagiSidecarErrorType,
 } from './browser-service'
 import { KAGI_SELECTORS } from './constants/kagi-ui.js'
 
@@ -43,6 +43,12 @@ interface UrlVerificationService {
   ): void
 }
 
+interface VerificationDetectionService {
+  detectVerificationRequirement(page: {
+    evaluate<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg): Promise<TResult>
+  }): Promise<void>
+}
+
 const mockElementHandle = {
   click: mock(() => Promise.resolve()),
 }
@@ -53,7 +59,11 @@ const mockPage = {
   goto: mock((_url: string) => Promise.resolve()),
   waitForSelector: mock((_selector: string) => Promise.resolve(mockElementHandle)),
   focus: mock((_selector: string) => Promise.resolve()),
-  evaluate: mock((_fn: unknown, _arg?: unknown) => Promise.resolve('Xin chao')),
+  // Type-safe generic evaluate mock compatible with VerificationDetectionService
+  evaluate: mock(
+    (_fn: unknown, _arg?: unknown): Promise<unknown> => Promise.resolve('Xin chao'),
+  ) as (<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg) => Promise<TResult>) &
+    ReturnType<typeof mock>,
   content: mock(() => Promise.resolve('<main>translated</main>')),
   close: mock(() => Promise.resolve()),
   url: mock(() => 'https://translate.kagi.com/?from=auto&to=vi&text=test'),
@@ -78,27 +88,67 @@ void mock.module('puppeteer-real-browser', () => ({
 
 describe('KagiBrowserService', () => {
   let KagiBrowserService: typeof KagiBrowserServiceType
-  let KagiSidecarError: typeof KagiSidecarErrorType
+  let _KagiSidecarError: typeof _KagiSidecarErrorType
 
   beforeEach(async () => {
-    mockConnect.mockClear()
-    mockElementHandle.click.mockClear()
-    mockPage.setRequestInterception.mockClear()
-    mockPage.on.mockClear()
-    mockPage.goto.mockClear()
-    mockPage.waitForSelector.mockClear()
-    mockPage.focus.mockClear()
-    mockPage.evaluate.mockClear()
-    mockPage.content.mockClear()
-    mockPage.close.mockClear()
-    mockPage.url.mockClear()
-    mockPage.waitForFunction.mockClear()
-    mockPage.$eval.mockClear()
-    mockBrowser.close.mockClear()
+    mockConnect.mockReset()
+    mockConnect.mockImplementation(() =>
+      Promise.resolve({
+        browser: mockBrowser,
+        page: mockPage,
+      }),
+    )
+
+    mockElementHandle.click.mockReset()
+    mockElementHandle.click.mockImplementation(() => Promise.resolve())
+
+    mockPage.setRequestInterception.mockReset()
+    mockPage.setRequestInterception.mockImplementation((_enabled: boolean) => Promise.resolve())
+
+    mockPage.on.mockReset()
+    mockPage.on.mockImplementation((_event: string, _handler: unknown) => undefined)
+
+    mockPage.goto.mockReset()
+    mockPage.goto.mockImplementation((_url: string) => Promise.resolve())
+
+    mockPage.waitForSelector.mockReset()
+    mockPage.waitForSelector.mockImplementation((_selector: string) =>
+      Promise.resolve(mockElementHandle),
+    )
+
+    mockPage.focus.mockReset()
+    mockPage.focus.mockImplementation((_selector: string) => Promise.resolve())
+
+    mockPage.evaluate.mockReset()
+    mockPage.evaluate.mockImplementation((_fn: unknown, _arg?: unknown) =>
+      Promise.resolve('Xin chao'),
+    )
+
+    mockPage.content.mockReset()
+    mockPage.content.mockImplementation(() => Promise.resolve('<main>translated</main>'))
+
+    mockPage.close.mockReset()
+    mockPage.close.mockImplementation(() => Promise.resolve())
+
+    mockPage.url.mockReset()
+    mockPage.url.mockImplementation(() => 'https://translate.kagi.com/?from=auto&to=vi&text=test')
+
+    mockPage.waitForFunction.mockReset()
+    mockPage.waitForFunction.mockImplementation((_fn: unknown, _options: unknown, _arg?: unknown) =>
+      Promise.resolve(),
+    )
+
+    mockPage.$eval.mockReset()
+    mockPage.$eval.mockImplementation((_selector: string, _fn: unknown) =>
+      Promise.resolve('Xin chao'),
+    )
+
+    mockBrowser.close.mockReset()
+    mockBrowser.close.mockImplementation(() => Promise.resolve())
 
     const mod = await import('./browser-service')
     KagiBrowserService = mod.KagiBrowserService
-    KagiSidecarError = mod.KagiSidecarError
+    _KagiSidecarError = mod.KagiSidecarError
   })
 
   function createService(overrides: ConstructorParameters<typeof KagiBrowserService>[0] = {}) {
@@ -169,24 +219,27 @@ describe('KagiBrowserService', () => {
     await first
   })
 
-  it.skip('surfaces anti-abuse detection as a typed failure (old polling-based behavior, pending update)', async () => {
-    mockPage.evaluate
-      .mockResolvedValueOnce('')
-      .mockResolvedValueOnce('Verify you are human before continuing')
+  it('surfaces verification timeout as a typed anti-abuse failure instead of a generic UI timeout', async () => {
+    mockPage.evaluate.mockImplementation((_fn: unknown, arg?: unknown) => {
+      if (typeof arg === 'object' && arg !== null && 'messages' in arg) {
+        return Promise.resolve(
+          'Please complete the verification step, then edit your text to retry.',
+        )
+      }
+
+      return Promise.resolve('noop')
+    })
 
     const service = createService()
-    const translation = service.translate({ text: 'Agenda', style: 'Clear' })
 
-    try {
-      await translation
-      expect.unreachable('expected anti-abuse rejection')
-    } catch (error) {
-      expect(error).toBeInstanceOf(KagiSidecarError)
-      expect(error).toMatchObject({
-        code: 'ANTI_ABUSE',
-        status: 429,
-      })
-    }
+    const promise = (
+      service as unknown as VerificationDetectionService
+    ).detectVerificationRequirement(mockPage)
+    // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+    await expect(promise).rejects.toMatchObject({
+      code: 'ANTI_ABUSE',
+      status: 429,
+    })
   })
 
   it('does not classify regular Kagi html with turnstile bootstrap markup as anti-abuse', async () => {
@@ -223,6 +276,91 @@ describe('KagiBrowserService', () => {
     expect(result.translated).toBe('Xin chao')
   })
 
+  it('falls back to alternate output scraping when the primary translation selector never appears', async () => {
+    mockPage.$eval.mockRejectedValue(new Error('No translation container found'))
+    mockPage.evaluate.mockImplementation((_fn: unknown, arg?: unknown) => {
+      if (
+        typeof arg === 'object' &&
+        arg !== null &&
+        'TRANSLATION_CONTENT' in arg &&
+        'OUTPUT_TEXTAREA' in arg
+      ) {
+        return Promise.resolve('Bản dịch từ fallback textarea')
+      }
+
+      return Promise.resolve('noop')
+    })
+
+    const service = createService()
+    const result = await service.translate({ text: 'Hello', style: 'Clear' })
+
+    expect(result.translated).toBe('Bản dịch từ fallback textarea')
+  })
+
+  it('reuses fallback output scraping across the Raw chim-moi flow when the primary selector is missing', async () => {
+    let readingLevel = 'standard'
+    let formality = 'standard'
+
+    mockPage.waitForSelector.mockImplementation(() => Promise.resolve(mockElementHandle))
+    mockPage.url.mockImplementation(() => {
+      const params = ['from=auto', 'to=vi', 'text=Hello']
+
+      if (readingLevel === 'c2') {
+        params.push('language_complexity=6')
+      }
+
+      if (formality === 'vietnamese_casual') {
+        params.push('formality_context=vi_casual')
+      }
+
+      return `https://translate.kagi.com/?${params.join('&')}`
+    })
+
+    mockPage.$eval.mockRejectedValue(new Error('No translation container found'))
+    mockPage.evaluate.mockImplementation((_fn: unknown, arg?: unknown) => {
+      if (
+        typeof arg === 'object' &&
+        arg !== null &&
+        'sel' in arg &&
+        'step' in arg &&
+        arg.step === 6
+      ) {
+        readingLevel = 'c2'
+        return Promise.resolve('noop')
+      }
+
+      if (
+        typeof arg === 'object' &&
+        arg !== null &&
+        'targetLabel' in arg &&
+        arg.targetLabel === 'Vietnamese Casual'
+      ) {
+        formality = 'vietnamese_casual'
+        return Promise.resolve('noop')
+      }
+
+      if (
+        typeof arg === 'object' &&
+        arg !== null &&
+        'TRANSLATION_CONTENT' in arg &&
+        'OUTPUT_TEXTAREA' in arg
+      ) {
+        return Promise.resolve(
+          formality === 'vietnamese_casual'
+            ? 'Bản dịch casual cuối cùng'
+            : 'Bản dịch chuẩn ban đầu',
+        )
+      }
+
+      return Promise.resolve('noop')
+    })
+
+    const service = createService()
+    const result = await service.translate({ text: 'Hello', style: 'Raw' })
+
+    expect(result.translated).toBe('Bản dịch casual cuối cùng')
+  })
+
   it.skip('waits for rendered translation output to stabilize before returning it (old polling-based behavior, pending update)', async () => {
     mockPage.evaluate
       .mockResolvedValueOnce('Bản dịch đang render dang dở')
@@ -238,12 +376,12 @@ describe('KagiBrowserService', () => {
 
 describe('KagiBrowserService URL verification helpers', () => {
   let KagiBrowserService: typeof KagiBrowserServiceType
-  let KagiSidecarError: typeof KagiSidecarErrorType
+  let _KagiSidecarError: typeof _KagiSidecarErrorType
 
   beforeEach(async () => {
     const mod = await import('./browser-service')
     KagiBrowserService = mod.KagiBrowserService
-    KagiSidecarError = mod.KagiSidecarError
+    _KagiSidecarError = mod.KagiSidecarError
   })
 
   function createPageLike(url: string) {
@@ -284,7 +422,7 @@ describe('KagiBrowserService URL verification helpers', () => {
         'speaker_gender=unknown',
         'Speaker gender baseline',
       )
-    }).toThrow(KagiSidecarError)
+    }).toThrow(_KagiSidecarError)
 
     try {
       asUrlVerificationService(service).verifyUrlContains(
@@ -319,7 +457,7 @@ describe('KagiBrowserService URL verification helpers', () => {
         'context=',
         'Context should be cleared',
       )
-    }).toThrow(KagiSidecarError)
+    }).toThrow(_KagiSidecarError)
   })
 
   it('verifyUrlMatchesReadingLevel passes for standard with no param', () => {
@@ -372,7 +510,7 @@ describe('KagiBrowserService URL verification helpers', () => {
 
     expect(() => {
       asUrlVerificationService(service).verifyUrlMatchesReadingLevel(page, 'c2', 'C2 level check')
-    }).toThrow(KagiSidecarError)
+    }).toThrow(_KagiSidecarError)
   })
 })
 

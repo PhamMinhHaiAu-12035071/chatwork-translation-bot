@@ -43,18 +43,13 @@ function queueEvaluateForOneTranslate(result: string) {
     .mockResolvedValueOnce(result)
 }
 
-/** Vietnamese formal/casual: extra snapshot scrape, formality row click, second stable clear, final scrape */
-function queueEvaluateForOneTranslateWithFormalitySwitch(
-  result: string,
-  textBeforeSwitch = '__prior_translation__',
-) {
+/** Non-standard formality: formality row click inside settings before dismiss (fifth truthy evaluate). */
+function queueEvaluateForOneTranslateWithFormalitySwitch(result: string) {
   mockPage.evaluate
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(undefined as never)
-    .mockResolvedValueOnce(textBeforeSwitch as never)
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(undefined as never)
     .mockResolvedValueOnce(result)

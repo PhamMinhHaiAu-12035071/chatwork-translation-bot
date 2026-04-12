@@ -28,6 +28,12 @@ export const KAGI_SELECTORS = {
 
   /** Translation content output container */
   TRANSLATION_CONTENT: '.translation-content, [class*="translation"]',
+
+  /** Nested text span variants inside the translation output container */
+  TEXT_SPAN: '.font-universal, .text-direction-auto, span[dir]',
+
+  /** Fallback textarea selectors observed in Kagi output UIs */
+  OUTPUT_TEXTAREA: 'textarea[placeholder*="translation"], textarea[placeholder*="Translation"]',
 } as const
 
 // ═══════════════════════════════════════════════════════════

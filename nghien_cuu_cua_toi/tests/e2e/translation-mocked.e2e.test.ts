@@ -38,17 +38,12 @@ function queueEvaluateForOneTranslate(result: string) {
     .mockResolvedValueOnce(result)
 }
 
-function queueEvaluateForOneTranslateWithFormalitySwitch(
-  result: string,
-  textBeforeSwitch = '__prior_translation__',
-) {
+function queueEvaluateForOneTranslateWithFormalitySwitch(result: string) {
   mockPage.evaluate
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(undefined as never)
-    .mockResolvedValueOnce(textBeforeSwitch as never)
     .mockResolvedValueOnce(true as never)
     .mockResolvedValueOnce(undefined as never)
     .mockResolvedValueOnce(result)

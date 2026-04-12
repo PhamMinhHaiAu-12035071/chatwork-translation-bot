@@ -18,6 +18,7 @@ import { runReadingLevelSweep } from '~/services/reading-level-sweep.service'
 import {
   BROWSER_CONFIG,
   DEFAULT_TRANSLATION_CONFIG,
+  INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT,
   clampTranslationContext,
   getDefaultTranslationOptions,
 } from '~/config/translation.config'
@@ -38,23 +39,23 @@ async function main(): Promise<void> {
   const inputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT
   const options = getDefaultTranslationOptions()
 
-  options.style = 'natural'
-  options.formality = 'vietnamese_casual'
-  options.readingLevel = 'c2'
-  options.speakerGender = 'unknown'
-  options.addresseeGender = 'unknown'
   options.translationContext =
     process.env.TRANSLATION_CONTEXT !== undefined
       ? clampTranslationContext(process.env.TRANSLATION_CONTEXT)
-      : 'Hello'
+      : INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT
 
   console.log(`📝 Text cần translate: "${inputText}"`)
   console.log(`🌍 ${options.sourceLang} → ${options.targetLang}`)
   const runtimeReadingLevels: readonly ReadingLevel[] = ['c2']
 
-  console.log(
-    `⚙️  Preset: Natural | Vietnamese Casual | C2 | Speaker Unknown | Addressee Unknown | context "Hello" (env TRANSLATION_CONTEXT overrides context)`,
-  )
+  console.log('⚙️  Translation preset (Kagi UI):')
+  console.log('    Translate Style:')
+  console.log('        Type: Natural')
+  console.log('        Formality: Vietnamese Casual')
+  console.log('    Reading Level: C2')
+  console.log('    Speaker: Unknown')
+  console.log('    Addressee: Unknown')
+  console.log('(env TRANSLATION_CONTEXT overrides brief context; empty string = no context)\n')
   console.log(
     `⚙️  Reading sweep: ${runtimeReadingLevels.join(' -> ')} | Style: ${options.style} | Formality: ${options.formality}`,
   )

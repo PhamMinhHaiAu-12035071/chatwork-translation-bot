@@ -21,4 +21,10 @@ export interface IUrlBuilder {
    * @throws {ValidationError} If any option value is invalid
    */
   build(text: string, options: TranslationOptions): string
+
+  /**
+   * Minimal URL to open Kagi with language pair only (no source body, no URL-driven style/context).
+   * Source text is filled via UI after Translation Settings.
+   */
+  buildNavigation(options: TranslationOptions): string
 }

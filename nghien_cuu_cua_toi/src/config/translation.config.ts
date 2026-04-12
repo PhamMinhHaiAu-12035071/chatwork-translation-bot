@@ -32,20 +32,20 @@ export const DEFAULT_TRANSLATION_CONFIG = {
 すべてを送る必要はない。ヘアカットやカラーの動きであれば、10 fps 程度に間引いても検出精度への影響は軽微です。割り戻す処理（複雑か・・・）`,
   SOURCE_LANG: 'auto',
   TARGET_LANG: 'vi',
-  READING_LEVEL: 'standard' as ReadingLevel,
+  READING_LEVEL: 'c2' as ReadingLevel,
   SPEAKER_GENDER: 'unknown' as SpeakerGender,
   ADDRESSEE_GENDER: 'unknown' as AddresseeGender,
   STYLE: 'natural' as TranslationStyle,
-  FORMALITY: 'standard' as Formality,
-  TRANSLATION_CONTEXT: '',
+  FORMALITY: 'vietnamese_casual' as Formality,
+  TRANSLATION_CONTEXT: 'hello',
 } as const
 
 /**
  * Sample context used only by `src/index.ts` local entry (`bun run start:local`).
- * Ensures `fillTranslationContext` runs so the context textarea path is exercised.
+ * Default context is intentionally set to "hello" so the context textarea path is exercised.
  * Override with env `TRANSLATION_CONTEXT` (set to empty to skip and keep URL/UI without context).
  */
-export const INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT = 'Technical documentation for senior engineers'
+export const INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT = 'hello'
 
 /** Kagi "Brief context for translation" textarea max length (UI enforces; we clamp to match). */
 export const MAX_TRANSLATION_CONTEXT_LENGTH = 100
@@ -69,6 +69,10 @@ export const BROWSER_CONFIG = {
   HEADLESS: false, // false = show browser (debug), true = hide (production)
   TIMEOUT: 30000, // Timeout in milliseconds
   WAIT_FOR_SELECTOR_TIMEOUT: 15000, // Wait for translation content timeout
+  /** Wait for Cloudflare verification / challenge to complete before interacting. */
+  CLOUDFLARE_VERIFICATION_TIMEOUT_MS: 45000,
+  /** How often the Cloudflare readiness gate re-checks the DOM (ms). */
+  CLOUDFLARE_VERIFICATION_POLL_MS: 250,
   POST_RENDER_DELAY: 1000, // Fallback delay when stability wait fails or legacy paths
   READING_LEVEL_SWEEP_DELAY_MS: 1000, // Pause between sequential reading-level runs
   /**
@@ -82,12 +86,23 @@ export const BROWSER_CONFIG = {
   TRANSLATION_OUTPUT_MAX_WAIT_MS: 90000,
   /** Short buffer after stability before scrape (DOM / overlay scrollbars). */
   POST_STABLE_EXTRA_MS: 250,
+  /** Small settle delay after context is filled before URL verification (ms). */
+  CONTEXT_URL_SETTLE_MS: 1500,
+  /** After initial translation output appears before continuing to settings. */
+  OUTPUT_READY_PRE_SETTINGS_MS: 2000,
   /** After Translation Settings dialog opens, before style option clicks */
   POST_DIALOG_SETTLE_MS: 400,
   /** Between Literal → Natural style clicks (order in automation) */
   STYLE_OPTION_CLICK_GAP_MS: 200,
+  /** After Escape-dismiss of Translation Settings (panel close animation / focus) */
+  POST_DISMISS_SETTINGS_MS: 200,
   /** After selecting Formality → Vietnamese Casual; lets Kagi UI settle before waiting on output */
   POST_FORMALITY_CASUAL_SETTLE_MS: 3000,
+  /**
+   * After closing Translation Settings (and URL param sync), output may stay empty while Kagi
+   * re-translates; allow longer than {@link WAIT_FOR_SELECTOR_TIMEOUT} for `.translation-content`.
+   */
+  TRANSLATION_VISIBLE_AFTER_SETTINGS_MS: 45000,
 } as const
 
 /**
@@ -126,6 +141,10 @@ export const KAGI_SELECTORS = {
     'textarea[placeholder*="translation"], textarea[placeholder*="Translation"]',
   /** Brief context textarea inside Translation Settings (optional) */
   TRANSLATION_CONTEXT_TEXTAREA: 'textarea[placeholder*="Brief context for translation"]',
+  /**
+   * CodeMirror 6 source pane (see log.txt): contenteditable with stable aria-label.
+   */
+  SOURCE_TEXT_INPUT: '[aria-label="Source text input"]',
 } as const
 
 /** Visible labels for translation style toggles in the settings dialog */

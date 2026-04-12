@@ -9,11 +9,12 @@ WORKDIR /app
 COPY package.json bun.lock* ./
 
 # Install dependencies (cached if package.json unchanged)
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 RUN bun install --frozen-lockfile
 
 FROM oven/bun:1.1.38 AS runtime
 
-# Install system dependencies (cached layer)
+# ARM64-safe: use distro Chromium, not Google Chrome amd64 repo
 RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
@@ -56,5 +57,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Set display for Xvfb
 ENV DISPLAY=:99
 
-# Start Xvfb and run script
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & bun run src/index.ts"]
+# Start Xvfb with realistic resolution (Full HD) and run script
+# Larger resolution makes browser fingerprint more realistic (bypass Cloudflare detection)
+# 1. Remove stale Chromium singleton lock files (left over from previous container runs).
+#    Without cleanup, a new container (new hostname) sees the old lock as "another machine" → Chrome exits.
+# 2. Wait until Xvfb socket exists before starting the app (avoids race condition on :99 display).
+CMD ["sh", "-c", "rm -f /app/user-data/SingletonLock /app/user-data/SingletonCookie /app/user-data/SingletonSocket; Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset & until [ -S /tmp/.X11-unix/X99 ]; do sleep 1; done && bun run src/index.ts"]
