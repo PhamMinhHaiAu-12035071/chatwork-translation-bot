@@ -196,8 +196,10 @@ export class KagiBrowserService implements IBrowserService {
       const contextText = clampTranslationContext(options.translationContext)
       if (contextText !== '') {
         await this.fillTranslationContext(page, options.translationContext)
+        // Note: Kagi stores context in textarea but doesn't reflect it in URL params,
+        // so we can't verify via address bar. fillTranslationContext() already validates
+        // that the textarea was filled successfully.
         await this.delayMs(computeScaledDelay(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS, inputCharCount))
-        await this.verifyContextInAddressBar(page, contextText)
       }
 
       // ── BƯỚC 6: Click speaker gender option ──
@@ -248,54 +250,6 @@ export class KagiBrowserService implements IBrowserService {
         throw error
       }
       throw new BrowserAutomationError('translate', url, error instanceof Error ? error : undefined)
-    }
-  }
-
-  /**
-   * Verifies the address bar includes the expected context query parameter.
-   * Fail-fast nếu context không được phản ánh lên URL.
-   */
-  private async verifyContextInAddressBar(page: Page, expectedContext: string): Promise<void> {
-    try {
-      await page.waitForFunction(
-        (contextValue: string) => {
-          const params = new URLSearchParams(location.search)
-          const actual = params.get('context')
-          if (actual === null) {
-            return false
-          }
-
-          try {
-            if (actual === contextValue) {
-              return true
-            }
-
-            if (decodeURIComponent(actual) === contextValue) {
-              return true
-            }
-          } catch {
-            // Ignore malformed encoding in non-standard URLs.
-          }
-
-          return actual === encodeURIComponent(contextValue)
-        },
-        {
-          timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
-          polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS,
-        },
-        expectedContext,
-      )
-    } catch (error) {
-      const currentUrl = page.url()
-      console.error(
-        `❌ context verification failed: URL does not contain &context=${encodeURIComponent(expectedContext)}`,
-      )
-      console.error(`Current URL: ${currentUrl}`)
-      throw new BrowserAutomationError(
-        'context-url-verification',
-        currentUrl,
-        error instanceof Error ? error : undefined,
-      )
     }
   }
 
