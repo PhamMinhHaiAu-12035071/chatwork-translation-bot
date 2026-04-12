@@ -731,6 +731,15 @@ export class KagiBrowserService implements IBrowserService {
 
     try {
       console.log('🧹 Clearing source text...')
+
+      // Defensive check: warn if existing content exceeds limit (pre-existing data)
+      const existingText = await this.getSourceTextInputPlain(page)
+      if (existingText.length > MAX_INPUT_TEXT_LENGTH) {
+        console.warn(
+          `⚠️ [clearSourceTextInput] Clearing text exceeds limit: ${existingText.length} > ${MAX_INPUT_TEXT_LENGTH} chars`,
+        )
+      }
+
       await page.waitForSelector(selector, { timeout, visible: true })
       await page.click(selector)
       await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)

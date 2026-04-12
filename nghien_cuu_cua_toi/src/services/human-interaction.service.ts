@@ -242,6 +242,13 @@ export class HumanInteractionService implements IHumanInteraction {
     await page.click(selector)
     await page.focus(selector)
 
+    // Verify element is focused before clipboard operations
+    await page.waitForFunction(
+      (sel: string) => document.activeElement?.matches(sel) ?? false,
+      { timeout: 3000 },
+      selector,
+    )
+
     let offset = 0
     while (offset < body.length) {
       const chunkSize = Math.min(randInt(CHUNK_MIN, CHUNK_MAX), body.length - offset)

@@ -666,7 +666,7 @@ bunx npm info ghost-cursor-playwright
 **If not** (likely): proceed with `page as any` approach — runtime compatible since puppeteer and puppeteer-core share the same Page shape.
 
 ```bash
-cd nghien_cuu_cua_toi && bun add ghost-cursor puppeteer-humanize
+cd nghien_cuu_cua_toi && bun add ghost-cursor @forad/puppeteer-humanize
 ```
 
 - [ ] **Step 5.3: Verify install**

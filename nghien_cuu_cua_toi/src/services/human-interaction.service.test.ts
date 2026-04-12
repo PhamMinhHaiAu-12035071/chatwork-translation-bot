@@ -9,6 +9,7 @@ function createMockPage(overrides: Record<string, unknown> = {}) {
     type: mock(async (_selector: string, _text: string, _opts?: unknown) => {}),
     evaluate: mock(async (_fn: unknown, ..._args: unknown[]) => undefined as unknown),
     waitForSelector: mock(async (_selector: string, _opts?: unknown) => null),
+    waitForFunction: mock(async (_fn: unknown, ..._args: unknown[]) => null),
     $: mock(async (_selector: string) => null),
     keyboard: {
       down: mock(async (_key: string) => {}),
