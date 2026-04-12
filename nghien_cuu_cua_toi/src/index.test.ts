@@ -5,7 +5,9 @@
  * Uses mocked browser to avoid real browser launches
  */
 
-import { describe, it, expect, mock, setDefaultTimeout } from 'bun:test'
+import { beforeEach, describe, it, expect, mock, setDefaultTimeout } from 'bun:test'
+import type { Page } from 'puppeteer-core'
+import type { IHumanInteraction } from '~/services/interfaces/human-interaction.interface'
 
 setDefaultTimeout(30_000)
 import { KagiUrlBuilder, KagiBrowserService } from '~/services'
@@ -14,45 +16,47 @@ import { ValidationError, BrowserAutomationError } from '~/errors'
 
 const MOCK_FINAL_URL = 'https://translate.kagi.com/?text=Hello&mockFinal=1'
 
-/** Mirrors {@link KagiBrowserService.translate} stripping formality params before `goto` */
-function stripFormalityParamsFromUrl(url: string): string {
-  const u = new URL(url)
-  u.searchParams.delete('formality')
-  u.searchParams.delete('formality_context')
-  return u.toString()
-}
-
 // Mock puppeteer-real-browser for integration tests
 const mockPage = {
   goto: mock(async () => {}),
   waitForSelector: mock(async () => {}),
   waitForFunction: mock(async () => {}),
-  click: mock(async () => {}),
+  click: mock(async (_selector?: string) => {}),
   focus: mock(async () => {}),
+  type: mock(async () => {}),
+  keyboard: {
+    down: mock(async () => {}),
+    press: mock(async () => {}),
+    up: mock(async () => {}),
+  },
+  mouse: {
+    move: mock(async () => {}),
+    down: mock(async () => {}),
+    up: mock(async () => {}),
+  },
   evaluate: mock(async () => 'Xin chào, bạn khỏe không hôm nay?'),
   url: mock(() => MOCK_FINAL_URL),
 }
 
-function queueEvaluateForOneTranslate(result: string) {
-  mockPage.evaluate
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(undefined as never)
-    .mockResolvedValueOnce(result)
+const mockHumanInteraction: IHumanInteraction = {
+  click: mock(async (_page: Page, selector: string) => {
+    await mockPage.click(selector)
+  }),
+  clickByTextContent: mock(async () => {}),
+  typeIntoTextarea: mock(async () => {}),
+  typeIntoContentEditable: mock(async () => {}),
+  dragSlider: mock(async () => {}),
+  chunkPaste: mock(async () => {}),
 }
 
-/** Non-standard formality: formality row click inside settings before dismiss (fifth truthy evaluate). */
+/** With {@link mockHumanInteraction}, translate() uses evaluate for stable-flag reset + scrape only. */
+function queueEvaluateForOneTranslate(result: string) {
+  mockPage.evaluate.mockResolvedValueOnce(undefined as never).mockResolvedValueOnce(result)
+}
+
+/** Alias for workflows that historically used a longer evaluate chain (same as {@link queueEvaluateForOneTranslate}). */
 function queueEvaluateForOneTranslateWithFormalitySwitch(result: string) {
-  mockPage.evaluate
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(undefined as never)
-    .mockResolvedValueOnce(result)
+  queueEvaluateForOneTranslate(result)
 }
 
 const mockBrowser = {
@@ -68,6 +72,11 @@ mock.module('puppeteer-real-browser', () => ({
   connect: mockConnect,
 }))
 
+beforeEach(() => {
+  mockPage.evaluate.mockReset()
+  mockPage.evaluate.mockImplementation(async () => 'Xin chào, bạn khỏe không hôm nay?')
+})
+
 describe('Integration: Config + URLBuilder', () => {
   it('should build URL from default config', () => {
     const urlBuilder = new KagiUrlBuilder()
@@ -80,9 +89,9 @@ describe('Integration: Config + URLBuilder', () => {
     expect(url).toContain('to=vi')
     const textParam = new URL(url).searchParams.get('text')
     expect(textParam).toBe(inputText)
-    // Defaults should not add extra params
     expect(url).not.toContain('language_complexity')
-    expect(url).not.toContain('formality')
+    expect(url).toContain('formality')
+    expect(url).toContain('formality_context')
   })
 
   it('should use config constants in options', () => {
@@ -112,7 +121,7 @@ describe('Integration: Config + URLBuilder', () => {
 describe('Integration: URLBuilder + BrowserService', () => {
   it('should complete full translation workflow', async () => {
     const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
     const options = getDefaultTranslationOptions()
 
     // Build URL
@@ -132,7 +141,7 @@ describe('Integration: URLBuilder + BrowserService', () => {
 
     // Verify integration
     expect(mockConnect).toHaveBeenCalled()
-    expect(mockPage.goto).toHaveBeenCalledWith(stripFormalityParamsFromUrl(url), expect.any(Object))
+    expect(mockPage.goto).toHaveBeenCalledWith(url, expect.any(Object))
     expect(mockBrowser.close).toHaveBeenCalled()
   })
 
@@ -140,7 +149,7 @@ describe('Integration: URLBuilder + BrowserService', () => {
     'should handle multiple translations with same services',
     async () => {
       const urlBuilder = new KagiUrlBuilder()
-      const browserService = new KagiBrowserService()
+      const browserService = new KagiBrowserService(mockHumanInteraction)
       const options = getDefaultTranslationOptions()
 
       await browserService.launch()
@@ -166,7 +175,7 @@ describe('Integration: URLBuilder + BrowserService', () => {
 
   it('should handle advanced settings in full workflow', async () => {
     const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
     const options = getDefaultTranslationOptions()
 
     // Configure advanced settings
@@ -206,7 +215,7 @@ describe('Integration: Error Propagation', () => {
   it('should propagate BrowserAutomationError from BrowserService', async () => {
     mockConnect.mockRejectedValueOnce(new Error('Browser launch failed'))
 
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
 
     await expect(browserService.launch()).rejects.toThrow(BrowserAutomationError)
 
@@ -218,7 +227,7 @@ describe('Integration: Error Propagation', () => {
   })
 
   it('should handle error in translation and still close browser', async () => {
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
     await browserService.launch()
 
     mockPage.goto.mockRejectedValueOnce(new Error('Navigation timeout'))
@@ -258,7 +267,7 @@ describe('Integration: Service Lifecycle', () => {
   it(
     'should enforce correct service initialization order',
     async () => {
-      const browserService = new KagiBrowserService()
+      const browserService = new KagiBrowserService(mockHumanInteraction)
 
       // Translate before launch should fail
       await expect(browserService.translate('https://example.com')).rejects.toThrow(
@@ -283,7 +292,7 @@ describe('Integration: Service Lifecycle', () => {
   it(
     'should allow re-initialization after close',
     async () => {
-      const browserService = new KagiBrowserService()
+      const browserService = new KagiBrowserService(mockHumanInteraction)
 
       // First lifecycle
       await browserService.launch()
@@ -324,7 +333,7 @@ describe('Integration: Service Lifecycle', () => {
 describe('Integration: Real-World Scenarios', () => {
   it('should handle Vietnamese text input', async () => {
     const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
     const options = getDefaultTranslationOptions()
 
     // Reverse translation: Vietnamese to English
@@ -345,7 +354,7 @@ describe('Integration: Real-World Scenarios', () => {
 
   it('should handle empty text gracefully', async () => {
     const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
     const options = getDefaultTranslationOptions()
 
     const url = urlBuilder.build('', options)
@@ -361,7 +370,7 @@ describe('Integration: Real-World Scenarios', () => {
 
   it('should handle special characters in text', async () => {
     const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
     const options = getDefaultTranslationOptions()
 
     const specialText = 'Hello & "goodbye"! <test>'
@@ -383,7 +392,7 @@ describe('Integration: Real-World Scenarios', () => {
     // This test mimics the exact flow of the original monolithic index.ts
 
     const urlBuilder = new KagiUrlBuilder()
-    const browserService = new KagiBrowserService()
+    const browserService = new KagiBrowserService(mockHumanInteraction)
 
     // 1. Load config (same as original)
     const inputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT

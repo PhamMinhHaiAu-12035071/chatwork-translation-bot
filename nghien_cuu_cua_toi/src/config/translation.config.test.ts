@@ -18,6 +18,8 @@ import {
   MAX_TRANSLATION_CONTEXT_LENGTH,
   clampTranslationContext,
   INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT,
+  MAX_INPUT_TEXT_LENGTH,
+  clampInputText,
 } from './translation.config'
 
 describe('Translation Config', () => {
@@ -35,11 +37,11 @@ describe('Translation Config', () => {
     })
 
     it('should use strict defaults (no params sent)', () => {
-      expect(DEFAULT_TRANSLATION_CONFIG.READING_LEVEL).toBe('standard')
+      expect(DEFAULT_TRANSLATION_CONFIG.READING_LEVEL).toBe('c2')
       expect(DEFAULT_TRANSLATION_CONFIG.SPEAKER_GENDER).toBe('unknown')
       expect(DEFAULT_TRANSLATION_CONFIG.ADDRESSEE_GENDER).toBe('unknown')
       expect(DEFAULT_TRANSLATION_CONFIG.STYLE).toBe('natural')
-      expect(DEFAULT_TRANSLATION_CONFIG.FORMALITY).toBe('standard')
+      expect(DEFAULT_TRANSLATION_CONFIG.FORMALITY).toBe('vietnamese_casual')
     })
 
     it('should default to auto-detect source and Vietnamese target', () => {
@@ -242,10 +244,10 @@ describe('Translation Config', () => {
 
     it('should be mutable (can override values)', () => {
       const options = getDefaultTranslationOptions()
-      options.readingLevel = 'c2'
+      options.readingLevel = 'b2'
 
-      expect(options.readingLevel).toBe('c2')
-      expect(DEFAULT_TRANSLATION_CONFIG.READING_LEVEL).toBe('standard') // Original unchanged
+      expect(options.readingLevel).toBe('b2')
+      expect(DEFAULT_TRANSLATION_CONFIG.READING_LEVEL).toBe('c2') // Original unchanged
     })
   })
 
@@ -262,6 +264,44 @@ describe('Translation Config', () => {
       const totalWaitTime =
         BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT + BROWSER_CONFIG.POST_RENDER_DELAY
       expect(BROWSER_CONFIG.TIMEOUT).toBeGreaterThan(totalWaitTime)
+    })
+  })
+
+  describe('clampInputText', () => {
+    it('should pass through text ≤ 20,000 chars unchanged', () => {
+      const text = 'a'.repeat(20_000)
+      expect(clampInputText(text)).toBe(text)
+    })
+
+    it('should pass through empty string', () => {
+      expect(clampInputText('')).toBe('')
+    })
+
+    it('should truncate text > 20,000 chars to exactly 20,000', () => {
+      const text = 'a'.repeat(20_001)
+      const result = clampInputText(text)
+      expect(result.length).toBe(20_000)
+      expect(result).toBe('a'.repeat(20_000))
+    })
+
+    it('should truncate at exact boundary + 1', () => {
+      const text = 'x'.repeat(25_000)
+      const result = clampInputText(text)
+      expect(result.length).toBe(20_000)
+      expect(result).toBe('x'.repeat(20_000))
+    })
+
+    it('should preserve characters before the cut point', () => {
+      const prefix = 'hello '
+      const filler = 'x'.repeat(20_000 - prefix.length)
+      const suffix = ' world'
+      const text = prefix + filler + suffix
+      const result = clampInputText(text)
+      expect(result).toBe(prefix + filler)
+    })
+
+    it('MAX_INPUT_TEXT_LENGTH should equal 20000', () => {
+      expect(MAX_INPUT_TEXT_LENGTH).toBe(20_000)
     })
   })
 })

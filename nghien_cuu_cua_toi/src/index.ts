@@ -20,6 +20,7 @@ import {
   DEFAULT_TRANSLATION_CONFIG,
   INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT,
   clampTranslationContext,
+  clampInputText,
   getDefaultTranslationOptions,
 } from '~/config/translation.config'
 import type { ReadingLevel } from '~/types'
@@ -36,7 +37,8 @@ async function main(): Promise<void> {
   console.log('╚════════════════════════════════════════════════════════════╝\n')
 
   // Load configuration (`bun run start:local` preset — override context via TRANSLATION_CONTEXT)
-  const inputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT
+  const rawInputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT
+  const inputText = clampInputText(rawInputText)
   const options = getDefaultTranslationOptions()
 
   options.translationContext =

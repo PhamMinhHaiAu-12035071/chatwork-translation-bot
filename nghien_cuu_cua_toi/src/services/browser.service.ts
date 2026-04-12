@@ -12,6 +12,8 @@ import type {
   IBrowserConnection,
   TranslateResult,
 } from './interfaces/browser.interface'
+import type { IHumanInteraction } from '~/services/interfaces/human-interaction.interface'
+import { HumanInteractionService } from '~/services/human-interaction.service'
 import type { ReadingLevel, TranslationOptions } from '~/types'
 import { BrowserAutomationError } from '~/errors'
 import {
@@ -24,6 +26,9 @@ import {
   getDefaultTranslationOptions,
   getReadingLevelSliderValue,
   clampTranslationContext,
+  MAX_INPUT_TEXT_LENGTH,
+  computeScaledDelay,
+  HUMAN_INPUT_THRESHOLD,
 } from '~/config'
 
 /**
@@ -66,6 +71,10 @@ class BrowserConnection implements IBrowserConnection {
  */
 export class KagiBrowserService implements IBrowserService {
   private connection: BrowserConnection | null = null
+
+  constructor(
+    private readonly humanInteraction: IHumanInteraction = new HumanInteractionService(),
+  ) {}
 
   /**
    * Launches a Puppeteer Real Browser instance
@@ -135,6 +144,7 @@ export class KagiBrowserService implements IBrowserService {
     }
 
     const page: Page = this.connection.getPage()
+    const inputCharCount = sourceText?.length ?? 0
 
     try {
       const timeout: number = BROWSER_CONFIG.TIMEOUT
@@ -176,7 +186,7 @@ export class KagiBrowserService implements IBrowserService {
       // ── BƯỚC 3: Fill source text (if provided) ──
       if (sourceText !== undefined) {
         await this.clearSourceTextInput(page)
-        await this.fillSourceTextInput(page, sourceText)
+        await this.fillSourceTextInput(page, sourceText, inputCharCount)
       }
 
       // ── BƯỚC 4: Open Translation Settings dialog ──
@@ -186,7 +196,7 @@ export class KagiBrowserService implements IBrowserService {
       const contextText = clampTranslationContext(options.translationContext)
       if (contextText !== '') {
         await this.fillTranslationContext(page, options.translationContext)
-        await this.delayMs(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS)
+        await this.delayMs(computeScaledDelay(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS, inputCharCount))
         await this.verifyContextInAddressBar(page, contextText)
       }
 
@@ -208,7 +218,7 @@ export class KagiBrowserService implements IBrowserService {
 
       // ── BƯỚC 9: Set reading level theo options.readingLevel ──
       const readingLevel = options.readingLevel
-      await this.delayMs(2_000)
+      await this.delayMs(computeScaledDelay(2_000, inputCharCount))
       await this.setReadingLevel(page, readingLevel)
       await this.verifyReadingLevelInAddressBar(page, readingLevel)
 
@@ -225,8 +235,9 @@ export class KagiBrowserService implements IBrowserService {
         formalityUrlFragment.value,
         formalityUrlFragment.context,
       )
-      await this.delayMs(2_000)
+      await this.delayMs(computeScaledDelay(2_000, inputCharCount))
 
+      await this.waitForTranslationOutputStable(page, inputCharCount)
       const finalUrl: string = page.url()
       const translated = await this.scrapeTranslatedText(page)
       console.log(`Final translation output: ${translated}`)
@@ -504,64 +515,7 @@ export class KagiBrowserService implements IBrowserService {
         threeLabels as unknown as readonly string[],
       )
 
-      const clicked = await page.evaluate(
-        (sel: string, targetLabel: string, labels: readonly string[]) => {
-          const trim = (el: HTMLElement): string => el.textContent?.trim() ?? ''
-          const labelList = labels
-          const all = Array.from(document.querySelectorAll<HTMLElement>(sel))
-          const anchor = all.find((s) => trim(s) === labels[2])
-          if (!anchor) return false
-          const rowFromCasual = anchor.closest('button')?.parentElement ?? null
-          let root: HTMLElement | null = null
-          if (rowFromCasual) {
-            const rowSpans = Array.from(rowFromCasual.querySelectorAll<HTMLElement>(sel)).filter(
-              (s) => labelList.includes(trim(s)),
-            )
-            const distinct = new Set(rowSpans.map((s) => trim(s)))
-            if (
-              rowSpans.length === 3 &&
-              distinct.size === 3 &&
-              labels.every((l) => distinct.has(l))
-            )
-              root = rowFromCasual
-          }
-          if (!root) {
-            let node: HTMLElement | null =
-              anchor.closest('button')?.parentElement ?? anchor.parentElement
-            for (let i = 0; i < 14 && node; i++) {
-              const spans = Array.from(node.querySelectorAll<HTMLElement>(sel)).filter((s) =>
-                labelList.includes(trim(s)),
-              )
-              const distinct = new Set(spans.map((s) => trim(s)))
-              if (
-                spans.length === 3 &&
-                labels.every((l) => distinct.has(l)) &&
-                distinct.size === 3
-              ) {
-                root = node
-                break
-              }
-              node = node.parentElement
-            }
-          }
-          if (!root) return false
-          const span = Array.from(root.querySelectorAll<HTMLElement>(sel)).find(
-            (s) => trim(s) === targetLabel,
-          )
-          if (!span) return false
-          const btn = span.closest('button')
-          if (btn) {
-            btn.click()
-            return true
-          }
-          return false
-        },
-        spanSelector,
-        label,
-        threeLabels as unknown as readonly string[],
-      )
-
-      if (!clicked) throw new Error(`formality "${label}" not found or not clickable`)
+      await this.humanInteraction.clickByTextContent(page, spanSelector, label, 0)
     } catch (error) {
       console.warn(
         `⚠️  Could not click formality "${label}":`,
@@ -597,24 +551,8 @@ export class KagiBrowserService implements IBrowserService {
         selector,
       )
 
-      const applied: boolean = await page.evaluate(
-        (sel: string, nextValue: number) => {
-          const slider = document.querySelector<HTMLInputElement>(sel)
-          if (slider === null) {
-            return false
-          }
-
-          slider.focus()
-          slider.value = String(nextValue)
-          slider.style.setProperty('--slider-position', String(nextValue))
-          slider.dispatchEvent(new Event('input', { bubbles: true }))
-          slider.dispatchEvent(new Event('change', { bubbles: true }))
-
-          return slider.value === String(nextValue)
-        },
-        selector,
-        targetValue,
-      )
+      const currentValue = 0
+      await this.humanInteraction.dragSlider(page, selector, currentValue, targetValue)
 
       await page.waitForFunction(
         (sel: string, nextValue: number, searchFragment: string) => {
@@ -639,10 +577,6 @@ export class KagiBrowserService implements IBrowserService {
         targetValue,
         expectedSearchFragment,
       )
-
-      if (!applied) {
-        throw new Error(`reading level "${readingLevel}" not applied`)
-      }
     } catch (error) {
       console.warn(
         `⚠️  Could not set reading level "${readingLevel}":`,
@@ -661,14 +595,8 @@ export class KagiBrowserService implements IBrowserService {
 
     try {
       console.log('⚙️  Clicking Translation Settings…')
-      // puppeteer-real-browser may not expose Page#click; use handle click after wait
-      const handle = await page.waitForSelector(selector, {
-        timeout: clickTimeout,
-        visible: true,
-      })
-      if (handle != null) {
-        await handle.click()
-      }
+      await page.waitForSelector(selector, { timeout: clickTimeout, visible: true })
+      await this.humanInteraction.click(page, selector)
     } catch (error) {
       console.warn(
         `⚠️  Could not click Translation Settings (${selector}):`,
@@ -756,33 +684,7 @@ export class KagiBrowserService implements IBrowserService {
 
       await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
 
-      await page.evaluate(
-        (sel: string, value: string) => {
-          const el =
-            document.querySelector<HTMLTextAreaElement>(sel) ??
-            Array.from(document.querySelectorAll<HTMLTextAreaElement>('textarea')).find((t) =>
-              /context/i.test(t.placeholder ?? ''),
-            ) ??
-            null
-          if (el === null) {
-            return
-          }
-          el.scrollIntoView({ block: 'center', inline: 'nearest' })
-          el.focus()
-          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-          el.value = value
-          el.dispatchEvent(
-            new InputEvent('input', { bubbles: true, data: value, inputType: 'insertFromPaste' }),
-          )
-          el.dispatchEvent(new Event('change', { bubbles: true }))
-          el.blur()
-          el.dispatchEvent(new FocusEvent('blur', { bubbles: true }))
-          el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
-          document.body?.focus()
-        },
-        primarySel,
-        text,
-      )
+      await this.humanInteraction.typeIntoTextarea(page, primarySel, text)
     } catch (error) {
       console.warn(
         `⚠️  Could not set translation context (${primarySel}):`,
@@ -795,42 +697,22 @@ export class KagiBrowserService implements IBrowserService {
    * Fills the CodeMirror source pane.
    * Inserts text into the current source text value without clearing it.
    */
-  private async fillSourceTextInput(page: Page, rawText: string): Promise<void> {
+  private async fillSourceTextInput(page: Page, rawText: string, charCount = 0): Promise<void> {
     const selector: string = KAGI_SELECTORS.SOURCE_TEXT_INPUT
     const timeout: number = BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT
 
     try {
-      console.log(`Setting source text (${rawText.length} chars)...`)
+      // Defensive clamp — primary guard is in index.ts; this is a silent safety net
+      const text =
+        rawText.length <= MAX_INPUT_TEXT_LENGTH ? rawText : rawText.slice(0, MAX_INPUT_TEXT_LENGTH)
+      console.log(`Setting source text (${text.length} chars)...`)
       await page.waitForSelector(selector, { timeout, visible: true })
-      await page.click(selector)
-      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
-      await page.focus(selector)
-      await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
 
-      await page.evaluate(
-        (sel: string, value: string) => {
-          const el = document.querySelector(sel) as HTMLElement | null
-          if (el === null) {
-            return
-          }
-          el.focus()
-          /* eslint-disable-next-line @typescript-eslint/no-deprecated */
-          const inserted = document.execCommand('insertText', false, value)
-          if (!inserted) {
-            el.textContent = value
-            el.dispatchEvent(
-              new InputEvent('input', {
-                bubbles: true,
-                data: value,
-                inputType: 'insertFromPaste',
-              }),
-            )
-            el.dispatchEvent(new Event('change', { bubbles: true }))
-          }
-        },
-        selector,
-        rawText,
-      )
+      if (charCount <= HUMAN_INPUT_THRESHOLD) {
+        await this.humanInteraction.typeIntoContentEditable(page, selector, text)
+      } else {
+        await this.humanInteraction.chunkPaste(page, selector, text)
+      }
     } catch (error) {
       console.warn(
         `Could not set source text (${selector}):`,
@@ -925,29 +807,7 @@ export class KagiBrowserService implements IBrowserService {
         matchIndex,
       )
 
-      const clicked: boolean = await page.evaluate(
-        (sel: string, text: string, index: number) => {
-          const spans = Array.from(document.querySelectorAll<HTMLElement>(sel))
-          const matches = spans.filter((el) => el.textContent?.trim() === text)
-          const el = matches[index]
-          if (el === undefined) {
-            return false
-          }
-          const btn = el.closest('button')
-          if (btn !== null) {
-            btn.click()
-            return true
-          }
-          return false
-        },
-        spanSelector,
-        label,
-        matchIndex,
-      )
-
-      if (!clicked) {
-        throw new Error(`${logKind} "${label}" not found or not clickable`)
-      }
+      await this.humanInteraction.clickByTextContent(page, spanSelector, label, matchIndex)
     } catch (error) {
       console.warn(
         `⚠️  Could not click ${logKind} "${label}":`,
@@ -982,10 +842,16 @@ export class KagiBrowserService implements IBrowserService {
    * Waits until `.translation-content` text length stops increasing for {@link BROWSER_CONFIG.TRANSLATION_OUTPUT_STABLE_MS}.
    * Avoids scraping partial streamed output. Uses `window` state so a single `waitForFunction` can poll.
    */
-  private async waitForTranslationOutputStable(page: Page): Promise<void> {
+  private async waitForTranslationOutputStable(page: Page, charCount = 0): Promise<void> {
     const selector: string = KAGI_SELECTORS.TRANSLATION_CONTENT
-    const stableMs: number = BROWSER_CONFIG.TRANSLATION_OUTPUT_STABLE_MS
-    const maxMs: number = BROWSER_CONFIG.TRANSLATION_OUTPUT_MAX_WAIT_MS
+    const stableMs: number = computeScaledDelay(
+      BROWSER_CONFIG.TRANSLATION_OUTPUT_STABLE_MS,
+      charCount,
+    )
+    const maxMs: number = computeScaledDelay(
+      BROWSER_CONFIG.TRANSLATION_OUTPUT_MAX_WAIT_MS,
+      charCount,
+    )
     const pollMs: number = BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS
 
     await page.evaluate(() => {
@@ -1030,20 +896,14 @@ export class KagiBrowserService implements IBrowserService {
    * @returns Translated text or error message
    */
   private async scrapeTranslatedText(page: Page): Promise<string> {
-    // Create typed copy for evaluate context (ESLint strict mode)
-    interface Selectors {
-      TRANSLATION_CONTENT: string
-      TEXT_SPAN: string
-      TEXTAREA_PLACEHOLDER: string
-    }
-
-    const selectors: Selectors = {
+    /** Plain record so Puppeteer `evaluate` accepts it as a serializable argument */
+    const selectors: Record<string, string> = {
       TRANSLATION_CONTENT: KAGI_SELECTORS.TRANSLATION_CONTENT,
       TEXT_SPAN: KAGI_SELECTORS.TEXT_SPAN,
       TEXTAREA_PLACEHOLDER: KAGI_SELECTORS.TEXTAREA_PLACEHOLDER,
     }
 
-    const result = await page.evaluate((sels: Selectors) => {
+    const result = await page.evaluate((sels: Record<string, string>) => {
       // Strategy 1: Primary selector (.translation-content > span)
       const translationContent = document.querySelector(sels.TRANSLATION_CONTENT)
       if (translationContent !== null) {

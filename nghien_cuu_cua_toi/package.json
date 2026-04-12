@@ -30,6 +30,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@forad/puppeteer-humanize": "^1.1.8",
+    "ghost-cursor": "^1.4.2",
     "puppeteer": "^24.40.0",
     "puppeteer-real-browser": "^1.4.4"
   },

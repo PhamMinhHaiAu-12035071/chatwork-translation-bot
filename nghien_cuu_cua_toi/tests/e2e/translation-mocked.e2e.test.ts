@@ -9,6 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, mock, setDefaultTimeout } from 'bun:test'
+import type { Page } from 'puppeteer-core'
+import type { IHumanInteraction } from '~/services/interfaces/human-interaction.interface'
 
 setDefaultTimeout(30_000)
 import { KagiUrlBuilder, KagiBrowserService } from '~/services'
@@ -22,31 +24,41 @@ const mockPage = {
   goto: mock(async () => {}),
   waitForSelector: mock(async () => {}),
   waitForFunction: mock(async () => {}),
-  click: mock(async () => {}),
+  click: mock(async (_selector?: string) => {}),
   focus: mock(async () => {}),
+  type: mock(async () => {}),
+  keyboard: {
+    down: mock(async () => {}),
+    press: mock(async () => {}),
+    up: mock(async () => {}),
+  },
+  mouse: {
+    move: mock(async () => {}),
+    down: mock(async () => {}),
+    up: mock(async () => {}),
+  },
   evaluate: mock(async () => 'Mocked translation'),
   url: mock(() => MOCK_FINAL_URL),
 }
 
+const mockHumanInteraction: IHumanInteraction = {
+  click: mock(async (_page: Page, selector: string) => {
+    await mockPage.click(selector)
+  }),
+  clickByTextContent: mock(async () => {}),
+  typeIntoTextarea: mock(async () => {}),
+  typeIntoContentEditable: mock(async () => {}),
+  dragSlider: mock(async () => {}),
+  chunkPaste: mock(async () => {}),
+}
+
+/** Stable-flag reset + scrape (see integration tests). */
 function queueEvaluateForOneTranslate(result: string) {
-  mockPage.evaluate
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(undefined as never)
-    .mockResolvedValueOnce(result)
+  mockPage.evaluate.mockResolvedValueOnce(undefined as never).mockResolvedValueOnce(result)
 }
 
 function queueEvaluateForOneTranslateWithFormalitySwitch(result: string) {
-  mockPage.evaluate
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(true as never)
-    .mockResolvedValueOnce(undefined as never)
-    .mockResolvedValueOnce(result)
+  queueEvaluateForOneTranslate(result)
 }
 
 const mockBrowser = {
@@ -68,7 +80,7 @@ describe('E2E Mocked: Pairwise Translation Scenarios', () => {
 
   beforeEach(async () => {
     urlBuilder = new KagiUrlBuilder()
-    browserService = new KagiBrowserService()
+    browserService = new KagiBrowserService(mockHumanInteraction)
     await browserService.launch()
 
     // Reset mocks
@@ -78,6 +90,12 @@ describe('E2E Mocked: Pairwise Translation Scenarios', () => {
     mockPage.click.mockClear()
     mockPage.focus.mockClear()
     mockPage.evaluate.mockClear()
+    ;(mockHumanInteraction.click as ReturnType<typeof mock>).mockClear()
+    ;(mockHumanInteraction.clickByTextContent as ReturnType<typeof mock>).mockClear()
+    ;(mockHumanInteraction.typeIntoTextarea as ReturnType<typeof mock>).mockClear()
+    ;(mockHumanInteraction.typeIntoContentEditable as ReturnType<typeof mock>).mockClear()
+    ;(mockHumanInteraction.dragSlider as ReturnType<typeof mock>).mockClear()
+    ;(mockHumanInteraction.chunkPaste as ReturnType<typeof mock>).mockClear()
   })
 
   describe('Boundary Tests (Defaults vs Extremes)', () => {
@@ -89,7 +107,7 @@ describe('E2E Mocked: Pairwise Translation Scenarios', () => {
       const result = await browserService.translate(url, options)
 
       expect(url).not.toContain('language_complexity')
-      expect(url).not.toContain('formality')
+      expect(url).toContain('formality')
       expect(result.translated).toBe('Xin chào')
     })
 
@@ -494,6 +512,54 @@ describe('E2E Mocked: Pairwise Translation Scenarios', () => {
       const result = await browserService.translate(urlBuilder.build('   ', options))
 
       expect(result.translated).toBe('')
+    })
+  })
+
+  describe('Human Interaction DI', () => {
+    it('should call humanInteraction.dragSlider when setting reading level c2', async () => {
+      const options = getDefaultTranslationOptions()
+      options.readingLevel = 'c2'
+      queueEvaluateForOneTranslate('C2 translation')
+
+      const url = urlBuilder.build('Test', options)
+      await browserService.translate(url, options)
+
+      expect(mockHumanInteraction.dragSlider).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('range'),
+        0,
+        6,
+      )
+    })
+
+    it('should call humanInteraction.chunkPaste for sourceText > 500 chars', async () => {
+      const options = getDefaultTranslationOptions()
+      const longText = 'x'.repeat(600)
+      queueEvaluateForOneTranslate('Long text translation')
+
+      const url = urlBuilder.build('Test', options)
+      await browserService.translate(url, options, longText)
+
+      expect(mockHumanInteraction.chunkPaste).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('Source text input'),
+        longText,
+      )
+    })
+
+    it('should call humanInteraction.typeIntoContentEditable for sourceText ≤ 500 chars', async () => {
+      const options = getDefaultTranslationOptions()
+      const shortText = 'Hello world'
+      queueEvaluateForOneTranslate('Short text translation')
+
+      const url = urlBuilder.build('Test', options)
+      await browserService.translate(url, options, shortText)
+
+      expect(mockHumanInteraction.typeIntoContentEditable).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('Source text input'),
+        shortText,
+      )
     })
   })
 })

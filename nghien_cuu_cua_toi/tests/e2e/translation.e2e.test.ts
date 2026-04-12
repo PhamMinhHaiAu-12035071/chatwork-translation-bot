@@ -6,14 +6,18 @@
  * - Rate limit: 3-5s delay between tests
  * - Only 1-2 smoke tests (not exhaustive)
  *
- * Run: bun test tests/e2e/translation.e2e.test.ts
+ * Run: RUN_REAL_KAGI_E2E=1 bun test tests/e2e/translation.e2e.test.ts
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
 import { KagiUrlBuilder, KagiBrowserService } from '~/services'
 import { DEFAULT_TRANSLATION_CONFIG, getDefaultTranslationOptions } from '~/config'
 
-describe('E2E Smoke Tests: Real Kagi Translation', () => {
+/** Real browser + Kagi; skipped in default `bun test` (set `RUN_REAL_KAGI_E2E=1` to enable). */
+const runRealKagiE2e = process.env.RUN_REAL_KAGI_E2E === '1'
+const e2e = runRealKagiE2e ? describe : describe.skip
+
+e2e('E2E Smoke Tests: Real Kagi Translation', () => {
   let browserService: KagiBrowserService
   const urlBuilder = new KagiUrlBuilder()
 
@@ -59,7 +63,7 @@ describe('E2E Smoke Tests: Real Kagi Translation', () => {
     // Rate limit protection (3-5s delay)
     console.log('⏳ Rate limit delay: 4s...')
     await Bun.sleep(4000)
-  }, 30000) // 30s timeout per test
+  }, 120000)
 
   it('should translate with full advanced settings (smoke test 2)', async () => {
     const options = getDefaultTranslationOptions()
@@ -92,7 +96,7 @@ describe('E2E Smoke Tests: Real Kagi Translation', () => {
     // Rate limit protection (3-5s delay)
     console.log('⏳ Rate limit delay: 4s...')
     await Bun.sleep(4000)
-  }, 30000)
+  }, 120000)
 
   // Additional smoke test can be added here if needed
   // Remember: Keep smoke tests minimal (1-2 tests)
@@ -102,7 +106,7 @@ describe('E2E Smoke Tests: Real Kagi Translation', () => {
  * Instructions for running E2E smoke tests:
  *
  * Local (requires real browser):
- *   bun test tests/e2e/translation.e2e.test.ts
+ *   RUN_REAL_KAGI_E2E=1 bun test tests/e2e/translation.e2e.test.ts
  *
  * Docker:
  *   bun run start

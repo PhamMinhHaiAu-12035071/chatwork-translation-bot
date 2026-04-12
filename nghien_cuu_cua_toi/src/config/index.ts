@@ -13,8 +13,17 @@ export {
   ADDRESSEE_GENDER_UI_LABELS,
   GENDER_PREFERENCE_UI_LABELS,
   MAX_TRANSLATION_CONTEXT_LENGTH,
+  MAX_INPUT_TEXT_LENGTH,
   clampTranslationContext,
+  clampInputText,
   INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT,
   getReadingLevelSliderValue,
   getDefaultTranslationOptions,
 } from './translation.config'
+
+export {
+  DELAY_TIERS,
+  HUMAN_INPUT_THRESHOLD,
+  computeDelayMultiplier,
+  computeScaledDelay,
+} from './delay.config'

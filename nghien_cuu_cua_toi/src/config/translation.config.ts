@@ -62,6 +62,22 @@ export function clampTranslationContext(raw: string | undefined): string {
     : raw.slice(0, MAX_TRANSLATION_CONTEXT_LENGTH)
 }
 
+/** Maximum character length accepted for source text input. Kagi API slows significantly above this. */
+export const MAX_INPUT_TEXT_LENGTH = 20_000
+
+/**
+ * Truncates source text to {@link MAX_INPUT_TEXT_LENGTH} characters.
+ * Primary call: index.ts (logs warning). Defensive call: fillSourceTextInput (silent).
+ */
+export function clampInputText(raw: string): string {
+  if (raw.length <= MAX_INPUT_TEXT_LENGTH) return raw
+  const charsRemoved = raw.length - MAX_INPUT_TEXT_LENGTH
+  console.warn(
+    `[clampInputText] Input truncated: ${raw.length} → ${MAX_INPUT_TEXT_LENGTH} chars (${charsRemoved} chars removed)`,
+  )
+  return raw.slice(0, MAX_INPUT_TEXT_LENGTH)
+}
+
 /**
  * Browser runtime settings
  */
