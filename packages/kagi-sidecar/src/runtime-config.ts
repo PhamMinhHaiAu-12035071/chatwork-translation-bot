@@ -45,7 +45,7 @@ export function resolveKagiRuntimeConfig(input: NodeJS.ProcessEnv): KagiRuntimeC
       requestTimeoutMs: parsePositiveInteger(
         input['KAGI_REQUEST_TIMEOUT_MS'],
         'KAGI_REQUEST_TIMEOUT_MS',
-        30_000,
+        120_000,
       ),
       maxQueueDepth: parsePositiveInteger(
         input['KAGI_MAX_QUEUE_DEPTH'],

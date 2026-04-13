@@ -9,7 +9,7 @@ describe('resolveKagiRuntimeConfig', () => {
     expect(config.browser.minIntervalMs).toBe(1_500)
     expect(config.browser.maxRetries).toBe(2)
     expect(config.browser.retryBaseMs).toBe(1_000)
-    expect(config.browser.requestTimeoutMs).toBe(30_000)
+    expect(config.browser.requestTimeoutMs).toBe(120_000)
     expect(config.browser.maxQueueDepth).toBe(10)
     expect(config.browser.maxQueueWaitMs).toBe(15_000)
   })
