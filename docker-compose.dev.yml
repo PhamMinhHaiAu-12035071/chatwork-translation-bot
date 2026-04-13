@@ -61,7 +61,7 @@ services:
     command:
       - sh
       - -c
-      - bun install && bun --hot packages/kagi-sidecar/src/index.ts
+      - sh packages/kagi-sidecar/scripts/start-with-xvfb.sh "bun install && bun --hot packages/kagi-sidecar/src/index.ts"
     working_dir: /app
     volumes:
       # Dedicated Debian-side install so Chromium-sidecar deps never fight the Alpine services.

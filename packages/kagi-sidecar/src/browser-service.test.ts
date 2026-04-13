@@ -217,13 +217,35 @@ describe('KagiBrowserService', () => {
     })
   }
 
-  it('serializes translation requests through one warm browser session', async () => {
+  it('serializes translation requests while launching and closing a fresh browser per request', async () => {
     const firstGoto = createDeferred()
     const secondGoto = createDeferred()
+    const firstBrowser = {
+      close: mock(() => Promise.resolve()),
+    }
+    const secondBrowser = {
+      close: mock(() => Promise.resolve()),
+    }
 
-    mockPage.goto
-      .mockImplementationOnce(() => firstGoto.promise)
-      .mockImplementationOnce(() => secondGoto.promise)
+    mockConnect
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          browser: firstBrowser,
+          page: {
+            ...mockPage,
+            goto: mock((_url: string) => firstGoto.promise),
+          },
+        }),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          browser: secondBrowser,
+          page: {
+            ...mockPage,
+            goto: mock((_url: string) => secondGoto.promise),
+          },
+        }),
+      )
 
     const service = createService()
 
@@ -231,21 +253,23 @@ describe('KagiBrowserService', () => {
 
     await Bun.sleep(0)
 
-    expect(mockPage.goto).toHaveBeenCalledTimes(1)
+    expect(mockConnect).toHaveBeenCalledTimes(1)
 
     const second = service.translate({ text: 'Please review', style: 'Clear' })
 
     await Bun.sleep(0)
-    expect(mockPage.goto).toHaveBeenCalledTimes(1)
+    expect(mockConnect).toHaveBeenCalledTimes(1)
 
     firstGoto.resolve()
     await first
     await Bun.sleep(0)
 
-    expect(mockPage.goto).toHaveBeenCalledTimes(2)
+    expect(mockConnect).toHaveBeenCalledTimes(2)
+    expect(firstBrowser.close).toHaveBeenCalledTimes(1)
 
     secondGoto.resolve()
     await second
+    expect(secondBrowser.close).toHaveBeenCalledTimes(1)
   })
 
   it('rejects requests when queue depth exceeds the configured budget', async () => {
@@ -322,6 +346,28 @@ describe('KagiBrowserService', () => {
     expect(mockPage.on).not.toHaveBeenCalled()
   })
 
+  it('launches the browser with the PoC viewport profile so the settings slider stays reachable in Docker', async () => {
+    const service = createService()
+
+    await service.translate({ text: 'Hello', style: 'Clear' })
+
+    expect(mockConnect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.arrayContaining([
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--start-maximized',
+        ]) as unknown as string[],
+        connectOption: {
+          defaultViewport: null,
+        },
+        disableXvfb: true,
+        headless: false,
+      }),
+    )
+  })
+
   it('accepts the minimal research baseline URL when translating Clear style', async () => {
     mockPage.url.mockImplementation(() => 'https://translate.kagi.com/?from=auto&to=vi&text=Hello')
 
@@ -357,7 +403,7 @@ describe('KagiBrowserService', () => {
     expect(result.translated).toBe('Bản dịch từ fallback textarea')
   })
 
-  it('reuses fallback output scraping across the Raw chim-moi flow when the primary selector is missing', async () => {
+  it('applies Raw formality directly and returns the final fallback translation without a chim-moi phase', async () => {
     let readingLevelApplied = false
     let formality = 'standard'
 
@@ -418,6 +464,17 @@ describe('KagiBrowserService', () => {
     const result = await service.translate({ text: 'Hello', style: 'Raw' })
 
     expect(result.translated).toBe('Bản dịch casual cuối cùng')
+    expect(mockHumanInteraction.clickByTextContent).toHaveBeenCalledWith(
+      mockPage,
+      KAGI_SELECTORS.FORMALITY_LABEL,
+      'Vietnamese Casual',
+      0,
+    )
+    expect(mockPage.waitForFunction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ timeout: 15_000, polling: 100 }),
+      'formality_context=vi_casual',
+    )
   })
 
   it('truncates oversized input text and logs warning before translation', async () => {

@@ -29,14 +29,32 @@ interface BrowserSession {
 interface BrowserAutomationConnectOptions {
   headless: boolean
   args: string[]
-  customConfig: Record<string, never>
+  customConfig: Record<string, unknown>
   turnstile: boolean
-  connectOption: Record<string, never>
+  connectOption: Record<string, unknown>
   disableXvfb: boolean
   ignoreAllFlags: boolean
 }
 
 type BrowserConnect = (options: BrowserAutomationConnectOptions) => Promise<BrowserSession>
+
+const KAGI_BROWSER_CONNECT_OPTIONS: BrowserAutomationConnectOptions = {
+  headless: false,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--start-maximized',
+  ],
+  customConfig: {},
+  turnstile: true,
+  // Match the working PoC profile so Docker/Xvfb keeps the settings slider inside the viewport.
+  connectOption: {
+    defaultViewport: null,
+  },
+  disableXvfb: true,
+  ignoreAllFlags: false,
+}
 
 export type KagiSidecarErrorCode =
   | 'ANTI_ABUSE'
@@ -142,8 +160,6 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 export class KagiBrowserService {
   private readonly options: KagiBrowserServiceOptions
   private readonly humanInteraction: IHumanInteraction
-  private browser: BrowserLike | null = null
-  private page: PageLike | null = null
   private activeCount = 0
   private queuedCount = 0
   private lastRequestStartedAt = 0
@@ -172,14 +188,14 @@ export class KagiBrowserService {
 
   getHealthSnapshot(): KagiHealthSnapshot {
     return {
-      ready: this.page !== null,
+      ready: true,
       activeCount: this.activeCount,
       queuedCount: this.queuedCount,
     }
   }
 
   async close(): Promise<void> {
-    await this.resetBrowserState()
+    await Promise.resolve()
   }
 
   async translate(request: KagiTranslateRequest): Promise<KagiTranslationResult> {
@@ -258,7 +274,6 @@ export class KagiBrowserService {
 
         const backoffMs = this.computeBackoffMs(attempt)
         await this.options.sleep(backoffMs)
-        await this.resetBrowserState()
       }
     }
 
@@ -684,7 +699,7 @@ export class KagiBrowserService {
     try {
       await page.waitForFunction(
         (fragment: unknown) => window.location.href.includes(String(fragment)),
-        { timeout: 3000, polling: 100 },
+        { timeout: 15_000, polling: 100 },
         expectedFragment,
       )
 
@@ -696,7 +711,7 @@ export class KagiBrowserService {
         step: 'waitForFormalityUrlUpdate',
         expectedFragment,
         actualUrl: currentUrl,
-        timeout: 3000,
+        timeout: 15_000,
         error: message,
         timestamp: new Date().toISOString(),
       })
@@ -783,69 +798,11 @@ export class KagiBrowserService {
   }
 
   /**
-   * Wait for translation output to CHANGE from previous text.
-   * Used after formality switch to detect when new output appears.
-   */
-  private async waitForTranslationContentChange(page: PageLike, beforeText: string): Promise<void> {
-    try {
-      const startTime = Date.now()
-
-      while (Date.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
-        let currentText = ''
-        try {
-          currentText = await this.scrapeTranslatedText(page)
-        } catch {
-          await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
-          continue
-        }
-
-        if (currentText !== beforeText && currentText.length > 0) {
-          console.log('🔄 Translation output changed after formality switch')
-          return
-        }
-
-        await this.detectVerificationRequirement(page)
-        await this.options.sleep(KAGI_TIMING.TRANSLATION_OUTPUT_POLL_MS)
-      }
-
-      throw new Error(
-        `Output did not change within ${String(KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS)}ms`,
-      )
-    } catch (error: unknown) {
-      if (error instanceof KagiSidecarError && error.code === 'ANTI_ABUSE') {
-        throw error
-      }
-
-      const message = error instanceof Error ? error.message : String(error)
-      console.error('[UI_INTERACTION] Translation output did not change', {
-        step: 'waitForTranslationContentChange',
-        beforeText: beforeText.substring(0, 100),
-        maxTimeout: KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS,
-        error: message,
-        timestamp: new Date().toISOString(),
-      })
-
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        `Translation output did not change after formality switch: ${message}`,
-        {
-          status: 502,
-          cause: error,
-        },
-      )
-    }
-  }
-
-  /**
-   * Execute translation via UI interaction approach.
+   * Execute translation via a fresh browser session, matching the research PoC lifecycle.
    *
    * Two-phase verification:
    * 1. Baseline reset: Reset all settings to defaults, verify URL baseline
    * 2. Target application: Apply target settings, verify URL reflects changes
-   *
-   * "Chim mồi" (decoy) technique for non-standard formality:
-   * - Let Standard formality translate first
-   * - Then switch to target formality and wait for output change
    *
    * @param request - Translation request with text, style, optional context
    * @returns Translation result with translated text
@@ -870,147 +827,139 @@ export class KagiBrowserService {
     console.log(`\n🎯 Translating with style: ${request.style}`)
     console.log(`Preset: ${JSON.stringify(preset, null, 2)}`)
 
-    const page = await this.ensurePage()
+    const session = await this.options.connect(KAGI_BROWSER_CONNECT_OPTIONS)
+    const { browser, page } = session
 
-    // 1. Navigate to language-pair URL (no text param — fill text via human interaction)
-    const navUrl = 'https://translate.kagi.com/?from=auto&to=vi'
-    console.log(`🌐 Navigating to: ${navUrl}`)
-    await page.goto(navUrl, { waitUntil: 'networkidle2' })
-    await this.clearSourceTextInput(page)
-    await this.fillSourceTextInput(page, clampedText, charCount)
+    try {
+      // 1. Navigate to language-pair URL (no text param — fill text via human interaction)
+      const navUrl = 'https://translate.kagi.com/?from=auto&to=vi'
+      console.log(`🌐 Navigating to: ${navUrl}`)
+      await page.goto(navUrl, { waitUntil: 'networkidle2' })
+      await this.clearSourceTextInput(page)
+      await this.fillSourceTextInput(page, clampedText, charCount)
 
-    // 2. Open Translation Settings dialog
-    await this.clickTranslationSettingsButton(page)
-    await this.options.sleep(KAGI_TIMING.POST_DIALOG_SETTLE_MS)
+      // 2. Open Translation Settings dialog
+      await this.clickTranslationSettingsButton(page)
+      await this.options.sleep(KAGI_TIMING.POST_DIALOG_SETTLE_MS)
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 1: RESET TO BASELINE (Defaults) + VERIFY
-    // ═══════════════════════════════════════════════════════════
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 1: RESET TO BASELINE (Defaults) + VERIFY
+      // ═══════════════════════════════════════════════════════════
 
-    console.log('\n📌 PHASE 1: Resetting to baseline defaults...')
+      console.log('\n📌 PHASE 1: Resetting to baseline defaults...')
 
-    // 3. Clear context textarea
-    await this.clearTranslationContext(page)
-    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
-    this.verifyUrlNotContains(page, 'context=', 'Baseline: context should be cleared')
+      // 3. Clear context textarea
+      await this.clearTranslationContext(page)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlNotContains(page, 'context=', 'Baseline: context should be cleared')
 
-    // 4. Click speaker gender "Unknown" (default)
-    await this.clickSpeakerGenderOption(page, KAGI_UI_LABELS.GENDER.UNKNOWN)
-    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
-    this.verifyUrlNotContains(page, 'speaker_gender=', 'Baseline: speaker gender (Unknown default)')
+      // 4. Click speaker gender "Unknown" (default)
+      await this.clickSpeakerGenderOption(page, KAGI_UI_LABELS.GENDER.UNKNOWN)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlNotContains(
+        page,
+        'speaker_gender=',
+        'Baseline: speaker gender (Unknown default)',
+      )
 
-    // 5. Click addressee gender "Unknown" (default)
-    await this.clickAddresseeGenderOption(page, KAGI_UI_LABELS.GENDER.UNKNOWN)
-    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
-    this.verifyUrlNotContains(
-      page,
-      'addressee_gender=',
-      'Baseline: addressee gender (Unknown default)',
-    )
+      // 5. Click addressee gender "Unknown" (default)
+      await this.clickAddresseeGenderOption(page, KAGI_UI_LABELS.GENDER.UNKNOWN)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlNotContains(
+        page,
+        'addressee_gender=',
+        'Baseline: addressee gender (Unknown default)',
+      )
 
-    // 6. Set reading level "standard" (default)
-    await this.setReadingLevel(page, 'standard')
-    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
-    this.verifyUrlMatchesReadingLevel(page, 'standard', 'Baseline: reading level')
+      // 6. Set reading level "standard" (default)
+      await this.setReadingLevel(page, 'standard')
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlMatchesReadingLevel(page, 'standard', 'Baseline: reading level')
 
-    // 7. Click translation style "Natural" (default)
-    await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.NATURAL)
-    await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
-    this.verifyUrlNotContains(page, 'style=', 'Baseline: translation style (Natural default)')
+      // 7. Click translation style "Natural" (default)
+      await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.NATURAL)
+      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      this.verifyUrlNotContains(page, 'style=', 'Baseline: translation style (Natural default)')
 
-    // 8. Verify formality "Standard" (implicit default, no param)
-    this.verifyUrlNotContains(page, 'formality_context=', 'Baseline: formality (Standard default)')
+      // 8. Verify formality "Standard" (implicit default, no param)
+      this.verifyUrlNotContains(
+        page,
+        'formality_context=',
+        'Baseline: formality (Standard default)',
+      )
+      this.verifyUrlNotContains(page, 'formality=', 'Baseline: formality value (Standard default)')
 
-    const baselineUrl = page.url()
-    console.log(`✅ BASELINE VERIFIED: ${baselineUrl}`)
+      const baselineUrl = page.url()
+      console.log(`✅ BASELINE VERIFIED: ${baselineUrl}`)
 
-    // ═══════════════════════════════════════════════════════════
-    // PHASE 2: APPLY TARGET SETTINGS + VERIFY
-    // ═══════════════════════════════════════════════════════════
+      // ═══════════════════════════════════════════════════════════
+      // PHASE 2: APPLY TARGET SETTINGS + VERIFY
+      // ═══════════════════════════════════════════════════════════
 
-    console.log('\n🎯 PHASE 2: Applying target settings...')
+      console.log('\n🎯 PHASE 2: Applying target settings...')
 
-    // 9. Fill context if provided
-    if (request.context) {
-      await this.fillTranslationContext(page, request.context)
-      await this.options.sleep(computeScaledDelay(1_500, charCount))
-      // NOTE: No URL verify — Kagi does not reflect context= in URL when entered via HIS typing.
-    }
-
-    // 10. Set target reading level if different from standard
-    if (preset.readingLevel !== 'standard') {
-      await this.setReadingLevel(page, preset.readingLevel)
-      await this.options.sleep(computeScaledDelay(2_000, charCount))
-      this.verifyUrlMatchesReadingLevel(page, preset.readingLevel, 'Target: reading level')
-    }
-
-    // 11. Set target translation style if different from natural
-    if (preset.translationType !== 'natural') {
-      await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.LITERAL)
-      await this.options.sleep(computeScaledDelay(2_000, charCount))
-      this.verifyUrlContains(page, 'style=literal', 'Target: translation style')
-    }
-
-    // 12. Handle formality with "Chim mồi" if non-standard
-    if (preset.formality !== 'standard') {
-      console.log('\n🐦 CHIM MỒI: Applying formality technique...')
-
-      // 12a. Wait for Standard output to stabilize (baseline formality)
-      console.log('  ⏳ Step 1: Waiting for Standard formality output...')
-      await this.waitForTranslationOutputStable(page, charCount)
-      const standardOutput = await this.requireTranslatedText(page)
-      console.log(`  📄 Standard output: "${standardOutput.substring(0, 100)}..."`)
-
-      // 12b. Click target formality
-      const formalityLabel = FORMALITY_LABELS[preset.formality]
-      if (!formalityLabel) {
-        throw new KagiSidecarError('UI_INTERACTION', `Unknown formality: ${preset.formality}`, {
-          status: 502,
-        })
+      // 9. Fill context if provided
+      if (request.context) {
+        await this.fillTranslationContext(page, request.context)
+        await this.options.sleep(computeScaledDelay(1_500, charCount))
+        // NOTE: No URL verify — Kagi does not reflect context= in URL when entered via HIS typing.
       }
-      console.log(`  🔄 Step 2: Switching to formality "${formalityLabel}"...`)
-      await this.clickFormalityOption(page, formalityLabel)
 
-      // 12c. Verify URL updated with formality param
-      const expectedParam = FORMALITY_TO_URL_PARAM[preset.formality]
-      if (!expectedParam) {
-        throw new KagiSidecarError(
-          'UI_INTERACTION',
-          `No URL param mapping for formality: ${preset.formality}`,
-          { status: 502 },
-        )
+      // 10. Set target reading level if different from standard
+      if (preset.readingLevel !== 'standard') {
+        await this.setReadingLevel(page, preset.readingLevel)
+        await this.options.sleep(computeScaledDelay(2_000, charCount))
+        this.verifyUrlMatchesReadingLevel(page, preset.readingLevel, 'Target: reading level')
       }
-      console.log(`  🔍 Step 3: Verifying URL contains "${expectedParam}"...`)
-      await this.waitForFormalityUrlUpdate(page, `formality_context=${expectedParam}`)
 
-      // 12d. Wait for output to CHANGE from Standard
-      console.log('  🔄 Step 4: Waiting for output to change...')
-      await this.waitForTranslationContentChange(page, standardOutput)
+      // 11. Set target translation style if different from natural
+      if (preset.translationType !== 'natural') {
+        await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.LITERAL)
+        await this.options.sleep(computeScaledDelay(2_000, charCount))
+        this.verifyUrlContains(page, 'style=literal', 'Target: translation style')
+      }
 
-      // 12e. Wait for new output to stabilize
-      console.log('  ⏳ Step 5: Waiting for new output to stabilize...')
+      if (preset.formality !== 'standard') {
+        const formalityLabel = FORMALITY_LABELS[preset.formality]
+        if (!formalityLabel) {
+          throw new KagiSidecarError('UI_INTERACTION', `Unknown formality: ${preset.formality}`, {
+            status: 502,
+          })
+        }
+
+        const expectedContext = FORMALITY_TO_URL_PARAM[preset.formality]
+        if (!expectedContext) {
+          throw new KagiSidecarError(
+            'UI_INTERACTION',
+            `No URL param mapping for formality: ${preset.formality}`,
+            { status: 502 },
+          )
+        }
+
+        console.log(`\n💼 Applying target formality: "${formalityLabel}"...`)
+        await this.clickFormalityOption(page, formalityLabel)
+        await this.waitForFormalityUrlUpdate(page, `formality_context=${expectedContext}`)
+      }
+
+      console.log('\n⏳ Waiting for translation output...')
       await this.waitForTranslationOutputStable(page, charCount)
 
-      console.log('  ✅ CHIM MỒI Complete - formality applied correctly')
-    } else {
-      // Standard formality - just wait for output
-      console.log('\n⏳ Waiting for translation output (Standard formality)...')
-      await this.waitForTranslationOutputStable(page, charCount)
+      const finalUrl = page.url()
+      console.log(`\n✅ TARGET VERIFIED: ${finalUrl}`)
+
+      // 13. Scrape translated text
+      const translated = await this.requireTranslatedText(page)
+
+      const transportLatencyMs = Date.now() - startTime
+      console.log(`\n🎉 Translation complete in ${String(transportLatencyMs)}ms`)
+      console.log(
+        `📝 Result: "${translated.substring(0, 150)}${translated.length > 150 ? '...' : ''}"`,
+      )
+
+      return translated
+    } finally {
+      await browser.close().catch(() => undefined)
     }
-
-    const finalUrl = page.url()
-    console.log(`\n✅ TARGET VERIFIED: ${finalUrl}`)
-
-    // 13. Scrape translated text
-    const translated = await this.requireTranslatedText(page)
-
-    const transportLatencyMs = Date.now() - startTime
-    console.log(`\n🎉 Translation complete in ${String(transportLatencyMs)}ms`)
-    console.log(
-      `📝 Result: "${translated.substring(0, 150)}${translated.length > 150 ? '...' : ''}"`,
-    )
-
-    return translated
   }
 
   private async scrapeTranslatedText(page: PageLike): Promise<string> {
@@ -1102,37 +1051,5 @@ export class KagiBrowserService {
     }
 
     return translated
-  }
-
-  private async ensurePage(): Promise<PageLike> {
-    if (this.page !== null && this.browser !== null) {
-      return this.page
-    }
-
-    const session = await this.options.connect({
-      headless: false,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      customConfig: {},
-      turnstile: true,
-      connectOption: {},
-      disableXvfb: false,
-      ignoreAllFlags: false,
-    })
-
-    this.browser = session.browser
-    this.page = session.page
-
-    return this.page
-  }
-
-  private async resetBrowserState(): Promise<void> {
-    const browser = this.browser
-
-    this.browser = null
-    this.page = null
-
-    if (browser !== null) {
-      await browser.close().catch(() => undefined)
-    }
   }
 }

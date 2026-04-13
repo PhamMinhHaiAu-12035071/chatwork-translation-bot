@@ -45,11 +45,18 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+RUN mkdir -p /tmp/.X11-unix \
+    && chmod 1777 /tmp/.X11-unix
+
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/bun.lock ./bun.lock
 COPY --from=deps /app/node_modules ./node_modules
 COPY packages/kagi-sidecar/package.json packages/kagi-sidecar/package.json
+COPY --from=deps /app/packages/kagi-sidecar/node_modules packages/kagi-sidecar/node_modules
+COPY packages/kagi-sidecar/scripts packages/kagi-sidecar/scripts
 COPY packages/kagi-sidecar/src packages/kagi-sidecar/src
+COPY packages/provider-kagi/package.json packages/provider-kagi/package.json
+COPY packages/provider-kagi/src packages/provider-kagi/src
 
 ENV NODE_ENV=production
 ENV KAGI_PORT=3002
@@ -57,4 +64,4 @@ ENV DISPLAY=:99
 
 EXPOSE 3002
 
-CMD ["bun", "packages/kagi-sidecar/src/index.ts"]
+CMD ["sh", "packages/kagi-sidecar/scripts/start-with-xvfb.sh", "bun packages/kagi-sidecar/src/index.ts"]

@@ -466,7 +466,9 @@ describe('scripts/dev.sh orchestration', () => {
     expect(dockerfileContent).toContain('fonts-kacst-one')
     expect(dockerfileContent).not.toContain('fonts-kacst \\\n')
     expect(dockerfileContent).toContain('packages/kagi-sidecar/src')
-    expect(dockerfileContent).toContain('CMD ["bun", "packages/kagi-sidecar/src/index.ts"]')
+    expect(dockerfileContent).toContain(
+      'CMD ["sh", "packages/kagi-sidecar/scripts/start-with-xvfb.sh", "bun packages/kagi-sidecar/src/index.ts"]',
+    )
     expect(kagiBlock).toContain('dockerfile: Dockerfile.kagi')
     expect(kagiBlock).toContain('KAGI_PORT: 3002')
     expect(translatorBlock).toContain('KAGI_TRANSLATOR_URL: http://kagi-translator:3002')
@@ -485,9 +487,7 @@ describe('scripts/dev.sh orchestration', () => {
     expect(translatorDockerfile).toContain(
       'COPY packages/provider-kagi/src packages/provider-kagi/src',
     )
-    expect(kagiDockerfile).not.toContain(
-      'COPY packages/provider-kagi/src packages/provider-kagi/src',
-    )
+    expect(kagiDockerfile).toContain('COPY packages/provider-kagi/src packages/provider-kagi/src')
   })
 
   it('documents translator and sidecar kagi env vars in .env.example', () => {

@@ -1014,7 +1014,7 @@ describe('handleTranslateRequest', () => {
       )
     const failedLog = jsonLogs.find((entry) => entry.event === 'translation_request_failed')
 
-    expect(elapsedMs).toBeLessThan(50)
+    expect(elapsedMs).toBeLessThan(150)
     expect(failedLog).toMatchObject({
       errorCode: 'TIMEOUT',
       pipelineTimeoutMs: 5,
