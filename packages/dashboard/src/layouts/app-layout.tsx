@@ -11,27 +11,30 @@ import { TourFloatButton } from '~/components/organisms/tour-float-button'
 import { TOUR_NAME, TOUR_VERSION, tours } from '~/lib/tour-steps'
 import { BrutalCard } from '~/components/molecules/brutal-card'
 import { StickerLabel } from '~/components/atoms/sticker-label'
-import { useUiStore, selectSidebarCollapsed, selectToggleSidebar } from '~/stores/ui-store'
+import {
+  useUiStore,
+  selectSidebarCollapsed,
+  selectToggleSidebar,
+  selectFreeRoomEnabled,
+  selectToggleFreeRoomEnabled,
+} from '~/stores/ui-store'
+import { FeatureLabPanel } from '~/components/organisms/feature-lab-panel'
 import { useRoomStore, selectRooms } from '~/stores/room-store'
 
-const navItems: readonly {
+interface NavItem {
   to: string
   label: string
   surfaceClassName: string
   icon: ClayIconName | null
-}[] = [
-  {
-    to: '/',
-    label: 'Dashboard',
-    surfaceClassName: 'theme-card-matcha',
-    icon: 'dashboard',
-  },
-  {
-    to: '/rooms/new',
-    label: 'New Room',
-    surfaceClassName: 'theme-card-blush',
-    icon: 'plus',
-  },
+}
+
+const staticNavItems: readonly NavItem[] = [
+  { to: '/', label: 'Dashboard', surfaceClassName: 'theme-card-matcha', icon: 'dashboard' },
+  { to: '/rooms/new', label: 'New Room', surfaceClassName: 'theme-card-blush', icon: 'plus' },
+  { to: '/guide', label: 'Webhook Guide', surfaceClassName: 'theme-card-sky', icon: 'book' },
+]
+
+const freeRoomNavItems: readonly NavItem[] = [
   {
     to: '/free-rooms',
     label: 'Free Rooms',
@@ -44,12 +47,6 @@ const navItems: readonly {
     surfaceClassName: 'theme-card-peach',
     icon: 'plus',
   },
-  {
-    to: '/guide',
-    label: 'Webhook Guide',
-    surfaceClassName: 'theme-card-sky',
-    icon: 'book',
-  },
 ]
 
 export function AppLayout() {
@@ -58,6 +55,8 @@ export function AppLayout() {
   const toggleSidebar = useUiStore(selectToggleSidebar)
   const { startNextStep, setCurrentStep, currentTour, closeNextStep } = useNextStep()
   const rooms = useRoomStore(selectRooms)
+  const freeRoomEnabled = useUiStore(selectFreeRoomEnabled)
+  const toggleFreeRoomEnabled = useUiStore(selectToggleFreeRoomEnabled)
   const navigate = useNavigate()
   const tourSeenVersion = useUiStore((state) => state.tourSeenVersion)
   const [persistHasHydrated, setPersistHasHydrated] = useState(() =>
@@ -317,7 +316,7 @@ export function AppLayout() {
               id="tour-sidebar-nav"
               className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:space-y-2 lg:overflow-visible lg:pb-0"
             >
-              {navItems.map((item) => (
+              {staticNavItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
@@ -386,7 +385,95 @@ export function AppLayout() {
                   )}
                 </NavLink>
               ))}
+              <AnimatePresence initial={false}>
+                {freeRoomEnabled &&
+                  freeRoomNavItems.map((item, i) => (
+                    <motion.div
+                      key={item.to}
+                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                      transition={{
+                        duration: 0.22,
+                        delay: i * 0.05,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="block shrink-0 min-w-[8.5rem] lg:min-w-0"
+                    >
+                      <NavLink to={item.to} end className="block">
+                        {({ isActive }) => (
+                          <div className="relative">
+                            {isActive && !sidebarCollapsed ? (
+                              <motion.div
+                                className="nav-candy-thumb absolute -left-[22px] top-1/2 h-[86%] hidden lg:block"
+                                layoutId="nav-indicator"
+                                style={{ y: '-50%' }}
+                                transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                              />
+                            ) : null}
+                            <motion.div
+                              animate={{
+                                x: isActive && !sidebarCollapsed ? 4 : 0,
+                                y: isActive ? -3 : 0,
+                                scale: isActive ? 1.02 : 1,
+                              }}
+                              whileHover={{ x: -2, y: -2 }}
+                              whileTap={{ x: 2, y: 2 }}
+                              transition={{ duration: 0.16, ease: 'easeOut' }}
+                              className={[
+                                'brutal-surface p-4 transition-[opacity,box-shadow]',
+                                item.surfaceClassName,
+                                isActive
+                                  ? 'shadow-[5px_5px_0_var(--accent)] border-[var(--accent)]'
+                                  : 'opacity-65 hover:opacity-90',
+                              ].join(' ')}
+                            >
+                              {sidebarCollapsed ? (
+                                <div className="flex items-center justify-center">
+                                  <span
+                                    className="flex size-6 items-center justify-center"
+                                    aria-hidden
+                                  >
+                                    {item.icon ? (
+                                      <Icon name={item.icon} variant="clay" size={24} aria-hidden />
+                                    ) : null}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-[2.5rem_1fr] items-center gap-x-2 text-left font-heading text-lg font-bold">
+                                  <span
+                                    className="flex size-6 items-center justify-center justify-self-center"
+                                    aria-hidden
+                                  >
+                                    {item.icon ? (
+                                      <Icon name={item.icon} variant="clay" size={24} aria-hidden />
+                                    ) : null}
+                                  </span>
+                                  <AnimatePresence>
+                                    <motion.span
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      exit={{ opacity: 0 }}
+                                      transition={{ duration: 0.2, delay: 0.1 }}
+                                    >
+                                      {item.label}
+                                    </motion.span>
+                                  </AnimatePresence>
+                                </div>
+                              )}
+                            </motion.div>
+                          </div>
+                        )}
+                      </NavLink>
+                    </motion.div>
+                  ))}
+              </AnimatePresence>
             </nav>
+            <FeatureLabPanel
+              collapsed={sidebarCollapsed}
+              enabled={freeRoomEnabled}
+              onToggle={toggleFreeRoomEnabled}
+            />
           </motion.aside>
 
           {/* Mobile sidebar - unchanged */}
@@ -401,7 +488,7 @@ export function AppLayout() {
             </BrutalCard>
 
             <nav className="flex gap-2 overflow-x-auto pb-1">
-              {navItems.map((item) => (
+              {staticNavItems.map((item) => (
                 <NavLink key={item.to} to={item.to} end className="block shrink-0 min-w-[8.5rem]">
                   {({ isActive }) => (
                     <motion.div
@@ -436,7 +523,63 @@ export function AppLayout() {
                   )}
                 </NavLink>
               ))}
+              <AnimatePresence initial={false}>
+                {freeRoomEnabled &&
+                  freeRoomNavItems.map((item, i) => (
+                    <motion.div
+                      key={item.to}
+                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                      transition={{
+                        duration: 0.22,
+                        delay: i * 0.05,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="block shrink-0 min-w-[8.5rem]"
+                    >
+                      <NavLink to={item.to} end className="block">
+                        {({ isActive }) => (
+                          <motion.div
+                            animate={{
+                              x: isActive ? 4 : 0,
+                              y: isActive ? -3 : 0,
+                              scale: isActive ? 1.02 : 1,
+                            }}
+                            whileHover={{ x: -2, y: -2 }}
+                            whileTap={{ x: 2, y: 2 }}
+                            transition={{ duration: 0.16, ease: 'easeOut' }}
+                            className={[
+                              'brutal-surface p-4 transition-[opacity,box-shadow]',
+                              item.surfaceClassName,
+                              isActive
+                                ? 'shadow-[5px_5px_0_var(--accent)] border-[var(--accent)]'
+                                : 'opacity-65 hover:opacity-90',
+                            ].join(' ')}
+                          >
+                            <div className="grid grid-cols-[2.5rem_1fr] items-center gap-x-2 text-left font-heading text-lg font-bold">
+                              <span
+                                className="flex size-6 items-center justify-center justify-self-center"
+                                aria-hidden
+                              >
+                                {item.icon ? (
+                                  <Icon name={item.icon} variant="clay" size={24} aria-hidden />
+                                ) : null}
+                              </span>
+                              <span>{item.label}</span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </NavLink>
+                    </motion.div>
+                  ))}
+              </AnimatePresence>
             </nav>
+            <FeatureLabPanel
+              collapsed={false}
+              enabled={freeRoomEnabled}
+              onToggle={toggleFreeRoomEnabled}
+            />
           </aside>
 
           <motion.main
