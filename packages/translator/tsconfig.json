@@ -9,7 +9,8 @@
         "packages/translator/src/*",
         "packages/core/src/*",
         "packages/chatwork/src/*",
-        "packages/translation-prompt/src/*"
+        "packages/translation-prompt/src/*",
+        "packages/message-queue/src/*"
       ]
     }
   },
