@@ -400,16 +400,7 @@ export class KagiBrowserService {
    */
   private async clickTranslationSettingsButton(page: PageLike): Promise<void> {
     try {
-      const handle = await page.waitForSelector(KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON, {
-        visible: true,
-        timeout: 30_000,
-      })
-
-      if (handle === null) {
-        throw new Error('Translation Settings button not found')
-      }
-
-      await handle.click()
+      await this.humanInteraction.click(page, KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON)
       console.log('⚙️  Clicked Translation Settings button')
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -506,23 +497,9 @@ export class KagiBrowserService {
    */
   private async fillTranslationContext(page: PageLike, context: string): Promise<void> {
     try {
-      const selector = KAGI_SELECTORS.CONTEXT_TEXTAREA
-      await page.focus(selector)
-
-      await page.evaluate(
-        (payload: { sel: string; text: string }) => {
-          const textarea = document.querySelector<HTMLTextAreaElement>(payload.sel)
-          if (textarea) {
-            textarea.value = payload.text
-            textarea.dispatchEvent(new Event('input', { bubbles: true }))
-            textarea.dispatchEvent(new Event('change', { bubbles: true }))
-          }
-        },
-        { sel: selector, text: context },
-      )
-
+      await this.humanInteraction.typeIntoTextarea(page, KAGI_SELECTORS.CONTEXT_TEXTAREA, context)
       const preview = context.length > 50 ? `${context.slice(0, 50)}...` : context
-      console.log(`📝 Filled context textarea: "${preview}"`)
+      console.log(`📝 Filled context: "${preview}"`)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       console.error('[UI_INTERACTION] Failed to fill context textarea', {
@@ -532,7 +509,6 @@ export class KagiBrowserService {
         error: message,
         timestamp: new Date().toISOString(),
       })
-
       throw new KagiSidecarError('UI_INTERACTION', `Failed to fill context textarea: ${message}`, {
         status: 502,
         cause: error,
@@ -540,104 +516,52 @@ export class KagiBrowserService {
     }
   }
 
-  private async clickSettingsOptionBySpanLabel(
-    page: PageLike,
-    payload: {
-      selector: string
-      labelText: string
-      matchIndex: number
-    },
-    metadata: {
-      step:
-        | 'clickSpeakerGenderOption'
-        | 'clickAddresseeGenderOption'
-        | 'clickTranslationStyleOption'
-      kind: string
-      errorLabel: string
-      successIcon: string
-    },
-  ): Promise<void> {
-    try {
-      await page.evaluate((option: { selector: string; labelText: string; matchIndex: number }) => {
-        const labels = Array.from(document.querySelectorAll<HTMLElement>(option.selector))
-        const matches = labels.filter((el) => el.textContent.trim() === option.labelText)
-        const target = matches[option.matchIndex]
-
-        if (!target) {
-          throw new Error(`Label "${option.labelText}" not found`)
-        }
-
-        const button = target.closest('button')
-        if (button) {
-          button.click()
-          return
-        }
-
-        target.click()
-      }, payload)
-
-      console.log(`${metadata.successIcon} Clicked ${metadata.kind}: "${payload.labelText}"`)
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      console.error('[UI_INTERACTION] Failed to click settings option', {
-        step: metadata.step,
-        selector: payload.selector,
-        label: payload.labelText,
-        matchIndex: payload.matchIndex,
-        kind: metadata.kind,
-        error: message,
-        timestamp: new Date().toISOString(),
-      })
-
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        `Failed to click ${metadata.errorLabel} "${payload.labelText}": ${message}`,
-        {
-          status: 502,
-          cause: error,
-        },
-      )
-    }
-  }
-
   /**
    * Click speaker gender label (first matching label span).
    */
   private async clickSpeakerGenderOption(page: PageLike, label: string): Promise<void> {
-    await this.clickSettingsOptionBySpanLabel(
-      page,
-      {
-        selector: KAGI_SELECTORS.GENDER_LABEL,
-        labelText: label,
-        matchIndex: 0,
-      },
-      {
+    try {
+      await this.humanInteraction.clickByTextContent(page, KAGI_SELECTORS.GENDER_LABEL, label, 0)
+      console.log(`🗣️  Clicked speaker gender: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click speaker gender', {
         step: 'clickSpeakerGenderOption',
-        kind: 'speaker gender',
-        errorLabel: 'speaker gender',
-        successIcon: '🗣️ ',
-      },
-    )
+        selector: KAGI_SELECTORS.GENDER_LABEL,
+        label,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click speaker gender "${label}": ${message}`,
+        { status: 502, cause: error },
+      )
+    }
   }
 
   /**
    * Click addressee gender label (second matching label span).
    */
   private async clickAddresseeGenderOption(page: PageLike, label: string): Promise<void> {
-    await this.clickSettingsOptionBySpanLabel(
-      page,
-      {
-        selector: KAGI_SELECTORS.GENDER_LABEL,
-        labelText: label,
-        matchIndex: 1,
-      },
-      {
+    try {
+      await this.humanInteraction.clickByTextContent(page, KAGI_SELECTORS.GENDER_LABEL, label, 1)
+      console.log(`👤 Clicked addressee gender: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click addressee gender', {
         step: 'clickAddresseeGenderOption',
-        kind: 'addressee gender',
-        errorLabel: 'addressee gender',
-        successIcon: '👤 ',
-      },
-    )
+        selector: KAGI_SELECTORS.GENDER_LABEL,
+        label,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click addressee gender "${label}": ${message}`,
+        { status: 502, cause: error },
+      )
+    }
   }
 
   /**
@@ -650,17 +574,15 @@ export class KagiBrowserService {
         throw new Error(`Unknown reading level: ${level}`)
       }
 
-      await page.evaluate(
-        (payload: { sel: string; step: number }) => {
-          const slider = document.querySelector<HTMLInputElement>(payload.sel)
-          if (!slider) {
-            throw new Error('Reading level slider not found')
-          }
-          slider.value = String(payload.step)
-          slider.dispatchEvent(new Event('input', { bubbles: true }))
-          slider.dispatchEvent(new Event('change', { bubbles: true }))
-        },
-        { sel: KAGI_SELECTORS.READING_LEVEL_SLIDER, step: targetStep },
+      const currentStep = await page.$eval(KAGI_SELECTORS.READING_LEVEL_SLIDER, (el) =>
+        Number((el as HTMLInputElement).value),
+      )
+
+      await this.humanInteraction.dragSlider(
+        page,
+        KAGI_SELECTORS.READING_LEVEL_SLIDER,
+        currentStep,
+        targetStep,
       )
 
       console.log(`📊 Set reading level: "${level}" (step ${String(targetStep)})`)
@@ -690,20 +612,24 @@ export class KagiBrowserService {
    * Click translation style option label (Natural or Literal).
    */
   private async clickTranslationStyleOption(page: PageLike, label: string): Promise<void> {
-    await this.clickSettingsOptionBySpanLabel(
-      page,
-      {
-        selector: KAGI_SELECTORS.STYLE_LABEL,
-        labelText: label,
-        matchIndex: 0,
-      },
-      {
+    try {
+      await this.humanInteraction.clickByTextContent(page, KAGI_SELECTORS.STYLE_LABEL, label, 0)
+      console.log(`🎨  Clicked translation style: "${label}"`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('[UI_INTERACTION] Failed to click translation style', {
         step: 'clickTranslationStyleOption',
-        kind: 'translation style',
-        errorLabel: 'translation style',
-        successIcon: '🎨 ',
-      },
-    )
+        selector: KAGI_SELECTORS.STYLE_LABEL,
+        label,
+        error: message,
+        timestamp: new Date().toISOString(),
+      })
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Failed to click translation style "${label}": ${message}`,
+        { status: 502, cause: error },
+      )
+    }
   }
 
   /**
@@ -711,82 +637,9 @@ export class KagiBrowserService {
    */
   private async clickFormalityOption(page: PageLike, label: string): Promise<void> {
     try {
-      await page.evaluate(
-        (payload: {
-          selector: string
-          targetLabel: string
-          labels: string[]
-          anchorLabel: string
-        }) => {
-          const trim = (text: string | null | undefined): string => text?.trim() ?? ''
-          const all = Array.from(document.querySelectorAll<HTMLElement>(payload.selector))
-          const anchor = all.find((span) => trim(span.textContent) === payload.anchorLabel)
-
-          if (!anchor) {
-            throw new Error(`Formality anchor "${payload.anchorLabel}" not found`)
-          }
-
-          const isFormalityRoot = (candidate: ParentNode | null): boolean => {
-            if (!candidate) {
-              return false
-            }
-
-            const spans = Array.from(candidate.querySelectorAll(payload.selector)).filter((span) =>
-              payload.labels.includes(trim(span.textContent)),
-            )
-            const distinctLabels = new Set(spans.map((span) => trim(span.textContent)))
-
-            return payload.labels.every((value) => distinctLabels.has(value))
-          }
-
-          const rowFromAnchor = anchor.closest('button')?.parentElement ?? null
-          let root = isFormalityRoot(rowFromAnchor) ? rowFromAnchor : null
-
-          if (!root) {
-            let node: HTMLElement | null = rowFromAnchor?.parentElement ?? null
-
-            for (let index = 0; index < 14 && node; index += 1) {
-              if (isFormalityRoot(node)) {
-                root = node
-                break
-              }
-
-              node = node.parentElement ?? null
-            }
-          }
-
-          if (!root) {
-            throw new Error('Formality option group not found')
-          }
-
-          const target = Array.from(root.querySelectorAll<HTMLElement>(payload.selector)).find(
-            (span) => trim(span.textContent) === payload.targetLabel,
-          )
-
-          if (!target) {
-            throw new Error(`Formality label "${payload.targetLabel}" not found`)
-          }
-
-          const button = target.closest<HTMLElement>('button')
-          if (button) {
-            button.click()
-            return
-          }
-
-          target.click()
-        },
-        {
-          selector: KAGI_SELECTORS.FORMALITY_LABEL,
-          targetLabel: label,
-          labels: [
-            KAGI_UI_LABELS.FORMALITY.STANDARD,
-            KAGI_UI_LABELS.FORMALITY.VIETNAMESE_FORMAL,
-            KAGI_UI_LABELS.FORMALITY.VIETNAMESE_CASUAL,
-          ],
-          anchorLabel: KAGI_UI_LABELS.FORMALITY.VIETNAMESE_CASUAL,
-        },
-      )
-
+      // NOTE: matchIndex=0 — formality spans appear in a single option group.
+      // Verify from PoC runtime if Kagi UI changes introduce multiple formality sections.
+      await this.humanInteraction.clickByTextContent(page, KAGI_SELECTORS.FORMALITY_LABEL, label, 0)
       console.log(`💼 Clicked formality: "${label}"`)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -797,14 +650,10 @@ export class KagiBrowserService {
         error: message,
         timestamp: new Date().toISOString(),
       })
-
       throw new KagiSidecarError(
         'UI_INTERACTION',
         `Failed to click formality "${label}": ${message}`,
-        {
-          status: 502,
-          cause: error,
-        },
+        { status: 502, cause: error },
       )
     }
   }
@@ -1067,7 +916,7 @@ export class KagiBrowserService {
     if (request.context) {
       await this.fillTranslationContext(page, request.context)
       await this.options.sleep(computeScaledDelay(1_500, charCount))
-      this.verifyUrlContains(page, 'context=', 'Target: context')
+      // NOTE: No URL verify — Kagi does not reflect context= in URL when entered via HIS typing.
     }
 
     // 10. Set target reading level if different from standard

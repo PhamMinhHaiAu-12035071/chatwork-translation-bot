@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 import type {
-  ElementHandleLike,
   KagiBrowserService as KagiBrowserServiceType,
   KagiSidecarError as _KagiSidecarErrorType,
 } from './browser-service'
 import { KAGI_SELECTORS } from './constants/kagi-ui.js'
+import type { PageLike } from './types/page.interface.js'
 
 interface Deferred {
   promise: Promise<void>
@@ -332,7 +332,12 @@ describe('KagiBrowserService', () => {
   })
 
   it('falls back to alternate output scraping when the primary translation selector never appears', async () => {
-    mockPage.$eval.mockRejectedValue(new Error('No translation container found'))
+    // $eval rejects only for translation content (scrapeTranslatedText), resolves 0 for slider
+    mockPage.$eval.mockImplementation((selector: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
+      if (selector.includes('range')) return Promise.resolve(0) as any
+      return Promise.reject(new Error('No translation container found'))
+    })
     mockPage.evaluate.mockImplementation((_fn: unknown, arg?: unknown) => {
       if (
         typeof arg === 'object' &&
@@ -353,14 +358,13 @@ describe('KagiBrowserService', () => {
   })
 
   it('reuses fallback output scraping across the Raw chim-moi flow when the primary selector is missing', async () => {
-    let readingLevel = 'standard'
+    let readingLevelApplied = false
     let formality = 'standard'
 
-    mockPage.waitForSelector.mockImplementation(() => Promise.resolve(mockElementHandle))
     mockPage.url.mockImplementation(() => {
       const params = ['from=auto', 'to=vi', 'text=Hello']
 
-      if (readingLevel === 'c2') {
+      if (readingLevelApplied) {
         params.push('language_complexity=6')
       }
 
@@ -371,29 +375,29 @@ describe('KagiBrowserService', () => {
       return `https://translate.kagi.com/?${params.join('&')}`
     })
 
-    mockPage.$eval.mockRejectedValue(new Error('No translation container found'))
+    // $eval rejects only for translation content; resolves 0 for slider currentStep
+    mockPage.$eval.mockImplementation((selector: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
+      if (selector.includes('range')) return Promise.resolve(0) as any
+      return Promise.reject(new Error('No translation container found'))
+    })
+
+    // Track dragSlider for reading level: spy on IHumanInteraction methods directly
+    mockHumanInteraction.dragSlider = mock(
+      (_page: unknown, _sel: string, _from: number, toStep: number) => {
+        if (toStep === 6) readingLevelApplied = true
+        return Promise.resolve()
+      },
+    ) as typeof mockHumanInteraction.dragSlider
+
+    mockHumanInteraction.clickByTextContent = mock(
+      (_page: unknown, _selector: string, label: string) => {
+        if (label === 'Vietnamese Casual') formality = 'vietnamese_casual'
+        return Promise.resolve()
+      },
+    ) as typeof mockHumanInteraction.clickByTextContent
+
     mockPage.evaluate.mockImplementation((_fn: unknown, arg?: unknown) => {
-      if (
-        typeof arg === 'object' &&
-        arg !== null &&
-        'sel' in arg &&
-        'step' in arg &&
-        arg.step === 6
-      ) {
-        readingLevel = 'c2'
-        return Promise.resolve('noop')
-      }
-
-      if (
-        typeof arg === 'object' &&
-        arg !== null &&
-        'targetLabel' in arg &&
-        arg.targetLabel === 'Vietnamese Casual'
-      ) {
-        formality = 'vietnamese_casual'
-        return Promise.resolve('noop')
-      }
-
       if (
         typeof arg === 'object' &&
         arg !== null &&
@@ -640,143 +644,13 @@ describe('KagiBrowserService URL verification helpers', () => {
 })
 
 interface BasicUiService {
-  clickTranslationSettingsButton(page: {
-    waitForSelector: (
-      selector: string,
-      options?: { visible?: boolean; timeout?: number },
-    ) => Promise<ElementHandleLike | null>
-    focus: (selector: string) => Promise<void>
-    evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>
-    url: () => string
-  }): Promise<void>
-  clearTranslationContext(page: {
-    focus: (selector: string) => Promise<void>
-    evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>
-    url: () => string
-  }): Promise<void>
-  fillTranslationContext(
-    page: {
-      focus: (selector: string) => Promise<void>
-      evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>
-      url: () => string
-    },
-    context: string,
-  ): Promise<void>
-  clickSpeakerGenderOption(
-    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
-    label: string,
-  ): Promise<void>
-  clickAddresseeGenderOption(
-    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
-    label: string,
-  ): Promise<void>
-  clickTranslationStyleOption(
-    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
-    label: string,
-  ): Promise<void>
-  clickFormalityOption(
-    page: { evaluate: <A, R>(fn: (arg: A) => R, arg: A) => Promise<R>; url: () => string },
-    label: string,
-  ): Promise<void>
-}
-
-interface FakeContainer {
-  parentElement: FakeContainer | null
-  querySelectorAll(selector: string): FakeSpan[]
-}
-
-interface FakeButton {
-  click(): void
-  parentElement: FakeContainer | null
-}
-
-interface FakeSpan {
-  textContent: string
-  click(): void
-  closest(selector: string): FakeButton | null
-  getBoundingClientRect(): { width: number; height: number }
-}
-
-function createFakeButton() {
-  let clickCount = 0
-
-  const button: FakeButton = {
-    click() {
-      clickCount += 1
-    },
-    parentElement: null,
-  }
-
-  return {
-    button,
-    get clickCount() {
-      return clickCount
-    },
-  }
-}
-
-function createFakeSpan(label: string, button: FakeButton): FakeSpan {
-  return {
-    textContent: label,
-    click() {
-      button.click()
-    },
-    closest(selector: string) {
-      return selector === 'button' ? button : null
-    },
-    getBoundingClientRect() {
-      return { width: 120, height: 24 }
-    },
-  }
-}
-
-function createFakeContainer(spans: FakeSpan[], supportedSelectors: string[]): FakeContainer {
-  return {
-    parentElement: null,
-    querySelectorAll(selector: string) {
-      return supportedSelectors.includes(selector) ? spans : []
-    },
-  }
-}
-
-function withFakeDocument<TResult>(
-  documentMock: { querySelectorAll(selector: string): FakeSpan[] },
-  run: () => TResult,
-): TResult {
-  const hadDocument = 'document' in globalThis
-  const originalDocument = hadDocument
-    ? (globalThis as typeof globalThis & { document?: unknown }).document
-    : undefined
-
-  Object.defineProperty(globalThis, 'document', {
-    configurable: true,
-    value: documentMock,
-  })
-
-  try {
-    return run()
-  } finally {
-    if (hadDocument) {
-      Object.defineProperty(globalThis, 'document', {
-        configurable: true,
-        value: originalDocument,
-      })
-    } else {
-      Reflect.deleteProperty(globalThis, 'document')
-    }
-  }
-}
-
-function createEvaluateWithFakeDocument(documentMock: {
-  querySelectorAll(selector: string): FakeSpan[]
-}) {
-  return mock(<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg) => {
-    try {
-      return Promise.resolve(withFakeDocument(documentMock, () => fn(arg)))
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
-    }
-  })
+  clickTranslationSettingsButton(page: PageLike): Promise<void>
+  clearTranslationContext(page: PageLike): Promise<void>
+  fillTranslationContext(page: PageLike, context: string): Promise<void>
+  clickSpeakerGenderOption(page: PageLike, label: string): Promise<void>
+  clickAddresseeGenderOption(page: PageLike, label: string): Promise<void>
+  clickTranslationStyleOption(page: PageLike, label: string): Promise<void>
+  clickFormalityOption(page: PageLike, label: string): Promise<void>
 }
 
 describe('KagiBrowserService basic UI interaction helpers', () => {
@@ -794,6 +668,7 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
       maxQueueWaitMs: 10_000,
       maxRetries: 0,
       sleep: () => Promise.resolve(),
+      humanInteraction: mockHumanInteraction,
     })
   }
 
@@ -812,34 +687,25 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
     }
   }
 
-  it('clickTranslationSettingsButton waits for visible button and clicks', async () => {
-    const click = mock(() => Promise.resolve())
-    const handle = { click } as ElementHandleLike
-    const waitForSelector = mock((_s: string) => Promise.resolve(handle))
-
+  it('clickTranslationSettingsButton delegates to humanInteraction.click', async () => {
     const service = createService()
     await asBasicUiService(service).clickTranslationSettingsButton(
-      minimalPage({ waitForSelector }) as Parameters<
-        BasicUiService['clickTranslationSettingsButton']
-      >[0],
+      minimalPage() as unknown as PageLike,
     )
 
-    expect(waitForSelector).toHaveBeenCalledWith(KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON, {
-      visible: true,
-      timeout: 30_000,
-    })
-    expect(click).toHaveBeenCalledTimes(1)
+    expect(mockHumanInteraction.click).toHaveBeenCalledWith(
+      expect.anything(),
+      KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON,
+    )
   })
 
-  it('clickTranslationSettingsButton throws UI_INTERACTION when button is missing', async () => {
-    const waitForSelector = mock((_s: string) => Promise.resolve(null))
+  it('clickTranslationSettingsButton throws UI_INTERACTION when humanInteraction.click throws', async () => {
+    mockHumanInteraction.click.mockRejectedValueOnce(new Error('click failed'))
     const service = createService()
 
     try {
       await asBasicUiService(service).clickTranslationSettingsButton(
-        minimalPage({ waitForSelector }) as Parameters<
-          BasicUiService['clickTranslationSettingsButton']
-        >[0],
+        minimalPage() as unknown as PageLike,
       )
       expect.unreachable('expected UI_INTERACTION rejection')
     } catch (error) {
@@ -853,7 +719,7 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
 
     const service = createService()
     await asBasicUiService(service).clearTranslationContext(
-      minimalPage({ focus, evaluate }) as Parameters<BasicUiService['clearTranslationContext']>[0],
+      minimalPage({ focus, evaluate }) as unknown as PageLike,
     )
 
     expect(focus).toHaveBeenCalledWith(KAGI_SELECTORS.CONTEXT_TEXTAREA)
@@ -861,168 +727,78 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
     expect(evaluate.mock.calls[0]?.[1]).toBe(KAGI_SELECTORS.CONTEXT_TEXTAREA)
   })
 
-  it('fillTranslationContext focuses and passes sel+text to evaluate', async () => {
-    const focus = mock(() => Promise.resolve())
-    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
-
+  it('fillTranslationContext delegates to humanInteraction.typeIntoTextarea', async () => {
     const service = createService()
     await asBasicUiService(service).fillTranslationContext(
-      minimalPage({ focus, evaluate }) as Parameters<BasicUiService['fillTranslationContext']>[0],
+      minimalPage() as unknown as PageLike,
       'my context text',
     )
 
-    expect(focus).toHaveBeenCalledWith(KAGI_SELECTORS.CONTEXT_TEXTAREA)
-    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
-      sel: KAGI_SELECTORS.CONTEXT_TEXTAREA,
-      text: 'my context text',
-    })
+    expect(mockHumanInteraction.typeIntoTextarea).toHaveBeenCalledWith(
+      expect.anything(),
+      KAGI_SELECTORS.CONTEXT_TEXTAREA,
+      'my context text',
+    )
   })
 
-  it('clickSpeakerGenderOption evaluates with selector payload', async () => {
-    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
-
+  it('clickSpeakerGenderOption delegates to humanInteraction.clickByTextContent at index 0', async () => {
     const service = createService()
     await asBasicUiService(service).clickSpeakerGenderOption(
-      minimalPage({ evaluate }) as Parameters<BasicUiService['clickSpeakerGenderOption']>[0],
+      minimalPage() as unknown as PageLike,
       'Feminine',
     )
 
-    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
-      selector: KAGI_SELECTORS.GENDER_LABEL,
-      labelText: 'Feminine',
-      matchIndex: 0,
-    })
+    expect(mockHumanInteraction.clickByTextContent).toHaveBeenCalledWith(
+      expect.anything(),
+      KAGI_SELECTORS.GENDER_LABEL,
+      'Feminine',
+      0,
+    )
   })
 
-  it('clickAddresseeGenderOption evaluates with selector payload', async () => {
-    const evaluate = mock((_fn: unknown, arg?: unknown) => Promise.resolve(arg))
-
+  it('clickAddresseeGenderOption delegates to humanInteraction.clickByTextContent at index 1', async () => {
     const service = createService()
     await asBasicUiService(service).clickAddresseeGenderOption(
-      minimalPage({ evaluate }) as Parameters<BasicUiService['clickAddresseeGenderOption']>[0],
+      minimalPage() as unknown as PageLike,
       'Neutral',
     )
 
-    expect(evaluate).toHaveBeenCalledWith(expect.any(Function), {
-      selector: KAGI_SELECTORS.GENDER_LABEL,
-      labelText: 'Neutral',
-      matchIndex: 1,
-    })
-  })
-
-  it('clickSpeakerGenderOption supports research span/button markup', async () => {
-    const speakerButton = createFakeButton()
-    const addresseeButton = createFakeButton()
-    const spans = [
-      createFakeSpan('Unknown', speakerButton.button),
-      createFakeSpan('Unknown', addresseeButton.button),
-    ]
-    const documentMock = {
-      querySelectorAll(selector: string) {
-        return selector === 'span.flex-grow.text-start' ? spans : []
-      },
-    }
-    const evaluate = createEvaluateWithFakeDocument(documentMock)
-
-    const service = createService()
-    await asBasicUiService(service).clickSpeakerGenderOption(
-      minimalPage({ evaluate }) as Parameters<BasicUiService['clickSpeakerGenderOption']>[0],
-      'Unknown',
+    expect(mockHumanInteraction.clickByTextContent).toHaveBeenCalledWith(
+      expect.anything(),
+      KAGI_SELECTORS.GENDER_LABEL,
+      'Neutral',
+      1,
     )
-
-    expect(speakerButton.clickCount).toBe(1)
-    expect(addresseeButton.clickCount).toBe(0)
   })
 
-  it('clickAddresseeGenderOption uses second match with research span/button markup', async () => {
-    const speakerButton = createFakeButton()
-    const addresseeButton = createFakeButton()
-    const spans = [
-      createFakeSpan('Unknown', speakerButton.button),
-      createFakeSpan('Unknown', addresseeButton.button),
-    ]
-    const documentMock = {
-      querySelectorAll(selector: string) {
-        return selector === 'span.flex-grow.text-start' ? spans : []
-      },
-    }
-    const evaluate = createEvaluateWithFakeDocument(documentMock)
-
-    const service = createService()
-    await asBasicUiService(service).clickAddresseeGenderOption(
-      minimalPage({ evaluate }) as Parameters<BasicUiService['clickAddresseeGenderOption']>[0],
-      'Unknown',
-    )
-
-    expect(speakerButton.clickCount).toBe(0)
-    expect(addresseeButton.clickCount).toBe(1)
-  })
-
-  it('clickTranslationStyleOption supports research span/button markup', async () => {
-    const naturalButton = createFakeButton()
-    const literalButton = createFakeButton()
-    const spans = [
-      createFakeSpan('Natural', naturalButton.button),
-      createFakeSpan('Literal', literalButton.button),
-    ]
-    const documentMock = {
-      querySelectorAll(selector: string) {
-        return selector === 'span.flex-grow.text-start' ? spans : []
-      },
-    }
-    const evaluate = createEvaluateWithFakeDocument(documentMock)
-
+  it('clickTranslationStyleOption delegates to humanInteraction.clickByTextContent at index 0', async () => {
     const service = createService()
     await asBasicUiService(service).clickTranslationStyleOption(
-      minimalPage({ evaluate }) as Parameters<BasicUiService['clickTranslationStyleOption']>[0],
+      minimalPage() as unknown as PageLike,
       'Literal',
     )
 
-    expect(naturalButton.clickCount).toBe(0)
-    expect(literalButton.clickCount).toBe(1)
+    expect(mockHumanInteraction.clickByTextContent).toHaveBeenCalledWith(
+      expect.anything(),
+      KAGI_SELECTORS.STYLE_LABEL,
+      'Literal',
+      0,
+    )
   })
 
-  it('clickFormalityOption disambiguates the correct Standard row in research markup', async () => {
-    const unrelatedStandardButton = createFakeButton()
-    const targetStandardButton = createFakeButton()
-    const formalButton = createFakeButton()
-    const casualButton = createFakeButton()
-
-    const unrelatedStandardSpan = createFakeSpan('Standard', unrelatedStandardButton.button)
-    const targetStandardSpan = createFakeSpan('Standard', targetStandardButton.button)
-    const formalSpan = createFakeSpan('Vietnamese Formal', formalButton.button)
-    const casualSpan = createFakeSpan('Vietnamese Casual', casualButton.button)
-
-    const formalitySelector = 'span.flex-grow.text-start, span.grow.text-start'
-    const row = createFakeContainer(
-      [targetStandardSpan, formalSpan, casualSpan],
-      [formalitySelector],
-    )
-    targetStandardButton.button.parentElement = row
-    formalButton.button.parentElement = row
-    casualButton.button.parentElement = row
-
-    const documentMock = {
-      querySelectorAll(selector: string) {
-        if (selector === formalitySelector) {
-          return [unrelatedStandardSpan, targetStandardSpan, formalSpan, casualSpan]
-        }
-
-        return []
-      },
-    }
-    const evaluate = createEvaluateWithFakeDocument(documentMock)
-
+  it('clickFormalityOption delegates to humanInteraction.clickByTextContent at index 0', async () => {
     const service = createService()
     await asBasicUiService(service).clickFormalityOption(
-      minimalPage({ evaluate }) as Parameters<BasicUiService['clickFormalityOption']>[0],
+      minimalPage() as unknown as PageLike,
       'Standard',
     )
 
-    expect(unrelatedStandardButton.clickCount).toBe(0)
-    expect(targetStandardButton.clickCount).toBe(1)
-    expect(formalButton.clickCount).toBe(0)
-    expect(casualButton.clickCount).toBe(0)
+    expect(mockHumanInteraction.clickByTextContent).toHaveBeenCalledWith(
+      expect.anything(),
+      KAGI_SELECTORS.FORMALITY_LABEL,
+      'Standard',
+      0,
+    )
   })
 
   it('clearTranslationContext wraps focus errors in UI_INTERACTION', async () => {
@@ -1031,7 +807,7 @@ describe('KagiBrowserService basic UI interaction helpers', () => {
     const service = createService()
     try {
       await asBasicUiService(service).clearTranslationContext(
-        minimalPage({ focus }) as Parameters<BasicUiService['clearTranslationContext']>[0],
+        minimalPage({ focus }) as unknown as PageLike,
       )
       expect.unreachable('expected UI_INTERACTION rejection')
     } catch (error) {
