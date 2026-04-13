@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { TranslationError } from '@chatwork-bot/core'
 import type { TranslationIngressCommand, TranslationResult } from '@chatwork-bot/core'
 import type { ILLMExecutor, ISchema, PromptPair } from '@chatwork-bot/core'
+import { TRANSLATION_PROMPT_BUILD_ID } from '@chatwork-bot/translation-prompt'
 import type * as OutputWriter from '~/utils/output-writer'
 import type { createRoomTranslationOrchestrator as CreateRoomTranslationOrchestrator } from '~/services/room-translation-orchestrator'
 import type { RoomConfigStore } from '~/services/room-config-store'
@@ -567,7 +568,7 @@ describe('handleTranslateRequest', () => {
     expect(content.llm?.promptMode).toBe('structured_segments')
     expect(content.llm?.translationStyle).toBe('TECHNICAL')
     expect(content.llm?.generation?.temperature).toBe(0)
-    expect(content.llm?.promptBuildId).toBe('2026-04-04-romanization-v2')
+    expect(content.llm?.promptBuildId).toBe(TRANSLATION_PROMPT_BUILD_ID)
   })
 
   it('writes a single_text natural-casual prompt mode and v3 runtime metadata for long single-message input', async () => {
@@ -633,7 +634,7 @@ describe('handleTranslateRequest', () => {
     expect(content.llm?.promptMode).toBe('single_text')
     expect(content.llm?.translationStyle).toBe('NATURAL_CASUAL')
     expect(content.llm?.generation?.temperature).toBe(0.75)
-    expect(content.llm?.promptBuildId).toBe('2026-04-04-romanization-v2')
+    expect(content.llm?.promptBuildId).toBe(TRANSLATION_PROMPT_BUILD_ID)
   })
 
   it('emits structured lifecycle logs and records completed request in status snapshot', async () => {

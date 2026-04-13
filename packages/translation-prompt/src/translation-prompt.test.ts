@@ -138,6 +138,41 @@ describe('roomContext injection', () => {
   })
 })
 
+describe('roomContext policy guidance', () => {
+  it('treats room context as optional structured or unstructured guidance', () => {
+    const result = buildSingleCallPrompts(
+      '確認お願いします',
+      'PROFESSIONAL_BUSINESS',
+      'Tanaka Taro / 田中太郎 (PM, male)',
+    )
+
+    expect(result.system).toContain('structured or unstructured notes')
+    expect(result.system).toContain('only when clearly stated')
+    expect(result.system).toContain('translate conservatively')
+  })
+
+  it('prefers a Latin alias over the original Japanese name when both are present', () => {
+    const result = buildSingleCallPrompts(
+      '田中太郎さん、確認お願いします',
+      'PROFESSIONAL_BUSINESS',
+      'Tanaka Taro / 田中太郎 (PM, male)',
+    )
+
+    expect(result.system).toContain('prefer the Latin alias')
+    expect(result.system).toContain('Japanese name only as a matching anchor')
+  })
+
+  it('forbids forced romanization when no trusted alias is provided', () => {
+    const result = buildSingleCallPrompts(
+      '田中太郎さん、確認お願いします',
+      'PROFESSIONAL_BUSINESS',
+      '田中太郎 (PM, male)',
+    )
+
+    expect(result.system).toContain('do not invent a romanized form')
+  })
+})
+
 describe('mention hint injection', () => {
   it('injects MENTION_CONTEXT block in single call prompt when mentionHint provided', () => {
     const result = buildSingleCallPrompts(

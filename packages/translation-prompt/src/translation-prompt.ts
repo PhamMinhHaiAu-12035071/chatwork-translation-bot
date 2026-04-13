@@ -12,7 +12,7 @@ export interface PromptPair {
   user: string
 }
 
-export const TRANSLATION_PROMPT_BUILD_ID = '2026-04-04-romanization-v2'
+export const TRANSLATION_PROMPT_BUILD_ID = '2026-04-13-context-honorific-policy-v1'
 
 export { TranslationDraftSchema }
 export { StructuredTranslationDraftSchema }
@@ -33,9 +33,12 @@ const SHARED_SYSTEM = [
 ].join('\n\n')
 
 const CONTEXT_ENFORCEMENT_HEADER = `Apply this context to every translation in this room:
-- Use member names and roles to determine correct honorifics (anh/chị/ông/bà/em/tôi).
-- Use the domain and project description to calibrate terminology and register.
-- When a member's gender or seniority is stated, always apply it in pronouns and address forms.`
+- The room context may contain structured or unstructured notes about people, aliases, roles, gender, seniority, and tone.
+- If the message or mention target matches a person described in the room context, use that information when it is clearly stated.
+- prefer the Latin alias in Vietnamese output when the context provides both a Latin alias and the original Japanese name; treat the Japanese name only as a matching anchor.
+- If the context only provides the original Japanese name, keep that name and do not invent a romanized form.
+- Use gender, role, title, or seniority hints only when clearly stated; if uncertain, translate conservatively and naturally.
+- If no reliable person metadata is available, ignore these person-specific rules and translate normally.`
 
 function buildContextSection(roomContext?: string): string {
   if (!roomContext?.trim()) return ''
