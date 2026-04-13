@@ -361,6 +361,25 @@ describe('KagiBrowserService', () => {
     expect(result.translated).toBe('Bản dịch casual cuối cùng')
   })
 
+  it('truncates oversized input text and logs warning before translation', async () => {
+    const service = createService()
+    const longText = 'a'.repeat(25_000)
+
+    const warnCalls: unknown[][] = []
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => {
+      warnCalls.push(args)
+    }
+
+    try {
+      await service.translate({ text: longText, style: 'Clear' })
+    } finally {
+      console.warn = originalWarn
+    }
+
+    expect(warnCalls.some((args) => String(args[0]).includes('Input text truncated'))).toBe(true)
+  })
+
   it.skip('waits for rendered translation output to stabilize before returning it (old polling-based behavior, pending update)', async () => {
     mockPage.evaluate
       .mockResolvedValueOnce('Bản dịch đang render dang dở')

@@ -1,6 +1,7 @@
 import { buildSimpleKagiUrl, KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
+import { clampInputText } from './constants/input-clamping.js'
 import {
   FORMALITY_LABELS,
   FORMALITY_TO_URL_PARAM,
@@ -976,13 +977,23 @@ export class KagiBrowserService {
     // Lookup preset for target style (guaranteed by KagiStyle type)
     const preset = KAGI_STYLE_PRESETS[request.style]
 
+    // Primary guard: clamp input text, log warning if truncated
+    const originalLength = request.text.length
+    const clampedText = clampInputText(request.text)
+    if (clampedText.length < originalLength) {
+      console.warn(
+        `⚠️ Input text truncated: ${String(originalLength)} → ${String(clampedText.length)} chars (${String(originalLength - clampedText.length)} dropped)`,
+      )
+    }
+    const _charCount = clampedText.length
+
     console.log(`\n🎯 Translating with style: ${request.style}`)
     console.log(`Preset: ${JSON.stringify(preset, null, 2)}`)
 
     const page = await this.ensurePage()
 
     // 1. Navigate to simple URL (no style params)
-    const simpleUrl = buildSimpleKagiUrl(request.text)
+    const simpleUrl = buildSimpleKagiUrl(clampedText)
     console.log(`🌐 Navigating to: ${simpleUrl}`)
     await page.goto(simpleUrl, { waitUntil: 'networkidle2' })
 
