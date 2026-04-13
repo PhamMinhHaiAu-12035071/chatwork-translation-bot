@@ -221,6 +221,20 @@ export class HumanInteractionService implements IHumanInteraction {
         await sleep(randInt(10, 30))
       }
       await page.mouse.up()
+
+      // Dispatch input+change events after drag to ensure React/framework state
+      // updates the URL — raw mouse events alone may not trigger this in Xvfb.
+      await page.evaluate(
+        (sel: string, nextValue: number) => {
+          const slider = document.querySelector<HTMLInputElement>(sel)
+          if (!slider) return
+          slider.value = String(nextValue)
+          slider.dispatchEvent(new Event('input', { bubbles: true }))
+          slider.dispatchEvent(new Event('change', { bubbles: true }))
+        },
+        sliderSelector,
+        toStep,
+      )
     } catch {
       console.warn(`⚠️ Degraded to evaluate set value for slider: step ${String(toStep)}`)
       await page.evaluate(

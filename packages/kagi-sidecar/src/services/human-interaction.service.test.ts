@@ -115,6 +115,31 @@ describe('HumanInteractionService', () => {
       )
       warnSpy.mockRestore()
     })
+
+    it('dispatches input+change events via evaluate after mouse drag (valid rect)', async () => {
+      let evaluateCallCount = 0
+      const evaluateMock = mock((_fn: unknown, ..._args: unknown[]) => {
+        evaluateCallCount++
+        // First call: return valid rect so mouse drag path is taken
+        if (evaluateCallCount === 1) {
+          return Promise.resolve({ width: 200, height: 20, left: 10, top: 10 })
+        }
+        // Second call: post-drag event dispatch
+        return Promise.resolve(undefined)
+      })
+      const page = makePageLike({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+        evaluate: evaluateMock as any,
+      })
+      await service.dragSlider(page, 'input[type="range"]', 0, 3)
+      // Mouse drag path taken
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(page.mouse.down).toHaveBeenCalled()
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(page.mouse.up).toHaveBeenCalled()
+      // Evaluate called twice: rect check + post-drag event dispatch
+      expect(evaluateCallCount).toBe(2)
+    })
   })
 
   describe('chunkPaste', () => {
