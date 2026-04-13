@@ -11,6 +11,9 @@ export const KAGI_SELECTORS = {
   /** Translation Settings button on toolbar */
   TRANSLATION_SETTINGS_BUTTON: '[aria-label="Translation Settings"]',
 
+  /** Source text input contenteditable area */
+  SOURCE_TEXT_INPUT: '[aria-label="Source text input"]',
+
   /** Context textarea in Translation Settings dialog */
   CONTEXT_TEXTAREA: 'textarea[placeholder*="Brief context for translation"]',
 
