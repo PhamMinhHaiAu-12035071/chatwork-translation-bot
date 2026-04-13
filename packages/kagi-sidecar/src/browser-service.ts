@@ -585,6 +585,24 @@ export class KagiBrowserService {
         targetStep,
       )
 
+      // Wait for Kagi's React to reflect the slider change in aria-valuenow and URL.
+      // Mouse drag (or event dispatch) is async — the URL update can take several seconds in Xvfb.
+      const expectedFragment = level === 'standard' ? '' : `language_complexity=${level}`
+      await page.waitForFunction(
+        (sel: unknown, targetVal: unknown, fragment: unknown) => {
+          const slider = document.querySelector<HTMLInputElement>(sel as string)
+          if (!slider) return false
+          const ariaNow = slider.getAttribute('aria-valuenow')
+          if (ariaNow !== String(targetVal as number)) return false
+          if ((fragment as string) === '') return !location.search.includes('language_complexity')
+          return location.search.includes(fragment as string)
+        },
+        { timeout: 15_000 },
+        KAGI_SELECTORS.READING_LEVEL_SLIDER,
+        targetStep,
+        expectedFragment,
+      )
+
       console.log(`📊 Set reading level: "${level}" (step ${String(targetStep)})`)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
