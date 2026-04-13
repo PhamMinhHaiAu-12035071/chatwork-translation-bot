@@ -11,41 +11,11 @@ import {
   KAGI_UI_LABELS,
   READING_LEVEL_TO_STEP,
 } from './constants/kagi-ui.js'
+import type { IHumanInteraction } from './types/human-interaction.interface.js'
+import { HumanInteractionService } from './services/human-interaction.service.js'
+import type { ElementHandleLike, PageLike } from './types/page.interface.js'
 
-/** Handle returned by waitForSelector for elements that can be clicked. */
-export interface ElementHandleLike {
-  click(): Promise<void>
-}
-
-interface PageLike {
-  goto(
-    url: string,
-    options?: {
-      waitUntil?: 'networkidle2' | 'load' | 'domcontentloaded'
-      timeout?: number
-    },
-  ): Promise<unknown>
-  waitForSelector(
-    selector: string,
-    options?: {
-      timeout?: number
-      visible?: boolean
-    },
-  ): Promise<ElementHandleLike | null>
-  evaluate<TArg, TResult>(fn: (arg: TArg) => TResult, arg: TArg): Promise<TResult>
-  /** Current page URL (address bar). Used for two-phase URL verification. */
-  url(): string
-  /** Focus element matching selector (e.g. translation context textarea). */
-  focus(selector: string): Promise<void>
-  /** Wait for function to return truthy in page context (polling with timeout). */
-  waitForFunction<TArg>(
-    fn: (arg: TArg) => boolean,
-    options: { timeout: number; polling: number },
-    arg: TArg,
-  ): Promise<unknown>
-  /** Evaluate function with selector and return result ($eval pattern). */
-  $eval<TResult>(selector: string, fn: (el: Element) => TResult): Promise<TResult>
-}
+export type { ElementHandleLike }
 
 interface BrowserLike {
   close(): Promise<void>
@@ -127,10 +97,11 @@ export interface KagiBrowserServiceOptions {
   now(): number
   random(): number
   connect: BrowserConnect
+  humanInteraction?: IHumanInteraction
 }
 
 async function loadBrowserConnect(): Promise<BrowserConnect> {
-  const mod = (await import('puppeteer-real-browser')) as {
+  const mod = (await import('puppeteer-real-browser')) as unknown as {
     connect: BrowserConnect
   }
   return mod.connect
@@ -170,6 +141,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 
 export class KagiBrowserService {
   private readonly options: KagiBrowserServiceOptions
+  private readonly humanInteraction: IHumanInteraction
   private browser: BrowserLike | null = null
   private page: PageLike | null = null
   private activeCount = 0
@@ -195,6 +167,7 @@ export class KagiBrowserService {
           return connect(connectOptions)
         }),
     }
+    this.humanInteraction = options.humanInteraction ?? new HumanInteractionService()
   }
 
   getHealthSnapshot(): KagiHealthSnapshot {
@@ -807,7 +780,7 @@ export class KagiBrowserService {
   private async waitForFormalityUrlUpdate(page: PageLike, expectedFragment: string): Promise<void> {
     try {
       await page.waitForFunction(
-        (fragment) => window.location.href.includes(fragment),
+        (fragment: unknown) => window.location.href.includes(String(fragment)),
         { timeout: 3000, polling: 100 },
         expectedFragment,
       )

@@ -53,6 +53,15 @@ const mockElementHandle = {
   click: mock(() => Promise.resolve()),
 }
 
+const mockHumanInteraction = {
+  click: mock(() => Promise.resolve()),
+  clickByTextContent: mock(() => Promise.resolve()),
+  typeIntoTextarea: mock(() => Promise.resolve()),
+  typeIntoContentEditable: mock(() => Promise.resolve()),
+  dragSlider: mock(() => Promise.resolve()),
+  chunkPaste: mock(() => Promise.resolve()),
+}
+
 const mockPage = {
   setRequestInterception: mock((_enabled: boolean) => Promise.resolve()),
   on: mock((_event: string, _handler: unknown) => undefined),
@@ -69,6 +78,19 @@ const mockPage = {
   url: mock(() => 'https://translate.kagi.com/?from=auto&to=vi&text=test'),
   waitForFunction: mock((_fn: unknown, _options: unknown, _arg?: unknown) => Promise.resolve()),
   $eval: mock((_selector: string, _fn: unknown) => Promise.resolve('Xin chao')),
+  click: mock((_selector: string) => Promise.resolve()),
+  type: mock((_selector: string, _text: string, _options?: unknown) => Promise.resolve()),
+  $: mock((_selector: string) => Promise.resolve(mockElementHandle)),
+  mouse: {
+    move: mock((_x: number, _y: number) => Promise.resolve()),
+    down: mock(() => Promise.resolve()),
+    up: mock(() => Promise.resolve()),
+  },
+  keyboard: {
+    down: mock((_key: string) => Promise.resolve()),
+    press: mock((_key: string) => Promise.resolve()),
+    up: mock((_key: string) => Promise.resolve()),
+  },
 }
 
 const mockBrowser = {
@@ -146,6 +168,38 @@ describe('KagiBrowserService', () => {
     mockBrowser.close.mockReset()
     mockBrowser.close.mockImplementation(() => Promise.resolve())
 
+    mockPage.click.mockReset()
+    mockPage.click.mockImplementation(() => Promise.resolve())
+    mockPage.type.mockReset()
+    mockPage.type.mockImplementation(() => Promise.resolve())
+    mockPage.$.mockReset()
+    mockPage.$.mockImplementation(() => Promise.resolve(mockElementHandle))
+    mockPage.mouse.move.mockReset()
+    mockPage.mouse.move.mockImplementation(() => Promise.resolve())
+    mockPage.mouse.down.mockReset()
+    mockPage.mouse.down.mockImplementation(() => Promise.resolve())
+    mockPage.mouse.up.mockReset()
+    mockPage.mouse.up.mockImplementation(() => Promise.resolve())
+    mockPage.keyboard.down.mockReset()
+    mockPage.keyboard.down.mockImplementation(() => Promise.resolve())
+    mockPage.keyboard.press.mockReset()
+    mockPage.keyboard.press.mockImplementation(() => Promise.resolve())
+    mockPage.keyboard.up.mockReset()
+    mockPage.keyboard.up.mockImplementation(() => Promise.resolve())
+
+    mockHumanInteraction.click.mockReset()
+    mockHumanInteraction.click.mockImplementation(() => Promise.resolve())
+    mockHumanInteraction.clickByTextContent.mockReset()
+    mockHumanInteraction.clickByTextContent.mockImplementation(() => Promise.resolve())
+    mockHumanInteraction.typeIntoTextarea.mockReset()
+    mockHumanInteraction.typeIntoTextarea.mockImplementation(() => Promise.resolve())
+    mockHumanInteraction.typeIntoContentEditable.mockReset()
+    mockHumanInteraction.typeIntoContentEditable.mockImplementation(() => Promise.resolve())
+    mockHumanInteraction.dragSlider.mockReset()
+    mockHumanInteraction.dragSlider.mockImplementation(() => Promise.resolve())
+    mockHumanInteraction.chunkPaste.mockReset()
+    mockHumanInteraction.chunkPaste.mockImplementation(() => Promise.resolve())
+
     const mod = await import('./browser-service')
     KagiBrowserService = mod.KagiBrowserService
     _KagiSidecarError = mod.KagiSidecarError
@@ -158,6 +212,7 @@ describe('KagiBrowserService', () => {
       maxQueueWaitMs: 10_000,
       maxRetries: 0,
       sleep: (_ms) => Promise.resolve(),
+      humanInteraction: mockHumanInteraction,
       ...overrides,
     })
   }
