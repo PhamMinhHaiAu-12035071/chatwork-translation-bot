@@ -45,6 +45,11 @@ export const translatorEnvSchema = z.object({
   // Tracing configuration
   OUTPUT_BASE_DIR: z.string().default('./output'),
   TRACE_OUTPUT_ENABLED: z.coerce.boolean().default(true),
+
+  // Message queue configuration
+  QUEUE_MAX_DEPTH_PER_ROOM: z.coerce.number().int().positive().default(10),
+  QUEUE_STANDARD_CONCURRENCY: z.coerce.number().int().positive().default(3),
+  QUEUE_FREE_CONCURRENCY: z.coerce.number().int().positive().default(1),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {
