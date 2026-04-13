@@ -1,4 +1,5 @@
 import { env } from '~/env'
+import type { QueueHealthSnapshot } from '@chatwork-bot/message-queue'
 import type { TranslatorLogEntry, TranslatorStatusSnapshot } from '~/types/observability'
 import { TranslatorStatusStore } from './translator-status-store'
 import { asyncLogger } from './async-logger'
@@ -10,23 +11,29 @@ function createStatusStore(): TranslatorStatusStore {
 }
 
 let translatorStatusStore = createStatusStore()
+let queueSnapshotProvider: (() => QueueHealthSnapshot) | null = null
 
 export function getTranslatorStatusStore(): TranslatorStatusStore {
   return translatorStatusStore
 }
 
+export function registerQueueSnapshotProvider(fn: () => QueueHealthSnapshot): void {
+  queueSnapshotProvider = fn
+}
+
 export function getTranslatorStatusSnapshot(): TranslatorStatusSnapshot {
-  return translatorStatusStore.getSnapshot()
+  const snapshot = translatorStatusStore.getSnapshot()
+  return queueSnapshotProvider !== null ? { ...snapshot, queue: queueSnapshotProvider() } : snapshot
 }
 
 export function logTranslatorEvent(entry: TranslatorLogEntry): void {
   const useAsync = process.env['USE_ASYNC_LOGGING'] !== 'false'
-  
+
   const logData = {
     ...entry,
     timestamp: new Date().toISOString(),
   }
-  
+
   if (useAsync) {
     // Map TranslatorLogEntry to LogEntry format
     asyncLogger.log({

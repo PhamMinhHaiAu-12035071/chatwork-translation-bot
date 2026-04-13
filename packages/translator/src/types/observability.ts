@@ -1,3 +1,5 @@
+import type { QueueHealthSnapshot } from '@chatwork-bot/message-queue'
+
 export type TranslatorPhase = 'translation' | 'delivery' | 'ack_callback'
 
 export type TranslatorFinalStatus = 'completed' | 'failed' | 'aborted'
@@ -77,6 +79,7 @@ export interface TranslatorStatusSnapshot {
   updatedAt: string
   activeRequests: ActiveTranslatorRequest[]
   recentResults: TranslatorRecentResult[]
+  queue?: QueueHealthSnapshot
 }
 
 export type { LogEntry, AsyncLoggerConfig } from '~/services/async-logger'
