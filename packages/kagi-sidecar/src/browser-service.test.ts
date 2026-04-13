@@ -463,6 +463,29 @@ describe('KagiBrowserService', () => {
     expect(result.translated).toBe('Translated text')
   })
 
+  it('navigates to language-pair URL without text', async () => {
+    const service = createService()
+    await service.translate({ text: 'Hello', style: 'Clear' })
+    const firstCall = mockPage.goto.mock.calls[0]
+    const gotoUrl = firstCall ? firstCall[0] : ''
+    expect(gotoUrl).toBe('https://translate.kagi.com/?from=auto&to=vi')
+    expect(gotoUrl).not.toContain('text=')
+  })
+
+  it('calls chunkPaste for text longer than HUMAN_INPUT_THRESHOLD (>500 chars)', async () => {
+    const service = createService()
+    await service.translate({ text: 'a'.repeat(600), style: 'Clear' })
+    expect(mockHumanInteraction.chunkPaste).toHaveBeenCalledTimes(1)
+    expect(mockHumanInteraction.typeIntoContentEditable).not.toHaveBeenCalled()
+  })
+
+  it('calls typeIntoContentEditable for text at or below HUMAN_INPUT_THRESHOLD', async () => {
+    const service = createService()
+    await service.translate({ text: 'Short text', style: 'Clear' })
+    expect(mockHumanInteraction.typeIntoContentEditable).toHaveBeenCalledTimes(1)
+    expect(mockHumanInteraction.chunkPaste).not.toHaveBeenCalled()
+  })
+
   it.skip('waits for rendered translation output to stabilize before returning it (old polling-based behavior, pending update)', async () => {
     mockPage.evaluate
       .mockResolvedValueOnce('Bản dịch đang render dang dở')

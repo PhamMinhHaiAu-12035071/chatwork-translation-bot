@@ -1,8 +1,8 @@
-import { buildSimpleKagiUrl, KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-kagi'
+import { KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
 import { clampInputText } from './constants/input-clamping.js'
-import { computeScaledDelay } from './constants/delay-config.js'
+import { computeScaledDelay, HUMAN_INPUT_THRESHOLD } from './constants/delay-config.js'
 import {
   FORMALITY_LABELS,
   FORMALITY_TO_URL_PARAM,
@@ -463,6 +463,42 @@ export class KagiBrowserService {
         cause: error,
       })
     }
+  }
+
+  /**
+   * Clear source text input contenteditable area (select-all + delete).
+   */
+  private async clearSourceTextInput(page: PageLike): Promise<void> {
+    const selector = KAGI_SELECTORS.SOURCE_TEXT_INPUT
+    await page.evaluate((sel: string) => {
+      const el = document.querySelector<HTMLElement>(sel)
+      if (!el) return
+      el.focus()
+      /* eslint-disable-next-line @typescript-eslint/no-deprecated */
+      document.execCommand('selectAll', false)
+      /* eslint-disable-next-line @typescript-eslint/no-deprecated */
+      document.execCommand('delete', false)
+    }, selector)
+    console.log('🧹 Cleared source text input')
+  }
+
+  /**
+   * Fill source text input using human-like interaction.
+   * Short text (≤ HUMAN_INPUT_THRESHOLD) → typeIntoContentEditable.
+   * Long text → chunkPaste.
+   */
+  private async fillSourceTextInput(
+    page: PageLike,
+    text: string,
+    charCount: number,
+  ): Promise<void> {
+    const selector = KAGI_SELECTORS.SOURCE_TEXT_INPUT
+    if (charCount <= HUMAN_INPUT_THRESHOLD) {
+      await this.humanInteraction.typeIntoContentEditable(page, selector, text)
+    } else {
+      await this.humanInteraction.chunkPaste(page, selector, text)
+    }
+    console.log(`✍️  Filled source text: ${String(charCount)} chars`)
   }
 
   /**
@@ -969,10 +1005,12 @@ export class KagiBrowserService {
 
     const page = await this.ensurePage()
 
-    // 1. Navigate to simple URL (no style params)
-    const simpleUrl = buildSimpleKagiUrl(clampedText)
-    console.log(`🌐 Navigating to: ${simpleUrl}`)
-    await page.goto(simpleUrl, { waitUntil: 'networkidle2' })
+    // 1. Navigate to language-pair URL (no text param — fill text via human interaction)
+    const navUrl = 'https://translate.kagi.com/?from=auto&to=vi'
+    console.log(`🌐 Navigating to: ${navUrl}`)
+    await page.goto(navUrl, { waitUntil: 'networkidle2' })
+    await this.clearSourceTextInput(page)
+    await this.fillSourceTextInput(page, clampedText, charCount)
 
     // 2. Open Translation Settings dialog
     await this.clickTranslationSettingsButton(page)
