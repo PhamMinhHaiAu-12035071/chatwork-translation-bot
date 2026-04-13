@@ -24,7 +24,7 @@ export function FeatureLabPanel({ collapsed, enabled, onToggle }: FeatureLabPane
 
   return (
     <div
-      className="brutal-surface theme-card-butter p-4 space-y-3"
+      className="brutal-surface theme-card-butter pt-4 pl-4 pr-5 pb-5 space-y-3"
       style={{ borderStyle: 'dashed' }}
     >
       <StickerLabel tone="warning" tilt="flat">
