@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 
-import { useUiStore } from './ui-store'
+import { useUiStore, selectFreeRoomEnabled, selectToggleFreeRoomEnabled } from './ui-store'
 
 describe('ui-store — tour state', () => {
   beforeEach(() => {
@@ -29,5 +29,37 @@ describe('ui-store — tour state', () => {
     useUiStore.getState().setTourSeen(2)
 
     expect(useUiStore.getState().tourSeenVersion).toBe(2)
+  })
+})
+
+describe('ui-store — freeRoomEnabled', () => {
+  beforeEach(() => {
+    useUiStore.setState({ freeRoomEnabled: false })
+  })
+
+  it('freeRoomEnabled defaults to false', () => {
+    expect(useUiStore.getState().freeRoomEnabled).toBe(false)
+  })
+
+  it('toggleFreeRoomEnabled flips false → true', () => {
+    useUiStore.getState().toggleFreeRoomEnabled()
+    expect(useUiStore.getState().freeRoomEnabled).toBe(true)
+  })
+
+  it('toggleFreeRoomEnabled flips true → false', () => {
+    useUiStore.setState({ freeRoomEnabled: true })
+    useUiStore.getState().toggleFreeRoomEnabled()
+    expect(useUiStore.getState().freeRoomEnabled).toBe(false)
+  })
+
+  it('selectFreeRoomEnabled reads the flag', () => {
+    useUiStore.setState({ freeRoomEnabled: true })
+    expect(selectFreeRoomEnabled(useUiStore.getState())).toBe(true)
+  })
+
+  it('selectToggleFreeRoomEnabled returns the action', () => {
+    const action = selectToggleFreeRoomEnabled(useUiStore.getState())
+    action()
+    expect(useUiStore.getState().freeRoomEnabled).toBe(true)
   })
 })

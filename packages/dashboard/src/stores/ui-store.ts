@@ -9,6 +9,9 @@ interface UiStoreState {
   tourSeenVersion: number | null
   setTourSeen: (version: number) => void
   resetTour: () => void
+
+  freeRoomEnabled: boolean
+  toggleFreeRoomEnabled: () => void
 }
 
 export const useUiStore = create<UiStoreState>()(
@@ -33,6 +36,12 @@ export const useUiStore = create<UiStoreState>()(
       resetTour: () => {
         set({ tourSeenVersion: null })
       },
+
+      freeRoomEnabled: false,
+
+      toggleFreeRoomEnabled: () => {
+        set((state) => ({ freeRoomEnabled: !state.freeRoomEnabled }))
+      },
     }),
     {
       name: 'chatwork-bot-ui-store',
@@ -45,3 +54,5 @@ export const selectToggleSidebar = (state: UiStoreState) => state.toggleSidebar
 export const selectTourSeenVersion = (state: UiStoreState) => state.tourSeenVersion
 export const selectSetTourSeen = (state: UiStoreState) => state.setTourSeen
 export const selectResetTour = (state: UiStoreState) => state.resetTour
+export const selectFreeRoomEnabled = (state: UiStoreState) => state.freeRoomEnabled
+export const selectToggleFreeRoomEnabled = (state: UiStoreState) => state.toggleFreeRoomEnabled
