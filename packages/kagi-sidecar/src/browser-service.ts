@@ -2,6 +2,7 @@ import { buildSimpleKagiUrl, KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-k
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
 import { clampInputText } from './constants/input-clamping.js'
+import { computeScaledDelay } from './constants/delay-config.js'
 import {
   FORMALITY_LABELS,
   FORMALITY_TO_URL_PARAM,
@@ -839,13 +840,13 @@ export class KagiBrowserService {
    * Wait for translation output to stabilize (text stops changing).
    * Polls output text and waits for it to remain unchanged for TRANSLATION_OUTPUT_STABLE_MS.
    */
-  private async waitForTranslationOutputStable(page: PageLike): Promise<void> {
+  private async waitForTranslationOutputStable(page: PageLike, charCount: number): Promise<void> {
     try {
-      const startTime = Date.now()
+      const startTime = this.options.now()
       let lastText = ''
-      let lastChangeTime = Date.now()
+      let lastChangeTime = this.options.now()
 
-      while (Date.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
+      while (this.options.now() - startTime < KAGI_TIMING.TRANSLATION_OUTPUT_MAX_WAIT_MS) {
         let currentText = ''
         try {
           currentText = await this.scrapeTranslatedText(page)
@@ -862,10 +863,13 @@ export class KagiBrowserService {
 
         if (currentText !== lastText) {
           lastText = currentText
-          lastChangeTime = Date.now()
+          lastChangeTime = this.options.now()
         }
 
-        if (Date.now() - lastChangeTime >= KAGI_TIMING.TRANSLATION_OUTPUT_STABLE_MS) {
+        if (
+          this.options.now() - lastChangeTime >=
+          computeScaledDelay(KAGI_TIMING.TRANSLATION_OUTPUT_STABLE_MS, charCount)
+        ) {
           await this.options.sleep(KAGI_TIMING.POST_STABLE_EXTRA_MS)
           console.log('⏱️  Translation output stabilized')
           return
@@ -985,7 +989,7 @@ export class KagiBrowserService {
         `⚠️ Input text truncated: ${String(originalLength)} → ${String(clampedText.length)} chars (${String(originalLength - clampedText.length)} dropped)`,
       )
     }
-    const _charCount = clampedText.length
+    const charCount = clampedText.length
 
     console.log(`\n🎯 Translating with style: ${request.style}`)
     console.log(`Preset: ${JSON.stringify(preset, null, 2)}`)
@@ -1051,21 +1055,21 @@ export class KagiBrowserService {
     // 9. Fill context if provided
     if (request.context) {
       await this.fillTranslationContext(page, request.context)
-      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      await this.options.sleep(computeScaledDelay(1_500, charCount))
       this.verifyUrlContains(page, 'context=', 'Target: context')
     }
 
     // 10. Set target reading level if different from standard
     if (preset.readingLevel !== 'standard') {
       await this.setReadingLevel(page, preset.readingLevel)
-      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      await this.options.sleep(computeScaledDelay(2_000, charCount))
       this.verifyUrlMatchesReadingLevel(page, preset.readingLevel, 'Target: reading level')
     }
 
     // 11. Set target translation style if different from natural
     if (preset.translationType !== 'natural') {
       await this.clickTranslationStyleOption(page, KAGI_UI_LABELS.TRANSLATION_STYLE.LITERAL)
-      await this.options.sleep(KAGI_TIMING.STYLE_OPTION_CLICK_GAP_MS)
+      await this.options.sleep(computeScaledDelay(2_000, charCount))
       this.verifyUrlContains(page, 'style=literal', 'Target: translation style')
     }
 
@@ -1075,7 +1079,7 @@ export class KagiBrowserService {
 
       // 12a. Wait for Standard output to stabilize (baseline formality)
       console.log('  ⏳ Step 1: Waiting for Standard formality output...')
-      await this.waitForTranslationOutputStable(page)
+      await this.waitForTranslationOutputStable(page, charCount)
       const standardOutput = await this.requireTranslatedText(page)
       console.log(`  📄 Standard output: "${standardOutput.substring(0, 100)}..."`)
 
@@ -1107,13 +1111,13 @@ export class KagiBrowserService {
 
       // 12e. Wait for new output to stabilize
       console.log('  ⏳ Step 5: Waiting for new output to stabilize...')
-      await this.waitForTranslationOutputStable(page)
+      await this.waitForTranslationOutputStable(page, charCount)
 
       console.log('  ✅ CHIM MỒI Complete - formality applied correctly')
     } else {
       // Standard formality - just wait for output
       console.log('\n⏳ Waiting for translation output (Standard formality)...')
-      await this.waitForTranslationOutputStable(page)
+      await this.waitForTranslationOutputStable(page, charCount)
     }
 
     const finalUrl = page.url()

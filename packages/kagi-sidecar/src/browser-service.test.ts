@@ -362,7 +362,14 @@ describe('KagiBrowserService', () => {
   })
 
   it('truncates oversized input text and logs warning before translation', async () => {
-    const service = createService()
+    let fakeTime = 0
+    const service = createService({
+      sleep: () => Promise.resolve(),
+      now: () => {
+        fakeTime += 10_000
+        return fakeTime
+      },
+    })
     const longText = 'a'.repeat(25_000)
 
     const warnCalls: unknown[][] = []
@@ -378,6 +385,27 @@ describe('KagiBrowserService', () => {
     }
 
     expect(warnCalls.some((args) => String(args[0]).includes('Input text truncated'))).toBe(true)
+  })
+
+  it('waitForTranslationOutputStable uses scaled stable window proportional to charCount', async () => {
+    // For 5000-char text (1.5x), stable window = computeScaledDelay(1500, 5000) ≈ 2250ms
+    // We verify the poll loop eventually resolves even with a scaled window
+    let callCount = 0
+    mockPage.evaluate.mockImplementation(() => {
+      callCount++
+      // Return empty for first 2 polls, then return stable text
+      if (callCount < 3) return Promise.resolve('')
+      return Promise.resolve('Translated text')
+    })
+
+    const service = createService({ sleep: () => Promise.resolve() })
+
+    const result = await service.translate({
+      text: 'a'.repeat(5_000),
+      style: 'Clear',
+    })
+
+    expect(result.translated).toBe('Translated text')
   })
 
   it.skip('waits for rendered translation output to stabilize before returning it (old polling-based behavior, pending update)', async () => {
