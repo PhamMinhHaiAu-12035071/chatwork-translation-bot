@@ -35,7 +35,7 @@ const SHARED_SYSTEM = [
 const CONTEXT_ENFORCEMENT_HEADER = `Apply this context to every translation in this room:
 - The room context may contain structured or unstructured notes about people, aliases, roles, gender, seniority, and tone.
 - If the message or mention target matches a person described in the room context, use that information when it is clearly stated.
-- prefer the Latin alias in Vietnamese output when the context provides both a Latin alias and the original Japanese name; treat the Japanese name only as a matching anchor.
+- Prefer the Latin alias in Vietnamese output when the context provides both a Latin alias and the original Japanese name; treat the Japanese name only as a matching anchor.
 - If the context only provides the original Japanese name, keep that name and do not invent a romanized form.
 - Use gender, role, title, or seniority hints only when clearly stated; if uncertain, translate conservatively and naturally.
 - If no reliable person metadata is available, ignore these person-specific rules and translate normally.`

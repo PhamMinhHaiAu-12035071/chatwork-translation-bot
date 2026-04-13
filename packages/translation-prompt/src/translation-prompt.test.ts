@@ -158,7 +158,7 @@ describe('roomContext policy guidance', () => {
       'Tanaka Taro / 田中太郎 (PM, male)',
     )
 
-    expect(result.system).toContain('prefer the Latin alias')
+    expect(result.system).toContain('Prefer the Latin alias')
     expect(result.system).toContain('Japanese name only as a matching anchor')
   })
 
