@@ -490,6 +490,38 @@ describe('KagiBrowserService', () => {
     expect(mockHumanInteraction.chunkPaste).not.toHaveBeenCalled()
   })
 
+  it('delegates Translation Settings click to humanInteraction.click', async () => {
+    const service = createService()
+    await service.translate({ text: 'Hello', style: 'Clear' })
+    expect(mockHumanInteraction.click).toHaveBeenCalledWith(
+      mockPage,
+      KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON,
+    )
+  })
+
+  it('delegates context fill to humanInteraction.typeIntoTextarea', async () => {
+    const service = createService()
+    await service.translate({ text: 'Hello', style: 'Clear', context: 'Test context' })
+    expect(mockHumanInteraction.typeIntoTextarea).toHaveBeenCalledWith(
+      mockPage,
+      KAGI_SELECTORS.CONTEXT_TEXTAREA,
+      'Test context',
+    )
+  })
+
+  it('propagates KagiSidecarError when humanInteraction.click throws', async () => {
+    mockHumanInteraction.click.mockRejectedValueOnce(new Error('ghost-cursor failed'))
+
+    const service = createService()
+
+    try {
+      await service.translate({ text: 'Hello', style: 'Clear' })
+      expect.unreachable('should have thrown')
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'UI_INTERACTION' })
+    }
+  })
+
   it.skip('waits for rendered translation output to stabilize before returning it (old polling-based behavior, pending update)', async () => {
     mockPage.evaluate
       .mockResolvedValueOnce('Bản dịch đang render dang dở')
