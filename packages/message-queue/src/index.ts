@@ -6,5 +6,6 @@ export type {
   QueueItem,
   QueueRoomSnapshot,
   Processor,
-  ResolveConcurrency,
+  HasStandardConfig,
+  HasFreeConfig,
 } from './types'
