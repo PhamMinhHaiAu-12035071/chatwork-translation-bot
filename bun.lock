@@ -93,6 +93,14 @@
         "puppeteer-real-browser": "^1.4.4",
       },
     },
+    "packages/message-queue": {
+      "name": "@chatwork-bot/message-queue",
+      "version": "1.0.0",
+      "dependencies": {
+        "@chatwork-bot/core": "workspace:*",
+        "zod": "^4.3.6",
+      },
+    },
     "packages/provider-cursor": {
       "name": "@chatwork-bot/provider-cursor",
       "version": "1.0.0",
@@ -141,6 +149,7 @@
       "dependencies": {
         "@chatwork-bot/chatwork": "workspace:*",
         "@chatwork-bot/core": "workspace:*",
+        "@chatwork-bot/message-queue": "workspace:*",
         "@chatwork-bot/provider-cursor": "workspace:*",
         "@chatwork-bot/provider-gemini": "workspace:*",
         "@chatwork-bot/provider-kagi": "workspace:*",
@@ -230,6 +239,8 @@
     "@chatwork-bot/dataset-runner": ["@chatwork-bot/dataset-runner@workspace:packages/dataset-runner"],
 
     "@chatwork-bot/kagi-sidecar": ["@chatwork-bot/kagi-sidecar@workspace:packages/kagi-sidecar"],
+
+    "@chatwork-bot/message-queue": ["@chatwork-bot/message-queue@workspace:packages/message-queue"],
 
     "@chatwork-bot/provider-cursor": ["@chatwork-bot/provider-cursor@workspace:packages/provider-cursor"],
 
