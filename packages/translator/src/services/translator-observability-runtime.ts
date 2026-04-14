@@ -35,19 +35,16 @@ export function logTranslatorEvent(entry: TranslatorLogEntry): void {
   }
 
   if (useAsync) {
-    // Map TranslatorLogEntry to LogEntry format
+    // Forward ALL fields so errorCode, errorMessage, phase, etc. appear in logs.
+    // 'message' is required by LogEntry; TranslatorLogEntry uses 'event' for the same purpose.
     asyncLogger.log({
-      level: entry.level,
+      ...entry,
       message: entry.event,
       timestamp: logData.timestamp,
-      service: entry.service,
-      traceId: entry.traceId,
-      requestId: entry.requestId,
-      sourceMessageId: entry.sourceMessageId,
     })
   } else {
-    // Fallback to sync logging
-    console.log(JSON.stringify(logData))
+    // Sync logging — all fields preserved, 'message' mirrors 'event' for log parsers.
+    console.log(JSON.stringify({ ...logData, message: entry.event }))
   }
 }
 

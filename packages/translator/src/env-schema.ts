@@ -47,7 +47,7 @@ export const translatorEnvSchema = z.object({
   TRACE_OUTPUT_ENABLED: z.coerce.boolean().default(true),
 
   // Message queue configuration
-  QUEUE_MAX_DEPTH_PER_ROOM: z.coerce.number().int().positive().default(10),
+  QUEUE_MAX_DEPTH_PER_ROOM: z.coerce.number().int().positive().default(1_000),
   QUEUE_STANDARD_CONCURRENCY: z.coerce.number().int().positive().default(100),
   QUEUE_FREE_CONCURRENCY: z.coerce.number().int().positive().default(10),
 })
