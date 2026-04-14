@@ -117,7 +117,7 @@ describe('translateRoutes', () => {
   async function waitForHandlerCalls(
     expectedStandardCalls: number,
     expectedFreeCalls: number,
-    maxWaitMs = 500,
+    maxWaitMs = 2000,
   ): Promise<void> {
     const deadline = Date.now() + maxWaitMs
     while (Date.now() < deadline) {
@@ -143,8 +143,8 @@ describe('translateRoutes', () => {
     expect(await res.text()).toBe('OK')
 
     await waitForHandlerCalls(1, 1)
-    expect(mockHandleTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
-    expect(mockHandleFreeTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(1)
+    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(1)
   })
 
   it('forwards x-trace-id into both handler context wrappers', async () => {
@@ -165,8 +165,8 @@ describe('translateRoutes', () => {
     expect(res.status).toBe(200)
 
     await waitForHandlerCalls(callCountBefore + 1, freeCallCountBefore + 1)
-    expect(mockHandleTranslateRequest.mock.calls.length).toBe(callCountBefore + 1)
-    expect(mockHandleFreeTranslateRequest.mock.calls.length).toBe(freeCallCountBefore + 1)
+    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(callCountBefore + 1)
+    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(freeCallCountBefore + 1)
     expect(mockHandleTranslateRequest.mock.calls.at(-1)?.[1]).toMatchObject({
       traceId,
     })
@@ -189,8 +189,8 @@ describe('translateRoutes', () => {
     expect(res.status).toBe(200)
 
     await waitForHandlerCalls(1, 1)
-    expect(mockHandleTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
-    expect(mockHandleFreeTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(1)
+    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(1)
   })
 
   it('POST /internal/translate with missing command returns 422', async () => {

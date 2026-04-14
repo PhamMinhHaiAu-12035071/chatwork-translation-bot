@@ -33,20 +33,33 @@ export class TranslationQueue {
 
   /** Archive any pending files from a previous process session. Call before accepting messages. */
   async startup(): Promise<void> {
-    const pendingCount = await this.countPendingFiles()
+    try {
+      const pendingCount = await this.countPendingFiles()
+      await this.persistence.archiveAll()
 
-    await this.persistence.archiveAll()
-
-    if (pendingCount > 0) {
-      console.log(
+      if (pendingCount > 0) {
+        console.log(
+          JSON.stringify({
+            level: 'info',
+            service: 'translator',
+            event: 'queue_archived_on_startup',
+            timestamp: new Date().toISOString(),
+            archivedCount: pendingCount,
+          }),
+        )
+      }
+    } catch (error) {
+      console.error(
         JSON.stringify({
-          level: 'info',
+          level: 'error',
           service: 'translator',
-          event: 'queue_archived_on_startup',
+          event: 'queue_startup_failed',
           timestamp: new Date().toISOString(),
-          archivedCount: pendingCount,
+          errorMessage: error instanceof Error ? error.message : String(error),
         }),
       )
+      // Continue with empty queue - prioritize availability over preserving old messages
+      // Operators can manually recover from archived/ directory if needed
     }
   }
 
@@ -73,6 +86,25 @@ export class TranslationQueue {
     const result = await roomQueue.enqueue(item)
 
     if (result.accepted) {
+      const currentDepth = roomQueue.size() + (roomQueue.isProcessing() ? 1 : 0)
+      const depthPercent = (currentDepth / this.maxDepth) * 100
+
+      if (depthPercent >= 80) {
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            service: 'translator',
+            event: 'queue_depth_high',
+            timestamp: new Date().toISOString(),
+            traceId,
+            sourceRoomId: roomId,
+            queueDepth: currentDepth,
+            maxDepth: this.maxDepth,
+            depthPercent: Math.round(depthPercent),
+          }),
+        )
+      }
+
       console.log(
         JSON.stringify({
           level: 'info',
@@ -82,7 +114,7 @@ export class TranslationQueue {
           traceId,
           sourceRoomId: roomId,
           itemId: item.id,
-          queueDepth: roomQueue.size() + (roomQueue.isProcessing() ? 1 : 0),
+          queueDepth: currentDepth,
         }),
       )
     } else {

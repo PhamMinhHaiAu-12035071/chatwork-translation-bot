@@ -15,6 +15,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@chatwork-bot/core": "workspace:*"
+    "@chatwork-bot/core": "workspace:*",
+    "zod": "^4.3.6"
   }
 }
