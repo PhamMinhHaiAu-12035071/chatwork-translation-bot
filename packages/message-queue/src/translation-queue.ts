@@ -109,14 +109,49 @@ export class TranslationQueue {
   async shutdown(): Promise<void> {
     this.accepting = false
 
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        service: 'translator',
+        event: 'queue_shutdown_initiated',
+        timestamp: new Date().toISOString(),
+      }),
+    )
+
     const SHUTDOWN_TIMEOUT_MS = 30_000
     const POLL_INTERVAL_MS = 100
     const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS
 
     while (Date.now() < deadline) {
       const snapshot = this.getSnapshot()
-      if (snapshot.totalActive === 0 && snapshot.totalPending === 0) break
+      if (snapshot.totalActive === 0 && snapshot.totalPending === 0) {
+        console.log(
+          JSON.stringify({
+            level: 'info',
+            service: 'translator',
+            event: 'queue_shutdown_clean',
+            timestamp: new Date().toISOString(),
+          }),
+        )
+        return
+      }
       await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+    }
+
+    // Timeout reached — log abandoned messages
+    const finalSnapshot = this.getSnapshot()
+    if (finalSnapshot.totalActive > 0 || finalSnapshot.totalPending > 0) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          service: 'translator',
+          event: 'queue_shutdown_timeout',
+          timestamp: new Date().toISOString(),
+          abandonedActive: finalSnapshot.totalActive,
+          abandonedPending: finalSnapshot.totalPending,
+          rooms: finalSnapshot.rooms,
+        }),
+      )
     }
   }
 

@@ -47,7 +47,11 @@ export class RoomQueue {
       await this.persistence.writeItem(this.roomId, item)
     } catch {
       this.depth--
-      this.items.pop()
+      // Remove by ID instead of assuming it's still at the end
+      const idx = this.items.findIndex((i) => i.id === item.id)
+      if (idx !== -1) {
+        this.items.splice(idx, 1)
+      }
       return { accepted: false, reason: 'WRITE_ERROR' }
     }
 
@@ -73,32 +77,53 @@ export class RoomQueue {
 
   private startConsumerIfNeeded(): void {
     if (!this.running) {
-      void this.runConsumer()
+      this.runConsumer().catch((err: unknown) => {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            service: 'translator',
+            event: 'queue_consumer_crashed',
+            timestamp: new Date().toISOString(),
+            sourceRoomId: this.roomId,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          }),
+        )
+        this.running = false
+      })
     }
   }
 
   private async runConsumer(): Promise<void> {
     this.running = true
 
-    while (this.items.length > 0) {
-      const available = this.concurrency - this.activeCount
-      if (available <= 0) {
-        // All concurrency slots in use — wait for one to free up
-        await new Promise<void>((resolve) => setTimeout(resolve, 10))
-        continue
-      }
+    try {
+      while (this.items.length > 0) {
+        const available = this.concurrency - this.activeCount
+        if (available <= 0) {
+          // Wait for any item to complete
+          await new Promise<void>((resolve) => {
+            const checkInterval = setInterval(() => {
+              if (this.activeCount < this.concurrency || this.items.length === 0) {
+                clearInterval(checkInterval)
+                resolve()
+              }
+            }, 10)
+          })
+          continue
+        }
 
-      const batch = this.items.splice(0, available)
-      this.activeCount += batch.length
+        const batch = this.items.splice(0, available)
+        this.activeCount += batch.length
 
-      // Fire off processing without waiting - activeCount will decrement in finally blocks
-      for (const item of batch) {
-        void this.processItem(item)
+        // Fire off processing without waiting - activeCount will decrement in finally blocks
+        for (const item of batch) {
+          void this.processItem(item)
+        }
+        // After dispatching batch, loop continues immediately - picks up items added during processing
       }
-      // After dispatching batch, loop continues immediately - picks up items added during processing
+    } finally {
+      this.running = false
     }
-
-    this.running = false
   }
 
   private async processItem(item: QueueItem): Promise<void> {
