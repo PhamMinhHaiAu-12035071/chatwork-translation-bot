@@ -48,8 +48,8 @@ export const translatorEnvSchema = z.object({
 
   // Message queue configuration
   QUEUE_MAX_DEPTH_PER_ROOM: z.coerce.number().int().positive().default(10),
-  QUEUE_STANDARD_CONCURRENCY: z.coerce.number().int().positive().default(3),
-  QUEUE_FREE_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  QUEUE_STANDARD_CONCURRENCY: z.coerce.number().int().positive().default(100),
+  QUEUE_FREE_CONCURRENCY: z.coerce.number().int().positive().default(10),
 })
 
 export function parseTranslatorEnv(input: NodeJS.ProcessEnv) {
