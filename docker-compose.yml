@@ -20,22 +20,27 @@ services:
       CHATWORK_API_RESET_TIMEOUT_MS: ${CHATWORK_API_RESET_TIMEOUT_MS:-30000}
       LLM_PROVIDER_FAILURE_THRESHOLD: ${LLM_PROVIDER_FAILURE_THRESHOLD:-3}
       LLM_PROVIDER_RESET_TIMEOUT_MS: ${LLM_PROVIDER_RESET_TIMEOUT_MS:-60000}
+      # FIFO Message Queue
+      QUEUE_MAX_DEPTH_PER_ROOM: ${QUEUE_MAX_DEPTH_PER_ROOM:-10}
+      QUEUE_STANDARD_CONCURRENCY: ${QUEUE_STANDARD_CONCURRENCY:-3}
+      QUEUE_FREE_CONCURRENCY: ${QUEUE_FREE_CONCURRENCY:-1}
     ports:
       - '${PORT:-3000}:3000'
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+    stop_grace_period: 35s
     networks: [chatwork-net]
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "10m"
-        max-file: "5"
-        labels: "service,environment"
-        tag: "{{.Name}}/{{.ID}}"
+        max-size: '10m'
+        max-file: '5'
+        labels: 'service,environment'
+        tag: '{{.Name}}/{{.ID}}'
     labels:
-      service: "translator"
-      environment: "${NODE_ENV:-development}"
+      service: 'translator'
+      environment: '${NODE_ENV:-development}'
     healthcheck:
       test:
         - 'CMD'
