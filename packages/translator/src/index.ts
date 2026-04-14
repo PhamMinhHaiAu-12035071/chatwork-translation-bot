@@ -48,21 +48,23 @@ initFreeTranslateHandler({
   }),
 })
 
-// Initialize FIFO message queue
+// Initialize FIFO message queue — dual isolated queues (standard + free) per source room.
+// Fan-out: each incoming message is independently enqueued into both queues (if configs exist).
+// Standard queue: parallel OpenAI API calls up to standardConcurrency.
+// Free queue: Kagi browser automation — freeConcurrency must not exceed KAGI_MAX_QUEUE_DEPTH.
 const queue = new TranslationQueue({
   dataDir: join(env.ROOM_CONFIG_DATA_DIR, 'queue'),
   maxDepth: env.QUEUE_MAX_DEPTH_PER_ROOM,
-  processor: async (command, opts) => {
-    await Promise.allSettled([
-      handleTranslateRequest(command, opts),
-      handleFreeTranslateRequest(command, opts),
-    ])
+  standardConcurrency: env.QUEUE_STANDARD_CONCURRENCY,
+  freeConcurrency: env.QUEUE_FREE_CONCURRENCY,
+  standardProcessor: async (command, opts) => {
+    await handleTranslateRequest(command, opts)
   },
-  resolveConcurrency: (roomId) => {
-    if (freeStore.getByOriginalRoomId(roomId) !== null) return env.QUEUE_FREE_CONCURRENCY
-    if (store.getByOriginalRoomId(roomId) !== null) return env.QUEUE_STANDARD_CONCURRENCY
-    return env.QUEUE_STANDARD_CONCURRENCY
+  freeProcessor: async (command, opts) => {
+    await handleFreeTranslateRequest(command, opts)
   },
+  hasStandardConfig: (roomId) => store.getByOriginalRoomId(roomId) !== null,
+  hasFreeConfig: (roomId) => freeStore.getByOriginalRoomId(roomId) !== null,
 })
 await queue.startup()
 

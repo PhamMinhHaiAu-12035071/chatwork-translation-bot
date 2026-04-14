@@ -51,13 +51,16 @@ describe('translateRoutes', () => {
     const queue = new TranslationQueue({
       dataDir: queueTmpDir,
       maxDepth: 10,
-      processor: async (command, opts) => {
-        await Promise.allSettled([
-          mockHandleTranslateRequest(command, opts),
-          mockHandleFreeTranslateRequest(command, opts),
-        ])
+      standardConcurrency: 3,
+      freeConcurrency: 1,
+      standardProcessor: async (command, opts) => {
+        await mockHandleTranslateRequest(command, opts)
       },
-      resolveConcurrency: () => 3,
+      freeProcessor: async (command, opts) => {
+        await mockHandleFreeTranslateRequest(command, opts)
+      },
+      hasStandardConfig: () => true,
+      hasFreeConfig: () => true,
     })
     await queue.startup()
     initTranslationQueue(queue)
