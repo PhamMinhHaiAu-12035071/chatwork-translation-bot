@@ -1,38 +1,16 @@
 import { Elysia, t } from 'elysia'
 import { TranslationIngressCommandSchema } from '@chatwork-bot/core'
-import { handleTranslateRequest } from './handler'
-import { handleFreeTranslateRequest } from './free-handler'
+import type { TranslationQueue } from '@chatwork-bot/message-queue'
 
-function logDispatchFailure(params: {
-  traceId: string
-  handlerType: 'standard' | 'free'
-  command: {
-    sourceMessageId: string
-    sourceRoomId: number
-  }
-  error: unknown
-}) {
-  const { traceId, handlerType, command, error } = params
+let translationQueue: TranslationQueue | null = null
 
-  console.error(
-    JSON.stringify({
-      level: 'error',
-      service: 'translator',
-      event: 'translation_ingress_dispatch_failed',
-      timestamp: new Date().toISOString(),
-      traceId,
-      handlerType,
-      sourceMessageId: command.sourceMessageId,
-      sourceRoomId: command.sourceRoomId,
-      errorCode: error instanceof Error ? error.name : 'UnknownError',
-      errorMessage: error instanceof Error ? error.message : String(error),
-    }),
-  )
+export function initTranslationQueue(queue: TranslationQueue): void {
+  translationQueue = queue
 }
 
 export const translateRoutes = new Elysia({ name: 'translator:webhook' }).post(
   '/internal/translate',
-  ({ body, headers }) => {
+  async ({ body, headers }) => {
     const traceId = headers['x-trace-id'] ?? crypto.randomUUID()
 
     console.log(
@@ -47,24 +25,37 @@ export const translateRoutes = new Elysia({ name: 'translator:webhook' }).post(
       }),
     )
 
-    void Promise.allSettled([
-      handleTranslateRequest(body.command, { traceId }).catch((error: unknown) => {
-        logDispatchFailure({
+    if (translationQueue === null) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          service: 'translator',
+          event: 'translation_queue_not_initialized',
+          timestamp: new Date().toISOString(),
           traceId,
-          handlerType: 'standard',
-          command: body.command,
-          error,
-        })
-      }),
-      handleFreeTranslateRequest(body.command, { traceId }).catch((error: unknown) => {
-        logDispatchFailure({
+        }),
+      )
+      return 'OK'
+    }
+
+    const result = await translationQueue.enqueue(body.command.sourceRoomId, body.command, traceId)
+
+    if (!result.accepted) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          service: 'translator',
+          event: 'translation_ingress_dispatch_failed',
+          timestamp: new Date().toISOString(),
           traceId,
-          handlerType: 'free',
-          command: body.command,
-          error,
-        })
-      }),
-    ])
+          sourceMessageId: body.command.sourceMessageId,
+          sourceRoomId: body.command.sourceRoomId,
+          errorCode: 'BACKPRESSURE',
+          errorMessage: `Queue rejected message: ${result.reason}`,
+        }),
+      )
+    }
+
     return 'OK'
   },
   {

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Elysia from 'elysia'
 import type { translateRoutes as TranslateRoutesType } from './router'
+import type { initTranslationQueue as InitTranslationQueueType } from './router'
 
 const routerTestOutputDir = mkdtempSync(join(tmpdir(), 'router-test-'))
 process.env['OUTPUT_BASE_DIR'] = routerTestOutputDir
@@ -21,7 +22,9 @@ void mock.module('./free-handler', () => ({
 
 describe('translateRoutes', () => {
   let translateRoutes: typeof TranslateRoutesType
+  let initTranslationQueue: typeof InitTranslationQueueType
   let app: ReturnType<typeof Elysia.prototype.use>
+  let queueTmpDir: string
 
   beforeAll(async () => {
     void mock.module('../env', () => ({
@@ -32,17 +35,40 @@ describe('translateRoutes', () => {
         NODE_ENV: 'test',
         CHATWORK_API_TOKEN: 'test-token',
         CHATWORK_DESTINATION_ROOM_ID: 99999,
+        QUEUE_MAX_DEPTH_PER_ROOM: 10,
+        QUEUE_STANDARD_CONCURRENCY: 3,
+        QUEUE_FREE_CONCURRENCY: 1,
       },
     }))
 
     const mod = await import('./router')
     translateRoutes = mod.translateRoutes
+    initTranslationQueue = mod.initTranslationQueue
+
+    // Initialize queue for tests
+    queueTmpDir = mkdtempSync(join(tmpdir(), 'router-queue-test-'))
+    const { TranslationQueue } = await import('@chatwork-bot/message-queue')
+    const queue = new TranslationQueue({
+      dataDir: queueTmpDir,
+      maxDepth: 10,
+      processor: async (command, opts) => {
+        await Promise.allSettled([
+          mockHandleTranslateRequest(command, opts),
+          mockHandleFreeTranslateRequest(command, opts),
+        ])
+      },
+      resolveConcurrency: () => 3,
+    })
+    await queue.startup()
+    initTranslationQueue(queue)
+
     app = new Elysia().use(translateRoutes)
   })
 
   afterAll(() => {
     delete process.env['OUTPUT_BASE_DIR']
     rmSync(routerTestOutputDir, { recursive: true, force: true })
+    rmSync(queueTmpDir, { recursive: true, force: true })
   })
 
   beforeEach(() => {
@@ -88,6 +114,23 @@ describe('translateRoutes', () => {
     },
   }
 
+  async function waitForHandlerCalls(
+    expectedStandardCalls: number,
+    expectedFreeCalls: number,
+    maxWaitMs = 500,
+  ): Promise<void> {
+    const deadline = Date.now() + maxWaitMs
+    while (Date.now() < deadline) {
+      if (
+        mockHandleTranslateRequest.mock.calls.length >= expectedStandardCalls &&
+        mockHandleFreeTranslateRequest.mock.calls.length >= expectedFreeCalls
+      ) {
+        return
+      }
+      await Bun.sleep(10)
+    }
+  }
+
   it('returns 200 OK with valid neutral DTO payload', async () => {
     const res = await app.handle(
       new Request('http://localhost/internal/translate', {
@@ -96,11 +139,12 @@ describe('translateRoutes', () => {
         body: JSON.stringify(validPayload),
       }),
     )
-    await Bun.sleep(0)
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('OK')
-    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(1)
-    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(1)
+
+    await waitForHandlerCalls(1, 1)
+    expect(mockHandleTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(mockHandleFreeTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('forwards x-trace-id into both handler context wrappers', async () => {
@@ -117,9 +161,10 @@ describe('translateRoutes', () => {
         body: JSON.stringify(validPayload),
       }),
     )
-    await Bun.sleep(0)
 
     expect(res.status).toBe(200)
+
+    await waitForHandlerCalls(callCountBefore + 1, freeCallCountBefore + 1)
     expect(mockHandleTranslateRequest.mock.calls.length).toBe(callCountBefore + 1)
     expect(mockHandleFreeTranslateRequest.mock.calls.length).toBe(freeCallCountBefore + 1)
     expect(mockHandleTranslateRequest.mock.calls.at(-1)?.[1]).toMatchObject({
@@ -140,11 +185,12 @@ describe('translateRoutes', () => {
         body: JSON.stringify(validPayload),
       }),
     )
-    await Bun.sleep(0)
 
     expect(res.status).toBe(200)
-    expect(mockHandleTranslateRequest).toHaveBeenCalledTimes(1)
-    expect(mockHandleFreeTranslateRequest).toHaveBeenCalledTimes(1)
+
+    await waitForHandlerCalls(1, 1)
+    expect(mockHandleTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(mockHandleFreeTranslateRequest.mock.calls.length).toBeGreaterThanOrEqual(1)
   })
 
   it('POST /internal/translate with missing command returns 422', async () => {

@@ -1082,30 +1082,25 @@ describe('handleTranslateRequest', () => {
     } as unknown as RoomConfigStore
 
     // Create handler with custom store
-    const { default: handleTranslateRequestFromCustomStore } =
-      await import('~/webhook/handler').then((m) =>
-        Promise.resolve({
-          default: m.createHandleTranslateRequest({
-            store: customStore,
-            chatworkApiToken: 'token',
-            resolveProviderPlugin: mockGetProviderPlugin,
-            standardBackend: new standardTranslationBackendCtor({
-              decryptApiToken: (token) => Promise.resolve(token),
-              resolveProviderPlugin: mockGetProviderPlugin,
-            }),
-            orchestrateRoomTranslation: makeRoomTranslationOrchestrator({
-              chatworkApiToken: 'token',
-              writeTranslationOutput: mockWriteTranslationOutput,
-              sendTranslatedMessage: fakeSendTranslatedMessage,
-              notifyDatasetRunner: mockNotifyDatasetRunner,
-              buildDatasetRunnerAckPayload,
-            }),
-            getPipelineTimeoutMs: () => mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS,
-            hasExplicitPipelineTimeoutOverride: () =>
-              process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] !== undefined,
-          }),
-        }),
-      )
+    const handleTranslateRequestFromCustomStore = createHandleTranslateRequest({
+      store: customStore,
+      chatworkApiToken: 'token',
+      resolveProviderPlugin: mockGetProviderPlugin,
+      standardBackend: new standardTranslationBackendCtor({
+        decryptApiToken: (token) => Promise.resolve(token),
+        resolveProviderPlugin: mockGetProviderPlugin,
+      }),
+      orchestrateRoomTranslation: makeRoomTranslationOrchestrator({
+        chatworkApiToken: 'token',
+        writeTranslationOutput: mockWriteTranslationOutput,
+        sendTranslatedMessage: fakeSendTranslatedMessage,
+        notifyDatasetRunner: mockNotifyDatasetRunner,
+        buildDatasetRunnerAckPayload,
+      }),
+      getPipelineTimeoutMs: () => mockEnv.TRANSLATOR_PIPELINE_TIMEOUT_MS,
+      hasExplicitPipelineTimeoutOverride: () =>
+        process.env['TRANSLATOR_PIPELINE_TIMEOUT_MS'] !== undefined,
+    })
 
     mockGetProviderPlugin.mockImplementationOnce(() => createMockProvider('openai', mockExecutor))
 

@@ -1,4 +1,6 @@
 import { KagiClient } from '@chatwork-bot/provider-kagi'
+import { TranslationQueue } from '@chatwork-bot/message-queue'
+import { join } from 'node:path'
 import { env } from './env'
 import { registerAllProviders } from '~/bootstrap/register-providers'
 import { runStartupGuards } from '~/bootstrap/startup-guards'
@@ -12,8 +14,10 @@ import {
 } from '~/services/pipeline-timeout'
 import { RoomConfigStore } from '~/services/room-config-store'
 import { asyncLogger } from '~/services/async-logger'
-import { initFreeTranslateHandler } from '~/webhook/free-handler'
-import { initTranslateHandler } from '~/webhook/handler'
+import { registerQueueSnapshotProvider } from '~/services/translator-observability-runtime'
+import { initFreeTranslateHandler, handleFreeTranslateRequest } from '~/webhook/free-handler'
+import { initTranslateHandler, handleTranslateRequest } from '~/webhook/handler'
+import { initTranslationQueue } from '~/webhook/router'
 import { createServer } from './server'
 
 registerAllProviders()
@@ -24,6 +28,7 @@ const store = new RoomConfigStore({
   encryptionKeyHex: env.ROOM_CONFIG_ENCRYPTION_KEY,
 })
 await store.init()
+
 const freeStore = new FreeRoomConfigStore({
   dataDir: env.ROOM_CONFIG_DATA_DIR,
 })
@@ -42,6 +47,28 @@ initFreeTranslateHandler({
     defaultMaxSegmentCount: env.KAGI_MAX_SEGMENT_COUNT,
   }),
 })
+
+// Initialize FIFO message queue
+const queue = new TranslationQueue({
+  dataDir: join(env.ROOM_CONFIG_DATA_DIR, 'queue'),
+  maxDepth: env.QUEUE_MAX_DEPTH_PER_ROOM,
+  processor: async (command, opts) => {
+    await Promise.allSettled([
+      handleTranslateRequest(command, opts),
+      handleFreeTranslateRequest(command, opts),
+    ])
+  },
+  resolveConcurrency: (roomId) => {
+    if (freeStore.getByOriginalRoomId(roomId) !== null) return env.QUEUE_FREE_CONCURRENCY
+    if (store.getByOriginalRoomId(roomId) !== null) return env.QUEUE_STANDARD_CONCURRENCY
+    return env.QUEUE_STANDARD_CONCURRENCY
+  },
+})
+await queue.startup()
+
+// Inject queue into router and status endpoint
+initTranslationQueue(queue)
+registerQueueSnapshotProvider(() => queue.getSnapshot())
 
 const { effectiveTimeoutMs, timeoutSource } = resolvePipelineTimeout({
   envTimeoutMs: env.TRANSLATOR_PIPELINE_TIMEOUT_MS,
@@ -73,7 +100,10 @@ if (env.NODE_ENV === 'development') {
 async function shutdown() {
   console.log('\n[translator] Shutting down gracefully...')
 
-  // Flush logs before exit
+  // Drain queue first (30s timeout)
+  await queue.shutdown()
+
+  // Flush logs
   await asyncLogger.shutdown()
 
   // Close HTTP connection pool
