@@ -27,7 +27,7 @@ function makeCommand(
 }
 
 function makeNoopProcessor(): Processor {
-  return async () => {}
+  return () => Promise.resolve()
 }
 
 /** Wait up to maxMs for condition to become true, polling every 20ms */
@@ -40,7 +40,6 @@ async function waitFor(condition: () => boolean, maxMs = 2000): Promise<void> {
 }
 
 const STANDARD_ROOM = 424846369
-const FREE_ROOM = 424846369
 const STANDARD_ONLY_ROOM = 111111111
 const FREE_ONLY_ROOM = 222222222
 
@@ -124,11 +123,13 @@ describe('TranslationQueue (dual-queue)', () => {
       const queue = makeQueue({
         hasStandardConfig: () => true,
         hasFreeConfig: () => true,
-        standardProcessor: async (command) => {
+        standardProcessor: (command) => {
           standardProcessed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
-        freeProcessor: async (command) => {
+        freeProcessor: (command) => {
           freeProcessed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
       })
       await queue.startup()
@@ -150,11 +151,13 @@ describe('TranslationQueue (dual-queue)', () => {
       const queue = makeQueue({
         hasStandardConfig: () => true,
         hasFreeConfig: () => false,
-        standardProcessor: async (command) => {
+        standardProcessor: (command) => {
           standardProcessed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
-        freeProcessor: async (command) => {
+        freeProcessor: (command) => {
           freeProcessed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
       })
       await queue.startup()
@@ -175,11 +178,13 @@ describe('TranslationQueue (dual-queue)', () => {
       const queue = makeQueue({
         hasStandardConfig: () => false,
         hasFreeConfig: () => true,
-        standardProcessor: async (command) => {
+        standardProcessor: (command) => {
           standardProcessed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
-        freeProcessor: async (command) => {
+        freeProcessor: (command) => {
           freeProcessed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
       })
       await queue.startup()
@@ -239,8 +244,9 @@ describe('TranslationQueue (dual-queue)', () => {
       const queue = makeQueue({
         hasStandardConfig: () => true,
         hasFreeConfig: () => true,
-        standardProcessor: async () => {
+        standardProcessor: () => {
           completionOrder.push('standard')
+          return Promise.resolve()
         },
         freeProcessor: async () => {
           await freeBarrier
@@ -269,8 +275,9 @@ describe('TranslationQueue (dual-queue)', () => {
         hasStandardConfig: () => true,
         hasFreeConfig: () => false,
         standardConcurrency: 1,
-        standardProcessor: async (command) => {
+        standardProcessor: (command) => {
           processed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
       })
       await queue.startup()
@@ -290,8 +297,9 @@ describe('TranslationQueue (dual-queue)', () => {
         hasStandardConfig: () => false,
         hasFreeConfig: () => true,
         freeConcurrency: 1,
-        freeProcessor: async (command) => {
+        freeProcessor: (command) => {
           processed.push(command.sourceMessageId)
+          return Promise.resolve()
         },
       })
       await queue.startup()
