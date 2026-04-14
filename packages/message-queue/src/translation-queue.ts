@@ -1,34 +1,59 @@
-// packages/message-queue/src/translation-queue.ts
 import { QueuePersistence } from './queue-persistence'
 import { RoomQueue } from './room-queue'
-import type { EnqueueResult, Processor, QueueHealthSnapshot, ResolveConcurrency } from './types'
+import type {
+  EnqueueResult,
+  HasFreeConfig,
+  HasStandardConfig,
+  Processor,
+  QueueHealthSnapshot,
+} from './types'
 import type { TranslationIngressCommand } from '@chatwork-bot/core'
 
 interface TranslationQueueOptions {
-  /** Base directory for queue file persistence (will contain pending/ and archived/) */
+  /** Base directory for queue file persistence (used only for startup archive check) */
   dataDir: string
-  /** Maximum total items (pending + active) per room before rejecting new items */
+  /** Maximum total items (pending + active) per room per queue type before rejecting */
   maxDepth: number
-  /** Dual-dispatch processor callback — runs the actual translation work */
-  processor: Processor
-  /** Returns concurrency limit for a given roomId — called once per room at lazy creation */
-  resolveConcurrency: ResolveConcurrency
+  /** Max concurrent standard (OpenAI) translations per source room */
+  standardConcurrency: number
+  /** Max concurrent free (Kagi) translations per source room */
+  freeConcurrency: number
+  /** Processor for standard translations */
+  standardProcessor: Processor
+  /** Processor for free translations */
+  freeProcessor: Processor
+  /** Returns true if the source room has a standard translation config */
+  hasStandardConfig: HasStandardConfig
+  /** Returns true if the source room has a free translation config */
+  hasFreeConfig: HasFreeConfig
 }
 
 export class TranslationQueue {
   private readonly persistence: QueuePersistence
   private readonly maxDepth: number
-  private readonly processor: Processor
-  private readonly resolveConcurrency: ResolveConcurrency
+  private readonly standardConcurrency: number
+  private readonly freeConcurrency: number
+  private readonly standardProcessor: Processor
+  private readonly freeProcessor: Processor
+  private readonly hasStandardConfig: HasStandardConfig
+  private readonly hasFreeConfig: HasFreeConfig
 
-  private readonly rooms = new Map<number, RoomQueue>()
+  /** Standard (OpenAI) room queues — one per source roomId */
+  private readonly standardRooms = new Map<number, RoomQueue>()
+  /** Free (Kagi) room queues — one per source roomId */
+  private readonly freeRooms = new Map<number, RoomQueue>()
+
   private accepting = true
 
   constructor(options: TranslationQueueOptions) {
     this.persistence = new QueuePersistence({ baseDir: options.dataDir })
     this.maxDepth = options.maxDepth
-    this.processor = options.processor
-    this.resolveConcurrency = options.resolveConcurrency
+    this.standardConcurrency = options.standardConcurrency
+    this.freeConcurrency = options.freeConcurrency
+    this.standardProcessor = options.standardProcessor
+    this.freeProcessor = options.freeProcessor
+    this.hasStandardConfig = options.hasStandardConfig
+    this.hasFreeConfig = options.hasFreeConfig
   }
 
   /** Archive any pending files from a previous process session. Call before accepting messages. */
@@ -58,12 +83,18 @@ export class TranslationQueue {
           errorMessage: error instanceof Error ? error.message : String(error),
         }),
       )
-      // Continue with empty queue - prioritize availability over preserving old messages
-      // Operators can manually recover from archived/ directory if needed
+      // Continue with empty queue — prioritize availability over preserving old messages
     }
   }
 
-  /** Enqueue a command for processing. Returns immediately — never blocks on translation. */
+  /**
+   * Fan-out enqueue: dispatches the command to the standard queue, the free queue,
+   * or both, depending on which configs exist for the source room.
+   *
+   * Returns immediately — never blocks on translation.
+   * Returns { accepted: true } if at least one queue accepted the item.
+   * Returns { accepted: false, reason: 'QUEUE_FULL' } only if ALL applicable queues rejected.
+   */
   async enqueue(
     roomId: number,
     command: TranslationIngressCommand,
@@ -73,7 +104,6 @@ export class TranslationQueue {
       return { accepted: false, reason: 'QUEUE_FULL' }
     }
 
-    const roomQueue = this.getOrCreateRoomQueue(roomId)
     const item = {
       id: crypto.randomUUID(),
       sourceRoomId: roomId,
@@ -83,55 +113,52 @@ export class TranslationQueue {
       enqueuedAt: new Date().toISOString(),
     }
 
-    const result = await roomQueue.enqueue(item)
+    let anyAccepted = false
+    let lastRejectedReason: 'QUEUE_FULL' | 'WRITE_ERROR' = 'QUEUE_FULL'
 
-    if (result.accepted) {
-      const currentDepth = roomQueue.size() + (roomQueue.isProcessing() ? 1 : 0)
-      const depthPercent = (currentDepth / this.maxDepth) * 100
+    if (this.hasStandardConfig(roomId)) {
+      const queue = this.getOrCreateStandardQueue(roomId)
+      const result = await queue.enqueue({ ...item, id: crypto.randomUUID() })
 
-      if (depthPercent >= 80) {
-        console.warn(
-          JSON.stringify({
-            level: 'warn',
-            service: 'translator',
-            event: 'queue_depth_high',
-            timestamp: new Date().toISOString(),
-            traceId,
-            sourceRoomId: roomId,
-            queueDepth: currentDepth,
-            maxDepth: this.maxDepth,
-            depthPercent: Math.round(depthPercent),
-          }),
-        )
+      if (result.accepted) {
+        anyAccepted = true
+        this.logEnqueued(roomId, item.id, traceId, 'standard', queue.size())
+      } else {
+        lastRejectedReason = result.reason
+        this.logRejected(roomId, traceId, result.reason, 'standard')
       }
-
-      console.log(
-        JSON.stringify({
-          level: 'info',
-          service: 'translator',
-          event: 'queue_item_enqueued',
-          timestamp: new Date().toISOString(),
-          traceId,
-          sourceRoomId: roomId,
-          itemId: item.id,
-          queueDepth: currentDepth,
-        }),
-      )
-    } else {
-      console.warn(
-        JSON.stringify({
-          level: 'warn',
-          service: 'translator',
-          event: 'queue_item_rejected',
-          timestamp: new Date().toISOString(),
-          traceId,
-          sourceRoomId: roomId,
-          reason: result.reason,
-        }),
-      )
     }
 
-    return result
+    if (this.hasFreeConfig(roomId)) {
+      const queue = this.getOrCreateFreeQueue(roomId)
+      const result = await queue.enqueue({ ...item, id: crypto.randomUUID() })
+
+      if (result.accepted) {
+        anyAccepted = true
+        this.logEnqueued(roomId, item.id, traceId, 'free', queue.size())
+      } else {
+        lastRejectedReason = result.reason
+        this.logRejected(roomId, traceId, result.reason, 'free')
+      }
+    }
+
+    if (!anyAccepted) {
+      return { accepted: false, reason: lastRejectedReason }
+    }
+
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        service: 'translator',
+        event: 'queue_item_enqueued',
+        timestamp: new Date().toISOString(),
+        traceId,
+        sourceRoomId: roomId,
+        sourceMessageId: command.sourceMessageId,
+      }),
+    )
+
+    return { accepted: true }
   }
 
   /**
@@ -170,7 +197,6 @@ export class TranslationQueue {
       await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
     }
 
-    // Timeout reached — log abandoned messages
     const finalSnapshot = this.getSnapshot()
     if (finalSnapshot.totalActive > 0 || finalSnapshot.totalPending > 0) {
       console.error(
@@ -181,36 +207,62 @@ export class TranslationQueue {
           timestamp: new Date().toISOString(),
           abandonedActive: finalSnapshot.totalActive,
           abandonedPending: finalSnapshot.totalPending,
-          rooms: finalSnapshot.rooms,
+          standardRooms: finalSnapshot.standardRooms,
+          freeRooms: finalSnapshot.freeRooms,
         }),
       )
     }
   }
 
   getSnapshot(): QueueHealthSnapshot {
-    const rooms = Array.from(this.rooms.values()).map((rq) => rq.getSnapshot())
+    const standardRooms = Array.from(this.standardRooms.values()).map((rq) => rq.getSnapshot())
+    const freeRooms = Array.from(this.freeRooms.values()).map((rq) => rq.getSnapshot())
+    const allRooms = [...standardRooms, ...freeRooms]
     return {
-      totalPending: rooms.reduce((sum, r) => sum + r.pending, 0),
-      totalActive: rooms.reduce((sum, r) => sum + r.active, 0),
-      rooms,
+      totalPending: allRooms.reduce((sum, room) => sum + room.pending, 0),
+      totalActive: allRooms.reduce((sum, room) => sum + room.active, 0),
+      standardRooms,
+      freeRooms,
     }
   }
 
-  private getOrCreateRoomQueue(roomId: number): RoomQueue {
-    const existing = this.rooms.get(roomId)
+  private getOrCreateStandardQueue(roomId: number): RoomQueue {
+    const existing = this.standardRooms.get(roomId)
     if (existing !== undefined) return existing
 
-    const concurrency = this.resolveConcurrency(roomId)
     const queue = new RoomQueue({
       roomId,
-      concurrency,
+      concurrency: this.standardConcurrency,
       maxDepth: this.maxDepth,
-      persistence: this.persistence,
-      processor: this.processor,
+      persistence: null,
+      processor: this.standardProcessor,
     })
+    this.standardRooms.set(roomId, queue)
+    this.logQueueCreated(roomId, 'standard', this.standardConcurrency)
+    return queue
+  }
 
-    this.rooms.set(roomId, queue)
+  private getOrCreateFreeQueue(roomId: number): RoomQueue {
+    const existing = this.freeRooms.get(roomId)
+    if (existing !== undefined) return existing
 
+    const queue = new RoomQueue({
+      roomId,
+      concurrency: this.freeConcurrency,
+      maxDepth: this.maxDepth,
+      persistence: null,
+      processor: this.freeProcessor,
+    })
+    this.freeRooms.set(roomId, queue)
+    this.logQueueCreated(roomId, 'free', this.freeConcurrency)
+    return queue
+  }
+
+  private logQueueCreated(
+    roomId: number,
+    queueType: 'standard' | 'free',
+    concurrency: number,
+  ): void {
     console.log(
       JSON.stringify({
         level: 'debug',
@@ -218,11 +270,52 @@ export class TranslationQueue {
         event: 'queue_consumer_started',
         timestamp: new Date().toISOString(),
         sourceRoomId: roomId,
+        queueType,
         concurrency,
       }),
     )
+  }
 
-    return queue
+  private logEnqueued(
+    roomId: number,
+    itemId: string,
+    traceId: string,
+    queueType: 'standard' | 'free',
+    depth: number,
+  ): void {
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        service: 'translator',
+        event: 'queue_item_enqueued_to_lane',
+        timestamp: new Date().toISOString(),
+        traceId,
+        sourceRoomId: roomId,
+        itemId,
+        queueType,
+        queueDepth: depth,
+      }),
+    )
+  }
+
+  private logRejected(
+    roomId: number,
+    traceId: string,
+    reason: string,
+    queueType: 'standard' | 'free',
+  ): void {
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        service: 'translator',
+        event: 'queue_item_rejected',
+        timestamp: new Date().toISOString(),
+        traceId,
+        sourceRoomId: roomId,
+        queueType,
+        reason,
+      }),
+    )
   }
 
   private async countPendingFiles(): Promise<number> {

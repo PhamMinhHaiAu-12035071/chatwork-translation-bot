@@ -353,4 +353,53 @@ describe('RoomQueue', () => {
       expect(result).toEqual({ accepted: true })
     })
   })
+
+  describe('in-memory mode (persistence: null)', () => {
+    it('accepts and processes items without file I/O when persistence is null', async () => {
+      const processed: string[] = []
+      const processor: Processor = (command) => {
+        processed.push(command.sourceMessageId)
+        return Promise.resolve()
+      }
+
+      const queue = new RoomQueue({
+        roomId: ROOM_ID,
+        concurrency: 1,
+        maxDepth: 10,
+        persistence: null,
+        processor,
+      })
+
+      const result = await queue.enqueue(makeItem({ id: 'im-1', sourceMessageId: 'msg-im-1' }))
+      expect(result).toEqual({ accepted: true })
+
+      await waitFor(() => processed.includes('msg-im-1'))
+      expect(processed).toEqual(['msg-im-1'])
+    })
+
+    it('still enforces maxDepth without persistence', async () => {
+      let holdRelease!: () => void
+      const blocked = new Promise<void>((resolve) => {
+        holdRelease = resolve
+      })
+
+      const queue = new RoomQueue({
+        roomId: ROOM_ID,
+        concurrency: 1,
+        maxDepth: 1,
+        persistence: null,
+        processor: async () => {
+          await blocked
+        },
+      })
+
+      const r1 = await queue.enqueue(makeItem({ id: 'im-a', sourceMessageId: 'msg-a' }))
+      expect(r1).toEqual({ accepted: true })
+
+      const r2 = await queue.enqueue(makeItem({ id: 'im-b', sourceMessageId: 'msg-b' }))
+      expect(r2).toEqual({ accepted: false, reason: 'QUEUE_FULL' })
+
+      holdRelease()
+    })
+  })
 })

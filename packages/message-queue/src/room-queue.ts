@@ -1,4 +1,3 @@
-// packages/message-queue/src/room-queue.ts
 import type { QueuePersistence } from './queue-persistence'
 import type { EnqueueResult, Processor, QueueItem, QueueRoomSnapshot } from './types'
 
@@ -6,7 +5,7 @@ interface RoomQueueOptions {
   roomId: number
   concurrency: number
   maxDepth: number
-  persistence: QueuePersistence
+  persistence: QueuePersistence | null
   processor: Processor
 }
 
@@ -14,7 +13,7 @@ export class RoomQueue {
   private readonly roomId: number
   private readonly concurrency: number
   private readonly maxDepth: number
-  private readonly persistence: QueuePersistence
+  private readonly persistence: QueuePersistence | null
   private readonly processor: Processor
 
   /** In-memory ordered list — front = oldest = next to process */
@@ -42,17 +41,19 @@ export class RoomQueue {
     this.depth++
     this.items.push(item)
 
-    // ASYNC: persist to disk; rollback in-memory state on failure
-    try {
-      await this.persistence.writeItem(this.roomId, item)
-    } catch {
-      this.depth--
-      // Remove by ID instead of assuming it's still at the end
-      const idx = this.items.findIndex((i) => i.id === item.id)
-      if (idx !== -1) {
-        this.items.splice(idx, 1)
+    // ASYNC: persist to disk only if persistence is configured
+    if (this.persistence !== null) {
+      try {
+        await this.persistence.writeItem(this.roomId, item)
+      } catch {
+        this.depth--
+        // Remove by ID instead of assuming it's still at the end
+        const idx = this.items.findIndex((i) => i.id === item.id)
+        if (idx !== -1) {
+          this.items.splice(idx, 1)
+        }
+        return { accepted: false, reason: 'WRITE_ERROR' }
       }
-      return { accepted: false, reason: 'WRITE_ERROR' }
     }
 
     this.startConsumerIfNeeded()
@@ -151,10 +152,12 @@ export class RoomQueue {
     } finally {
       this.activeCount--
       this.depth--
-      try {
-        await this.persistence.removeItem(this.roomId, item)
-      } catch {
-        // Best effort — file may already be gone
+      if (this.persistence !== null) {
+        try {
+          await this.persistence.removeItem(this.roomId, item)
+        } catch {
+          // Best effort — file may already be gone
+        }
       }
     }
   }

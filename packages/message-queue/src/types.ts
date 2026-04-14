@@ -30,7 +30,10 @@ export interface QueueRoomSnapshot {
 export interface QueueHealthSnapshot {
   totalPending: number
   totalActive: number
-  rooms: QueueRoomSnapshot[]
+  /** Standard (OpenAI) room queues */
+  standardRooms: QueueRoomSnapshot[]
+  /** Free (Kagi) room queues */
+  freeRooms: QueueRoomSnapshot[]
 }
 
 /**
@@ -44,7 +47,13 @@ export type Processor = (
 ) => Promise<void>
 
 /**
- * Callback that determines how many items a room can process concurrently.
- * Called once when the RoomQueue for a room is first created (lazy).
+ * Returns true if the given source room has a standard (API-based) translation config.
+ * Called on every enqueue — kept in sync with the live config store.
  */
-export type ResolveConcurrency = (roomId: number) => number
+export type HasStandardConfig = (roomId: number) => boolean
+
+/**
+ * Returns true if the given source room has a free (Kagi-based) translation config.
+ * Called on every enqueue — kept in sync with the live config store.
+ */
+export type HasFreeConfig = (roomId: number) => boolean
