@@ -11,7 +11,6 @@ export function FeatureLabPanel({ collapsed, enabled, onToggle }: FeatureLabPane
     return (
       <div
         className="brutal-surface theme-card-butter p-4 flex items-center justify-center"
-        style={{ borderStyle: 'dashed' }}
         title="Feature Lab"
       >
         <span aria-hidden="true" style={{ fontSize: '18px' }}>
@@ -22,10 +21,7 @@ export function FeatureLabPanel({ collapsed, enabled, onToggle }: FeatureLabPane
   }
 
   return (
-    <div
-      className="brutal-surface theme-card-butter pt-4 pl-4 pr-5 pb-5 space-y-3"
-      style={{ borderStyle: 'dashed' }}
-    >
+    <div className="brutal-surface theme-card-butter p-4 space-y-3">
       <StickerLabel tone="warning" tilt="flat">
         ⚗️ FEATURE LAB
       </StickerLabel>

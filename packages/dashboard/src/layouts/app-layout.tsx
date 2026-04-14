@@ -201,7 +201,7 @@ export function AppLayout() {
               width: sidebarCollapsed ? '80px' : '320px',
             }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-5 hidden lg:block relative"
+            className="hidden lg:flex lg:flex-col gap-5 relative"
           >
             {/* Floating toggle button */}
             <motion.button
@@ -469,11 +469,13 @@ export function AppLayout() {
                   ))}
               </AnimatePresence>
             </nav>
-            <FeatureLabPanel
-              collapsed={sidebarCollapsed}
-              enabled={freeRoomEnabled}
-              onToggle={toggleFreeRoomEnabled}
-            />
+            <div className="mt-auto">
+              <FeatureLabPanel
+                collapsed={sidebarCollapsed}
+                enabled={freeRoomEnabled}
+                onToggle={toggleFreeRoomEnabled}
+              />
+            </div>
           </motion.aside>
 
           {/* Mobile sidebar - unchanged */}
