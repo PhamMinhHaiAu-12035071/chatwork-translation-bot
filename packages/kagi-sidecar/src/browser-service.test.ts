@@ -104,6 +104,9 @@ const mockConnect = mock(() =>
   }),
 )
 
+const mockCreateProfileDir = mock((_path: string) => Promise.resolve())
+const mockRemoveProfileDir = mock((_path: string) => Promise.resolve())
+
 void mock.module('puppeteer-real-browser', () => ({
   connect: mockConnect,
 }))
@@ -113,6 +116,11 @@ describe('KagiBrowserService', () => {
   let _KagiSidecarError: typeof _KagiSidecarErrorType
 
   beforeEach(async () => {
+    mockCreateProfileDir.mockReset()
+    mockCreateProfileDir.mockImplementation(() => Promise.resolve())
+    mockRemoveProfileDir.mockReset()
+    mockRemoveProfileDir.mockImplementation(() => Promise.resolve())
+
     mockConnect.mockReset()
     mockConnect.mockImplementation(() =>
       Promise.resolve({
@@ -212,6 +220,8 @@ describe('KagiBrowserService', () => {
       maxQueueWaitMs: 10_000,
       maxRetries: 0,
       sleep: (_ms) => Promise.resolve(),
+      createProfileDir: mockCreateProfileDir,
+      removeProfileDir: mockRemoveProfileDir,
       humanInteraction: mockHumanInteraction,
       ...overrides,
     })
@@ -366,6 +376,77 @@ describe('KagiBrowserService', () => {
         headless: false,
       }),
     )
+  })
+
+  it('isolates the Chrome profile per request via a unique userDataDir and cleans it up after the browser closes', async () => {
+    const service = createService()
+
+    const capturedUserDataDirs: string[] = []
+    mockConnect.mockImplementation((...args: unknown[]) => {
+      const options = args[0] as { customConfig?: { userDataDir?: string } } | undefined
+      const userDataDir = options?.customConfig?.userDataDir
+      if (userDataDir !== undefined) {
+        capturedUserDataDirs.push(userDataDir)
+      }
+      return Promise.resolve({
+        browser: mockBrowser,
+        page: mockPage,
+      })
+    })
+
+    await service.translate({ text: 'Hello', style: 'Clear' })
+    await service.translate({ text: 'Hello again', style: 'Clear' })
+
+    expect(capturedUserDataDirs).toHaveLength(2)
+    expect(capturedUserDataDirs[0]).toMatch(/kagi-profile-/u)
+    expect(capturedUserDataDirs[1]).toMatch(/kagi-profile-/u)
+    expect(capturedUserDataDirs[0]).not.toBe(capturedUserDataDirs[1])
+
+    // Each userDataDir must have been created before connect() and removed after browser.close().
+    expect(mockCreateProfileDir).toHaveBeenCalledWith(capturedUserDataDirs[0])
+    expect(mockCreateProfileDir).toHaveBeenCalledWith(capturedUserDataDirs[1])
+    expect(mockRemoveProfileDir).toHaveBeenCalledWith(capturedUserDataDirs[0])
+    expect(mockRemoveProfileDir).toHaveBeenCalledWith(capturedUserDataDirs[1])
+  })
+
+  it('cleans up the isolated Chrome profile even when the translation fails', async () => {
+    mockConnect.mockImplementation(() =>
+      Promise.resolve({
+        browser: mockBrowser,
+        page: {
+          ...mockPage,
+          goto: mock(() => Promise.reject(new Error('network down'))),
+        },
+      }),
+    )
+
+    const service = createService()
+
+    // eslint-disable-next-line @typescript-eslint/await-thenable, @typescript-eslint/no-confusing-void-expression
+    await expect(service.translate({ text: 'Hello', style: 'Clear' })).rejects.toThrow()
+
+    expect(mockCreateProfileDir).toHaveBeenCalledTimes(1)
+    expect(mockRemoveProfileDir).toHaveBeenCalledTimes(1)
+    expect(mockRemoveProfileDir).toHaveBeenCalledWith(
+      expect.stringMatching(/kagi-profile-/u) as string,
+    )
+  })
+
+  it('waits for Cloudflare Turnstile and Kagi bootstrap to settle after navigating before interacting with the page', async () => {
+    const sleepCalls: number[] = []
+    const service = createService({
+      sleep: (ms) => {
+        sleepCalls.push(ms)
+        return Promise.resolve()
+      },
+    })
+
+    await service.translate({ text: 'Hello', style: 'Clear' })
+
+    // The post-navigation Cloudflare settle sleep (3000 ms) must happen at
+    // least once during translate(). This guards against regressions that
+    // would let UI interactions race Cloudflare verification on short inputs.
+    expect(sleepCalls).toContain(3000)
   })
 
   it('accepts the minimal research baseline URL when translating Clear style', async () => {

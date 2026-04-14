@@ -44,6 +44,13 @@ export const KAGI_SELECTORS = {
 // ═══════════════════════════════════════════════════════════
 
 export const KAGI_TIMING = {
+  /**
+   * Wait after navigating to Kagi translate page for Cloudflare Turnstile
+   * verification and app bootstrap to complete. Matches the PoC
+   * (nghien_cuu_cua_toi) which uses a 5s settle wait.
+   */
+  POST_NAV_CLOUDFLARE_SETTLE_MS: 3000,
+
   /** Wait after opening Translation Settings dialog for UI to settle */
   POST_DIALOG_SETTLE_MS: 400,
 

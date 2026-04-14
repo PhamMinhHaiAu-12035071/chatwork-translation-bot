@@ -1,3 +1,8 @@
+import { randomUUID } from 'node:crypto'
+import { mkdir, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
@@ -38,22 +43,45 @@ interface BrowserAutomationConnectOptions {
 
 type BrowserConnect = (options: BrowserAutomationConnectOptions) => Promise<BrowserSession>
 
-const KAGI_BROWSER_CONNECT_OPTIONS: BrowserAutomationConnectOptions = {
-  headless: false,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--start-maximized',
-  ],
-  customConfig: {},
-  turnstile: true,
-  // Match the working PoC profile so Docker/Xvfb keeps the settings slider inside the viewport.
-  connectOption: {
-    defaultViewport: null,
-  },
-  disableXvfb: true,
-  ignoreAllFlags: false,
+/**
+ * Build per-request browser connect options with an isolated Chrome profile.
+ *
+ * Root cause of translation drift (e.g. `ちゃん` → `dương vật`): when
+ * `customConfig` is empty, `puppeteer-real-browser` falls back to the default
+ * Chrome user data directory inside the container. Because
+ * `browser.close()` only tears down the Puppeteer connection — not the
+ * on-disk profile — cookies, localStorage, cache and Kagi session state
+ * accumulate across requests within a long-running sidecar container. That
+ * state contaminates subsequent translations, especially for ultra-short
+ * ambiguous inputs.
+ *
+ * By generating a fresh `userDataDir` per request and cleaning it up in the
+ * `finally` block of `executeTranslation`, every call gets a pristine
+ * browser session (matching the one-shot container behaviour of the PoC in
+ * `nghien_cuu_cua_toi`).
+ */
+function buildKagiBrowserConnectOptions(userDataDir: string): BrowserAutomationConnectOptions {
+  return {
+    headless: false,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--start-maximized',
+    ],
+    customConfig: { userDataDir },
+    turnstile: true,
+    // Match the working PoC profile so Docker/Xvfb keeps the settings slider inside the viewport.
+    connectOption: {
+      defaultViewport: null,
+    },
+    disableXvfb: true,
+    ignoreAllFlags: false,
+  }
+}
+
+function createIsolatedUserDataDir(): string {
+  return join(tmpdir(), `kagi-profile-${randomUUID()}`)
 }
 
 export type KagiSidecarErrorCode =
@@ -115,6 +143,10 @@ export interface KagiBrowserServiceOptions {
   now(): number
   random(): number
   connect: BrowserConnect
+  /** Creates the isolated Chrome profile directory. Injectable for testing. */
+  createProfileDir(path: string): Promise<void>
+  /** Removes the isolated Chrome profile directory. Injectable for testing. */
+  removeProfileDir(path: string): Promise<void>
   humanInteraction?: IHumanInteraction
 }
 
@@ -182,6 +214,11 @@ export class KagiBrowserService {
           const connect = await loadBrowserConnect()
           return connect(connectOptions)
         }),
+      createProfileDir:
+        options.createProfileDir ??
+        ((path) => mkdir(path, { recursive: true }).then(() => undefined)),
+      removeProfileDir:
+        options.removeProfileDir ?? ((path) => rm(path, { recursive: true, force: true })),
     }
     this.humanInteraction = options.humanInteraction ?? new HumanInteractionService()
   }
@@ -827,7 +864,14 @@ export class KagiBrowserService {
     console.log(`\n🎯 Translating with style: ${request.style}`)
     console.log(`Preset: ${JSON.stringify(preset, null, 2)}`)
 
-    const session = await this.options.connect(KAGI_BROWSER_CONNECT_OPTIONS)
+    // Isolate Chrome profile per request so no Kagi session state (cookies,
+    // localStorage, cache) leaks between consecutive translations. Cleaned up
+    // in the finally block below after the browser is closed.
+    const userDataDir = createIsolatedUserDataDir()
+    // puppeteer-real-browser expects the directory to already exist — it opens
+    // chrome-out.log and other files inside it immediately on connect().
+    await this.options.createProfileDir(userDataDir)
+    const session = await this.options.connect(buildKagiBrowserConnectOptions(userDataDir))
     const { browser, page } = session
 
     try {
@@ -835,6 +879,14 @@ export class KagiBrowserService {
       const navUrl = 'https://translate.kagi.com/?from=auto&to=vi'
       console.log(`🌐 Navigating to: ${navUrl}`)
       await page.goto(navUrl, { waitUntil: 'networkidle2' })
+
+      // Wait for Cloudflare Turnstile verification and Kagi app bootstrap to
+      // settle. Matches the PoC (nghien_cuu_cua_toi) which sleeps after
+      // navigation before any UI interaction. Without this, fast-follow
+      // sessions can race Cloudflare and end up translating against a
+      // partially-initialised page.
+      await this.options.sleep(KAGI_TIMING.POST_NAV_CLOUDFLARE_SETTLE_MS)
+
       await this.clearSourceTextInput(page)
       await this.fillSourceTextInput(page, clampedText, charCount)
 
@@ -959,6 +1011,15 @@ export class KagiBrowserService {
       return translated
     } finally {
       await browser.close().catch(() => undefined)
+      // Remove the isolated profile directory so per-request state never
+      // persists on disk (prevents leakage across requests and avoids
+      // filling /tmp in long-running containers).
+      await this.options.removeProfileDir(userDataDir).catch((error: unknown) => {
+        console.warn(
+          `[kagi-sidecar] Failed to remove isolated Chrome profile ${userDataDir}:`,
+          error instanceof Error ? error.message : String(error),
+        )
+      })
     }
   }
 
