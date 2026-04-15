@@ -1,9 +1,25 @@
 {
   "name": "kagi-translate-poc",
   "version": "1.0.0",
-  "type": "module",
-  "description": "PoC for automating Kagi Translate with Puppeteer Real Browser",
+  "author": "",
   "main": "index.ts",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
+    "eslint": "^10.1.0",
+    "jiti": "^2.4.2",
+    "typescript": "^5.4.0"
+  },
+  "description": "PoC for automating Kagi Translate with patchright + Chromium",
+  "keywords": [
+    "patchright",
+    "translation",
+    "kagi",
+    "automation",
+    "docker"
+  ],
+  "license": "ISC",
   "scripts": {
     "start": "docker-compose up --build",
     "start:local": "bun run src/index.ts",
@@ -20,27 +36,8 @@
     "typecheck": "bunx tsc --noEmit",
     "check": "bun run typecheck"
   },
-  "keywords": [
-    "puppeteer",
-    "translation",
-    "kagi",
-    "automation",
-    "docker"
-  ],
-  "author": "",
-  "license": "ISC",
+  "type": "module",
   "dependencies": {
-    "@forad/puppeteer-humanize": "^1.1.8",
-    "ghost-cursor": "^1.4.2",
-    "puppeteer": "^24.40.0",
-    "puppeteer-real-browser": "^1.4.4"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
-    "@typescript-eslint/parser": "^8.57.2",
-    "eslint": "^10.1.0",
-    "jiti": "^2.4.2",
-    "typescript": "^5.4.0"
+    "patchright": "^1.59.0"
   }
 }

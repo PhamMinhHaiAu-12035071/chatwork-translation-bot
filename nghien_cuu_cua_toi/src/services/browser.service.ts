@@ -5,8 +5,10 @@
  * Single Responsibility: Browser automation and content scraping
  */
 
-import { connect } from 'puppeteer-real-browser'
-import type { Browser, Page } from 'puppeteer-core'
+import { existsSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+import { chromium, type BrowserContext, type Page } from 'patchright'
 import type {
   IBrowserService,
   IBrowserConnection,
@@ -18,7 +20,10 @@ import type { ReadingLevel, TranslationOptions } from '~/types'
 import { BrowserAutomationError } from '~/errors'
 import {
   BROWSER_CONFIG,
+  KAGI_ORIGIN_URL,
   KAGI_SELECTORS,
+  KAGI_SESSION_FILE_ENV,
+  KAGI_SESSION_FILE_NAME,
   SPEAKER_GENDER_UI_LABELS,
   ADDRESSEE_GENDER_UI_LABELS,
   TRANSLATION_STYLE_UI_LABELS,
@@ -30,23 +35,23 @@ import {
   computeScaledDelay,
   HUMAN_INPUT_THRESHOLD,
 } from '~/config'
+import { visitKagiOriginAndInjectSessionCookies } from '~/utils/kagi-session-cookies'
 
 /**
- * Browser connection wrapper
- * @remarks Uses Puppeteer core types for type safety
+ * Browser connection wrapper (patchright persistent context + primary page).
  */
 class BrowserConnection implements IBrowserConnection {
   constructor(
-    private browser: Browser,
+    private context: BrowserContext,
     private page: Page,
   ) {}
 
   async close(): Promise<void> {
-    await this.browser.close()
+    await this.context.close()
   }
 
-  getBrowser(): Browser {
-    return this.browser
+  getContext(): BrowserContext {
+    return this.context
   }
 
   getPage(): Page {
@@ -55,7 +60,7 @@ class BrowserConnection implements IBrowserConnection {
 }
 
 /**
- * Kagi Browser Service implementation using Puppeteer Real Browser
+ * Kagi Browser Service implementation using patchright (patched Playwright / Chromium).
  *
  * Handles:
  * - Browser launch with anti-detection
@@ -77,48 +82,114 @@ export class KagiBrowserService implements IBrowserService {
   ) {}
 
   /**
-   * Launches a Puppeteer Real Browser instance
+   * Resolves a Chrome/Chromium binary for launchPersistentContext (system browser or env).
+   */
+  private resolveChromiumExecutablePath(): string | undefined {
+    const candidates: string[] = []
+    const fromPptr = process.env.PUPPETEER_EXECUTABLE_PATH?.trim()
+    if (fromPptr !== undefined && fromPptr !== '') {
+      candidates.push(fromPptr)
+    }
+    const fromChrome = process.env.CHROME_PATH?.trim()
+    if (fromChrome !== undefined && fromChrome !== '') {
+      candidates.push(fromChrome)
+    }
+
+    if (process.platform === 'darwin') {
+      candidates.push(
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      )
+    } else if (process.platform === 'linux') {
+      candidates.push(
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+      )
+    } else if (process.platform === 'win32') {
+      candidates.push(
+        `${process.env.PROGRAMFILES ?? 'C:\\Program Files'}\\Google\\Chrome\\Application\\chrome.exe`,
+        `${process.env['PROGRAMFILES(X86)'] ?? 'C:\\Program Files (x86)'}\\Google\\Chrome\\Application\\chrome.exe`,
+      )
+    }
+
+    for (const p of candidates) {
+      if (p !== '' && existsSync(p)) {
+        return p
+      }
+    }
+    return undefined
+  }
+
+  /**
+   * Resolve Kagi session cookie file.
+   * Priority:
+   * 1) explicit env override KAGI_SESSION_FILE
+   * 2) fallback to common local/container paths with a fixed filename.
+   */
+  private resolveKagiSessionFilePath(): string | undefined {
+    const explicitSessionFile = process.env[KAGI_SESSION_FILE_ENV]?.trim()
+    if (explicitSessionFile !== undefined && explicitSessionFile !== '') {
+      return explicitSessionFile
+    }
+
+    const candidates: string[] = [
+      join(process.cwd(), 'secrets', KAGI_SESSION_FILE_NAME),
+      join('/app', 'secrets', KAGI_SESSION_FILE_NAME),
+    ]
+
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) {
+        return candidate
+      }
+    }
+
+    return undefined
+  }
+
+  /**
+   * Launches Chromium via patchright `launchPersistentContext` (session in userDataDir).
    * @returns Browser connection handle
    * @throws {BrowserAutomationError} If browser fails to launch
    */
   async launch(): Promise<IBrowserConnection> {
     try {
       const headless: boolean = BROWSER_CONFIG.HEADLESS
-      const chromePath = process.env.CHROME_PATH?.trim()
-      const userDataDir = process.env.USER_DATA_DIR?.trim()
-      const customConfig: { chromePath?: string; userDataDir?: string } = {}
+      const userDataDir = process.env.USER_DATA_DIR?.trim() ?? join(process.cwd(), 'user-data')
+      await mkdir(userDataDir, { recursive: true })
 
-      if (chromePath !== undefined && chromePath !== '') {
-        customConfig.chromePath = chromePath
-      }
+      const executablePath = this.resolveChromiumExecutablePath()
 
-      if (userDataDir !== undefined && userDataDir !== '') {
-        customConfig.userDataDir = userDataDir
-      }
-
-      const { browser, page } = (await connect({
+      const launchOpts: NonNullable<Parameters<typeof chromium.launchPersistentContext>[1]> = {
         headless,
+        viewport: null,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--start-maximized',
         ],
-        customConfig,
-        turnstile: true,
-        connectOption: {
-          defaultViewport: null,
-        },
-        disableXvfb: true,
-        ignoreAllFlags: false,
-      })) as unknown as { browser: Browser; page: Page }
+      }
 
-      this.connection = new BrowserConnection(browser, page)
+      if (executablePath !== undefined) {
+        launchOpts.executablePath = executablePath
+      }
+
+      const context: BrowserContext = await chromium.launchPersistentContext(
+        userDataDir,
+        launchOpts,
+      )
+      const pages: Page[] = context.pages()
+      const existing: Page | undefined = pages[0]
+      const page: Page = existing ?? (await context.newPage())
+
+      this.connection = new BrowserConnection(context, page)
       return this.connection
     } catch (error) {
       throw new BrowserAutomationError(
         'launch',
-        'puppeteer-real-browser',
+        'patchright',
         error instanceof Error ? error : undefined,
       )
     }
@@ -176,23 +247,62 @@ export class KagiBrowserService implements IBrowserService {
         vietnamese_casual: { value: 'less', context: 'vi_casual' },
       }
 
-      // ── BƯỚC 1: Navigate and wait for Cloudflare verification to complete ──
+      // ── BƯỚC 1: Optional session cookies (visit kagi.com first, then translate — reduces Cloudflare on translate)
       const navUrl = new URL(url)
-      await page.goto(navUrl.toString(), { waitUntil: 'networkidle2', timeout })
+      const explicitSessionFile = process.env[KAGI_SESSION_FILE_ENV]?.trim()
+      const sessionFile = this.resolveKagiSessionFilePath()
+      let shouldVerifyLogin = false
+      if (sessionFile !== undefined && sessionFile !== '') {
+        if (!existsSync(sessionFile)) {
+          if (explicitSessionFile !== undefined && explicitSessionFile !== '') {
+            throw new BrowserAutomationError(
+              'kagi-session-file',
+              sessionFile,
+              new Error(
+                `KAGI_SESSION_FILE not found: ${sessionFile}. ` +
+                  'Set it to a valid absolute path (local host path or in-container path depending on run mode).',
+              ),
+            )
+          }
 
-      // ── BƯỚC 2: Wait 5s to ensure Cloudflare verification is completed before proceeding
-      await this.delayMs(5000)
+          console.warn(
+            `[kagi-session] Auto session file not found, continuing without injected session cookies: ${sessionFile}`,
+          )
+        } else {
+          const context = this.connection.getContext()
+          await visitKagiOriginAndInjectSessionCookies(page, context, {
+            sessionFilePath: sessionFile,
+            timeoutMs: timeout,
+            defaultOriginUrl: KAGI_ORIGIN_URL,
+          })
+          shouldVerifyLogin = true
+        }
+      }
 
-      // ── BƯỚC 3: Fill source text (if provided) ──
+      // ── BƯỚC 2: Verify Kagi login via /settings before navigating to translate ──
+      // (This fails fast before any heavy translation workflow is attempted.)
+      if (shouldVerifyLogin) {
+        await this.verifyLoginSuccess(page, timeout)
+      }
+
+      // ── BƯỚC 3: Navigate to translate URL and wait for Cloudflare verification to complete ──
+      await page.goto(navUrl.toString(), { waitUntil: 'networkidle', timeout })
+
+      await this.waitForCloudflareReady(page)
+
+      // ── BƯỚC 4 (legacy fixed sleep; replaced by waitForCloudflareReady + CLOUDFLARE_* config) ──
+      // await this.delayMs(5000)
+
+      // ── BƯỚC 5: Fill source text (if provided) ──
       if (sourceText !== undefined) {
         await this.clearSourceTextInput(page)
         await this.fillSourceTextInput(page, sourceText, inputCharCount)
       }
 
-      // ── BƯỚC 4: Open Translation Settings dialog ──
+      // ── BƯỚC 6: Open Translation Settings dialog ──
       await this.clickTranslationSettingsButton(page)
 
-      // ── BƯỚC 5: Fill context (if provided) ──
+      // ── BƯỚC 7: Fill context (if provided) ──
       const contextText = clampTranslationContext(options.translationContext)
       if (contextText !== '') {
         await this.fillTranslationContext(page, options.translationContext)
@@ -202,29 +312,32 @@ export class KagiBrowserService implements IBrowserService {
         await this.delayMs(computeScaledDelay(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS, inputCharCount))
       }
 
-      // ── BƯỚC 6: Click speaker gender option ──
+      // ── BƯỚC 8: Click speaker gender option ──
       await this.clickSpeakerGenderOption(
         page,
         speakerLabelMap[options.speakerGender] ?? SPEAKER_GENDER_UI_LABELS.UNKNOWN,
       )
+      await this.delayMs(computeScaledDelay(1_000, inputCharCount))
 
-      // ── BƯỚC 7: Click addressee gender option ──
+      // ── BƯỚC 9: Click addressee gender option ──
       await this.clickAddresseeGenderOption(
         page,
         speakerLabelMap[options.addresseeGender] ?? ADDRESSEE_GENDER_UI_LABELS.UNKNOWN,
       )
+      await this.delayMs(computeScaledDelay(1_000, inputCharCount))
 
-      // ── BƯỚC 8: Chọn style "Natural" ──
+      // ── BƯỚC 10: Chọn style "Natural" ──
       const styleLabel = styleToLabel.natural
       await this.clickTranslationStyleOption(page, styleLabel)
+      await this.delayMs(computeScaledDelay(1_500, inputCharCount))
 
-      // ── BƯỚC 9: Set reading level theo options.readingLevel ──
+      // ── BƯỚC 11: Set reading level theo options.readingLevel ──
       const readingLevel = options.readingLevel
-      await this.delayMs(computeScaledDelay(2_000, inputCharCount))
       await this.setReadingLevel(page, readingLevel)
       await this.verifyReadingLevelInAddressBar(page, readingLevel)
+      await this.delayMs(computeScaledDelay(2_000, inputCharCount))
 
-      // ── BƯỚC 10: Set formality theo options.formality ──
+      // ── BƯỚC 12: Set formality theo options.formality ──
       const formality: string = options.formality
       const targetLabel = formalityToLabel[formality] ?? FORMALITY_UI_LABELS.STANDARD
       const formalityUrlFragment = formalityToUrlFragment[formality] ?? {
@@ -254,6 +367,28 @@ export class KagiBrowserService implements IBrowserService {
   }
 
   /**
+   * Verifies logged-in session status by loading Kagi account settings.
+   * Throws only when redirecting away from settings or when navigation fails.
+   */
+  private async verifyLoginSuccess(page: Page, timeoutMs: number): Promise<void> {
+    const settingsUrl = 'https://kagi.com/settings'
+    try {
+      await page.goto(settingsUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
+    } catch (error) {
+      throw new BrowserAutomationError(
+        'login-verification-navigation-failed',
+        settingsUrl,
+        error instanceof Error ? error : undefined,
+      )
+    }
+
+    const currentUrl = page.url()
+    if (!currentUrl.startsWith(settingsUrl)) {
+      throw new BrowserAutomationError('login-verification-failed', currentUrl)
+    }
+  }
+
+  /**
    * Verifies the address bar includes the expected language_complexity param.
    * Fail-fast nếu reading level không được phản ánh lên URL.
    */
@@ -271,11 +406,11 @@ export class KagiBrowserService implements IBrowserService {
           }
           return actual === expected
         },
+        expectedReadingLevel,
         {
           timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
           polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS,
         },
-        expectedReadingLevel,
       )
     } catch (error) {
       const currentUrl = page.url()
@@ -302,7 +437,9 @@ export class KagiBrowserService implements IBrowserService {
   ): Promise<void> {
     try {
       await page.waitForFunction(
-        (expectedFormalityValue: string | null, expectedContextValue: string | null) => {
+        (pair: { a: string | null; b: string | null }) => {
+          const expectedFormalityValue = pair.a
+          const expectedContextValue = pair.b
           const params = new URLSearchParams(location.search)
           if (expectedFormalityValue === null && expectedContextValue === null) {
             return params.get('formality') === null && params.get('formality_context') === null
@@ -312,12 +449,11 @@ export class KagiBrowserService implements IBrowserService {
             params.get('formality_context') === expectedContextValue
           )
         },
+        { a: expectedFormality, b: expectedFormalityContext },
         {
           timeout: BROWSER_CONFIG.WAIT_FOR_SELECTOR_TIMEOUT,
           polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS,
         },
-        expectedFormality,
-        expectedFormalityContext,
       )
     } catch (error) {
       const currentUrl = page.url()
@@ -341,7 +477,7 @@ export class KagiBrowserService implements IBrowserService {
 
   /**
    * Waits until `.translation-content` has non-empty text.
-   * Avoids Puppeteer `visible: true`, which often false-fails under Docker/Xvfb while Kagi has
+   * Avoids strict visibility checks that can false-fail under Docker/Xvfb while Kagi has
    * already rendered output.
    */
   private async waitForTranslationVisible(
@@ -356,13 +492,37 @@ export class KagiBrowserService implements IBrowserService {
           const el = document.querySelector(sel)
           return (el?.textContent ?? '').trim().length > 0
         },
-        { timeout: selectorTimeout, polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS },
         selector,
+        { timeout: selectorTimeout, polling: BROWSER_CONFIG.TRANSLATION_OUTPUT_POLL_MS },
       )
     } catch {
       console.warn(`Timeout waiting for ${selector} — continuing with fallback delay…`)
       await this.delayMs(fallbackDelay)
     }
+  }
+
+  /**
+   * Directory for PNG snapshots. In Docker, bind `./screenshot` → `/app/screenshot` and set `SCREENSHOT_DIR=/app/screenshot`.
+   * Locally defaults to `<cwd>/screenshot`.
+   */
+  private getScreenshotOutputDir(): string {
+    const fromEnv = process.env.SCREENSHOT_DIR?.trim()
+    if (fromEnv !== undefined && fromEnv !== '') {
+      return fromEnv
+    }
+    return join(process.cwd(), 'screenshot')
+  }
+
+  /**
+   * Full-page PNG capture; writes under {@link getScreenshotOutputDir}.
+   */
+  private async capturePageSnapshot(page: Page, stem: string): Promise<void> {
+    const dir = this.getScreenshotOutputDir()
+    await mkdir(dir, { recursive: true })
+    const ts = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
+    const filePath = join(dir, `${stem}-${ts}.png`)
+    await page.screenshot({ path: filePath, type: 'png', fullPage: true })
+    console.log(`Snapshot saved: ${filePath}`)
   }
 
   /**
@@ -415,7 +575,10 @@ export class KagiBrowserService implements IBrowserService {
     try {
       console.log(`⚙️  Clicking formality "${label}"…`)
       await page.waitForFunction(
-        (sel: string, targetLabel: string, labels: readonly string[]) => {
+        (box: { sel: string; targetLabel: string; labels: readonly string[] }) => {
+          const sel = box.sel
+          const targetLabel = box.targetLabel
+          const labels = box.labels
           const trim = (el: HTMLElement): string => el.textContent?.trim() ?? ''
           const labelList = labels
           const all = Array.from(document.querySelectorAll<HTMLElement>(sel))
@@ -463,10 +626,8 @@ export class KagiBrowserService implements IBrowserService {
           const rect = span.getBoundingClientRect()
           return btn !== null && rect.width > 0 && rect.height > 0
         },
+        { sel: spanSelector, targetLabel: label, labels: threeLabels },
         { timeout },
-        spanSelector,
-        label,
-        threeLabels as unknown as readonly string[],
       )
 
       await this.humanInteraction.clickByTextContent(page, spanSelector, label, 0)
@@ -489,34 +650,66 @@ export class KagiBrowserService implements IBrowserService {
     const expectedSearchFragment: string =
       readingLevel === 'standard' ? '' : `language_complexity=${readingLevel}`
 
+    const logStepFail = (step: string, error: unknown): void => {
+      console.warn(
+        `[reading-level] Could not set "${readingLevel}" (${step}):`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+
     try {
-      console.log(`⚙️  Setting reading level "${readingLevel}" → step ${targetValue}…`)
+      console.log(`[reading-level] Setting "${readingLevel}" -> step ${targetValue}`)
+      console.log('[reading-level] 1/3 Waiting for slider (non-zero layout)…')
       await page.waitForFunction(
         (sel: string) => {
-          const slider = document.querySelector<HTMLInputElement>(sel)
-          if (slider === null) {
-            return false
+          for (const slider of Array.from(document.querySelectorAll<HTMLInputElement>(sel))) {
+            const rect = slider.getBoundingClientRect()
+            if (rect.width > 0 && rect.height > 0) {
+              return true
+            }
           }
-
-          const rect = slider.getBoundingClientRect()
-          return rect.width > 0 && rect.height > 0
+          return false
         },
-        { timeout },
         selector,
+        { timeout },
       )
+      console.log('[reading-level] 1/3 OK')
+    } catch (error) {
+      logStepFail('step 1/3: slider not found or zero-size', error)
+      return
+    }
 
+    try {
+      console.log('[reading-level] 2/3 Dragging slider…')
       const currentValue = 0
       await this.humanInteraction.dragSlider(page, selector, currentValue, targetValue)
+      console.log('[reading-level] 2/3 OK')
+    } catch (error) {
+      logStepFail('step 2/3: dragSlider', error)
+      return
+    }
 
+    try {
+      console.log('[reading-level] 3/3 Waiting for aria-valuenow + URL…')
       await page.waitForFunction(
-        (sel: string, nextValue: number, searchFragment: string) => {
-          const slider = document.querySelector<HTMLInputElement>(sel)
+        (box: { sel: string; nextValue: number; searchFragment: string }) => {
+          const sel = box.sel
+          const nextValue = box.nextValue
+          const searchFragment = box.searchFragment
+          let slider: HTMLInputElement | null = null
+          for (const el of Array.from(document.querySelectorAll<HTMLInputElement>(sel))) {
+            const r = el.getBoundingClientRect()
+            if (r.width > 0 && r.height > 0) {
+              slider = el
+              break
+            }
+          }
           if (slider === null) {
             return false
           }
 
-          const ariaNow = slider.getAttribute('aria-valuenow')
-          if (ariaNow !== String(nextValue)) {
+          const ariaRaw = slider.getAttribute('aria-valuenow')
+          if (ariaRaw === null || Number(ariaRaw) !== nextValue) {
             return false
           }
 
@@ -526,16 +719,16 @@ export class KagiBrowserService implements IBrowserService {
 
           return location.search.includes(searchFragment)
         },
+        {
+          sel: selector,
+          nextValue: targetValue,
+          searchFragment: expectedSearchFragment,
+        },
         { timeout },
-        selector,
-        targetValue,
-        expectedSearchFragment,
       )
+      console.log('[reading-level] 3/3 OK')
     } catch (error) {
-      console.warn(
-        `⚠️  Could not set reading level "${readingLevel}":`,
-        error instanceof Error ? error.message : error,
-      )
+      logStepFail('step 3/3: aria/URL sync', error)
     }
   }
 
@@ -549,7 +742,7 @@ export class KagiBrowserService implements IBrowserService {
 
     try {
       console.log('⚙️  Clicking Translation Settings…')
-      await page.waitForSelector(selector, { timeout: clickTimeout, visible: true })
+      await page.waitForSelector(selector, { timeout: clickTimeout, state: 'visible' })
       await this.humanInteraction.click(page, selector)
     } catch (error) {
       console.warn(
@@ -615,7 +808,7 @@ export class KagiBrowserService implements IBrowserService {
 
     try {
       console.log(`⚙️  Setting translation context (${text.length} chars)…`)
-      // Do not use Puppeteer `visible: true` here: under Docker + smaller Xvfb (e.g. 1024×768)
+      // Do not use strict visibility checks here: under Docker + smaller Xvfb (e.g. 1024×768)
       // the textarea can sit in a scrollable modal below the fold and fail the visibility check
       // even though it exists (same rationale as waitForTranslationVisible).
       await page.waitForFunction(
@@ -632,8 +825,8 @@ export class KagiBrowserService implements IBrowserService {
           el.scrollIntoView({ block: 'center', inline: 'nearest' })
           return true
         },
-        { timeout },
         primarySel,
+        { timeout },
       )
 
       await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
@@ -660,7 +853,7 @@ export class KagiBrowserService implements IBrowserService {
       const text =
         rawText.length <= MAX_INPUT_TEXT_LENGTH ? rawText : rawText.slice(0, MAX_INPUT_TEXT_LENGTH)
       console.log(`Setting source text (${text.length} chars)...`)
-      await page.waitForSelector(selector, { timeout, visible: true })
+      await page.waitForSelector(selector, { timeout, state: 'visible' })
 
       if (charCount <= HUMAN_INPUT_THRESHOLD) {
         await this.humanInteraction.typeIntoContentEditable(page, selector, text)
@@ -694,7 +887,7 @@ export class KagiBrowserService implements IBrowserService {
         )
       }
 
-      await page.waitForSelector(selector, { timeout, visible: true })
+      await page.waitForSelector(selector, { timeout, state: 'visible' })
       await page.click(selector)
       await this.delayMs(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
       await page.focus(selector)
@@ -753,7 +946,10 @@ export class KagiBrowserService implements IBrowserService {
     try {
       console.log(`⚙️  Clicking ${logKind} "${label}"…`)
       await page.waitForFunction(
-        (sel: string, text: string, index: number) => {
+        (box: { sel: string; text: string; index: number }) => {
+          const sel = box.sel
+          const text = box.text
+          const index = box.index
           const spans = Array.from(document.querySelectorAll<HTMLElement>(sel))
           const matches = spans.filter((el) => el.textContent?.trim() === text)
           const el = matches[index]
@@ -764,10 +960,8 @@ export class KagiBrowserService implements IBrowserService {
           const rect = el.getBoundingClientRect()
           return btn !== null && rect.width > 0 && rect.height > 0
         },
+        { sel: spanSelector, text: label, index: matchIndex },
         { timeout },
-        spanSelector,
-        label,
-        matchIndex,
       )
 
       await this.humanInteraction.clickByTextContent(page, spanSelector, label, matchIndex)
@@ -775,6 +969,45 @@ export class KagiBrowserService implements IBrowserService {
       console.warn(
         `⚠️  Could not click ${logKind} "${label}":`,
         error instanceof Error ? error.message : error,
+      )
+    }
+  }
+
+  /**
+   * DOM-based readiness after navigation: Kagi UI visible or explicit Cloudflare failure text.
+   * Replaces a fixed post-goto sleep so slow Turnstile does not race the automation.
+   */
+  private async waitForCloudflareReady(page: Page): Promise<void> {
+    const handle = await page.waitForFunction(
+      (pair: { sourceSel: string; settingsSel: string }) => {
+        const sourceSel = pair.sourceSel
+        const settingsSel = pair.settingsSel
+        const text = (document.body?.innerText ?? '').toLowerCase()
+        const sourceReady = document.querySelector(sourceSel) !== null
+        const settingsReady = document.querySelector(settingsSel) !== null
+        if (sourceReady || settingsReady) {
+          return 'ready'
+        }
+        if (text.includes('verification failed')) {
+          return 'failed'
+        }
+        return false
+      },
+      {
+        sourceSel: KAGI_SELECTORS.SOURCE_TEXT_INPUT,
+        settingsSel: KAGI_SELECTORS.TRANSLATION_SETTINGS_BUTTON,
+      },
+      {
+        timeout: BROWSER_CONFIG.CLOUDFLARE_VERIFICATION_TIMEOUT_MS,
+        polling: BROWSER_CONFIG.CLOUDFLARE_VERIFICATION_POLL_MS,
+      },
+    )
+    const state: unknown = await handle.jsonValue()
+    if (state === 'failed') {
+      throw new BrowserAutomationError(
+        'cloudflare-readiness',
+        page.url(),
+        new Error('Cloudflare verification failed (page text)'),
       )
     }
   }
@@ -793,8 +1026,8 @@ export class KagiBrowserService implements IBrowserService {
     try {
       await page.waitForFunction(
         (fragment: string) => location.search.includes(fragment),
-        { timeout },
         expectedFragment,
+        { timeout },
       )
     } catch {
       console.warn(`⚠️  URL did not update with "${expectedFragment}" within ${timeout}ms`)
@@ -823,7 +1056,9 @@ export class KagiBrowserService implements IBrowserService {
     })
 
     await page.waitForFunction(
-      (sel: string, stable: number) => {
+      (pair: { sel: string; stable: number }) => {
+        const sel = pair.sel
+        const stable = pair.stable
         const w = window as unknown as {
           __kagiTranslationStable?: { lastLen: number; stableAt: number }
         }
@@ -845,9 +1080,8 @@ export class KagiBrowserService implements IBrowserService {
 
         return now - o.stableAt >= stable
       },
+      { sel: selector, stable: stableMs },
       { timeout: maxMs, polling: pollMs },
-      selector,
-      stableMs,
     )
 
     await this.delayMs(BROWSER_CONFIG.POST_STABLE_EXTRA_MS)
@@ -855,11 +1089,11 @@ export class KagiBrowserService implements IBrowserService {
 
   /**
    * Scrapes translated text from Kagi page with multiple fallback strategies
-   * @param page - Puppeteer page instance
+   * @param page - Patchright page instance
    * @returns Translated text or error message
    */
   private async scrapeTranslatedText(page: Page): Promise<string> {
-    /** Plain record so Puppeteer `evaluate` accepts it as a serializable argument */
+    /** Plain record so `page.evaluate` accepts it as a serializable argument */
     const selectors: Record<string, string> = {
       TRANSLATION_CONTENT: KAGI_SELECTORS.TRANSLATION_CONTENT,
       TEXT_SPAN: KAGI_SELECTORS.TEXT_SPAN,
@@ -907,10 +1141,20 @@ export class KagiBrowserService implements IBrowserService {
   }
 
   /**
-   * Closes the browser instance
+   * Closes the browser instance.
+   *
+   * Optional (commented): 20s inspect delay + full-page snapshot before close — uncomment when needed for debugging.
    */
   async close(): Promise<void> {
     if (this.connection) {
+      // await this.delayMs(20_000)
+      // try {
+      //   const page = this.connection.getPage()
+      //   await this.capturePageSnapshot(page, 'before-browser-close-complete')
+      // } catch {
+      //   // Non-fatal: page may be detached or screenshot unsupported
+      // }
+      console.log('✅ Complete!\n')
       await this.connection.close()
       this.connection = null
     }

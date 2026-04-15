@@ -54,7 +54,7 @@ USER bunuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD bun --version || exit 1
 
-# Set display for Xvfb
+# Headful Chromium in Docker needs a virtual display for stable automation under Xvfb.
 ENV DISPLAY=:99
 
 # Start Xvfb with realistic resolution (Full HD) and run script
@@ -62,4 +62,8 @@ ENV DISPLAY=:99
 # 1. Remove stale Chromium singleton lock files (left over from previous container runs).
 #    Without cleanup, a new container (new hostname) sees the old lock as "another machine" → Chrome exits.
 # 2. Wait until Xvfb socket exists before starting the app (avoids race condition on :99 display).
+#
+# Previous command before using a shared Xvfb container setup:
+# CMD ["sh", "-c", "rm -f /app/user-data/SingletonLock /app/user-data/SingletonCookie /app/user-data/SingletonSocket && bun run src/index.ts"]
+
 CMD ["sh", "-c", "rm -f /app/user-data/SingletonLock /app/user-data/SingletonCookie /app/user-data/SingletonSocket; Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset & until [ -S /tmp/.X11-unix/X99 ]; do sleep 1; done && bun run src/index.ts"]

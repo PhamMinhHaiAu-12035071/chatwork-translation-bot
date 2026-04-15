@@ -101,8 +101,6 @@ async function main(): Promise<void> {
   } catch (error) {
     console.error('\n❌ Error:', error)
     throw error
-  } finally {
-    console.log('✅ Complete!\n')
   }
 }
 

@@ -96,7 +96,7 @@ export const BROWSER_CONFIG = {
    * Kagi can stream long translations; a fixed delay is insufficient.
    */
   TRANSLATION_OUTPUT_STABLE_MS: 1500,
-  /** How often Puppeteer re-checks the stability predicate (ms). */
+  /** How often automation re-checks the stability predicate (ms). */
   TRANSLATION_OUTPUT_POLL_MS: 400,
   /** Max time to wait for streaming output to stabilize (ms). */
   TRANSLATION_OUTPUT_MAX_WAIT_MS: 90000,
@@ -122,9 +122,26 @@ export const BROWSER_CONFIG = {
 } as const
 
 /**
+ * Kagi marketing / account origin — visit this first and inject session cookies (see {@link KAGI_SESSION_FILE_ENV})
+ * so translate.kagi.com is less likely to show Cloudflare when reusing an exported browser session.
+ */
+export const KAGI_ORIGIN_URL = 'https://kagi.com/'
+
+/**
  * Kagi Translate URL base
  */
 export const KAGI_TRANSLATE_BASE_URL = 'https://translate.kagi.com/'
+
+/**
+ * Optional path to a JSON file: `{ "url"?: string, "cookies": Chrome-export[] }` (same shape as udemy-crawler `secrets/cookies.json`).
+ * When set, automation loads cookies after opening {@link KAGI_ORIGIN_URL}, then navigates to the translate URL.
+ */
+export const KAGI_SESSION_FILE_ENV = 'KAGI_SESSION_FILE' as const
+
+/**
+ * Default session cookie JSON file name used by local/Docker runs when env var is not set.
+ */
+export const KAGI_SESSION_FILE_NAME = 'kagi.com_15-04-2026.json' as const
 
 /**
  * CSS selectors for scraping Kagi Translate results

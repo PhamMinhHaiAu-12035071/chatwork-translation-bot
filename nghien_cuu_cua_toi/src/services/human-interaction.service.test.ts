@@ -1,11 +1,32 @@
 import { describe, it, expect, mock } from 'bun:test'
 import { HumanInteractionService } from '~/services/human-interaction.service'
 
+interface LocatorStub {
+  pressSequentially: ReturnType<typeof mock>
+  fill: ReturnType<typeof mock>
+  scrollIntoViewIfNeeded: ReturnType<typeof mock>
+  first: () => LocatorStub
+}
+
+/** Playwright-style locator stub (chain: locator().first().pressSequentially / fill). */
+function createLocatorStub(): LocatorStub {
+  const stub: LocatorStub = {
+    pressSequentially: mock(async () => {}),
+    fill: mock(async () => {}),
+    scrollIntoViewIfNeeded: mock(async () => {}),
+    first() {
+      return stub
+    },
+  }
+  return stub
+}
+
 // Minimal mock page — only methods used by HumanInteractionService
 function createMockPage(overrides: Record<string, unknown> = {}) {
   return {
     click: mock(async (_selector?: string) => {}),
     focus: mock(async () => {}),
+    locator: mock((_selector: string) => createLocatorStub()),
     type: mock(async (_selector: string, _text: string, _opts?: unknown) => {}),
     evaluate: mock(async (_fn: unknown, ..._args: unknown[]) => undefined as unknown),
     waitForSelector: mock(async (_selector: string, _opts?: unknown) => null),
@@ -18,6 +39,7 @@ function createMockPage(overrides: Record<string, unknown> = {}) {
     },
     mouse: {
       move: mock(async (_x: number, _y: number) => {}),
+      click: mock(async (_x: number, _y: number) => {}),
       down: mock(async () => {}),
       up: mock(async () => {}),
     },
@@ -25,8 +47,77 @@ function createMockPage(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function withMockRandom<T>(values: number[], action: () => Promise<T>): Promise<T> {
+  const originalRandom = Math.random
+  let index = 0
+  Math.random = () => {
+    const value = values[index % values.length]
+    index += 1
+    return value
+  }
+
+  return action().finally(() => {
+    Math.random = originalRandom
+  })
+}
+
 describe('HumanInteractionService', () => {
   describe('click()', () => {
+    it('should move mouse along path before clicking', async () => {
+      const service = new HumanInteractionService()
+      const actionLog: string[] = []
+      const page = createMockPage({
+        evaluate: mock(async () => ({ width: 24, height: 24, top: 10, left: 12 })),
+        mouse: {
+          move: mock(async () => {
+            actionLog.push('move')
+          }),
+          click: mock(async () => {
+            actionLog.push('click')
+          }),
+          down: mock(async () => {
+            actionLog.push('down')
+          }),
+          up: mock(async () => {
+            actionLog.push('up')
+          }),
+        },
+      })
+
+      await service.click(page as never, 'button[aria-label="Translation Settings"]')
+
+      expect(actionLog).toContain('move')
+      expect(actionLog).toContain('click')
+      expect(actionLog.indexOf('move')).toBeLessThan(actionLog.indexOf('click'))
+    })
+
+    it('should move mouse along curved path in clickByTextContent', async () => {
+      const service = new HumanInteractionService()
+      const actionLog: string[] = []
+      const page = createMockPage({
+        evaluate: mock(async (_selector: string) => ({ width: 24, height: 24, top: 10, left: 12 })),
+        mouse: {
+          move: mock(async () => {
+            actionLog.push('move')
+          }),
+          click: mock(async () => {}),
+          down: mock(async () => {
+            actionLog.push('down')
+          }),
+          up: mock(async () => {
+            actionLog.push('up')
+          }),
+        },
+      })
+
+      await service.clickByTextContent(page as never, 'span.option', 'Natural', 0)
+
+      expect(actionLog).toContain('move')
+      expect(actionLog.indexOf('move')).toBeLessThan(actionLog.indexOf('down'))
+      expect(actionLog).toContain('down')
+      expect(actionLog).toContain('up')
+    })
+
     it('should fallback to page.click() when bounding rect width is 0 (Docker)', async () => {
       const service = new HumanInteractionService()
       const page = createMockPage({
@@ -38,7 +129,7 @@ describe('HumanInteractionService', () => {
       expect(page.click).toHaveBeenCalledWith('button[aria-label="Translation Settings"]')
     })
 
-    it('should fallback to page.click() when evaluate throws (ghost-cursor error)', async () => {
+    it('should fallback to page.click() when evaluate throws', async () => {
       const service = new HumanInteractionService()
       const page = createMockPage({
         evaluate: mock(async () => {
@@ -52,23 +143,54 @@ describe('HumanInteractionService', () => {
   })
 
   describe('typeIntoContentEditable()', () => {
-    it('should call page.type() per character with delay option', async () => {
+    it('should type in random bursts via locator.pressSequentially with varied delays', async () => {
       const service = new HumanInteractionService()
       const page = createMockPage()
+      const stub = createLocatorStub()
+      ;(page.locator as ReturnType<typeof mock>).mockImplementation(() => stub)
 
-      await service.typeIntoContentEditable(
-        page as never,
-        '[aria-label="Source text input"]',
-        'hello',
+      await withMockRandom(
+        [0.2, 0.55, 0.25, 0.75, 0.4, 0.65, 0.35, 0.85, 0.45, 0.15, 0.6, 0.9, 0.35],
+        () =>
+          service.typeIntoContentEditable(
+            page as never,
+            '[aria-label="Source text input"]',
+            'Quick typed burst behavior check',
+          ),
       )
 
-      expect(page.type).toHaveBeenCalledTimes(5)
-      expect(page.type).toHaveBeenNthCalledWith(
+      const calls = stub.pressSequentially.mock.calls
+      const delays = calls
+        .map((entry) => entry[1])
+        .filter((entry) => entry && typeof entry === 'object' && 'delay' in entry)
+        .map((entry) => (entry as { delay: number }).delay)
+      expect(calls.length).toBeGreaterThan(1)
+      expect(stub.pressSequentially).toHaveBeenNthCalledWith(
         1,
-        '[aria-label="Source text input"]',
-        'h',
+        expect.any(String),
         expect.objectContaining({ delay: expect.any(Number) }),
       )
+      expect(new Set(delays).size).toBeGreaterThan(1)
+      expect(calls.some((entry) => typeof entry[0] === 'string' && entry[0].length > 1)).toBe(true)
+    })
+
+    it('should occasionally execute typo recovery via Backspace', async () => {
+      const service = new HumanInteractionService()
+      const page = createMockPage()
+      const stub = createLocatorStub()
+      ;(page.locator as ReturnType<typeof mock>).mockImplementation(() => stub)
+
+      await expect(
+        withMockRandom([0, 0.7, 0.7, 0.7, 0.7], () =>
+          service.typeIntoContentEditable(
+            page as never,
+            '[aria-label="Source text input"]',
+            'typo check',
+          ),
+        ),
+      ).resolves.toBeUndefined()
+
+      expect(page.keyboard.press).toHaveBeenCalledWith('Backspace')
     })
   })
 
@@ -94,10 +216,12 @@ describe('HumanInteractionService', () => {
     it('should type last 3-5 chars via typeIntoContentEditable for small text', async () => {
       const service = new HumanInteractionService()
       const page = createMockPage()
+      const stub = createLocatorStub()
+      ;(page.locator as ReturnType<typeof mock>).mockImplementation(() => stub)
 
       await service.chunkPaste(page as never, '[aria-label="Source text input"]', 'Hi')
 
-      expect(page.type).toHaveBeenCalled()
+      expect(stub.pressSequentially).toHaveBeenCalled()
     })
   })
 

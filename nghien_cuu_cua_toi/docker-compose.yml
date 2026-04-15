@@ -8,10 +8,15 @@ services:
     volumes:
       # Persist Chrome profile across runs to reduce Docker fingerprint churn
       - ./user-data:/app/user-data
+      # PNG snapshots: written in KagiBrowserService.close() before browser exits
+      - ./screenshot:/app/screenshot
+      # Kagi session cookie JSON (auto-detected when present at /app/secrets/kagi.com_15-04-2026.json)
+      - ./secrets:/app/secrets:ro
     environment:
       - DISPLAY=:99
       - USER_DATA_DIR=/app/user-data
       - CHROME_PATH=/usr/bin/chromium
+      - SCREENSHOT_DIR=/app/screenshot
     logging:
       driver: json-file
       options:

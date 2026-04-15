@@ -1,6 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { beforeAll, beforeEach, describe, expect, it, mock, setDefaultTimeout } from 'bun:test'
 import type { createKagiServer as CreateKagiServerType } from './server'
 import type { KagiSidecarError as KagiSidecarErrorType } from './browser-service'
+
+setDefaultTimeout(10_000)
 
 describe('createKagiServer', () => {
   let createKagiServer: typeof CreateKagiServerType

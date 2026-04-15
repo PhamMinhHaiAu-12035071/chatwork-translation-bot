@@ -4,7 +4,7 @@ Production-grade TypeScript automation for Kagi Translate with **≥95% test cov
 
 ## 🎯 Overview
 
-- **Stack:** Bun v1.1+ · TypeScript 5.4+ strict · Puppeteer Real Browser
+- **Stack:** Bun v1.1+ · TypeScript 5.4+ strict · patchright (Chromium automation)
 - **Architecture:** Clean Code · SOLID principles (SRP, DIP, ISP)
 - **Testing:** ≥95% coverage · 100+ tests (unit + integration + e2e)
 - **Docker:** ONE COMMAND workflow · Optimized multi-stage build
@@ -54,7 +54,7 @@ nghien_cuu_cua_toi/
 │   │   │   └── browser.interface.ts
 │   │   ├── url-builder.service.ts        # URL building + validation
 │   │   ├── url-builder.service.test.ts
-│   │   ├── browser.service.ts            # Puppeteer automation
+│   │   ├── browser.service.ts            # Patchright automation
 │   │   ├── browser.service.test.ts
 │   │   └── index.ts
 │   ├── errors/

@@ -6,7 +6,10 @@ import { describe, it, expect } from 'bun:test'
 import {
   DEFAULT_TRANSLATION_CONFIG,
   BROWSER_CONFIG,
+  KAGI_ORIGIN_URL,
   KAGI_TRANSLATE_BASE_URL,
+  KAGI_SESSION_FILE_ENV,
+  KAGI_SESSION_FILE_NAME,
   KAGI_SELECTORS,
   TRANSLATION_STYLE_UI_LABELS,
   FORMALITY_UI_LABELS,
@@ -149,6 +152,24 @@ describe('Translation Config', () => {
       expect(getReadingLevelSliderValue('b2')).toBe(4)
       expect(getReadingLevelSliderValue('c1')).toBe(5)
       expect(getReadingLevelSliderValue('c2')).toBe(6)
+    })
+  })
+
+  describe('KAGI_ORIGIN_URL', () => {
+    it('should point at kagi.com for session bootstrap', () => {
+      expect(KAGI_ORIGIN_URL).toBe('https://kagi.com/')
+    })
+  })
+
+  describe('KAGI_SESSION_FILE_ENV', () => {
+    it('should be the env var name for optional cookie JSON path', () => {
+      expect(KAGI_SESSION_FILE_ENV).toBe('KAGI_SESSION_FILE')
+    })
+  })
+
+  describe('KAGI_SESSION_FILE_NAME', () => {
+    it('should be the fixed default session cookie filename', () => {
+      expect(KAGI_SESSION_FILE_NAME).toBe('kagi.com_15-04-2026.json')
     })
   })
 

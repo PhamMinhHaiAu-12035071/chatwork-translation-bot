@@ -1,21 +1,21 @@
-import type { Page } from 'puppeteer-core'
+import type { Page } from 'patchright'
 
 /**
  * Human-like interaction abstraction (Dependency Inversion Principle).
  *
- * KagiBrowserService depends on this interface, not on ghost-cursor or @forad/puppeteer-humanize directly.
+ * KagiBrowserService depends on this interface, not on a specific interaction helper implementation.
  * All methods must degrade gracefully in Docker (bounding rect may be 0).
  */
 export interface IHumanInteraction {
   /**
-   * Ghost-cursor Bezier move to element → click at random point within element.
-   * Fallback: page.click(selector) if bounding rect invalid or ghost-cursor throws.
+   * Moves to a computed point within element bounds and clicks.
+   * Fallback: page.click(selector) if bounding rect is invalid.
    */
   click(page: Page, selector: string): Promise<void>
 
   /**
-   * Find span element by text content + matchIndex → ghost-cursor move to rect center ± jitter → click parent button.
-   * Fallback: page.evaluate(() => btn.click()) if bounding rect invalid or ghost-cursor throws.
+   * Find span element by text content + matchIndex and click its parent button.
+   * Fallback: page.evaluate(() => btn.click()) if bounding rect is invalid.
    */
   clickByTextContent(
     page: Page,
@@ -25,22 +25,22 @@ export interface IHumanInteraction {
   ): Promise<void>
 
   /**
-   * @forad/puppeteer-humanize typeInto() for standard <textarea> elements.
-   * Fallback: page.type() with fixed delay if humanize throws.
+   * Types text for standard <textarea> elements with per-character sequencing.
+   * Fallback: page.fill() with fixed delay semantics if direct typing is unavailable.
    */
   typeIntoTextarea(page: Page, selector: string, text: string): Promise<void>
 
   /**
-   * page.type() with variable keystroke delay (50–150ms) + pause after punctuation.
-   * For CodeMirror contenteditable — puppeteer-humanize is NOT compatible.
+   * Uses variable keystroke delay (50–150ms) + pause after punctuation.
+   * For CodeMirror contenteditable, per-character typing is used instead of bulk fills.
    * Fallback: page.evaluate(() => execCommand('insertText', ...)).
    */
   typeIntoContentEditable(page: Page, selector: string, text: string): Promise<void>
 
   /**
-   * Ghost-cursor drag from slider's fromStep pixel position to toStep pixel position.
+   * Drags the slider from fromStep to toStep.
    * Fallback: page.evaluate(() => { slider.value = toStep; slider.dispatchEvent(new Event('input', {bubbles: true})) })
-   * if bounding rect.width === 0 (Docker scenario).
+   * when bounding rect width is not usable (Docker scenario).
    */
   dragSlider(page: Page, sliderSelector: string, fromStep: number, toStep: number): Promise<void>
 

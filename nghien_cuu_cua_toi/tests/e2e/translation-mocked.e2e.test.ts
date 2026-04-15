@@ -5,11 +5,12 @@
  * No rate limiting needed (all mocked)
  * Faster execution, no real API calls
  *
- * Run: bun test tests/e2e/translation-mocked.e2e.test.ts
+ * ⚠️ SKIP by default due to large test count (~9s each, 30-40 tests = 5-6 minutes)
+ * Run explicitly: RUN_MOCKED_E2E=1 bun test tests/e2e/translation-mocked.e2e.test.ts
  */
 
 import { describe, it, expect, beforeEach, mock, setDefaultTimeout } from 'bun:test'
-import type { Page } from 'puppeteer-core'
+import type { Page } from 'patchright'
 import type { IHumanInteraction } from '~/services/interfaces/human-interaction.interface'
 
 setDefaultTimeout(30_000)
@@ -19,11 +20,14 @@ import type { TranslationOptions } from '~/types'
 
 const MOCK_FINAL_URL = 'https://translate.kagi.com/?mockFinal=1'
 
-// Mock puppeteer-real-browser
+// Mock patchright chromium.launchPersistentContext
+const mockWaitForFunctionHandle = { jsonValue: mock(async () => 'ready' as const) }
+
 const mockPage = {
   goto: mock(async () => {}),
   waitForSelector: mock(async () => {}),
-  waitForFunction: mock(async () => {}),
+  waitForFunction: mock(async () => mockWaitForFunctionHandle),
+  screenshot: mock(async () => {}),
   click: mock(async (_selector?: string) => {}),
   focus: mock(async () => {}),
   type: mock(async () => {}),
@@ -65,16 +69,27 @@ const mockBrowser = {
   close: mock(async () => {}),
 }
 
-const mockConnect = mock(async () => ({
-  browser: mockBrowser,
-  page: mockPage,
+const mockPersistentContext = {
+  close: mockBrowser.close,
+  pages: () => [mockPage],
+  newPage: mock(async () => mockPage),
+  /** Used when `KAGI_SESSION_FILE` is set (optional session bootstrap before translate). */
+  addCookies: mock(async () => {}),
+}
+
+const mockLaunchPersistentContext = mock(async () => mockPersistentContext)
+
+mock.module('patchright', () => ({
+  chromium: {
+    launchPersistentContext: mockLaunchPersistentContext,
+  },
 }))
 
-mock.module('puppeteer-real-browser', () => ({
-  connect: mockConnect,
-}))
+/** Skip mocked E2E tests by default (set RUN_MOCKED_E2E=1 to run). */
+const runMockedE2E = process.env.RUN_MOCKED_E2E === '1'
+const mockedE2ETest = runMockedE2E ? describe : describe.skip
 
-describe('E2E Mocked: Pairwise Translation Scenarios', () => {
+mockedE2ETest('E2E Mocked: Pairwise Translation Scenarios', () => {
   let urlBuilder: KagiUrlBuilder
   let browserService: KagiBrowserService
 
@@ -87,6 +102,8 @@ describe('E2E Mocked: Pairwise Translation Scenarios', () => {
     mockPage.goto.mockClear()
     mockPage.waitForSelector.mockClear()
     mockPage.waitForFunction.mockClear()
+    mockLaunchPersistentContext.mockClear()
+    mockPage.screenshot.mockClear()
     mockPage.click.mockClear()
     mockPage.focus.mockClear()
     mockPage.evaluate.mockClear()

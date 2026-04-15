@@ -7,6 +7,8 @@
  * - Loose coupling between components
  */
 
+import type { BrowserContext } from 'patchright'
+
 /**
  * Browser connection result
  */
@@ -15,6 +17,10 @@ export interface IBrowserConnection {
    * Closes the browser connection
    */
   close(): Promise<void>
+  /**
+   * Patchright / Playwright context (for cookies, etc.). Omitted in lightweight test mocks.
+   */
+  getContext?(): BrowserContext
 }
 
 import type { TranslationOptions } from '~/types'

@@ -5,7 +5,10 @@
 export {
   DEFAULT_TRANSLATION_CONFIG,
   BROWSER_CONFIG,
+  KAGI_ORIGIN_URL,
   KAGI_TRANSLATE_BASE_URL,
+  KAGI_SESSION_FILE_ENV,
+  KAGI_SESSION_FILE_NAME,
   KAGI_SELECTORS,
   TRANSLATION_STYLE_UI_LABELS,
   FORMALITY_UI_LABELS,
@@ -27,3 +30,5 @@ export {
   computeDelayMultiplier,
   computeScaledDelay,
 } from './delay.config'
+
+export { HUMANIZER_CONFIG } from './humanizer.config'
