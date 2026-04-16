@@ -9,6 +9,8 @@
  *   bun run start (Docker)
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+
 // Direct imports to satisfy ESLint strict type checking
 import type { IUrlBuilder } from '~/services/interfaces/url-builder.interface'
 import type { IBrowserService } from '~/services/interfaces/browser.interface'
@@ -24,6 +26,60 @@ import {
   getDefaultTranslationOptions,
 } from '~/config/translation.config'
 import type { ReadingLevel } from '~/types'
+
+/**
+ * Reads and validates input file for batch translation.
+ * @param filePath - Path to JSON file containing array of messages
+ * @returns Array of message strings
+ * @throws Error with guidance if file invalid or missing
+ */
+export function readInputFile(filePath: string): string[] {
+  // Check file exists
+  if (!existsSync(filePath)) {
+    throw new Error(
+      `Input file not found: ${filePath}\n\n` +
+        `Create the file with this format:\n` +
+        `[\n` +
+        `  "Message 1 to translate...",\n` +
+        `  "Message 2 to translate..."\n` +
+        `]\n\n` +
+        `Or override the path:\n` +
+        `  INPUT_FILE=./my-batch.json bun run start:local`,
+    )
+  }
+
+  // Read and parse JSON
+  let parsed: unknown
+  try {
+    const content = readFileSync(filePath, 'utf-8')
+    parsed = JSON.parse(content)
+  } catch (error) {
+    throw new Error(
+      `Failed to parse ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+
+  // Validate is array
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Input file ${filePath} must be an array of strings, got: ${typeof parsed}`)
+  }
+
+  // Validate not empty
+  if (parsed.length === 0) {
+    throw new Error(`Input file ${filePath} must contain at least 1 message`)
+  }
+
+  // Validate all items are strings
+  for (const [index, item] of parsed.entries()) {
+    if (typeof item !== 'string') {
+      throw new Error(
+        `Input file ${filePath} item at index ${index} must be a string, got: ${typeof item}`,
+      )
+    }
+  }
+
+  return parsed
+}
 
 /**
  * Main translation workflow

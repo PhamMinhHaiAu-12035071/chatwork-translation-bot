@@ -8,7 +8,7 @@
  * Run explicitly: RUN_INDEX_INTEGRATION=1 bun test src/index.test.ts
  */
 
-import { beforeEach, describe, it, expect, mock, setDefaultTimeout } from 'bun:test'
+import { beforeEach, afterEach, describe, it, expect, mock, setDefaultTimeout } from 'bun:test'
 import type { Page } from 'patchright'
 import type { IHumanInteraction } from '~/services/interfaces/human-interaction.interface'
 
@@ -443,5 +443,60 @@ integrationTest('Integration: Real-World Scenarios', () => {
     expect(mockLaunchPersistentContext).toHaveBeenCalled()
     expect(mockPage.goto).toHaveBeenCalled()
     expect(mockBrowser.close).toHaveBeenCalled()
+  })
+})
+
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { readInputFile } from './index'
+
+describe('readInputFile', () => {
+  const testFilePath = 'test-input.json'
+
+  afterEach(() => {
+    try {
+      unlinkSync(testFilePath)
+    } catch {
+      // File may not exist
+    }
+  })
+
+  it('should read and parse valid JSON array', () => {
+    writeFileSync(testFilePath, JSON.stringify(['msg1', 'msg2', 'msg3']))
+    const result = readInputFile(testFilePath)
+    expect(result).toEqual(['msg1', 'msg2', 'msg3'])
+  })
+
+  it('should throw error with guidance if file does not exist', () => {
+    expect(() => {
+      readInputFile('nonexistent.json')
+    }).toThrow(/Input file not found/)
+  })
+
+  it('should throw error if file is not valid JSON', () => {
+    writeFileSync(testFilePath, 'invalid json {')
+    expect(() => {
+      readInputFile(testFilePath)
+    }).toThrow(/Failed to parse/)
+  })
+
+  it('should throw error if JSON is not an array', () => {
+    writeFileSync(testFilePath, JSON.stringify({ messages: ['a'] }))
+    expect(() => {
+      readInputFile(testFilePath)
+    }).toThrow(/must be an array/)
+  })
+
+  it('should throw error if array is empty', () => {
+    writeFileSync(testFilePath, JSON.stringify([]))
+    expect(() => {
+      readInputFile(testFilePath)
+    }).toThrow(/at least 1 message/)
+  })
+
+  it('should throw error if array contains non-string', () => {
+    writeFileSync(testFilePath, JSON.stringify(['valid', 42, 'also valid']))
+    expect(() => {
+      readInputFile(testFilePath)
+    }).toThrow(/index 1.*must be a string/)
   })
 })
