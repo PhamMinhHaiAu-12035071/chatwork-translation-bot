@@ -144,6 +144,21 @@ export const KAGI_SESSION_FILE_ENV = 'KAGI_SESSION_FILE' as const
 export const KAGI_SESSION_FILE_NAME = 'kagi.com_15-04-2026.json' as const
 
 /**
+ * Env var to override default input file path for batch translation
+ */
+export const INPUT_FILE_ENV = 'INPUT_FILE' as const
+
+/**
+ * Default input file path for batch translation (local development)
+ */
+export const INPUT_FILE_DEFAULT_PATH = 'inputs/messages.json' as const
+
+/**
+ * Docker container input file path for batch translation
+ */
+export const INPUT_FILE_DOCKER_PATH = '/app/inputs/messages.json' as const
+
+/**
  * CSS selectors for scraping Kagi Translate results
  */
 export const KAGI_SELECTORS = {

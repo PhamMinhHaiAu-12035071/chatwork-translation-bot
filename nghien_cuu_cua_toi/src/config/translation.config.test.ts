@@ -23,6 +23,9 @@ import {
   INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT,
   MAX_INPUT_TEXT_LENGTH,
   clampInputText,
+  INPUT_FILE_ENV,
+  INPUT_FILE_DEFAULT_PATH,
+  INPUT_FILE_DOCKER_PATH,
 } from './translation.config'
 
 describe('Translation Config', () => {
@@ -323,6 +326,20 @@ describe('Translation Config', () => {
 
     it('MAX_INPUT_TEXT_LENGTH should equal 20000', () => {
       expect(MAX_INPUT_TEXT_LENGTH).toBe(20_000)
+    })
+  })
+
+  describe('Batch translation configuration', () => {
+    it('INPUT_FILE_ENV should be defined', () => {
+      expect(INPUT_FILE_ENV).toBe('INPUT_FILE')
+    })
+
+    it('INPUT_FILE_DEFAULT_PATH should point to inputs/messages.json', () => {
+      expect(INPUT_FILE_DEFAULT_PATH).toBe('inputs/messages.json')
+    })
+
+    it('INPUT_FILE_DOCKER_PATH should point to /app/inputs/messages.json', () => {
+      expect(INPUT_FILE_DOCKER_PATH).toBe('/app/inputs/messages.json')
     })
   })
 })
