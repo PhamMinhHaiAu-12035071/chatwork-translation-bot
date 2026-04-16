@@ -12,13 +12,12 @@
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,md,yml,yaml}\"",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "smoke:patchright": "bun run scripts/smoke-patchright-launch.ts"
   },
   "dependencies": {
     "@chatwork-bot/provider-kagi": "workspace:*",
-    "@forad/puppeteer-humanize": "^1.1.8",
     "elysia": "^1.4.27",
-    "ghost-cursor": "^1.4.2",
-    "puppeteer-real-browser": "^1.4.4"
+    "patchright": "^1.59.0"
   }
 }
