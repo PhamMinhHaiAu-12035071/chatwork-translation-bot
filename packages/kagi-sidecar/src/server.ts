@@ -1,11 +1,6 @@
 import { Elysia, t } from 'elysia'
-import {
-  KagiBrowserService,
-  KagiSidecarError,
-  type KagiTranslateRequest,
-  type KagiTranslationResult,
-  type KagiHealthSnapshot,
-} from './browser-service'
+import { KagiBrowserService, KagiSidecarError, type KagiHealthSnapshot } from './browser-service'
+import type { KagiTranslateUiRequest, TranslateResult } from './types/browser.interface'
 import { KAGI_STYLE_VALUES } from '@chatwork-bot/provider-kagi'
 import type { KagiStyle } from '@chatwork-bot/provider-kagi'
 
@@ -16,7 +11,7 @@ interface KagiServerLogger {
 }
 
 export interface KagiTranslationService {
-  translate(request: KagiTranslateRequest): Promise<KagiTranslationResult>
+  translate(request: KagiTranslateUiRequest): Promise<TranslateResult>
   getHealthSnapshot(): KagiHealthSnapshot
 }
 
@@ -80,7 +75,7 @@ export function createKagiServer(
     .get('/health', () => {
       const snapshot = service.getHealthSnapshot()
       return {
-        ok: true,
+        ok: snapshot.ready,
         ...snapshot,
       }
     })
@@ -114,9 +109,7 @@ export function createKagiServer(
 
           logger.info('kagi_translate_completed', {
             requestId,
-            attempts: result.attempts,
-            queueWaitMs: result.queueWaitMs,
-            transportLatencyMs: result.transportLatencyMs,
+            translatedLength: result.translated.length,
           })
 
           return { translated: result.translated }

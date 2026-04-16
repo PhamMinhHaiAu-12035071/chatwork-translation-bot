@@ -12,9 +12,7 @@ describe('createKagiServer', () => {
     translate: mock((_request: { text: string; style: string; context?: string }) =>
       Promise.resolve({
         translated: 'Xin chao',
-        attempts: 1,
-        queueWaitMs: 0,
-        transportLatencyMs: 10,
+        finalUrl: 'https://translate.kagi.com/?from=auto&to=vi&text=hello',
       }),
     ),
     getHealthSnapshot: mock(() => ({
@@ -38,9 +36,7 @@ describe('createKagiServer', () => {
     service.translate.mockImplementation((_request) =>
       Promise.resolve({
         translated: 'Xin chao',
-        attempts: 1,
-        queueWaitMs: 0,
-        transportLatencyMs: 10,
+        finalUrl: 'https://translate.kagi.com/?from=auto&to=vi&text=hello',
       }),
     )
   })
@@ -124,5 +120,21 @@ describe('createKagiServer', () => {
       activeCount: 0,
       queuedCount: 0,
     })
+  })
+
+  it('/health returns ok=false until the service reports ready=true', async () => {
+    const notReadyService = {
+      translate() {
+        return Promise.reject(
+          new KagiSidecarError('UI_INTERACTION', 'unused in this test', { status: 502 }),
+        )
+      },
+      getHealthSnapshot: () => ({ ready: false, activeCount: 0, queuedCount: 0 }),
+    }
+    const app = createKagiServer({ service: notReadyService })
+    const res = await app.handle(new Request('http://test/health'))
+    const body = (await res.json()) as { ok: boolean; ready: boolean }
+    expect(body.ok).toBe(false)
+    expect(body.ready).toBe(false)
   })
 })
