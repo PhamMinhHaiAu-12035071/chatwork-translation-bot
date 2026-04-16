@@ -196,6 +196,40 @@ export class KagiBrowserService implements IBrowserService {
   }
 
   /**
+   * Opens a new browser tab and closes the previous one.
+   * Used for batch translation to ensure each message runs in a clean tab state.
+   * Updates the internal page reference to the new tab.
+   * @throws {BrowserAutomationError} If browser not launched or tab creation fails
+   */
+  async openNewTab(): Promise<void> {
+    if (this.connection === null) {
+      throw new BrowserAutomationError(
+        'open-new-tab',
+        'Browser not launched. Call launch() first.',
+        undefined,
+      )
+    }
+
+    const context = this.connection.getContext()
+    if (context === undefined) {
+      throw new BrowserAutomationError(
+        'open-new-tab',
+        'Browser context not available',
+        undefined,
+      )
+    }
+
+    const oldPage = this.connection.getPage()
+    const newPage = await context.newPage()
+
+    // Update connection to use new page
+    this.connection = new BrowserConnection(context, newPage)
+
+    // Close old page to free resources
+    await oldPage.close()
+  }
+
+  /**
    * Navigates to Kagi Translate URL and extracts translated text
    * @param url - Complete Kagi Translate URL with parameters
    * @returns Translated text and the tab URL when the run finishes (before {@link close})
