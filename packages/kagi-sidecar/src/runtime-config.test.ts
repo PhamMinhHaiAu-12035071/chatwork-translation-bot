@@ -45,3 +45,26 @@ describe('resolveKagiRuntimeConfig', () => {
     ).toThrow('KAGI_MAX_QUEUE_DEPTH must be a positive integer')
   })
 })
+
+describe('runtime-config new env vars', () => {
+  it('resolves USER_DATA_DIR, KAGI_SESSION_FILE, KAGI_HEADLESS', async () => {
+    const { resolveKagiRuntimeConfig } = await import('./runtime-config')
+    const config = resolveKagiRuntimeConfig({
+      USER_DATA_DIR: '/tmp/kagi-user-data',
+      KAGI_SESSION_FILE: '/app/secrets/kagi.com_16-04-2026.json',
+      KAGI_HEADLESS: 'true',
+    } as NodeJS.ProcessEnv)
+
+    expect(config.browser.userDataDir).toBe('/tmp/kagi-user-data')
+    expect(config.browser.sessionFile).toBe('/app/secrets/kagi.com_16-04-2026.json')
+    expect(config.browser.headless).toBe(true)
+  })
+
+  it('defaults userDataDir to cwd()/user-data and headless to false when env unset', async () => {
+    const { resolveKagiRuntimeConfig } = await import('./runtime-config')
+    const config = resolveKagiRuntimeConfig({} as NodeJS.ProcessEnv)
+    expect(config.browser.userDataDir.endsWith('user-data')).toBe(true)
+    expect(config.browser.sessionFile).toBeUndefined()
+    expect(config.browser.headless).toBe(false)
+  })
+})
