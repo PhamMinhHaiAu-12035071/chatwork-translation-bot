@@ -75,6 +75,7 @@ const KEYBOARD_NEIGHBORHOOD = new Map<string, string[]>()
 for (const [rowIndex, row] of KEYBOARD_LAYOUT_ROWS.entries()) {
   for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
     const key = row[colIndex]
+    if (key === undefined) continue
     const neighbors: string[] = []
 
     for (let deltaRow = -1; deltaRow <= 1; deltaRow += 1) {

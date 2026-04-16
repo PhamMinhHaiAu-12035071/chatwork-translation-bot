@@ -15,6 +15,7 @@ function distance(pointA: Point, pointB: Point): number {
 function pathLength(points: Point[]): number {
   return points.slice(1).reduce((acc, point, index) => {
     const previous = points[index]
+    if (previous === undefined) return acc
     return acc + distance(previous, point)
   }, 0)
 }

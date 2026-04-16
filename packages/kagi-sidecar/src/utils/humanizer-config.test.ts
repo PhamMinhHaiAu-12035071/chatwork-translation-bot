@@ -12,7 +12,7 @@ function withMockRandom<T>(values: number[], action: () => T): T {
   const originalRandom = Math.random
   let index = 0
   Math.random = () => {
-    const value = values[index]
+    const value = values[index] ?? 0
     index = Math.min(index + 1, values.length - 1)
     return value
   }
