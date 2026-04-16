@@ -10,6 +10,9 @@ dist/
 .env.local
 .env.*.local
 
+# Session cookies and sensitive files
+secrets/
+
 # Logs
 *.log
 npm-debug.log*
