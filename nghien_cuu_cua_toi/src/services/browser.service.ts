@@ -226,7 +226,9 @@ export class KagiBrowserService implements IBrowserService {
     this.connection = new BrowserConnection(context, newPage)
 
     // Close old page to free resources
-    await oldPage.close()
+    if (oldPage && typeof oldPage.close === 'function') {
+      await oldPage.close()
+    }
   }
 
   /**

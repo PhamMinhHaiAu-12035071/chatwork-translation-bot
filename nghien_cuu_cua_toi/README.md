@@ -35,6 +35,159 @@ bun install
 bun run src/index.ts
 ```
 
+## 📦 Batch Translation
+
+Translate multiple messages from a JSON file in a single run. The bot will:
+
+1. ✅ Launch browser once
+2. ✅ Translate all messages sequentially
+3. ✅ Close browser once (optimized)
+4. ✅ Stream results to console
+
+### Usage
+
+**Local execution:**
+
+```bash
+# Create input file
+cat > inputs/messages.json << 'EOF'
+[
+  "Hello world",
+  "Good morning",
+  "Thank you"
+]
+EOF
+
+# Run batch translation
+bun run src/index.ts
+
+# Or with custom path
+INPUT_FILE=custom/messages.json bun run src/index.ts
+```
+
+**Docker execution:**
+
+```bash
+# Create input file
+cat > inputs/messages.json << 'EOF'
+[
+  "Hello world",
+  "Good morning"
+]
+EOF
+
+# Run with Docker (volume-mounted)
+docker compose up --build
+```
+
+### Input File Format
+
+**Required:** JSON array of strings
+
+```json
+[
+  "First message to translate",
+  "Second message to translate",
+  "Third message"
+]
+```
+
+**Validation Rules:**
+
+- ✅ Must be valid JSON
+- ✅ Must be an array (not object)
+- ✅ Must contain at least 1 element
+- ✅ All elements must be strings
+- ✅ File must exist at specified path
+
+**Error Handling:**
+
+```bash
+# Missing file
+❌ Error: INPUT_FILE 'inputs/messages.json' does not exist.
+📌 Create the file or set INPUT_FILE env variable.
+
+# Invalid JSON
+❌ Error: INPUT_FILE 'inputs/messages.json' contains invalid JSON.
+
+# Empty array
+❌ Error: INPUT_FILE 'inputs/messages.json' contains an empty array.
+
+# Non-string element
+❌ Error: INPUT_FILE 'inputs/messages.json' array contains non-string at index 1.
+```
+
+### Configuration
+
+**Input file path:**
+
+| Environment Variable | Default (Local)         | Default (Docker)          |
+| -------------------- | ----------------------- | ------------------------- |
+| `INPUT_FILE`         | `inputs/messages.json`  | `/app/inputs/messages.json` |
+
+**Global translation options:**
+
+All messages use the same translation settings from `translation.config.ts`:
+
+- Reading Level: `c2` (advanced)
+- Formality: `vietnamese_casual`
+- Style: `natural`
+- Source Language: `auto` (detect)
+- Target Language: `vi` (Vietnamese)
+
+### Batch Behavior
+
+**Tab Lifecycle:**
+
+- **Message 1:** Reuses initial browser tab (no new tab)
+- **Message 2+:** Opens new tab, closes previous tab
+- **Result:** Only 1 tab open at a time (memory efficient)
+
+**Error Policy: Fail-Fast**
+
+- ❌ First error aborts entire batch
+- ❌ No partial results
+- ❌ Browser closes immediately on error
+
+**Output Format:**
+
+```bash
+🚀 Launching batch translation (3 messages)...
+
+🔁 Message 1/3
+Final translation output: Xin chào thế giới
+
+🔁 Message 2/3
+Final translation output: Chào buổi sáng
+
+🔁 Message 3/3
+Final translation output: Cảm ơn
+
+
+✅ BATCH COMPLETE: 3/3 messages translated
+
+────────────────────────────────────────────────────────────
+📝 Message 1/3
+📝 Original: Hello world
+📝 Translated: Xin chào thế giới
+🔗 Final URL: https://translate.kagi.com/...
+────────────────────────────────────────────────────────────
+```
+
+### Sample Files
+
+- `inputs/messages.json.example` - Example input file
+- `.gitignore` - Excludes `inputs/` (except `*.example.json`)
+
+### Docker Volume Mount
+
+```yaml
+# docker-compose.yml
+volumes:
+  - ./inputs:/app/inputs       # Input files
+  - ./secrets:/app/secrets     # Session cookies
+```
+
 ## 📂 Project Structure
 
 ```
