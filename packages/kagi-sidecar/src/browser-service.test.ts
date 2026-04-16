@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from 'bun:test'
-import { KagiBrowserService } from './browser-service'
+import { KagiBrowserService, KagiSidecarError } from './browser-service'
 import type { BrowserContext, Page } from 'patchright'
 
 function createFakeContext(pages: Page[] = []): BrowserContext {
@@ -52,5 +52,70 @@ describe('KagiBrowserService.launch + close', () => {
     await service.close()
     // Second close is a no-op, not an error
     await service.close()
+  })
+})
+
+describe('KagiBrowserService.verifyStartupSession', () => {
+  it('sets isLoginVerified=true when /settings renders the logout link', async () => {
+    const pages: Page[] = []
+    const context = {
+      pages: () => pages,
+      newPage: async () => {
+        const page = fakeAuthenticatedPage()
+        pages.push(page)
+        return page
+      },
+      close: async () => undefined,
+      addCookies: async () => undefined,
+    } as unknown as BrowserContext
+
+    function fakeAuthenticatedPage(): Page {
+      return {
+        url: () => 'https://kagi.com/settings',
+        goto: async () => null,
+        evaluate: async (_fn: unknown, selectors: unknown) => {
+          // Simulate an authenticated DOM
+          return { hasLogout: true, hasSigninEmail: false, hasSigninQr: false }
+        },
+      } as unknown as Page
+    }
+
+    pages.push(fakeAuthenticatedPage())
+
+    const service = new KagiBrowserService({
+      launchContext: async () => context,
+      ensureUserDataDir: async () => undefined,
+    })
+    await service.launch()
+    await service.verifyStartupSession()
+
+    expect(service.getHealthSnapshot().ready).toBe(true)
+  })
+
+  it('throws KagiSidecarError(UI_INTERACTION) when /settings shows the signin DOM', async () => {
+    function fakeUnauthenticatedPage(): Page {
+      return {
+        url: () => 'https://kagi.com/settings',
+        goto: async () => null,
+        evaluate: async () => ({ hasLogout: false, hasSigninEmail: true, hasSigninQr: false }),
+      } as unknown as Page
+    }
+
+    const pages: Page[] = [fakeUnauthenticatedPage()]
+    const context = {
+      pages: () => pages,
+      newPage: async () => fakeUnauthenticatedPage(),
+      close: async () => undefined,
+      addCookies: async () => undefined,
+    } as unknown as BrowserContext
+
+    const service = new KagiBrowserService({
+      launchContext: async () => context,
+      ensureUserDataDir: async () => undefined,
+    })
+    await service.launch()
+
+    await expect(service.verifyStartupSession()).rejects.toBeInstanceOf(KagiSidecarError)
+    expect(service.getHealthSnapshot().ready).toBe(false)
   })
 })

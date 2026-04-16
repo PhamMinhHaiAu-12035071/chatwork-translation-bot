@@ -125,7 +125,7 @@ export class KagiBrowserService implements IBrowserService {
   private queueTail: Promise<void> = Promise.resolve()
 
   constructor(options: Partial<KagiBrowserServiceOptions> = {}) {
-    this.options = {
+    const baseOptions = {
       minIntervalMs: options.minIntervalMs ?? 1_500,
       maxQueueDepth: options.maxQueueDepth ?? 10,
       maxQueueWaitMs: options.maxQueueWaitMs ?? 15_000,
@@ -134,7 +134,6 @@ export class KagiBrowserService implements IBrowserService {
       requestTimeoutMs: options.requestTimeoutMs ?? 120_000,
       userDataDir: options.userDataDir ?? join(process.cwd(), 'user-data'),
       headless: options.headless ?? BROWSER_CONFIG.HEADLESS,
-      sessionFile: options.sessionFile ?? undefined,
       sleep: options.sleep ?? ((ms) => Bun.sleep(ms)),
       now: options.now ?? (() => Date.now()),
       random: options.random ?? (() => Math.random()),
@@ -144,6 +143,12 @@ export class KagiBrowserService implements IBrowserService {
       ensureUserDataDir:
         options.ensureUserDataDir ?? ((path) => mkdir(path, { recursive: true }).then(() => undefined)),
     }
+    
+    // Conditionally add sessionFile only if provided
+    this.options = options.sessionFile !== undefined 
+      ? { ...baseOptions, sessionFile: options.sessionFile }
+      : baseOptions
+    
     this.humanInteraction = options.humanInteraction ?? new HumanInteractionService()
   }
 
@@ -201,6 +206,100 @@ export class KagiBrowserService implements IBrowserService {
     }
     this.isLoginVerified = false
     this.hasServedFirstRequest = false
+  }
+
+  async verifyStartupSession(): Promise<void> {
+    if (this.connection === null) {
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        'verifyStartupSession called before launch',
+        { status: 500 },
+      )
+    }
+
+    const context = this.connection.getContext()
+    const page = this.connection.getPage()
+
+    // 1) Optional cookie injection
+    const sessionFilePath = this.resolveKagiSessionFilePath()
+    if (sessionFilePath !== undefined && existsSync(sessionFilePath)) {
+      const { visitKagiOriginAndInjectSessionCookies } = await import('./utils/kagi-session-cookies.js')
+      await visitKagiOriginAndInjectSessionCookies(page, context, {
+        sessionFilePath,
+        timeoutMs: BROWSER_CONFIG.TIMEOUT,
+        defaultOriginUrl: KAGI_ORIGIN_URL,
+      })
+    }
+
+    // 2) Hit /settings and read DOM
+    const settingsUrl = 'https://kagi.com/settings'
+    try {
+      await page.goto(settingsUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: BROWSER_CONFIG.TIMEOUT,
+      })
+    } catch (error) {
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Login verify navigation failed: ${error instanceof Error ? error.message : String(error)}`,
+        { status: 502, cause: error },
+      )
+    }
+
+    const currentUrl = page.url()
+    if (!currentUrl.startsWith(settingsUrl)) {
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Login verify failed — redirected away from /settings to ${currentUrl}`,
+        { status: 502 },
+      )
+    }
+
+    const state = (await page.evaluate(
+      (selectors: { loggedIn: string; signinEmail: string; signinQr: string }) => ({
+        hasLogout: document.querySelector(selectors.loggedIn) !== null,
+        hasSigninEmail: document.querySelector(selectors.signinEmail) !== null,
+        hasSigninQr: document.querySelector(selectors.signinQr) !== null,
+      }),
+      {
+        loggedIn: KAGI_SELECTORS.LOGGED_IN_INDICATOR,
+        signinEmail: KAGI_SELECTORS.SIGNIN_EMAIL_INPUT,
+        signinQr: KAGI_SELECTORS.SIGNIN_QR_AUTH,
+      },
+    )) as { hasLogout: boolean; hasSigninEmail: boolean; hasSigninQr: boolean }
+
+    if (state.hasSigninEmail || state.hasSigninQr) {
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Login verify failed — signin DOM present at ${currentUrl}`,
+        { status: 502 },
+      )
+    }
+    if (!state.hasLogout) {
+      throw new KagiSidecarError(
+        'UI_INTERACTION',
+        `Login verify failed — logout link absent at ${currentUrl}`,
+        { status: 502 },
+      )
+    }
+
+    this.isLoginVerified = true
+  }
+
+  private resolveKagiSessionFilePath(): string | undefined {
+    const fromOptions = this.options.sessionFile?.trim()
+    if (fromOptions !== undefined && fromOptions !== '') return fromOptions
+    const fromEnv = process.env[KAGI_SESSION_FILE_ENV]?.trim()
+    if (fromEnv !== undefined && fromEnv !== '') return fromEnv
+
+    const candidates = [
+      join(process.cwd(), 'secrets', KAGI_SESSION_FILE_NAME),
+      join('/app', 'secrets', KAGI_SESSION_FILE_NAME),
+    ]
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) return candidate
+    }
+    return undefined
   }
 
   // translate(): implemented in Task 10
