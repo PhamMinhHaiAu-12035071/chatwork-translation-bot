@@ -160,8 +160,10 @@ async function main(): Promise<void> {
   }
 }
 
-// Execute main workflow
-void main().catch((error: unknown) => {
-  console.error('\n❌ Fatal error:', error)
-  process.exit(1)
-})
+// Execute main workflow (skip during tests)
+if (import.meta.main) {
+  void main().catch((error: unknown) => {
+    console.error('\n❌ Fatal error:', error)
+    process.exit(1)
+  })
+}
