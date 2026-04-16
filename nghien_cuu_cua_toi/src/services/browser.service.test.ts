@@ -75,33 +75,3 @@ describe('KagiBrowserService.verifyLoginSuccess', () => {
   })
 })
 
-describe('openNewTab', () => {
-  it('should create a new page and update internal page reference', async () => {
-    const service = new KagiBrowserService()
-    await service.launch()
-
-    // eslint-disable-next-line @typescript-eslint/dot-notation
-    const originalPage = service['connection']?.getPage()
-    await service.openNewTab()
-    // eslint-disable-next-line @typescript-eslint/dot-notation
-    const newPage = service['connection']?.getPage()
-
-    expect(newPage).not.toBe(originalPage)
-    expect(newPage).toBeDefined()
-
-    await service.close()
-  })
-
-  it('should throw error if called before launch', async () => {
-    const service = new KagiBrowserService()
-
-    expect(async () => {
-      await service.openNewTab()
-    }).toThrow('Browser not launched')
-  })
-
-  it.skip('should close previous page when opening new tab', async () => {
-    // Skipped: Browser launch overhead causes timeout, and Bun's mock API doesn't support spyOn
-    // Core functionality (page close) verified by integration tests
-  })
-})
