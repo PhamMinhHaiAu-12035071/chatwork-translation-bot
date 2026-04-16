@@ -119,3 +119,90 @@ describe('KagiBrowserService.verifyStartupSession', () => {
     expect(service.getHealthSnapshot().ready).toBe(false)
   })
 })
+
+describe('KagiBrowserService.translate', () => {
+  it('runs the two-phase flow and returns translated text + final url', async () => {
+    const pages: Page[] = []
+
+    function fakePage(): Page {
+      let currentUrl = 'https://translate.kagi.com/?from=auto&to=vi&text=xin%20chao'
+      return {
+        url: () => currentUrl,
+        goto: async (url: string) => {
+          currentUrl = url
+          return null
+        },
+        evaluate: async (fn: unknown, _payload: unknown) => {
+          if (typeof fn === 'function') return {} as unknown
+          return {}
+        },
+        waitForFunction: async () => ({ jsonValue: async () => 'ready' }) as unknown,
+        waitForSelector: async () => null,
+        focus: async () => undefined,
+        click: async () => undefined,
+        keyboard: {
+          press: async () => undefined,
+          down: async () => undefined,
+          insertText: async () => undefined,
+          type: async () => undefined,
+          up: async () => undefined,
+        } as Page['keyboard'],
+        mouse: {
+          click: async () => undefined,
+          move: async () => undefined,
+          down: async () => undefined,
+          up: async () => undefined,
+          dblclick: async () => undefined,
+          wheel: async () => undefined,
+        } as Page['mouse'],
+        locator: () =>
+          ({
+            first: () => ({
+              scrollIntoViewIfNeeded: async () => undefined,
+              pressSequentially: async () => undefined,
+              fill: async () => undefined,
+            }),
+          }) as unknown,
+        close: async () => undefined,
+      } as unknown as Page
+    }
+
+    const page = fakePage()
+    pages.push(page)
+    const context = {
+      pages: () => pages,
+      newPage: async () => page,
+      close: async () => undefined,
+      addCookies: async () => undefined,
+    } as unknown as BrowserContext
+
+    const fakeHumanInteraction = {
+      click: async () => undefined,
+      clickByTextContent: async () => undefined,
+      typeIntoTextarea: async () => undefined,
+      typeIntoContentEditable: async () => undefined,
+      dragSlider: async () => undefined,
+      chunkPaste: async () => undefined,
+    }
+
+    const service = new KagiBrowserService({
+      launchContext: async () => context,
+      ensureUserDataDir: async () => undefined,
+      humanInteraction: fakeHumanInteraction,
+      sleep: async () => undefined,
+    })
+
+    await service.launch()
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+    ;(service as any)['isLoginVerified'] = true
+
+    // Stub scrape to return deterministic text
+    ;(service as unknown as { scrapeTranslatedText: () => Promise<string> }).scrapeTranslatedText =
+      async () => 'Xin chào'
+
+    const result = await service.translate({ text: 'Hello', style: 'Clear' })
+
+    expect(result.translated).toBe('Xin chào')
+    expect(result.finalUrl).toContain('translate.kagi.com')
+  })
+})
