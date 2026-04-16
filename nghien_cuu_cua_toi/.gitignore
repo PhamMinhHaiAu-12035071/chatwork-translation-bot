@@ -34,3 +34,7 @@ lerna-debug.log*
 # Browser data
 .browser/
 user-data/
+
+# Input messages (may contain sensitive content)
+inputs/
+!inputs/*.example.json
