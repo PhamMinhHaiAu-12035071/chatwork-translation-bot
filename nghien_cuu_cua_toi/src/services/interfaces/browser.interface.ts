@@ -47,6 +47,14 @@ export interface IBrowserService {
   launch(): Promise<IBrowserConnection>
 
   /**
+   * Opens a new browser tab within the existing context.
+   * Used for batch translation to isolate each message in a clean tab.
+   * @returns Promise resolving when new page is ready
+   * @throws {BrowserAutomationError} If tab creation fails
+   */
+  openNewTab?(): Promise<void>
+
+  /**
    * Navigates to a URL and extracts translated text
    * @param url - Complete translation service URL
    * @param options - Translation settings applied through the Kagi UI
