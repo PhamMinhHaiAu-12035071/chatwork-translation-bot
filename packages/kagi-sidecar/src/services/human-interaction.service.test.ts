@@ -1,169 +1,247 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
-import type { ElementHandleLike, PageLike } from '~/types/page.interface'
+import { describe, it, expect, mock } from 'bun:test'
 import { HumanInteractionService } from './human-interaction.service'
 
-// Mock ghost-cursor — tests verify fallback paths, not ghost-cursor integration
-void mock.module('ghost-cursor', () => ({
-  createCursor: (_page: unknown) => ({
-    move: mock(() => Promise.resolve()),
-    click: mock(() => Promise.resolve()),
-  }),
-}))
-
-// Mock @forad/puppeteer-humanize
-void mock.module('@forad/puppeteer-humanize', () => ({
-  typeInto: mock((_el: unknown, _text: string) => Promise.resolve()),
-}))
-
-const mockElementHandle: ElementHandleLike = {
-  click: mock(() => Promise.resolve()),
+interface LocatorStub {
+  pressSequentially: ReturnType<typeof mock>
+  fill: ReturnType<typeof mock>
+  scrollIntoViewIfNeeded: ReturnType<typeof mock>
+  first: () => LocatorStub
 }
 
-function makePageLike(overrides: Partial<PageLike> = {}): PageLike {
-  return {
-    goto: mock(() => Promise.resolve(null)),
-    waitForSelector: mock(() => Promise.resolve(mockElementHandle)),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-    evaluate: mock((_fn: unknown, ..._args: unknown[]) => Promise.resolve(null)) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-    $eval: mock(() => Promise.resolve(null)) as any,
-    waitForFunction: mock(() => Promise.resolve()),
-    click: mock(() => Promise.resolve()),
-    focus: mock(() => Promise.resolve()),
-    url: mock(() => 'https://translate.kagi.com/'),
-    type: mock(() => Promise.resolve()),
-    $: mock(() => Promise.resolve(null)),
-    mouse: {
-      move: mock(() => Promise.resolve()),
-      down: mock(() => Promise.resolve()),
-      up: mock(() => Promise.resolve()),
+/** Playwright-style locator stub (chain: locator().first().pressSequentially / fill). */
+function createLocatorStub(): LocatorStub {
+  const stub: LocatorStub = {
+    pressSequentially: mock(async () => {}),
+    fill: mock(async () => {}),
+    scrollIntoViewIfNeeded: mock(async () => {}),
+    first() {
+      return stub
     },
+  }
+  return stub
+}
+
+// Minimal mock page — only methods used by HumanInteractionService
+function createMockPage(overrides: Record<string, unknown> = {}) {
+  return {
+    click: mock(async (_selector?: string) => {}),
+    focus: mock(async () => {}),
+    locator: mock((_selector: string) => createLocatorStub()),
+    type: mock(async (_selector: string, _text: string, _opts?: unknown) => {}),
+    evaluate: mock(async (_fn: unknown, ..._args: unknown[]) => undefined as unknown),
+    waitForSelector: mock(async (_selector: string, _opts?: unknown) => null),
+    waitForFunction: mock(async (_fn: unknown, ..._args: unknown[]) => null),
+    $: mock(async (_selector: string) => null),
     keyboard: {
-      down: mock(() => Promise.resolve()),
-      press: mock(() => Promise.resolve()),
-      up: mock(() => Promise.resolve()),
+      down: mock(async (_key: string) => {}),
+      press: mock(async (_key: string) => {}),
+      up: mock(async (_key: string) => {}),
+    },
+    mouse: {
+      move: mock(async (_x: number, _y: number) => {}),
+      click: mock(async (_x: number, _y: number) => {}),
+      down: mock(async () => {}),
+      up: mock(async () => {}),
     },
     ...overrides,
   }
 }
 
+function withMockRandom<T>(values: number[], action: () => Promise<T>): Promise<T> {
+  const originalRandom = Math.random
+  let index = 0
+  Math.random = () => {
+    const value = values[index % values.length] ?? 0
+    index += 1
+    return value
+  }
+
+  return action().finally(() => {
+    Math.random = originalRandom
+  })
+}
+
 describe('HumanInteractionService', () => {
-  let service: HumanInteractionService
-
-  beforeEach(() => {
-    service = new HumanInteractionService()
-  })
-
-  describe('click', () => {
-    it('falls back to page.click when bounding rect width is 0', async () => {
-      const page = makePageLike({
-        evaluate: mock(() => Promise.resolve({ width: 0, height: 0, top: 0, left: 0 })),
+  describe('click()', () => {
+    it('should move mouse along path before clicking', async () => {
+      const service = new HumanInteractionService()
+      const actionLog: string[] = []
+      const page = createMockPage({
+        evaluate: mock(async () => ({ width: 24, height: 24, top: 10, left: 12 })),
+        mouse: {
+          move: mock(async () => {
+            actionLog.push('move')
+          }),
+          click: mock(async () => {
+            actionLog.push('click')
+          }),
+          down: mock(async () => {
+            actionLog.push('down')
+          }),
+          up: mock(async () => {
+            actionLog.push('up')
+          }),
+        },
       })
-      await service.click(page, '[aria-label="test"]')
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(page.click).toHaveBeenCalledWith('[aria-label="test"]')
+
+      await service.click(page as never, 'button[aria-label="Translation Settings"]')
+
+      expect(actionLog).toContain('move')
+      expect(actionLog).toContain('click')
+      expect(actionLog.indexOf('move')).toBeLessThan(actionLog.indexOf('click'))
     })
 
-    it('falls back to page.click and logs warning on exception', async () => {
-      const page = makePageLike({
-        evaluate: mock(() => Promise.reject(new Error('evaluate failed'))),
+    it('should move mouse along curved path in clickByTextContent', async () => {
+      const service = new HumanInteractionService()
+      const actionLog: string[] = []
+      const page = createMockPage({
+        evaluate: mock(async (_selector: string) => ({ width: 24, height: 24, top: 10, left: 12 })),
+        mouse: {
+          move: mock(async () => {
+            actionLog.push('move')
+          }),
+          click: mock(async () => {}),
+          down: mock(async () => {
+            actionLog.push('down')
+          }),
+          up: mock(async () => {
+            actionLog.push('up')
+          }),
+        },
       })
-      const warnSpy = spyOn(console, 'warn')
-      await service.click(page, '[aria-label="test"]')
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(page.click).toHaveBeenCalledWith('[aria-label="test"]')
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Degraded to standard click'))
-      warnSpy.mockRestore()
+
+      await service.clickByTextContent(page as never, 'span.option', 'Natural', 0)
+
+      expect(actionLog).toContain('move')
+      expect(actionLog.indexOf('move')).toBeLessThan(actionLog.indexOf('down'))
+      expect(actionLog).toContain('down')
+      expect(actionLog).toContain('up')
+    })
+
+    it('should fallback to page.click() when bounding rect width is 0 (Docker)', async () => {
+      const service = new HumanInteractionService()
+      const page = createMockPage({
+        evaluate: mock(async () => ({ width: 0, height: 0, top: 0, left: 0 })),
+      })
+
+      await service.click(page as never, 'button[aria-label="Translation Settings"]')
+
+      expect(page.click).toHaveBeenCalledWith('button[aria-label="Translation Settings"]')
+    })
+
+    it('should fallback to page.click() when evaluate throws', async () => {
+      const service = new HumanInteractionService()
+      const page = createMockPage({
+        evaluate: mock(async () => {
+          throw new Error('evaluate failed')
+        }),
+      })
+
+      await expect(service.click(page as never, '.some-button')).resolves.toBeUndefined()
+      expect(page.click).toHaveBeenCalledWith('.some-button')
     })
   })
 
-  describe('clickByTextContent', () => {
-    it('falls back to evaluate click when rect is invalid and logs warning', async () => {
-      const page = makePageLike({
-        evaluate: mock(() => Promise.resolve({ width: 0, height: 0, top: -1, left: -1 })),
-      })
-      const warnSpy = spyOn(console, 'warn')
-      await service.clickByTextContent(page, 'span.flex-grow', 'Unknown', 0)
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Degraded to evaluate click'))
-      warnSpy.mockRestore()
-    })
-  })
+  describe('typeIntoContentEditable()', () => {
+    it('should type in random bursts via locator.pressSequentially with varied delays', async () => {
+      const service = new HumanInteractionService()
+      const page = createMockPage()
+      const stub = createLocatorStub()
+      ;(page.locator as ReturnType<typeof mock>).mockImplementation(() => stub)
 
-  describe('typeIntoTextarea', () => {
-    it('falls back to page.type when element not found', async () => {
-      const page = makePageLike({
-        $: mock(() => Promise.resolve(null)),
-      })
-      const warnSpy = spyOn(console, 'warn')
-      await service.typeIntoTextarea(page, 'textarea', 'hello')
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(page.type).toHaveBeenCalledWith('textarea', 'hello', { delay: 80 })
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Degraded to page.type'))
-      warnSpy.mockRestore()
-    })
-  })
-
-  describe('dragSlider', () => {
-    it('falls back to evaluate set value when rect width is 0 and logs warning', async () => {
-      const page = makePageLike({
-        evaluate: mock(() => Promise.resolve({ width: 0, height: 0, left: 0, top: 0 })),
-      })
-      const warnSpy = spyOn(console, 'warn')
-      await service.dragSlider(page, 'input[type="range"]', 0, 3)
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Degraded to evaluate set value for slider'),
+      await withMockRandom(
+        [0.2, 0.55, 0.25, 0.75, 0.4, 0.65, 0.35, 0.85, 0.45, 0.15, 0.6, 0.9, 0.35],
+        () =>
+          service.typeIntoContentEditable(
+            page as never,
+            '[aria-label="Source text input"]',
+            'Quick typed burst behavior check',
+          ),
       )
-      warnSpy.mockRestore()
+
+      const calls = stub.pressSequentially.mock.calls
+      const delays = calls
+        .map((entry) => entry[1])
+        .filter((entry) => entry && typeof entry === 'object' && 'delay' in entry)
+        .map((entry) => (entry as { delay: number }).delay)
+      expect(calls.length).toBeGreaterThan(1)
+      expect(stub.pressSequentially).toHaveBeenNthCalledWith(
+        1,
+        expect.any(String),
+        expect.objectContaining({ delay: expect.any(Number) }),
+      )
+      expect(new Set(delays).size).toBeGreaterThan(1)
+      expect(calls.some((entry) => typeof entry[0] === 'string' && entry[0].length > 1)).toBe(true)
     })
 
-    it('dispatches input+change events via evaluate after mouse drag (valid rect)', async () => {
-      let evaluateCallCount = 0
-      const evaluateMock = mock((_fn: unknown, ..._args: unknown[]) => {
-        evaluateCallCount++
-        // First call: return valid rect so mouse drag path is taken
-        if (evaluateCallCount === 1) {
-          return Promise.resolve({ width: 200, height: 20, left: 10, top: 10 })
-        }
-        // Second call: post-drag event dispatch
-        return Promise.resolve(undefined)
-      })
-      const page = makePageLike({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
-        evaluate: evaluateMock as any,
-      })
-      await service.dragSlider(page, 'input[type="range"]', 0, 3)
-      // Mouse drag path taken
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(page.mouse.down).toHaveBeenCalled()
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(page.mouse.up).toHaveBeenCalled()
-      // Evaluate called twice: rect check + post-drag event dispatch
-      expect(evaluateCallCount).toBe(2)
+    it('should occasionally execute typo recovery via Backspace', async () => {
+      const service = new HumanInteractionService()
+      const page = createMockPage()
+      const stub = createLocatorStub()
+      ;(page.locator as ReturnType<typeof mock>).mockImplementation(() => stub)
+
+      await expect(
+        withMockRandom([0, 0.7, 0.7, 0.7, 0.7], () =>
+          service.typeIntoContentEditable(
+            page as never,
+            '[aria-label="Source text input"]',
+            'typo check',
+          ),
+        ),
+      ).resolves.toBeUndefined()
+
+      expect(page.keyboard.press).toHaveBeenCalledWith('Backspace')
     })
   })
 
-  describe('chunkPaste', () => {
-    it('delegates to typeIntoContentEditable for short text (≤10 chars)', async () => {
-      const page = makePageLike()
-      const typeSpy = spyOn(service, 'typeIntoContentEditable').mockImplementation(() =>
-        Promise.resolve(),
-      )
-      await service.chunkPaste(page, '[aria-label="Source"]', 'hi')
-      expect(typeSpy).toHaveBeenCalledWith(page, '[aria-label="Source"]', 'hi')
-      typeSpy.mockRestore()
-    })
-
-    it('uses keyboard.down for paste modifier on longer text', async () => {
-      const page = makePageLike({
-        evaluate: mock(() => Promise.resolve(undefined)),
-        waitForFunction: mock(() => Promise.resolve()),
+  describe('chunkPaste()', () => {
+    it('should call Clipboard API via evaluate and keyboard shortcuts', async () => {
+      const service = new HumanInteractionService()
+      const evaluateCalls: unknown[] = []
+      const page = createMockPage({
+        evaluate: mock(async (fn: unknown, ...args: unknown[]) => {
+          evaluateCalls.push({ fn: fn?.toString().slice(0, 50), args })
+          return undefined
+        }),
+        type: mock(async () => {}),
       })
-      // Spy typeIntoContentEditable to avoid slow keystroke loop
-      spyOn(service, 'typeIntoContentEditable').mockImplementation(() => Promise.resolve())
-      const longText = 'a'.repeat(600)
-      await service.chunkPaste(page, '[aria-label="Source"]', longText)
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
+      await service.chunkPaste(page as never, '[aria-label="Source text input"]', 'Hello World')
+
       expect(page.keyboard.down).toHaveBeenCalled()
+      expect(page.keyboard.press).toHaveBeenCalledWith('v')
+      expect(page.keyboard.up).toHaveBeenCalled()
+    })
+
+    it('should type last 3-5 chars via typeIntoContentEditable for small text', async () => {
+      const service = new HumanInteractionService()
+      const page = createMockPage()
+      const stub = createLocatorStub()
+      ;(page.locator as ReturnType<typeof mock>).mockImplementation(() => stub)
+
+      await service.chunkPaste(page as never, '[aria-label="Source text input"]', 'Hi')
+
+      expect(stub.pressSequentially).toHaveBeenCalled()
+    })
+  })
+
+  describe('dragSlider()', () => {
+    it('should fallback to evaluate set value when slider rect width is 0 (Docker)', async () => {
+      const service = new HumanInteractionService()
+      let evaluateCallCount = 0
+      const page = createMockPage({
+        evaluate: mock(async () => {
+          evaluateCallCount++
+          if (evaluateCallCount === 1) {
+            return { width: 0, height: 0, left: 0, top: 0 }
+          }
+          return true
+        }),
+      })
+
+      await service.dragSlider(page as never, 'input[type="range"]', 0, 3)
+
+      expect(evaluateCallCount).toBe(2)
     })
   })
 })
