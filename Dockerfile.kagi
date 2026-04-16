@@ -18,6 +18,7 @@ COPY packages/translator/package.json packages/translator/
 COPY packages/webhook-logger/package.json packages/webhook-logger/
 COPY packages/dataset-runner/package.json packages/dataset-runner/
 COPY packages/dashboard/package.json packages/dashboard/
+COPY packages/message-queue/package.json packages/message-queue/
 COPY packages/kagi-sidecar/package.json packages/kagi-sidecar/
 
 RUN bun install --frozen-lockfile
@@ -25,9 +26,8 @@ RUN bun install --frozen-lockfile
 # Stage 2: Runtime
 FROM oven/bun:1.3 AS runtime
 
+# ARM64-safe: install patchright's patched Chromium instead of distro chromium
 RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-driver \
     xvfb \
     fonts-liberation \
     fonts-noto-color-emoji \
@@ -41,6 +41,16 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libasound2 \
     libxss1 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libcups2 \
+    libpangocairo-1.0-0 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -57,6 +67,9 @@ COPY packages/kagi-sidecar/scripts packages/kagi-sidecar/scripts
 COPY packages/kagi-sidecar/src packages/kagi-sidecar/src
 COPY packages/provider-kagi/package.json packages/provider-kagi/package.json
 COPY packages/provider-kagi/src packages/provider-kagi/src
+
+# Install patchright's patched Chromium binary
+RUN bunx patchright install chromium
 
 ENV NODE_ENV=production
 ENV KAGI_PORT=3002
