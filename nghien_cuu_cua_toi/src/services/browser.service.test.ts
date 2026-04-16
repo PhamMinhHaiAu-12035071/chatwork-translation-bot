@@ -80,8 +80,10 @@ describe('openNewTab', () => {
     const service = new KagiBrowserService()
     await service.launch()
 
+    // eslint-disable-next-line @typescript-eslint/dot-notation
     const originalPage = service['connection']?.getPage()
     await service.openNewTab()
+    // eslint-disable-next-line @typescript-eslint/dot-notation
     const newPage = service['connection']?.getPage()
 
     expect(newPage).not.toBe(originalPage)

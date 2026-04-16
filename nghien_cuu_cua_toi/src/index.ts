@@ -16,16 +16,15 @@ import type { IUrlBuilder } from '~/services/interfaces/url-builder.interface'
 import type { IBrowserService } from '~/services/interfaces/browser.interface'
 import { KagiUrlBuilder } from '~/services/url-builder.service'
 import { KagiBrowserService } from '~/services/browser.service'
-import { runReadingLevelSweep } from '~/services/reading-level-sweep.service'
+import { runBatchTranslation } from '~/services/batch-translation.service'
 import {
-  BROWSER_CONFIG,
-  DEFAULT_TRANSLATION_CONFIG,
-  INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT,
+  INPUT_FILE_ENV,
+  INPUT_FILE_DEFAULT_PATH,
+  INPUT_FILE_DOCKER_PATH,
   clampTranslationContext,
   clampInputText,
   getDefaultTranslationOptions,
 } from '~/config/translation.config'
-import type { ReadingLevel } from '~/types'
 
 /**
  * Reads and validates input file for batch translation.
@@ -82,76 +81,77 @@ export function readInputFile(filePath: string): string[] {
 }
 
 /**
- * Main translation workflow
- *
- * Clean, small, focused function following SRP
- * Depends on abstractions (IUrlBuilder, IBrowserService) following DIP
+ * Main batch translation workflow
  */
 async function main(): Promise<void> {
   console.log('╔════════════════════════════════════════════════════════════╗')
-  console.log('║      🌐 KAGI TRANSLATE AUTOMATION (Production-Ready)     ║')
+  console.log('║      🌐 KAGI BATCH TRANSLATE AUTOMATION                   ║')
   console.log('╚════════════════════════════════════════════════════════════╝\n')
 
-  // Load configuration (`bun run start:local` preset — override context via TRANSLATION_CONTEXT)
-  const rawInputText = DEFAULT_TRANSLATION_CONFIG.INPUT_TEXT
-  const inputText = clampInputText(rawInputText)
-  const options = getDefaultTranslationOptions()
+  // Resolve input file path
+  const isDocker = process.env.NODE_ENV === 'production'
+  const defaultPath = isDocker ? INPUT_FILE_DOCKER_PATH : INPUT_FILE_DEFAULT_PATH
+  const inputFilePath = process.env[INPUT_FILE_ENV] ?? defaultPath
 
+  console.log(`📁 Input file: ${inputFilePath}\n`)
+
+  // Read and validate messages
+  let messages: string[]
+  try {
+    messages = readInputFile(inputFilePath)
+  } catch (error) {
+    console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`)
+    process.exit(1)
+  }
+
+  // Clamp each message to max length
+  const clampedMessages = messages.map((msg) => clampInputText(msg))
+
+  console.log(`✅ Loaded ${messages.length} message(s) from ${inputFilePath}`)
+
+  // Load translation options
+  const options = getDefaultTranslationOptions()
   options.translationContext =
     process.env.TRANSLATION_CONTEXT !== undefined
       ? clampTranslationContext(process.env.TRANSLATION_CONTEXT)
-      : INDEX_ENTRY_SAMPLE_TRANSLATION_CONTEXT
+      : ''
 
-  console.log(`📝 Text cần translate: "${inputText}"`)
   console.log(`🌍 ${options.sourceLang} → ${options.targetLang}`)
-  const runtimeReadingLevels: readonly ReadingLevel[] = ['c2']
-
-  console.log('⚙️  Translation preset (Kagi UI):')
-  console.log('    Translate Style:')
-  console.log('        Type: Natural')
-  console.log('        Formality: Vietnamese Casual')
-  console.log('    Reading Level: C2')
-  console.log('    Speaker: Unknown')
-  console.log('    Addressee: Unknown')
-  console.log('(env TRANSLATION_CONTEXT overrides brief context; empty string = no context)\n')
+  console.log('⚙️  Translation preset:')
+  console.log(`    Style: ${options.style}`)
+  console.log(`    Formality: ${options.formality}`)
+  console.log(`    Reading Level: ${options.readingLevel}`)
+  console.log(`    Speaker: ${options.speakerGender}`)
+  console.log(`    Addressee: ${options.addresseeGender}`)
   console.log(
-    `⚙️  Reading sweep: ${runtimeReadingLevels.join(' -> ')} | Style: ${options.style} | Formality: ${options.formality}`,
-  )
-  console.log(`👤 Speaker: ${options.speakerGender} | Addressee: ${options.addresseeGender}`)
-  console.log(
-    `📎 Translation context: ${options.translationContext === '' ? '(none)' : `"${options.translationContext}"`}\n`,
+    `    Context: ${options.translationContext === '' ? '(none)' : `"${options.translationContext}"`}\n`,
   )
 
-  // Initialize services (Dependency Injection)
+  // Initialize services
   const urlBuilder: IUrlBuilder = new KagiUrlBuilder()
   const browserService: IBrowserService = new KagiBrowserService()
 
   try {
-    console.log('🚀 Launching sequential reading-level sweep...')
-    console.log(`⏳ Delay between levels: ${BROWSER_CONFIG.READING_LEVEL_SWEEP_DELAY_MS}ms\n`)
+    console.log(`🚀 Launching batch translation (${messages.length} messages)...\n`)
 
-    const results = await runReadingLevelSweep(
-      inputText,
-      options,
-      {
-        urlBuilder,
-        browserService,
-        log: (message: string) => {
-          console.log(message)
-        },
+    const results = await runBatchTranslation(clampedMessages, options, {
+      urlBuilder,
+      browserService,
+      log: (message: string) => {
+        console.log(message)
       },
-      BROWSER_CONFIG.READING_LEVEL_SWEEP_DELAY_MS,
-      runtimeReadingLevels,
-    )
+    })
 
+    // Print results
     const divider = '─'.repeat(60)
-    console.log('\n✅ READING LEVEL SWEEP RESULT:')
+    console.log(`\n✅ BATCH COMPLETE: ${results.length}/${messages.length} messages translated\n`)
+
     for (const result of results) {
       console.log(divider)
-      console.log(`📝 Original (${options.sourceLang}):\n${inputText}\n`)
-      console.log(`📚 Reading Level: ${result.readingLevel}`)
-      console.log(`🔗 Final URL (address bar when done):\n${result.finalUrl}`)
-      console.log(`📝 Translated (${options.targetLang}):\n${result.translated}`)
+      console.log(`📝 Message ${result.index + 1}/${results.length}`)
+      console.log(`📝 Original: ${result.original}`)
+      console.log(`📝 Translated: ${result.translated}`)
+      console.log(`🔗 Final URL: ${result.finalUrl}`)
     }
     console.log(divider)
   } catch (error) {

@@ -446,7 +446,7 @@ integrationTest('Integration: Real-World Scenarios', () => {
   })
 })
 
-import { readFileSync, writeFileSync, unlinkSync } from 'node:fs'
+import { writeFileSync, unlinkSync } from 'node:fs'
 import { readInputFile } from './index'
 
 describe('readInputFile', () => {
