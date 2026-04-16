@@ -13,9 +13,11 @@ const SETTINGS_URL = 'https://kagi.com/settings'
 const createMockPage = ({
   finalUrl = SETTINGS_URL,
   gotoError,
+  domState = { hasLogout: true, hasSigninEmail: false, hasSigninQr: false },
 }: {
   finalUrl?: string
   gotoError?: Error
+  domState?: { hasLogout: boolean; hasSigninEmail: boolean; hasSigninQr: boolean }
 } = {}): Page => {
   let currentUrl = finalUrl
   return {
@@ -26,14 +28,18 @@ const createMockPage = ({
       currentUrl = finalUrl
     }),
     url: mock(() => currentUrl),
+    evaluate: mock(async () => domState),
   } as unknown as Page
 }
 
+const bindVerify = (service: KagiBrowserService): VerifyLoginMethod['verifyLoginSuccess'] =>
+  (service as unknown as VerifyLoginMethod).verifyLoginSuccess.bind(service)
+
 describe('KagiBrowserService.verifyLoginSuccess', () => {
-  it('should pass when /settings remains on settings URL', async () => {
+  it('should pass when /settings remains on settings URL and logout link present', async () => {
     const page = createMockPage()
     const service = new KagiBrowserService()
-    const verifyLoginSuccess = (service as unknown as VerifyLoginMethod).verifyLoginSuccess
+    const verifyLoginSuccess = bindVerify(service)
 
     await expect(verifyLoginSuccess(page, 5_000)).resolves.toBeUndefined()
     expect((page as unknown as { goto: ReturnType<typeof mock> }).goto).toHaveBeenCalledWith(
@@ -45,7 +51,7 @@ describe('KagiBrowserService.verifyLoginSuccess', () => {
   it('should throw login-verification-failed when redirected away from settings', async () => {
     const page = createMockPage({ finalUrl: 'https://kagi.com/signin' })
     const service = new KagiBrowserService()
-    const verifyLoginSuccess = (service as unknown as VerifyLoginMethod).verifyLoginSuccess
+    const verifyLoginSuccess = bindVerify(service)
 
     try {
       await verifyLoginSuccess(page, 5_000)
@@ -60,7 +66,7 @@ describe('KagiBrowserService.verifyLoginSuccess', () => {
   it('should throw login-verification-navigation-failed when goto fails', async () => {
     const page = createMockPage({ gotoError: new Error('Navigation timeout') })
     const service = new KagiBrowserService()
-    const verifyLoginSuccess = (service as unknown as VerifyLoginMethod).verifyLoginSuccess
+    const verifyLoginSuccess = bindVerify(service)
 
     try {
       await verifyLoginSuccess(page, 5_000)
@@ -73,5 +79,36 @@ describe('KagiBrowserService.verifyLoginSuccess', () => {
       expect((error as BrowserAutomationError).context).toBe(SETTINGS_URL)
     }
   })
-})
 
+  it('should throw login-verification-failed when signin DOM is rendered inline', async () => {
+    const page = createMockPage({
+      domState: { hasLogout: false, hasSigninEmail: true, hasSigninQr: false },
+    })
+    const service = new KagiBrowserService()
+    const verifyLoginSuccess = bindVerify(service)
+
+    try {
+      await verifyLoginSuccess(page, 5_000)
+      expect(true).toBe(false)
+    } catch (error) {
+      expect(error).toBeInstanceOf(BrowserAutomationError)
+      expect((error as BrowserAutomationError).operation).toBe('login-verification-failed')
+    }
+  })
+
+  it('should throw login-verification-failed when logout link is absent', async () => {
+    const page = createMockPage({
+      domState: { hasLogout: false, hasSigninEmail: false, hasSigninQr: false },
+    })
+    const service = new KagiBrowserService()
+    const verifyLoginSuccess = bindVerify(service)
+
+    try {
+      await verifyLoginSuccess(page, 5_000)
+      expect(true).toBe(false)
+    } catch (error) {
+      expect(error).toBeInstanceOf(BrowserAutomationError)
+      expect((error as BrowserAutomationError).operation).toBe('login-verification-failed')
+    }
+  })
+})

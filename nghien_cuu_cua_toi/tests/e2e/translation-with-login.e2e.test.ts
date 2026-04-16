@@ -25,8 +25,11 @@ const WAIT_RESULT_HANDLE = { jsonValue: mock(async () => 'ready' as const) }
 interface MockPageFixture {
   page: Page
   setSettingsRedirectUrl: (url: string) => void
+  queueLoginSuccess: () => void
   queueTranslateResult: (result: string, includesSourceText: boolean) => void
 }
+
+const LOGGED_IN_STATE = { hasLogout: true, hasSigninEmail: false, hasSigninQr: false }
 
 function createMockPage(settingsRedirectUrl = SETTINGS_URL): MockPageFixture {
   let currentUrl = 'about:blank'
@@ -69,6 +72,9 @@ function createMockPage(settingsRedirectUrl = SETTINGS_URL): MockPageFixture {
     page,
     setSettingsRedirectUrl(url: string) {
       nextSettingsUrl = url
+    },
+    queueLoginSuccess() {
+      evaluate.mockResolvedValueOnce(LOGGED_IN_STATE as never)
     },
     queueTranslateResult(result: string, includesSourceText: boolean) {
       if (includesSourceText) {
@@ -158,7 +164,9 @@ function clearMockCalls(mockHumanInteraction: IHumanInteraction) {
 }
 
 describe('E2E Login Verification and chunkPaste', () => {
-  it('should skip login verification when no session file is configured', async () => {
+  it('should still verify login via /settings even when no session file is configured', async () => {
+    // Policy: login verification runs unconditionally; the persistent userDataDir
+    // can hold a valid session without any injected cookies.
     const originalEnv = process.env[KAGI_SESSION_FILE_ENV]
     const originalCwd = process.cwd()
     const tempDir = mkdtempSync(join(tmpdir(), 'kagi-e2e-login-'))
@@ -178,13 +186,14 @@ describe('E2E Login Verification and chunkPaste', () => {
       const options = getDefaultTranslationOptions()
       const urlBuilder = new KagiUrlBuilder()
       const translateUrl = urlBuilder.build('No session test', options)
+      mockPage.queueLoginSuccess()
       mockPage.queueTranslateResult('Dịch không đăng nhập', false)
 
       const result = await service.translate(translateUrl, options)
 
       expect(result.translated).toBe('Dịch không đăng nhập')
       expect(mockPersistentContext.addCookies).not.toHaveBeenCalled()
-      expect(mockPage.page.goto).not.toHaveBeenCalledWith(SETTINGS_URL, expect.any(Object))
+      expect(mockPage.page.goto).toHaveBeenCalledWith(SETTINGS_URL, expect.any(Object))
     } finally {
       await service?.close()
       process.env[KAGI_SESSION_FILE_ENV] = originalEnv
@@ -247,6 +256,7 @@ describe('E2E Login Verification and chunkPaste', () => {
       const options = getDefaultTranslationOptions()
       const urlBuilder = new KagiUrlBuilder()
       const translateUrl = urlBuilder.build('Valid cookie test', options)
+      mockPage.queueLoginSuccess()
       mockPage.queueTranslateResult('Dịch hợp lệ', false)
 
       const result = await service.translate(translateUrl, options)
@@ -288,6 +298,7 @@ describe('E2E Login Verification and chunkPaste', () => {
       const urlBuilder = new KagiUrlBuilder()
       const translateUrl = urlBuilder.build('Chunk paste test', options)
       const longText = 'x'.repeat(600)
+      mockPage.queueLoginSuccess()
       mockPage.queueTranslateResult('Kết quả dịch dài', true)
 
       const result = await service.translate(translateUrl, options, longText)

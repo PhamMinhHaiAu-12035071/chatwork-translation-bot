@@ -17,8 +17,11 @@ const MOCK_WAIT_RESULT_HANDLE = { jsonValue: mock(async () => 'ready' as const) 
 interface MockPageFixture {
   page: Page
   queueTranslateResult: (result: string, includeSourceTextProbe?: boolean) => void
+  queueLoginSuccess: () => void
   setSettingsRedirectUrl: (url: string) => void
 }
+
+const LOGGED_IN_STATE = { hasLogout: true, hasSigninEmail: false, hasSigninQr: false }
 
 function createMockPage(settingsRedirectUrl = SETTINGS_URL): MockPageFixture {
   let currentUrl = 'about:blank'
@@ -56,6 +59,10 @@ function createMockPage(settingsRedirectUrl = SETTINGS_URL): MockPageFixture {
     page,
     setSettingsRedirectUrl(url: string) {
       redirectTarget = url
+    },
+    queueLoginSuccess() {
+      const evaluate = page.evaluate as ReturnType<typeof mock>
+      evaluate.mockResolvedValueOnce(LOGGED_IN_STATE as never)
     },
     queueTranslateResult(result: string, includeSourceTextProbe = false) {
       const evaluate = page.evaluate as ReturnType<typeof mock>
@@ -129,7 +136,9 @@ describe('Login Verification Integration', () => {
     },
   ]
 
-  it('should continue translation when no session file is configured', async () => {
+  it('should still run login verification when no session file is configured', async () => {
+    // Policy: login verification ALWAYS runs regardless of session-file presence,
+    // because the persistent userDataDir may already hold an authenticated session.
     const originalEnv = process.env[KAGI_SESSION_FILE_ENV]
     const originalCwd = process.cwd()
     const tempDir = mkdtempSync(join(tmpdir(), 'kagi-login-integration-'))
@@ -150,13 +159,15 @@ describe('Login Verification Integration', () => {
       const options = getDefaultTranslationOptions()
       const urlBuilder = new KagiUrlBuilder()
       const translateUrl = urlBuilder.build('Hello, world', options)
+      mockPage.queueLoginSuccess()
       mockPage.queueTranslateResult('Xin chào')
 
       const result = await service.translate(translateUrl, options)
 
       expect(result.translated).toBe('Xin chào')
-      expect(mockPage.page.goto).not.toHaveBeenCalledWith(SETTINGS_URL, expect.anything())
+      expect(mockPage.page.goto).toHaveBeenCalledWith(SETTINGS_URL, expect.any(Object))
       expect(mockPage.page.goto).toHaveBeenCalledWith(translateUrl, expect.any(Object))
+      expect(mockPersistentContext.addCookies).not.toHaveBeenCalled()
     } finally {
       await service?.close()
       process.env[KAGI_SESSION_FILE_ENV] = originalEnv
@@ -185,6 +196,7 @@ describe('Login Verification Integration', () => {
       const options = getDefaultTranslationOptions()
       const urlBuilder = new KagiUrlBuilder()
       const translateUrl = urlBuilder.build('Hello, world', options)
+      mockPage.queueLoginSuccess()
       mockPage.queueTranslateResult('Xin chào')
 
       const result = await service.translate(translateUrl, options)

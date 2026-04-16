@@ -172,7 +172,7 @@ describe('Translation Config', () => {
 
   describe('KAGI_SESSION_FILE_NAME', () => {
     it('should be the fixed default session cookie filename', () => {
-      expect(KAGI_SESSION_FILE_NAME).toBe('kagi.com_15-04-2026.json')
+      expect(KAGI_SESSION_FILE_NAME).toBe('kagi.com_16-04-2026.json')
     })
   })
 

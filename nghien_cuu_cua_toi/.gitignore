@@ -38,3 +38,6 @@ user-data/
 # Input messages (may contain sensitive content)
 inputs/
 !inputs/*.example.json
+
+# Local credentials / exports (never commit)
+secrets/

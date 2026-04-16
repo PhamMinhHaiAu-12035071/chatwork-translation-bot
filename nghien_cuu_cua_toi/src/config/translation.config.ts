@@ -141,7 +141,7 @@ export const KAGI_SESSION_FILE_ENV = 'KAGI_SESSION_FILE' as const
 /**
  * Default session cookie JSON file name used by local/Docker runs when env var is not set.
  */
-export const KAGI_SESSION_FILE_NAME = 'kagi.com_15-04-2026.json' as const
+export const KAGI_SESSION_FILE_NAME = 'kagi.com_16-04-2026.json' as const
 
 /**
  * Env var to override default input file path for batch translation
@@ -193,6 +193,19 @@ export const KAGI_SELECTORS = {
    * CodeMirror 6 source pane (see log.txt): contenteditable with stable aria-label.
    */
   SOURCE_TEXT_INPUT: '[aria-label="Source text input"]',
+  /**
+   * Rendered on kagi.com/settings ONLY when the session is authenticated
+   * (Sign Out link in sidebar nav). Absence = not logged in.
+   */
+  LOGGED_IN_INDICATOR: 'a[href="/logout"]',
+  /**
+   * Rendered on kagi.com/signin (email/username input). Presence = NOT logged in.
+   */
+  SIGNIN_EMAIL_INPUT: '#signInEmailBox',
+  /**
+   * Rendered on kagi.com/signin (QR code auth box). Presence = NOT logged in.
+   */
+  SIGNIN_QR_AUTH: '#qr-code-auth',
 } as const
 
 /** Visible labels for translation style toggles in the settings dialog */

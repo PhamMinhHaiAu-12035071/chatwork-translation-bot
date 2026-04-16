@@ -76,10 +76,29 @@ class BrowserConnection implements IBrowserConnection {
  */
 export class KagiBrowserService implements IBrowserService {
   private connection: BrowserConnection | null = null
+  /**
+   * True after the first successful login verification. Subsequent translate() calls
+   * (new tabs in a batch) skip cookie injection + /settings check since the persistent
+   * context already holds the authenticated session.
+   */
+  private isLoginVerified = false
 
   constructor(
     private readonly humanInteraction: IHumanInteraction = new HumanInteractionService(),
   ) {}
+
+  /**
+   * Simulates the human delay of focusing the URL bar and typing a URL before Enter.
+   * Real browsers can't receive keyboard events into the address bar via Playwright —
+   * this is a pre-navigate pacing stand-in that keeps goto() from looking instantaneous.
+   */
+  private async humanDelayBeforeNavigate(targetUrl: string): Promise<void> {
+    const minMs = 800
+    const maxMs = 1500
+    const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+    console.log(`⌨️  Simulating URL entry (${delay}ms) → ${targetUrl}`)
+    await this.delayMs(delay)
+  }
 
   /**
    * Resolves a Chrome/Chromium binary for launchPersistentContext (system browser or env).
@@ -212,11 +231,7 @@ export class KagiBrowserService implements IBrowserService {
 
     const context = this.connection.getContext()
     if (context === undefined) {
-      throw new BrowserAutomationError(
-        'open-new-tab',
-        'Browser context not available',
-        undefined,
-      )
+      throw new BrowserAutomationError('open-new-tab', 'Browser context not available', undefined)
     }
 
     const oldPage = this.connection.getPage()
@@ -283,45 +298,49 @@ export class KagiBrowserService implements IBrowserService {
         vietnamese_casual: { value: 'less', context: 'vi_casual' },
       }
 
-      // ── BƯỚC 1: Optional session cookies (visit kagi.com first, then translate — reduces Cloudflare on translate)
+      // ── BƯỚC 1+2: Login phase — run ONCE per browser lifetime ──
+      // Session cookie injection + /settings verification are identity-establishment steps.
+      // Patchright persists the authenticated session in userDataDir, so subsequent
+      // translate() calls (new tabs in a batch) reuse it without repeating this work.
       const navUrl = new URL(url)
-      const explicitSessionFile = process.env[KAGI_SESSION_FILE_ENV]?.trim()
-      const sessionFile = this.resolveKagiSessionFilePath()
-      let shouldVerifyLogin = false
-      if (sessionFile !== undefined && sessionFile !== '') {
-        if (!existsSync(sessionFile)) {
-          if (explicitSessionFile !== undefined && explicitSessionFile !== '') {
-            throw new BrowserAutomationError(
-              'kagi-session-file',
-              sessionFile,
-              new Error(
-                `KAGI_SESSION_FILE not found: ${sessionFile}. ` +
-                  'Set it to a valid absolute path (local host path or in-container path depending on run mode).',
-              ),
+      if (!this.isLoginVerified) {
+        const explicitSessionFile = process.env[KAGI_SESSION_FILE_ENV]?.trim()
+        const sessionFile = this.resolveKagiSessionFilePath()
+        if (sessionFile !== undefined && sessionFile !== '') {
+          if (!existsSync(sessionFile)) {
+            if (explicitSessionFile !== undefined && explicitSessionFile !== '') {
+              throw new BrowserAutomationError(
+                'kagi-session-file',
+                sessionFile,
+                new Error(
+                  `KAGI_SESSION_FILE not found: ${sessionFile}. ` +
+                    'Set it to a valid absolute path (local host path or in-container path depending on run mode).',
+                ),
+              )
+            }
+
+            console.warn(
+              `[kagi-session] Auto session file not found, continuing without injected session cookies: ${sessionFile}`,
             )
+          } else {
+            const context = this.connection.getContext()
+            await visitKagiOriginAndInjectSessionCookies(page, context, {
+              sessionFilePath: sessionFile,
+              timeoutMs: timeout,
+              defaultOriginUrl: KAGI_ORIGIN_URL,
+            })
           }
-
-          console.warn(
-            `[kagi-session] Auto session file not found, continuing without injected session cookies: ${sessionFile}`,
-          )
-        } else {
-          const context = this.connection.getContext()
-          await visitKagiOriginAndInjectSessionCookies(page, context, {
-            sessionFilePath: sessionFile,
-            timeoutMs: timeout,
-            defaultOriginUrl: KAGI_ORIGIN_URL,
-          })
-          shouldVerifyLogin = true
         }
-      }
 
-      // ── BƯỚC 2: Verify Kagi login via /settings before navigating to translate ──
-      // (This fails fast before any heavy translation workflow is attempted.)
-      if (shouldVerifyLogin) {
+        // Fail-fast here prevents the heavy translation workflow from running unauthenticated.
         await this.verifyLoginSuccess(page, timeout)
+        this.isLoginVerified = true
+      } else {
+        console.log('🔐 Login already verified — skipping re-auth for this tab')
       }
 
       // ── BƯỚC 3: Navigate to translate URL and wait for Cloudflare verification to complete ──
+      await this.humanDelayBeforeNavigate(navUrl.toString())
       await page.goto(navUrl.toString(), { waitUntil: 'networkidle', timeout })
 
       await this.waitForCloudflareReady(page)
@@ -403,11 +422,20 @@ export class KagiBrowserService implements IBrowserService {
   }
 
   /**
-   * Verifies logged-in session status by loading Kagi account settings.
-   * Throws only when redirecting away from settings or when navigation fails.
+   * Verifies logged-in session status by loading kagi.com/settings and inspecting the DOM.
+   *
+   * Fails fast when:
+   *   1) navigation throws
+   *   2) Kagi redirects away from /settings (typically to /signin or landing)
+   *   3) the /signin DOM is rendered inline (#signInEmailBox or #qr-code-auth present)
+   *   4) the authenticated-only Sign Out link (a[href="/logout"]) is absent
+   *
+   * URL-only checks are not sufficient — Kagi can return a login-gated page with
+   * the URL still starting with `/settings`, so we must read the DOM.
    */
   private async verifyLoginSuccess(page: Page, timeoutMs: number): Promise<void> {
     const settingsUrl = 'https://kagi.com/settings'
+    await this.humanDelayBeforeNavigate(settingsUrl)
     try {
       await page.goto(settingsUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
     } catch (error) {
@@ -420,8 +448,43 @@ export class KagiBrowserService implements IBrowserService {
 
     const currentUrl = page.url()
     if (!currentUrl.startsWith(settingsUrl)) {
+      console.error(
+        `❌ login verification failed — redirected away from ${settingsUrl} to ${currentUrl}`,
+      )
       throw new BrowserAutomationError('login-verification-failed', currentUrl)
     }
+
+    const state: { hasLogout: boolean; hasSigninEmail: boolean; hasSigninQr: boolean } =
+      await page.evaluate(
+        (selectors: { loggedIn: string; signinEmail: string; signinQr: string }) => ({
+          hasLogout: document.querySelector(selectors.loggedIn) !== null,
+          hasSigninEmail: document.querySelector(selectors.signinEmail) !== null,
+          hasSigninQr: document.querySelector(selectors.signinQr) !== null,
+        }),
+        {
+          loggedIn: KAGI_SELECTORS.LOGGED_IN_INDICATOR,
+          signinEmail: KAGI_SELECTORS.SIGNIN_EMAIL_INPUT,
+          signinQr: KAGI_SELECTORS.SIGNIN_QR_AUTH,
+        },
+      )
+
+    if (state.hasSigninEmail || state.hasSigninQr) {
+      console.error(
+        `❌ login verification failed — signin page DOM rendered at ${currentUrl} ` +
+          `(signInEmailBox=${state.hasSigninEmail}, qr-code-auth=${state.hasSigninQr})`,
+      )
+      throw new BrowserAutomationError('login-verification-failed', currentUrl)
+    }
+
+    if (!state.hasLogout) {
+      console.error(
+        `❌ login verification failed — "${KAGI_SELECTORS.LOGGED_IN_INDICATOR}" not found at ${currentUrl}. ` +
+          'Session is not authenticated.',
+      )
+      throw new BrowserAutomationError('login-verification-failed', currentUrl)
+    }
+
+    console.log(`✅ login verified at ${currentUrl}`)
   }
 
   /**
@@ -537,29 +600,34 @@ export class KagiBrowserService implements IBrowserService {
     }
   }
 
-  /**
-   * Directory for PNG snapshots. In Docker, bind `./screenshot` → `/app/screenshot` and set `SCREENSHOT_DIR=/app/screenshot`.
-   * Locally defaults to `<cwd>/screenshot`.
+  /*
+   * Snapshot helpers (disabled — re-enable together with the call site in
+   * clickFormalityOption when debugging the Formality panel layout).
+   *
+   * private getScreenshotOutputDir(): string {
+   *   const fromEnv = process.env.SCREENSHOT_DIR?.trim()
+   *   if (fromEnv !== undefined && fromEnv !== '') {
+   *     return fromEnv
+   *   }
+   *   return join(process.cwd(), 'screenshot')
+   * }
+   *
+   * private async capturePageSnapshot(page: Page, stem: string): Promise<void> {
+   *   try {
+   *     const dir = this.getScreenshotOutputDir()
+   *     await mkdir(dir, { recursive: true })
+   *     const ts = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
+   *     const filePath = join(dir, `${stem}-${ts}.png`)
+   *     await page.screenshot({ path: filePath, type: 'png', fullPage: true })
+   *     console.log(`📸 Snapshot saved: ${filePath}`)
+   *   } catch (error) {
+   *     console.warn(
+   *       `⚠️  Snapshot "${stem}" failed:`,
+   *       error instanceof Error ? error.message : error,
+   *     )
+   *   }
+   * }
    */
-  private getScreenshotOutputDir(): string {
-    const fromEnv = process.env.SCREENSHOT_DIR?.trim()
-    if (fromEnv !== undefined && fromEnv !== '') {
-      return fromEnv
-    }
-    return join(process.cwd(), 'screenshot')
-  }
-
-  /**
-   * Full-page PNG capture; writes under {@link getScreenshotOutputDir}.
-   */
-  private async capturePageSnapshot(page: Page, stem: string): Promise<void> {
-    const dir = this.getScreenshotOutputDir()
-    await mkdir(dir, { recursive: true })
-    const ts = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
-    const filePath = join(dir, `${stem}-${ts}.png`)
-    await page.screenshot({ path: filePath, type: 'png', fullPage: true })
-    console.log(`Snapshot saved: ${filePath}`)
-  }
 
   /**
    * Closes Translation Settings so the result pane is unobstructed.
@@ -610,6 +678,11 @@ export class KagiBrowserService implements IBrowserService {
 
     try {
       console.log(`⚙️  Clicking formality "${label}"…`)
+      // Debug snapshot (disabled): uncomment to capture the settings panel state
+      // at the moment Vietnamese Casual is about to be clicked.
+      // if (label === FORMALITY_UI_LABELS.VIETNAMESE_CASUAL) {
+      //   await this.capturePageSnapshot(page, 'clicking-formality-vietnamese-casual')
+      // }
       await page.waitForFunction(
         (box: { sel: string; targetLabel: string; labels: readonly string[] }) => {
           const sel = box.sel
@@ -1178,21 +1251,13 @@ export class KagiBrowserService implements IBrowserService {
 
   /**
    * Closes the browser instance.
-   *
-   * Optional (commented): 20s inspect delay + full-page snapshot before close — uncomment when needed for debugging.
    */
   async close(): Promise<void> {
     if (this.connection) {
-      // await this.delayMs(20_000)
-      // try {
-      //   const page = this.connection.getPage()
-      //   await this.capturePageSnapshot(page, 'before-browser-close-complete')
-      // } catch {
-      //   // Non-fatal: page may be detached or screenshot unsupported
-      // }
       console.log('✅ Complete!\n')
       await this.connection.close()
       this.connection = null
     }
+    this.isLoginVerified = false
   }
 }
