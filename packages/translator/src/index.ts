@@ -21,7 +21,7 @@ import { initTranslationQueue } from '~/webhook/router'
 import { createServer } from './server'
 
 registerAllProviders()
-await runStartupGuards()
+runStartupGuards()
 
 const store = new RoomConfigStore({
   dataDir: env.ROOM_CONFIG_DATA_DIR,

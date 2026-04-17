@@ -9,7 +9,6 @@ describe('toAIProvider', () => {
 
   it('works with any string', () => {
     expect(toAIProvider('openai') as string).toBe('openai')
-    expect(toAIProvider('cursor') as string).toBe('cursor')
     expect(toAIProvider('groq') as string).toBe('groq')
   })
 })

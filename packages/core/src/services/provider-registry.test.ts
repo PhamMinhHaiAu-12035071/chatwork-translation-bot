@@ -53,8 +53,8 @@ describe('ProviderRegistry', () => {
 
   it('throws ProviderRegistryBootError when provider not found', () => {
     registerProviderPlugin(makePlugin('gemini'))
-    expect(() => getProviderPlugin('cursor')).toThrow(ProviderRegistryBootError)
-    expect(() => getProviderPlugin('cursor')).toThrow(/cursor/)
+    expect(() => getProviderPlugin('unknown')).toThrow(ProviderRegistryBootError)
+    expect(() => getProviderPlugin('unknown')).toThrow(/unknown/)
   })
 
   it('error message lists registered providers when provider not found', () => {

@@ -14,7 +14,7 @@ describe('GET /api/providers', () => {
     resetProviderRegistryForTest()
   })
 
-  it('returns dashboard-safe providers with models and excludes cursor', async () => {
+  it('returns gemini and openai with models', async () => {
     const app = new Elysia().use(providersRoute)
     const response = await app.handle(new Request('http://localhost/api/providers'))
 
@@ -36,9 +36,8 @@ describe('GET /api/providers', () => {
     }
 
     expect(body.success).toBe(true)
-    expect(providers.length).toBeGreaterThan(0)
+    expect(providers).toHaveLength(2)
     expect(providers.map((provider) => provider.id)).toContain('openai')
     expect(providers.map((provider) => provider.id)).toContain('gemini')
-    expect(providers.map((provider) => provider.id)).not.toContain('cursor')
   })
 })

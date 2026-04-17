@@ -8,8 +8,8 @@ describe('registerAllProviders', () => {
     registerAllProviders()
   })
 
-  it('registers exactly 3 providers', () => {
-    expect(listProviderPlugins()).toHaveLength(3)
+  it('registers exactly 2 providers', () => {
+    expect(listProviderPlugins()).toHaveLength(2)
   })
 
   it('registers gemini provider', () => {
@@ -20,10 +20,5 @@ describe('registerAllProviders', () => {
   it('registers openai provider', () => {
     const ids = listProviderPlugins().map((p) => p.manifest.id)
     expect(ids).toContain('openai')
-  })
-
-  it('registers cursor provider', () => {
-    const ids = listProviderPlugins().map((p) => p.manifest.id)
-    expect(ids).toContain('cursor')
   })
 })

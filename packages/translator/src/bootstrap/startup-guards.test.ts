@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-const mockFetch = mock((_url: string) => Promise.resolve({ ok: true }))
-// @ts-expect-error — override global fetch for testing
-global.fetch = mockFetch
-
 // Module-level registry — closed over by mock functions so reassignment is visible
 let _plugins: {
   manifest: {
@@ -43,8 +39,6 @@ void mock.module('@chatwork-bot/core', () => ({
 
 describe('runStartupGuards', () => {
   beforeEach(() => {
-    mockFetch.mockReset()
-    mockFetch.mockImplementation(() => Promise.resolve({ ok: true }))
     _plugins = []
   })
 
@@ -73,62 +67,6 @@ describe('runStartupGuards', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error)
       expect((error as Error).message).toContain('No providers registered')
-    }
-  })
-
-  it('checks cursor proxy reachability when cursor provider is registered', async () => {
-    _plugins.push({
-      manifest: {
-        id: 'cursor',
-        supportedModels: ['m'],
-        defaultModel: 'm',
-        capabilities: { streaming: false },
-      },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
-    })
-
-    mockFetch.mockImplementation(() => Promise.resolve({ ok: true }))
-
-    const { runStartupGuards } = await import('./startup-guards')
-    await runStartupGuards()
-    expect(mockFetch).toHaveBeenCalledWith('http://localhost:8765/v1/models')
-  })
-
-  it('warns (does not throw) when cursor proxy is unreachable', async () => {
-    _plugins.push({
-      manifest: {
-        id: 'cursor',
-        supportedModels: ['m'],
-        defaultModel: 'm',
-        capabilities: { streaming: false },
-      },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
-    })
-
-    mockFetch.mockImplementation(() => Promise.reject(new Error('network error')))
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const warnSpy = mock((_msg: string) => {})
-    console.warn = warnSpy
-
-    const previousCursorApiUrl = process.env['CURSOR_API_URL']
-    process.env['CURSOR_API_URL'] = 'http://cursor-proxy:8765/v1'
-
-    try {
-      const { runStartupGuards } = await import('./startup-guards')
-      // Should NOT throw — just warn so translator starts even if proxy isn't ready yet
-      await runStartupGuards()
-
-      expect(warnSpy).toHaveBeenCalled()
-      const msg = warnSpy.mock.calls[0]?.[0] ?? ''
-      expect(msg).toContain('Cursor proxy not reachable at http://cursor-proxy:8765/v1')
-      expect(msg).toContain('Per-room configs using cursor provider will fail at runtime')
-    } finally {
-      if (previousCursorApiUrl === undefined) {
-        delete process.env['CURSOR_API_URL']
-      } else {
-        process.env['CURSOR_API_URL'] = previousCursorApiUrl
-      }
     }
   })
 })

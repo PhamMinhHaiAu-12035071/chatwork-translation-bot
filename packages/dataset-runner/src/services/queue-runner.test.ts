@@ -71,7 +71,7 @@ describe('QueueRunner', () => {
         status: 'failed',
         destinationRoomId: 424846369,
         errorCode: 'API_ERROR',
-        errorMessage: 'Cursor API call failed: The operation was aborted.',
+        errorMessage: 'Translation API call failed: The operation was aborted.',
         ackedAt: new Date().toISOString(),
       }),
     )
