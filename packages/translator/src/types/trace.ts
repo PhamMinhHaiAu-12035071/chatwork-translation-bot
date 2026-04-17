@@ -40,7 +40,7 @@ export interface TranslationTrace {
   // ─── LLM Details ────────────────────────────────────────────────────────────
 
   llm: {
-    provider: string // 'gemini' | 'openai' | 'cursor'
+    provider: string // 'gemini' | 'openai'
     model: string // Model identifier
     translationStyle: string // NATURAL_CASUAL | PROFESSIONAL_BUSINESS | TECHNICAL
     promptVersion: 'baseline' | 'optimized' // Prompt version used

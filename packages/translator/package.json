@@ -17,7 +17,6 @@
     "@chatwork-bot/chatwork": "workspace:*",
     "@chatwork-bot/core": "workspace:*",
     "@chatwork-bot/message-queue": "workspace:*",
-    "@chatwork-bot/provider-cursor": "workspace:*",
     "@chatwork-bot/provider-gemini": "workspace:*",
     "@chatwork-bot/provider-kagi": "workspace:*",
     "@chatwork-bot/provider-openai": "workspace:*",
