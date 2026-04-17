@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { resetProviderRegistryForTest, registerProviderPlugin } from '@chatwork-bot/core'
 
 describe('logStartupBanner', () => {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
   const logSpy = mock((..._args: unknown[]) => {})
   const originalLog = console.log
 

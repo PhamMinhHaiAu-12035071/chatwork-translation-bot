@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/await-thenable */
-/* eslint-disable @typescript-eslint/no-confusing-void-expression */
 import { describe, it, expect, beforeEach } from 'bun:test'
 import { CircuitBreaker } from './circuit-breaker'
 
