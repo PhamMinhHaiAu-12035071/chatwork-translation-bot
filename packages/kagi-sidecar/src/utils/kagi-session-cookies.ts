@@ -110,7 +110,7 @@ export async function visitKagiOriginAndInjectSessionCookies(
   const playwrightCookies = chromeExportCookiesToPlaywright(file.cookies)
 
   console.log(
-    `[kagi-session] Opening ${origin} then injecting ${playwrightCookies.length} cookie(s) from ${sessionFilePath}`,
+    `[kagi-session] Opening ${origin} then injecting ${String(playwrightCookies.length)} cookie(s) from ${sessionFilePath}`,
   )
   await page.goto(origin, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
   await context.addCookies(playwrightCookies)

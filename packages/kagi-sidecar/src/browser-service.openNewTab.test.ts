@@ -42,7 +42,7 @@ describe('KagiBrowserService.openNewTab', () => {
     expect(first.closed.value).toBe(true) // old page closed
     expect(second.closed.value).toBe(false) // new page still open
     // connection now references the second page
-    expect(service['connection']?.getPage()).toBe(second.page)
+    expect((service as any).connection?.getPage()).toBe(second.page)
   })
 
   it('throws KagiSidecarError(UI_INTERACTION) when called before launch', async () => {

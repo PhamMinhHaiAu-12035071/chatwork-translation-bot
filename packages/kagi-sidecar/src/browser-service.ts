@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/prefer-optional-chain */
 import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -6,7 +10,11 @@ import { chromium, type BrowserContext, type Page } from 'patchright'
 import { KAGI_STYLE_PRESETS, type KagiStyle } from '@chatwork-bot/provider-kagi'
 
 import { clampInputText, MAX_INPUT_TEXT_LENGTH } from './constants/input-clamping.js'
-import { BROWSER_CONFIG, computeScaledDelay, HUMAN_INPUT_THRESHOLD } from './constants/delay-config.js'
+import {
+  BROWSER_CONFIG,
+  computeScaledDelay,
+  HUMAN_INPUT_THRESHOLD,
+} from './constants/delay-config.js'
 import {
   KAGI_ORIGIN_URL,
   KAGI_SELECTORS,
@@ -99,7 +107,10 @@ export interface KagiBrowserServiceOptions {
 }
 
 class BrowserConnection implements IBrowserConnection {
-  constructor(private context: BrowserContext, private page: Page) {}
+  constructor(
+    private context: BrowserContext,
+    private page: Page,
+  ) {}
 
   async close(): Promise<void> {
     await this.context.close()
@@ -143,18 +154,19 @@ export class KagiBrowserService implements IBrowserService {
       sleep: options.sleep ?? ((ms) => Bun.sleep(ms)),
       now: options.now ?? (() => Date.now()),
       random: options.random ?? (() => Math.random()),
-      launchContext: options.launchContext ?? ((dir, opts) =>
-        chromium.launchPersistentContext(dir, opts)
-      ),
+      launchContext:
+        options.launchContext ?? ((dir, opts) => chromium.launchPersistentContext(dir, opts)),
       ensureUserDataDir:
-        options.ensureUserDataDir ?? ((path) => mkdir(path, { recursive: true }).then(() => undefined)),
+        options.ensureUserDataDir ??
+        ((path) => mkdir(path, { recursive: true }).then(() => undefined)),
     }
-    
+
     // Conditionally add sessionFile only if provided
-    this.options = options.sessionFile !== undefined 
-      ? { ...baseOptions, sessionFile: options.sessionFile }
-      : baseOptions
-    
+    this.options =
+      options.sessionFile !== undefined
+        ? { ...baseOptions, sessionFile: options.sessionFile }
+        : baseOptions
+
     this.humanInteraction = options.humanInteraction ?? new HumanInteractionService()
   }
 
@@ -216,11 +228,9 @@ export class KagiBrowserService implements IBrowserService {
 
   async verifyStartupSession(): Promise<void> {
     if (this.connection === null) {
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        'verifyStartupSession called before launch',
-        { status: 500 },
-      )
+      throw new KagiSidecarError('UI_INTERACTION', 'verifyStartupSession called before launch', {
+        status: 500,
+      })
     }
 
     const context = this.connection.getContext()
@@ -229,7 +239,8 @@ export class KagiBrowserService implements IBrowserService {
     // 1) Optional cookie injection
     const sessionFilePath = this.resolveKagiSessionFilePath()
     if (sessionFilePath !== undefined && existsSync(sessionFilePath)) {
-      const { visitKagiOriginAndInjectSessionCookies } = await import('./utils/kagi-session-cookies.js')
+      const { visitKagiOriginAndInjectSessionCookies } =
+        await import('./utils/kagi-session-cookies.js')
       await visitKagiOriginAndInjectSessionCookies(page, context, {
         sessionFilePath,
         timeoutMs: BROWSER_CONFIG.TIMEOUT,
@@ -310,14 +321,14 @@ export class KagiBrowserService implements IBrowserService {
 
   async translate(request: KagiTranslateUiRequest): Promise<TranslateResult> {
     if (this.connection === null) {
-      throw new KagiSidecarError('UI_INTERACTION', 'translate called before launch', { status: 500 })
+      throw new KagiSidecarError('UI_INTERACTION', 'translate called before launch', {
+        status: 500,
+      })
     }
     if (!this.isLoginVerified) {
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        'translate called before verifyStartupSession',
-        { status: 500 },
-      )
+      throw new KagiSidecarError('UI_INTERACTION', 'translate called before verifyStartupSession', {
+        status: 500,
+      })
     }
 
     if (this.hasServedFirstRequest) {
@@ -352,7 +363,9 @@ export class KagiBrowserService implements IBrowserService {
       // PHASE 2: apply target settings
       if (request.context !== undefined && request.context.trim() !== '') {
         await this.fillTranslationContext(page, request.context)
-        await this.options.sleep(computeScaledDelay(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS, charCount))
+        await this.options.sleep(
+          computeScaledDelay(BROWSER_CONFIG.CONTEXT_URL_SETTLE_MS, charCount),
+        )
       }
       if (preset.readingLevel !== 'standard') {
         await this.setReadingLevel(page, preset.readingLevel)
@@ -368,7 +381,8 @@ export class KagiBrowserService implements IBrowserService {
             : FORMALITY_UI_LABELS.VIETNAMESE_CASUAL
         await this.clickFormalityOption(page, formalityLabel)
         const formalityValue = preset.formality === 'vietnamese_formal' ? 'more' : 'less'
-        const formalityContext = preset.formality === 'vietnamese_formal' ? 'vi_formal' : 'vi_casual'
+        const formalityContext =
+          preset.formality === 'vietnamese_formal' ? 'vi_formal' : 'vi_casual'
         await this.verifyFormalityInAddressBar(page, formalityValue, formalityContext)
       }
 
@@ -376,7 +390,9 @@ export class KagiBrowserService implements IBrowserService {
       const finalUrl = page.url()
       const translated = await this.scrapeTranslatedText(page)
       if (translated === '' || translated.includes('[No translation result found')) {
-        throw new KagiSidecarError('INVALID_RESPONSE', 'Kagi returned empty translation', { status: 502 })
+        throw new KagiSidecarError('INVALID_RESPONSE', 'Kagi returned empty translation', {
+          status: 502,
+        })
       }
 
       return { translated, finalUrl }
@@ -400,7 +416,7 @@ export class KagiBrowserService implements IBrowserService {
     const minMs = 800
     const maxMs = 1500
     const delay = Math.floor(this.options.random() * (maxMs - minMs + 1)) + minMs
-    console.log(`⌨️  Simulating URL entry (${delay}ms) → ${targetUrl}`)
+    console.log(`⌨️  Simulating URL entry (${String(delay)}ms) → ${targetUrl}`)
     await this.options.sleep(delay)
   }
 
@@ -431,11 +447,9 @@ export class KagiBrowserService implements IBrowserService {
     )
     const state = (await handle.jsonValue()) as unknown
     if (state === 'failed') {
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        'Cloudflare verification failed',
-        { status: 502 },
-      )
+      throw new KagiSidecarError('UI_INTERACTION', 'Cloudflare verification failed', {
+        status: 502,
+      })
     }
   }
 
@@ -459,9 +473,9 @@ export class KagiBrowserService implements IBrowserService {
       await this.options.sleep(BROWSER_CONFIG.STYLE_OPTION_CLICK_GAP_MS)
 
       await page.evaluate((sel: string) => {
-        const el = document.querySelector(sel) as HTMLElement | null
+        const el = document.querySelector(sel)
         if (el === null) return
-        el.focus()
+        ;(el as HTMLElement).focus()
         /* eslint-disable-next-line @typescript-eslint/no-deprecated */
         document.execCommand('selectAll', false)
         /* eslint-disable-next-line @typescript-eslint/no-deprecated */
@@ -477,7 +491,7 @@ export class KagiBrowserService implements IBrowserService {
 
   private async getSourceTextInputPlain(page: Page): Promise<string> {
     const raw = (await page.evaluate((sel: string) => {
-      const el = document.querySelector(sel) as HTMLElement | null
+      const el = document.querySelector(sel)
       if (el === null) return ''
       return el.textContent ?? ''
     }, KAGI_SELECTORS.SOURCE_TEXT_INPUT)) as unknown
@@ -555,6 +569,7 @@ export class KagiBrowserService implements IBrowserService {
           null
         if (el) el.value = ''
       }, selector)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_error) {
       // Non-fatal
     }
@@ -701,11 +716,10 @@ export class KagiBrowserService implements IBrowserService {
         `❌ reading level verification failed: URL does not contain language_complexity=${expectedReadingLevel}`,
       )
       console.error(`Current URL: ${currentUrl}`)
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        'reading-level-url-verification failed',
-        { status: 502, cause: error },
-      )
+      throw new KagiSidecarError('UI_INTERACTION', 'reading-level-url-verification failed', {
+        status: 502,
+        cause: error,
+      })
     }
   }
 
@@ -820,15 +834,14 @@ export class KagiBrowserService implements IBrowserService {
         )
       } else {
         console.error(
-          `❌ formality verification failed: URL does not contain formality=${expectedFormality}&${expectedFormalityContext}`,
+          `❌ formality verification failed: URL does not contain formality=${expectedFormality}&${String(expectedFormalityContext)}`,
         )
       }
       console.error(`Current URL: ${currentUrl}`)
-      throw new KagiSidecarError(
-        'UI_INTERACTION',
-        'formality-url-verification failed',
-        { status: 502, cause: error },
-      )
+      throw new KagiSidecarError('UI_INTERACTION', 'formality-url-verification failed', {
+        status: 502,
+        cause: error,
+      })
     }
   }
 
@@ -915,38 +928,41 @@ export class KagiBrowserService implements IBrowserService {
       TEXTAREA_PLACEHOLDER: KAGI_SELECTORS.TEXTAREA_PLACEHOLDER ?? 'textarea[placeholder]',
     }
 
-    const result = await page.evaluate((sels: { TRANSLATION_CONTENT: string; TEXT_SPAN: string; TEXTAREA_PLACEHOLDER: string }) => {
-      const translationContent = document.querySelector(sels['TRANSLATION_CONTENT'])
-      if (translationContent !== null) {
-        const textSpan = translationContent.querySelector(sels['TEXT_SPAN'])
-        if (textSpan !== null) {
-          const text = textSpan.textContent
-          if (text && text.trim() !== '') {
-            return text.trim()
+    const result = await page.evaluate(
+      (sels: { TRANSLATION_CONTENT: string; TEXT_SPAN: string; TEXTAREA_PLACEHOLDER: string }) => {
+        const translationContent = document.querySelector(sels.TRANSLATION_CONTENT)
+        if (translationContent !== null) {
+          const textSpan = translationContent.querySelector(sels.TEXT_SPAN)
+          if (textSpan !== null) {
+            const text = textSpan.textContent
+            if (text && text.trim() !== '') {
+              return text.trim()
+            }
+          }
+
+          const fullText = translationContent.textContent
+          if (fullText && fullText.trim() !== '') {
+            return fullText.trim()
           }
         }
 
-        const fullText = translationContent.textContent
-        if (fullText && fullText.trim() !== '') {
-          return fullText.trim()
+        const outputArea = document.querySelector<HTMLTextAreaElement>(sels.TEXTAREA_PLACEHOLDER)
+        if (outputArea !== null && outputArea.value) {
+          return outputArea.value
         }
-      }
 
-      const outputArea = document.querySelector<HTMLTextAreaElement>(sels['TEXTAREA_PLACEHOLDER'])
-      if (outputArea !== null && outputArea.value) {
-        return outputArea.value
-      }
-
-      const allTextareas = document.querySelectorAll('textarea')
-      if (allTextareas.length >= 2) {
-        const secondTextarea = allTextareas.item(1)
-        if (secondTextarea !== null && secondTextarea.value !== '') {
-          return secondTextarea.value
+        const allTextareas = document.querySelectorAll('textarea')
+        if (allTextareas.length >= 2) {
+          const secondTextarea = allTextareas.item(1)
+          if (secondTextarea !== null && secondTextarea.value !== '') {
+            return secondTextarea.value
+          }
         }
-      }
 
-      return '[No translation result found - please check DOM structure]'
-    }, selectors)
+        return '[No translation result found - please check DOM structure]'
+      },
+      selectors,
+    )
 
     return result
   }

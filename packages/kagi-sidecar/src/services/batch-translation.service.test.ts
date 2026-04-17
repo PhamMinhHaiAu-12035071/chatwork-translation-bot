@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from 'bun:test'
-import { runBatchTranslation, type BatchTranslationDeps } from './batch-translation.service'
+import { describe, expect, it } from 'bun:test'
+import { runBatchTranslation } from './batch-translation.service'
 import type {
   IBrowserConnection,
   IBrowserService,

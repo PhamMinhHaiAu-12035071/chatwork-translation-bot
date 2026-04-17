@@ -47,6 +47,23 @@ export default tseslint.config(
     },
   },
   {
+    // Relaxed rules for test files (test mocks don't need strict await/any checks)
+    files: ['**/*.test.ts', '**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/await-thenable': 'off',
+      '@typescript-eslint/no-confusing-void-expression': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', '*.js', '**/*.config.ts'],
   },
 )

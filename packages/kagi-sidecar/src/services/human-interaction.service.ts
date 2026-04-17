@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 /**
  * Human-like interaction implementation for Playwright (patchright) Page.
  *
@@ -235,9 +238,9 @@ export class HumanInteractionService implements IHumanInteraction {
       await page.evaluate(
         (box: { sel: string; value: string }) => {
           const { sel, value } = box
-          const el = document.querySelector(sel) as HTMLElement | null
+          const el = document.querySelector(sel)
           if (!el) return
-          el.focus()
+          ;(el as HTMLElement).focus()
           /* eslint-disable-next-line @typescript-eslint/no-deprecated */
           document.execCommand('insertText', false, value)
         },

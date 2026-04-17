@@ -20,7 +20,7 @@ function createFakePage(url: string): Page {
     url: () => url,
     goto: async () => null,
     close: async () => undefined,
-    keyboard: { 
+    keyboard: {
       press: async () => undefined,
       down: async () => undefined,
       insertText: async () => undefined,
@@ -73,7 +73,7 @@ describe('KagiBrowserService.verifyStartupSession', () => {
       return {
         url: () => 'https://kagi.com/settings',
         goto: async () => null,
-        evaluate: async (_fn: unknown, selectors: unknown) => {
+        evaluate: async (_fn: unknown, _selectors: unknown) => {
           // Simulate an authenticated DOM
           return { hasLogout: true, hasSigninEmail: false, hasSigninQr: false }
         },
@@ -193,8 +193,7 @@ describe('KagiBrowserService.translate', () => {
     })
 
     await service.launch()
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-    ;(service as any)['isLoginVerified'] = true
+    ;(service as any).isLoginVerified = true
 
     // Stub scrape to return deterministic text
     ;(service as unknown as { scrapeTranslatedText: () => Promise<string> }).scrapeTranslatedText =
