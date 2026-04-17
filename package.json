@@ -27,7 +27,6 @@
     "verify:standards": "bun run scripts/verify-standards.ts",
     "analyze:traces": "bun run scripts/analyze-traces.ts",
     "report:daily": "bun run scripts/generate-daily-report.ts",
-    "cursor-proxy": "node \"$(realpath node_modules/cursor-api-proxy/dist/cli.js)\"",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -53,7 +52,6 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "concurrently": "^9.2.1",
-    "cursor-api-proxy": "github:anyrobert/cursor-api-proxy",
     "eslint": "^9.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import-x": "^4.16.1",

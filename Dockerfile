@@ -27,7 +27,6 @@ COPY packages/chatwork/package.json packages/chatwork/
 COPY packages/translation-prompt/package.json packages/translation-prompt/
 COPY packages/provider-gemini/package.json packages/provider-gemini/
 COPY packages/provider-openai/package.json packages/provider-openai/
-COPY packages/provider-cursor/package.json packages/provider-cursor/
 COPY packages/provider-kagi/package.json packages/provider-kagi/
 COPY packages/translator/package.json packages/translator/
 COPY packages/webhook-logger/package.json packages/webhook-logger/
@@ -49,7 +48,6 @@ COPY packages/chatwork/src packages/chatwork/src
 COPY packages/translation-prompt/src packages/translation-prompt/src
 COPY packages/provider-gemini/src packages/provider-gemini/src
 COPY packages/provider-openai/src packages/provider-openai/src
-COPY packages/provider-cursor/src packages/provider-cursor/src
 COPY packages/provider-kagi/src packages/provider-kagi/src
 COPY packages/translator/src packages/translator/src
 

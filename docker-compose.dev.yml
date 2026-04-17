@@ -22,8 +22,6 @@ services:
     env_file:
       - .env
     environment:
-      # host.docker.internal resolves to macOS host on Docker Desktop
-      - CURSOR_API_URL=http://host.docker.internal:8765/v1
       - KAGI_TRANSLATOR_URL=http://kagi-translator:3002
       - KAGI_MAX_ENCODED_PAYLOAD_CHARS=${KAGI_MAX_ENCODED_PAYLOAD_CHARS:-12000}
       - KAGI_MAX_SEGMENT_COUNT=${KAGI_MAX_SEGMENT_COUNT:-50}
