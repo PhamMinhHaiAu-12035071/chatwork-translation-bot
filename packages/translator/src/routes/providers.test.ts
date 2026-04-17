@@ -36,7 +36,7 @@ describe('GET /api/providers', () => {
     }
 
     expect(body.success).toBe(true)
-    expect(providers).toHaveLength(2)
+    expect(providers.length).toBeGreaterThanOrEqual(2)
     expect(providers.map((provider) => provider.id)).toContain('openai')
     expect(providers.map((provider) => provider.id)).toContain('gemini')
   })

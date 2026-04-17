@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-// Module-level registry — closed over by mock functions so reassignment is visible
+// Module-level registry — closed over by mock functions so reassignment is visible.
+// runStartupGuards() only reads `plugins.length`, so the mock deliberately omits
+// the `create` field — keeping the shape honest about what the guard actually uses.
 let _plugins: {
   manifest: {
     id: string
@@ -8,7 +10,6 @@ let _plugins: {
     defaultModel: string
     capabilities: { readonly streaming: boolean }
   }
-  create: () => { translate: () => Promise<never> }
 }[] = []
 
 class ProviderRegistryBootError extends Error {
@@ -50,23 +51,18 @@ describe('runStartupGuards', () => {
         defaultModel: 'm',
         capabilities: { streaming: false },
       },
-      create: () => ({ translate: () => Promise.reject(new Error('noop')) }),
     })
 
     const { runStartupGuards } = await import('./startup-guards')
-    await runStartupGuards()
+    runStartupGuards()
   })
 
   it('throws when no providers are registered', async () => {
     // _plugins is empty after beforeEach reset
     const { runStartupGuards } = await import('./startup-guards')
 
-    try {
-      await runStartupGuards()
-      expect.unreachable('should have thrown')
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error)
-      expect((error as Error).message).toContain('No providers registered')
-    }
+    expect(() => {
+      runStartupGuards()
+    }).toThrow(/No providers registered/)
   })
 })

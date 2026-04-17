@@ -51,10 +51,10 @@ describe('ProviderRegistry', () => {
     }).toThrow(/already registered/)
   })
 
-  it('throws ProviderRegistryBootError when provider not found', () => {
+  it('throws ProviderRegistryBootError when provider not found, echoing the requested id', () => {
     registerProviderPlugin(makePlugin('gemini'))
-    expect(() => getProviderPlugin('unknown')).toThrow(ProviderRegistryBootError)
-    expect(() => getProviderPlugin('unknown')).toThrow(/unknown/)
+    expect(() => getProviderPlugin('nonexistent-xyz')).toThrow(ProviderRegistryBootError)
+    expect(() => getProviderPlugin('nonexistent-xyz')).toThrow(/nonexistent-xyz/)
   })
 
   it('error message lists registered providers when provider not found', () => {
