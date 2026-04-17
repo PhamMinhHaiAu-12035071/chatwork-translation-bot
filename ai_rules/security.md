@@ -16,7 +16,6 @@
   in encrypted room config managed by the dashboard and translator.
 - No global webhook secret is required.
 - No global provider API key is required for OpenAI or Gemini rooms.
-- `CURSOR_API_URL` remains a local-only integration setting for the `cursor` provider.
 
 ### Optional
 
@@ -58,12 +57,3 @@ Copy `.env.example` to `.env` and fill in real values. Never commit `.env`.
 - `.env` is in `.gitignore` — verify before staging
 - For CI/CD, use repository secrets (GitHub Actions secrets)
 - When adding new env vars, add them to `.env.example` with a placeholder value
-
-## Cursor Provider — LOCAL DEV ONLY
-
-The `cursor` provider uses `cursor-api-proxy` which runs a local HTTP proxy.
-This is intentionally restricted:
-
-- `CURSOR_API_URL` must point to `localhost` or `127.0.0.1` (enforced by Zod schema)
-- `cursor-api-proxy` must **never** be installed or run in production
-- Startup guards verify the proxy is reachable before the server starts

@@ -56,7 +56,7 @@ the translation asynchronously. This prevents Chatwork from retrying on slow res
 
 **NEW (Phase 1+):** Room settings moved from global env to per-room dashboard config:
 
-- `aiProvider`: gemini | openai | cursor (local dev)
+- `aiProvider`: gemini | openai
 - `model`: gemini-2.0-flash-exp | gpt-5.4-mini | etc.
 - `translationStyle`: NATURAL_CASUAL | PROFESSIONAL_BUSINESS | TECHNICAL
 - `temperature`: 0.0-1.0 (per-style defaults)
@@ -137,17 +137,12 @@ Model validation also happens at startup — models not in `manifest.supportedMo
 When running via Docker Compose, services communicate over the `chatwork-net` bridge network
 using Docker service names — **not** `localhost`:
 
-| From           | To           | URL                                   |
-| -------------- | ------------ | ------------------------------------- |
-| webhook-logger | translator   | `http://translator:3000`              |
-| translator     | cursor-proxy | `http://host.docker.internal:8765/v1` |
+| From           | To         | URL                      |
+| -------------- | ---------- | ------------------------ |
+| webhook-logger | translator | `http://translator:3000` |
 
 This is injected automatically via `environment:` in the compose files. The `.env` file
 keeps `TRANSLATOR_URL=http://localhost:3000` for native dev (without Docker).
-
-For `cursor` provider: cursor-proxy runs **natively on macOS** (not in Docker).
-`host.docker.internal` is Docker Desktop for Mac's built-in hostname that resolves
-to the macOS host IP — no extra config needed.
 
 ## Plugin-Owned Architecture
 

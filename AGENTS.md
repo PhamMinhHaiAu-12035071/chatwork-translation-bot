@@ -12,7 +12,6 @@ Nine packages:
 - `@chatwork-bot/chatwork` — anti-corruption layer for Chatwork API
 - `@chatwork-bot/provider-gemini` — Gemini provider plugin (`@ai-sdk/google`)
 - `@chatwork-bot/provider-openai` — OpenAI provider plugin (`@ai-sdk/openai`)
-- `@chatwork-bot/provider-cursor` — Cursor provider plugin, LOCAL DEV ONLY (`@ai-sdk/openai-compatible`)
 - `@chatwork-bot/translator` — HTTP server, env validation, bootstrap, translation handler
 - `@chatwork-bot/webhook-logger` — webhook receiver, forwards to translator
 - `@chatwork-bot/dataset-runner` — ACK-driven queue runner sidecar for dataset injection (LOCAL DEV ONLY)

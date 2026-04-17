@@ -22,7 +22,6 @@ Includes a local-dev dataset-runner sidecar for automated dataset injection and 
                                   ←── imported by ── @chatwork-bot/translator
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
-@chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
 @chatwork-bot/dataset-runner      ←── standalone sidecar (LOCAL DEV ONLY, DATASET_AUTORUN=false by default)
 ```
 

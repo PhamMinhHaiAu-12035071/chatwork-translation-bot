@@ -17,7 +17,6 @@ Bun workspaces monorepo. Eleven packages:
 
 @chatwork-bot/provider-gemini     ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/provider-openai     ←── registered in ── @chatwork-bot/translator
-@chatwork-bot/provider-cursor     ←── registered in ── @chatwork-bot/translator (LOCAL DEV ONLY)
 @chatwork-bot/provider-kagi       ←── registered in ── @chatwork-bot/translator
 @chatwork-bot/kagi-sidecar        ←── standalone sidecar service
 @chatwork-bot/translator          ←── HTTP server, webhook handler
@@ -73,10 +72,6 @@ Gemini provider plugin. Implements `ILLMExecutor.execute<T>()` using `Output.obj
 ### `packages/provider-openai` (`@chatwork-bot/provider-openai`)
 
 OpenAI provider plugin. Implements `ILLMExecutor.execute<T>()` using `Output.object({ schema })` from `@ai-sdk/openai`.
-
-### `packages/provider-cursor` (`@chatwork-bot/provider-cursor`)
-
-Cursor provider plugin (LOCAL DEV ONLY). Implements `ILLMExecutor.execute<T>()` using `extractJsonFromText` + `schema.parse()`. Must not be used in production.
 
 ### `packages/provider-kagi` (`@chatwork-bot/provider-kagi`)
 
@@ -169,7 +164,6 @@ tsconfig.base.json                          (baseUrl: ".")
   ├── packages/translation-prompt/tsconfig.json
   ├── packages/provider-gemini/tsconfig.json
   ├── packages/provider-openai/tsconfig.json
-  ├── packages/provider-cursor/tsconfig.json
   ├── packages/translator/tsconfig.json     (paths: ~/* → packages/translator/src/*, packages/core/src/*, packages/translation-prompt/src/*, packages/chatwork/src/*)
   └── packages/webhook-logger/tsconfig.json (paths: ~/* → packages/webhook-logger/src/*, packages/core/src/*, packages/chatwork/src/*)
 ```

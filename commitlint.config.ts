@@ -34,7 +34,6 @@ const config: UserConfig = {
         'translation-prompt',
         'provider-gemini',
         'provider-openai',
-        'provider-cursor',
         'kagi',
         'repo',
       ],

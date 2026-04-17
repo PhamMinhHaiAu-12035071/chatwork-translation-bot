@@ -33,26 +33,6 @@ Control replay behavior via env vars before running `bun run dev`:
 | `DATASET_CLEAR_FAILED` | `true` / `false`                                | Delete previous `failed.jsonl` before run     |
 | `DATASET_CLEAR_OUTPUT` | `true` / `false`                                | Delete previous output files before run       |
 
-### Cursor Provider (local dev)
-
-Set `AI_PROVIDER=cursor` trong `.env`. Khi đó `bun run dev` tự phát hiện và khởi động
-cursor-proxy natively trên macOS cùng với Docker services (colored logs via `concurrently`):
-
-```bash
-# Auto-starts cursor-proxy (native macOS) + all Docker services:
-bun run dev
-
-# Stop cursor-proxy + all Docker services:
-bun run dev:down
-```
-
-> cursor-proxy chạy native, không trong Docker. Translator kết nối đến nó qua
-> `http://host.docker.internal:8765/v1` (Docker Desktop for Mac magic hostname).
->
-> `bun run dev` có cơ chế self-heal xung đột port local: nếu proxy trên port hiện tại
-> healthy (`/models` OK) thì tái sử dụng; nếu unhealthy thì tự cleanup và khởi động lại.
-> `bun run dev:down` cũng cleanup listener local theo `CURSOR_API_URL` để giảm lỗi `EADDRINUSE`.
-
 ## Build
 
 ```bash
@@ -86,7 +66,7 @@ bun test packages/core/src/utils/parse-command.test.ts     # Run single file
 ### Dev (hot-reload, all services, no build needed)
 
 ```bash
-bun run dev           # Start: translator + webhook-logger + zrok (+ cursor-proxy if AI_PROVIDER=cursor)
+bun run dev           # Start: translator + webhook-logger + zrok
 bun run dev:down      # Stop all dev services
 bun run dev:logs      # Tail logs from all dev services
 ```

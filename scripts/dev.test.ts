@@ -56,13 +56,10 @@ function createTestWorkspace(options: TestWorkspaceOptions): TestWorkspace {
   const scriptsDir = join(rootDir, 'scripts')
   const binDir = join(rootDir, 'bin')
   const eventLogPath = join(rootDir, 'events.log')
-  const proxyCliDir = join(rootDir, 'node_modules', 'cursor-api-proxy', 'dist')
 
   mkdirSync(scriptsDir, { recursive: true })
   mkdirSync(binDir, { recursive: true })
-  mkdirSync(proxyCliDir, { recursive: true })
   writeFileSync(eventLogPath, '')
-  writeFileSync(join(proxyCliDir, 'cli.js'), '// test stub for realpath\n')
 
   cpSync(join(repoRoot, 'scripts', 'dev.sh'), join(scriptsDir, 'dev.sh'))
   if (options.includeDatasetScript) {
@@ -77,10 +74,7 @@ function createTestWorkspace(options: TestWorkspaceOptions): TestWorkspace {
     )
   }
 
-  writeFileSync(
-    join(rootDir, '.env'),
-    `AI_PROVIDER=${options.provider}\nCURSOR_API_URL=http://localhost:8765/v1\n`,
-  )
+  writeFileSync(join(rootDir, '.env'), `AI_PROVIDER=${options.provider}\n`)
 
   const dashboardDistDir = join(rootDir, 'packages', 'dashboard', 'dist')
   mkdirSync(dashboardDistDir, { recursive: true })

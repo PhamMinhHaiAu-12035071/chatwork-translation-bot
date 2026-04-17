@@ -94,7 +94,6 @@ packages/
 ├── dashboard/         # @chatwork-bot/dashboard — React SPA for multi-room management
 ├── dataset-runner/    # @chatwork-bot/dataset-runner — ACK-driven queue runner sidecar (LOCAL DEV ONLY)
 ├── kagi-sidecar/      # @chatwork-bot/kagi-sidecar — Kagi translation sidecar service
-├── provider-cursor/   # @chatwork-bot/provider-cursor — Cursor provider (LOCAL DEV ONLY)
 ├── provider-gemini/   # @chatwork-bot/provider-gemini — Gemini provider plugin
 ├── provider-kagi/     # @chatwork-bot/provider-kagi — Kagi provider plugin
 ├── provider-openai/   # @chatwork-bot/provider-openai — OpenAI provider plugin
