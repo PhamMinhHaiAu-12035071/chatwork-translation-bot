@@ -7,7 +7,7 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { chromium, type BrowserContext, type Page } from 'patchright'
 
-import { KAGI_STYLE_PRESETS, type KagiStyle } from '@chatwork-bot/provider-kagi'
+import { KAGI_STYLE_PRESETS } from '@chatwork-bot/provider-kagi'
 
 import { clampInputText, MAX_INPUT_TEXT_LENGTH } from './constants/input-clamping.js'
 import {
@@ -62,19 +62,6 @@ export class KagiSidecarError extends Error {
   public readonly status: number
 }
 
-export interface KagiTranslateRequest {
-  text: string
-  style: KagiStyle
-  context?: string
-}
-
-export interface KagiTranslationResult {
-  translated: string
-  attempts: number
-  queueWaitMs: number
-  transportLatencyMs: number
-}
-
 export interface KagiHealthSnapshot {
   ready: boolean
   activeCount: number
@@ -104,6 +91,8 @@ export interface KagiBrowserServiceOptions {
   /** Ensures the user-data dir exists before launch. Injectable for tests. */
   ensureUserDataDir(path: string): Promise<void>
   humanInteraction?: IHumanInteraction
+  /** Called on unrecoverable browser death (context closed, connection null). Defaults to process.exit(1). */
+  onFatalError(reason: string): void
 }
 
 class BrowserConnection implements IBrowserConnection {
@@ -159,6 +148,20 @@ export class KagiBrowserService implements IBrowserService {
       ensureUserDataDir:
         options.ensureUserDataDir ??
         ((path) => mkdir(path, { recursive: true }).then(() => undefined)),
+      onFatalError:
+        options.onFatalError ??
+        ((reason) => {
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              service: 'kagi-sidecar',
+              event: 'fatal_browser_death',
+              timestamp: new Date().toISOString(),
+              reason,
+            }),
+          )
+          process.exit(1)
+        }),
     }
 
     // Conditionally add sessionFile only if provided
@@ -319,7 +322,146 @@ export class KagiBrowserService implements IBrowserService {
     return undefined
   }
 
+  // ─── Queue / backpressure / retry / timeout infrastructure ───
+
   async translate(request: KagiTranslateUiRequest): Promise<TranslateResult> {
+    const willQueue = this.activeCount > 0 || this.queuedCount > 0
+
+    if (willQueue && this.queuedCount >= this.options.maxQueueDepth) {
+      throw new KagiSidecarError('BACKPRESSURE', 'Kagi translation queue is full', {
+        status: 429,
+      })
+    }
+
+    const enqueuedAt = this.options.now()
+    const previous = this.queueTail
+    let releaseQueue!: () => void
+
+    this.queuedCount += 1
+    this.queueTail = new Promise<void>((resolve) => {
+      releaseQueue = resolve
+    })
+
+    await previous.catch(() => undefined)
+    this.queuedCount -= 1
+
+    const queueWaitMs = this.options.now() - enqueuedAt
+    if (queueWaitMs > this.options.maxQueueWaitMs) {
+      releaseQueue()
+      throw new KagiSidecarError(
+        'BACKPRESSURE',
+        `Kagi queue wait exceeded ${String(this.options.maxQueueWaitMs)}ms`,
+        { status: 429 },
+      )
+    }
+
+    this.activeCount += 1
+
+    try {
+      return await this.translateWithRetries(request)
+    } finally {
+      this.activeCount -= 1
+      releaseQueue()
+    }
+  }
+
+  private async translateWithRetries(request: KagiTranslateUiRequest): Promise<TranslateResult> {
+    let attempt = 0
+    let lastError: unknown
+
+    while (attempt <= this.options.maxRetries) {
+      attempt += 1
+
+      try {
+        await this.applyMinInterval()
+
+        return await this.withTimeout(
+          this.executeTranslation(request),
+          this.options.requestTimeoutMs,
+        )
+      } catch (error) {
+        lastError = error
+
+        // Browser death → fatal, do not retry
+        if (this.isBrowserDeathError(error)) {
+          void this.close().catch(() => undefined)
+          this.options.onFatalError(error instanceof Error ? error.message : String(error))
+          throw error // onFatalError may not exit in tests
+        }
+
+        if (!this.isRetryableError(error) || attempt > this.options.maxRetries) {
+          throw error
+        }
+
+        const backoffMs = this.computeBackoffMs(attempt)
+        await this.options.sleep(backoffMs)
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error(String(lastError))
+  }
+
+  private async applyMinInterval(): Promise<void> {
+    const now = this.options.now()
+    const elapsed = now - this.lastRequestStartedAt
+    const remaining = this.options.minIntervalMs - elapsed
+
+    if (remaining > 0) {
+      await this.options.sleep(remaining)
+    }
+
+    this.lastRequestStartedAt = this.options.now()
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(
+              new KagiSidecarError(
+                'TIMEOUT',
+                `Kagi request timed out after ${String(timeoutMs)}ms`,
+                { retryable: true, status: 504 },
+              ),
+            )
+          }, timeoutMs)
+        }),
+      ])
+    } finally {
+      if (timer !== undefined) {
+        clearTimeout(timer)
+      }
+    }
+  }
+
+  private isRetryableError(error: unknown): boolean {
+    return error instanceof KagiSidecarError && error.retryable
+  }
+
+  private isBrowserDeathError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false
+    const msg = error.message
+    return (
+      msg.includes('Target page, context or browser has been closed') ||
+      msg.includes('Browser not launched') ||
+      msg.includes('translate called before launch') ||
+      msg.includes('openNewTab called before launch')
+    )
+  }
+
+  private computeBackoffMs(attempt: number): number {
+    const exponent = Math.max(0, attempt - 1)
+    const jitter = Math.floor(this.options.random() * this.options.retryBaseMs)
+    return this.options.retryBaseMs * 2 ** exponent + jitter
+  }
+
+  // ─── Core translation flow (private) ───
+
+  private async executeTranslation(request: KagiTranslateUiRequest): Promise<TranslateResult> {
     if (this.connection === null) {
       throw new KagiSidecarError('UI_INTERACTION', 'translate called before launch', {
         status: 500,
