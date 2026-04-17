@@ -61,7 +61,9 @@ RUN mkdir -p /tmp/.X11-unix \
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/bun.lock ./bun.lock
 COPY --from=deps /app/node_modules ./node_modules
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY packages/kagi-sidecar/package.json packages/kagi-sidecar/package.json
+COPY packages/kagi-sidecar/tsconfig.json packages/kagi-sidecar/tsconfig.json
 COPY --from=deps /app/packages/kagi-sidecar/node_modules packages/kagi-sidecar/node_modules
 COPY packages/kagi-sidecar/scripts packages/kagi-sidecar/scripts
 COPY packages/kagi-sidecar/src packages/kagi-sidecar/src
