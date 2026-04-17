@@ -428,7 +428,7 @@ describe('scripts/dev.sh orchestration', () => {
     expect(kagiBlock).toContain('KAGI_RETRY_BASE_MS=${KAGI_RETRY_BASE_MS:-1000}')
     expect(kagiBlock).toContain('KAGI_REQUEST_TIMEOUT_MS=${KAGI_REQUEST_TIMEOUT_MS:-30000}')
     expect(kagiBlock).toContain('KAGI_MAX_QUEUE_DEPTH=${KAGI_MAX_QUEUE_DEPTH:-10}')
-    expect(kagiBlock).toContain('KAGI_MAX_QUEUE_WAIT_MS=${KAGI_MAX_QUEUE_WAIT_MS:-15000}')
+    expect(kagiBlock).toContain('KAGI_MAX_QUEUE_WAIT_MS=${KAGI_MAX_QUEUE_WAIT_MS:-120000}')
     expect(kagiBlock).toContain('HUSKY=0')
     expect(kagiBlock).toContain('BUN_INSTALL_CACHE_DIR=/root/.bun/install/cache')
     expect(kagiBlock).toContain("fetch('http://localhost:3002/health')")
@@ -501,7 +501,7 @@ describe('scripts/dev.sh orchestration', () => {
     expect(envExample).toContain('KAGI_RETRY_BASE_MS=1000')
     expect(envExample).toContain('KAGI_REQUEST_TIMEOUT_MS=120000')
     expect(envExample).toContain('KAGI_MAX_QUEUE_DEPTH=10')
-    expect(envExample).toContain('KAGI_MAX_QUEUE_WAIT_MS=15000')
+    expect(envExample).toContain('KAGI_MAX_QUEUE_WAIT_MS=120000')
   })
 
   it('wires webhook-logger to the translator service URL only in docker-compose.dev.yml', () => {

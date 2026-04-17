@@ -1,8 +1,9 @@
 /**
  * Char count threshold for choosing input strategy.
- * ≤ 500: typeIntoContentEditable. > 500: chunkPaste.
+ * ≤ 50: typeIntoContentEditable (simulates keystrokes for very short text).
+ * > 50: chunkPaste (avoids per-char typing delay that dominates latency).
  */
-export const HUMAN_INPUT_THRESHOLD = 500
+export const HUMAN_INPUT_THRESHOLD = 50
 
 /** 4-tier delay multiplier configuration. Checked in order; first match wins. */
 export const DELAY_TIERS = [

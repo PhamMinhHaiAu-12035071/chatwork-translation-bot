@@ -11,7 +11,7 @@ export interface NumberRangeMs {
 export type HumanizerPunctuationPauseMap = Record<string, NumberRangeMs>
 
 export const HUMANIZER_CONFIG = {
-  WORDS_PER_MINUTE: 200,
+  WORDS_PER_MINUTE: 400,
   CHAR_DELAY_JITTER: 0.35,
   MIN_CHAR_DELAY_MS: 28,
   MAX_CHAR_DELAY_MS: 260,

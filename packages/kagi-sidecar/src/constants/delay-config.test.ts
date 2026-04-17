@@ -56,7 +56,7 @@ describe('computeScaledDelay', () => {
 })
 
 describe('HUMAN_INPUT_THRESHOLD', () => {
-  it('is 500', () => {
-    expect(HUMAN_INPUT_THRESHOLD).toBe(500)
+  it('is 50', () => {
+    expect(HUMAN_INPUT_THRESHOLD).toBe(50)
   })
 })
